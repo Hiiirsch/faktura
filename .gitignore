@@ -1,0 +1,23 @@
+# Abhängigkeiten
+node_modules/
+
+# Next.js
+.next/
+next-env.d.ts
+
+# Testabdeckung
+coverage/
+
+# Betriebsdaten — Datenbank, Uploads, erzeugte PDFs, Sicherungen
+data/
+storage/
+backups/
+
+# Konfiguration mit Geheimnissen (NFA-SEC-21)
+.env
+.env.local
+.env.*.local
+
+# Werkzeuge
+*.tsbuildinfo
+.DS_Store

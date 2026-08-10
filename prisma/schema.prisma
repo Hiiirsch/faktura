@@ -1,0 +1,33 @@
+// Datenmodell nach Spec §4. Das Schema wächst meilensteinweise:
+// M0 legt den Datenbankzugang und das schichtübergreifende Audit-Log an,
+// M1 ergänzt User und Session, M2 die Stammdaten, M4 die Belege.
+
+generator client {
+  provider = "prisma-client-js"
+  // Die Abfrage-Engine wird zur Bauzeit ausgewählt. Ohne ausdrückliche Angabe
+  // rät Prisma anhand der Bauumgebung — und liefert eine Engine für die falsche
+  // OpenSSL-Version aus, sobald sich Bau- und Laufzeitumgebung unterscheiden.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Protokoll aller Änderungen an Rechnungen und Stammdaten (NFA-COMP-01).
+/// Einträge werden ausschließlich angelegt, nie geändert oder gelöscht
+/// (NFA-COMP-02) — die Durchsetzung folgt mit M4.
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actorId    String?
+  diffJson   String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

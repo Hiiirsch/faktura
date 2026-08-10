@@ -1,0 +1,63 @@
+# Der Build schlägt bei TypeScript-Fehlern oder Lint-Verstößen fehl
+# (NFA-QUAL-03). Abhängigkeiten mit Schweregrad hoch oder kritisch blockieren
+# den Lauf (NFA-SEC-22).
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    env:
+      # Für den Lauf genügt eine Datenbank im Arbeitsverzeichnis; die Tests der
+      # Domain-Schicht kommen ohne Datenbank aus.
+      DATABASE_URL: file:../data/ci.db
+      APP_URL: http://localhost:3000
+      APP_TIMEZONE: Europe/Berlin
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Prisma-Client erzeugen
+        run: npx prisma generate
+
+      - name: Typen prüfen
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests mit Abdeckung
+        run: npm run test:coverage
+
+      - name: Abhängigkeiten auf Schwachstellen prüfen
+        run: npm run audit
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Anwendungsimage bauen
+        run: docker build -t faktura:ci .

@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+/*
+ * Keine externen Schriftarten (NFA-COMP-06) — die Anwendung nutzt
+ * ausschließlich die Systemschriften des jeweiligen Betriebssystems.
+ */
+@theme {
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  font-family: var(--font-sans);
+}

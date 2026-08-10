@@ -1,0 +1,56 @@
+# Betrieb mit einem Anwendungsdienst und einem vorgelagerten Reverse Proxy
+# (Spec §12). `docker compose up` startet die Anwendung vollständig inklusive
+# Datenbankmigration (NFA-BETR-01).
+
+services:
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Im Container gilt der absolute Pfad im gemounteten Volume — unabhängig
+      # davon, was für die lokale Entwicklung in .env steht.
+      DATABASE_URL: file:/app/data/faktura.db
+      NODE_ENV: production
+      PORT: 3000
+    volumes:
+      - ./data:/app/data
+      - ./storage:/app/storage
+    # Bewusst ohne `ports`: Der Anwendungsdienst ist ausschließlich im internen
+    # Netz erreichbar, nie direkt vom Host oder aus dem Internet (NFA-SEC-19).
+    expose:
+      - '3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-:80}
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,19 @@
+# Reverse Proxy vor der Anwendung (Spec §11.3).
+#
+# Bei einem echten Domainnamen in CADDY_SITE_ADDRESS besorgt und erneuert Caddy
+# das TLS-Zertifikat selbsttätig; TLS terminiert damit hier und nicht in der
+# Anwendung (NFA-SEC-19). Ohne Angabe lauscht der Proxy auf Port 80, was für
+# den lokalen Probelauf genügt.
+#
+# Die Sicherheits-Header (CSP, HSTS, X-Frame-Options, Referrer-Policy) folgen
+# mit M1 (NFA-SEC-17) — sie gehören zusammen mit der Sitzungsverwaltung
+# konfiguriert und nicht vorab an zwei Stellen verteilt.
+
+{$CADDY_SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	reverse_proxy app:3000 {
+		health_uri /api/health
+		health_interval 30s
+	}
+}

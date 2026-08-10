@@ -1,0 +1,283 @@
+# FORTSCHRITT
+
+Statusverfolgung aller Anforderungen aus `rechnungs-app-anforderungen.md`.
+
+**Status:** `offen` — noch nicht begonnen oder in Arbeit · `umgesetzt` — implementiert
+und durch den genannten Nachweis belegt · `abgenommen` — vom Auftraggeber freigegeben.
+
+**Nachweis:** Pfad zur Testdatei bzw. `Review:` / `Manuell:` bei den
+Verifikationsarten R und M.
+
+**MS:** Meilenstein laut Anforderungskatalog §16. Ein `†` markiert IDs, die in §16
+**keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
+Vorschlag und steht noch zur Freigabe aus.
+
+Stand: 2026-08-10 · 9 von 171 umgesetzt · 0 abgenommen · **M0 zur Abnahme vorgelegt**
+
+Prüfbefehl für alle mit „T"/„R" belegten Nachweise: `npm run verify`.
+Die mit „M" belegten Nachweise sind unter „Manuell:" mit dem durchgeführten
+Szenario benannt.
+
+---
+
+## 1. Einstellungen & Stammdaten
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-STAMM-01 | Firmendaten erfassbar/änderbar | MUSS | T | M2 | offen | — |
+| FA-STAMM-02 | Steuernummer/USt-IdNr getrennt, eines Pflicht | MUSS | T | M2 | offen | — |
+| FA-STAMM-03 | Kleinunternehmer-Flag §19 wirkt auf Steuerermittlung | MUSS | T | M2 | offen | — |
+| FA-STAMM-04 | Bankverbindung mit IBAN-Prüfsumme | MUSS | T | M2 | offen | — |
+| FA-STAMM-05 | Logo-Upload (PNG/JPG/SVG, ≤2 MB) | MUSS | M | M2 | offen | — |
+| FA-STAMM-06 | Standard-Zahlungsziel/-Steuersatz/-Währung | MUSS | T | M2 | offen | — |
+| FA-STAMM-07 | Mehrzeiliger Fußzeilentext | SOLL | M | M2 | offen | — |
+| FA-STAMM-08 | Handelsregister und Geschäftsführer optional | SOLL | T | M2 | offen | — |
+| FA-STAMM-09 | Änderungen an Firmendaten im Audit-Log | MUSS | T | M2 | offen | — |
+| FA-STAMM-10 | Leistungskatalog pflegbar | SOLL | T | M2 | offen | — |
+
+## 2. Kundenverwaltung
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-KUND-01 | Kunden anlegen, bearbeiten, durchsuchen | MUSS | T | M2 | offen | — |
+| FA-KUND-02 | Automatische eindeutige Kundennummer | MUSS | T | M2 | offen | — |
+| FA-KUND-03 | Land als ISO-3166-1-alpha-2 | MUSS | R | M2 | offen | — |
+| FA-KUND-04 | USt-IdNr formal je Land geprüft | MUSS | T | M2 | offen | — |
+| FA-KUND-05 | Kundenspezifisches Zahlungsziel überschreibt Standard | MUSS | T | M2 | offen | — |
+| FA-KUND-06 | Archivieren statt Löschen bei vorhandenen Rechnungen | MUSS | T | M2 | offen | — |
+| FA-KUND-07 | Archivierte nicht in Neuauswahl, in Altrechnungen sichtbar | MUSS | T | M2 | offen | — |
+| FA-KUND-08 | Kundendetail zeigt zugehörige Rechnungen | MUSS | M | M2 | offen | — |
+| FA-KUND-09 | Leitweg-ID optional erfassbar | SOLL | T | M2 | offen | — |
+| FA-KUND-10 | CSV-Import/-Export für Kunden | KANN | M | M2 | offen | — |
+
+## 3. Rechnungserstellung
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-RECH-01 | Entwurf ohne Nummernvergabe speicherbar | MUSS | T | M4 | offen | — |
+| FA-RECH-02 | Kundenauswahl befüllt Adresse/Ziel/Steuerkategorie vor | MUSS | T | M4 | offen | — |
+| FA-RECH-03 | Positionen hinzufügen, löschen, duplizieren, sortieren | MUSS | M | M4 | offen | — |
+| FA-RECH-04 | Positionsfelder vollständig | MUSS | T | M4 | offen | — |
+| FA-RECH-05 | Positionsrabatt in Prozent | SOLL | T | M4 | offen | — |
+| FA-RECH-06 | Katalog-Autocomplete im Bezeichnungsfeld | SOLL | M | M4 | offen | — |
+| FA-RECH-07 | Rechnungs-, Leistungs- und Fälligkeitsdatum erfassbar | MUSS | T | M4 | offen | — |
+| FA-RECH-08 | Fälligkeit aus Datum + Zahlungsziel vorbelegt, überschreibbar | MUSS | T | M4 | offen | — |
+| FA-RECH-09 | Einleitungs- und Schlusstext je Rechnung | SOLL | T | M4 | offen | — |
+| FA-RECH-10 | Duplizieren als neuer Entwurf ohne Nummer | MUSS | T | M4 | offen | — |
+| FA-RECH-11 | Entwürfe löschbar, festgeschriebene nicht | MUSS | T | M4 | offen | — |
+| FA-RECH-12 | Vollständigkeitsprüfung vor Festschreiben blockiert | MUSS | T | M4 | offen | — |
+| FA-RECH-13 | Käufer-/Verkäufer-Snapshot beim Festschreiben | MUSS | T | M4 | offen | — |
+| FA-RECH-14 | Stammdatenänderung ändert Altrechnungen nicht | MUSS | T | M4 | offen | — |
+| FA-RECH-15 | Liste filterbar nach Status/Kunde/Zeitraum/Volltext | MUSS | M | M4 | offen | — |
+| FA-RECH-16 | Liste sortierbar nach Nummer/Datum/Betrag/Fälligkeit | SOLL | M | M4 | offen | — |
+
+## 4. Berechnung & Steuer
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-CALC-01 | Geld ausschließlich Integer in Cent, kein Float | MUSS | R | M3 | offen | — |
+| FA-CALC-02 | Positionsnetto kaufmännisch auf Cent gerundet | MUSS | T | M3 | offen | — |
+| FA-CALC-03 | Gruppierung nach Satz+Kategorie, Steuer je Gruppe gerundet | MUSS | T | M3 | offen | — |
+| FA-CALC-04 | Summe der Gruppensteuern = Gesamtsteuer | MUSS | T | M3 | offen | — |
+| FA-CALC-05 | §19: Satz 0, Kategorie E, Pflichthinweis | MUSS | T | M3 | offen | — |
+| FA-CALC-06 | EU-B2B mit USt-IdNr: Kategorie AE, Satz 0, Hinweis | MUSS | T | M3 | offen | — |
+| FA-CALC-07 | Drittland: Kategorie G vorgeschlagen | SOLL | T | M3 | offen | — |
+| FA-CALC-08 | Vorgeschlagene Kategorie je Rechnung überschreibbar | MUSS | T | M3 | offen | — |
+| FA-CALC-09 | Gemischte Steuersätze korrekt und getrennt ausgewiesen | MUSS | T | M3 | offen | — |
+| FA-CALC-10 | Berechnung als reine Funktion ohne DB-Zugriff | MUSS | R | M3 | offen | — |
+| FA-CALC-11 | Tests: Rundung, Rabatt, Gruppen, §19, RC, Null, negativ | MUSS | T | M3 | offen | — |
+
+## 5. Nummernkreis & Unveränderbarkeit
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-NUM-01 | Format konfigurierbar mit `{YYYY}` `{YY}` `{MM}` `{SEQ:n}` | MUSS | T | M3 | offen | — |
+| FA-NUM-02 | Nummer ausschließlich beim Festschreiben | MUSS | T | M3 | offen | — |
+| FA-NUM-03 | Nummer und Statuswechsel in einer Transaktion | MUSS | R | M3 | offen | — |
+| FA-NUM-04 | Nebenläufige Festschreibungen ohne Nummernkollision | MUSS | T | M3 | offen | — |
+| FA-NUM-05 | Jahreswechsel startet Zähler neu | SOLL | T | M3 | offen | — |
+| FA-NUM-06 | Zählerstand in Einstellungen einsehbar | SOLL | M | M3 | offen | — |
+| FA-NUM-07 | Einmaliger manueller Startwert setzbar | SOLL | T | M3 | offen | — |
+| FA-NUM-08 | Festgeschriebene Rechnung über UI nicht änderbar | MUSS | T | M4 | offen | — |
+| FA-NUM-09 | Unveränderbarkeit auch in der Persistenzschicht | MUSS | T | M4 | offen | — |
+| FA-NUM-10 | PDFs mit SHA-256 gespeichert, nie überschrieben | MUSS | T | M4 | offen | — |
+
+## 6. Status & Zahlungen
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-STAT-01 | Genau ein Status aus fünf definierten Werten | MUSS | T | M3 | offen | — |
+| FA-STAT-02 | Überfälligkeit abgeleitet, nicht persistiert | MUSS | R | M3 | offen | — |
+| FA-STAT-03 | Zahlungen als Einzeldatensätze | MUSS | T | M3 | offen | — |
+| FA-STAT-04 | Teilzahlung → Status Teilbezahlt | MUSS | T | M3 | offen | — |
+| FA-STAT-05 | Zahlungssumme ≥ Brutto → Status Bezahlt | MUSS | T | M3 | offen | — |
+| FA-STAT-06 | Schnellaktion „als vollständig bezahlt markieren" | MUSS | T | M4 | offen | — |
+| FA-STAT-07 | Zahlungen korrigier-/stornierbar, Status neu abgeleitet | SOLL | T | M4 | offen | — |
+| FA-STAT-08 | Storno erzeugt eigenständiges Dokument mit Bezug | MUSS | T | M4 | offen | — |
+| FA-STAT-09 | Original wechselt auf Storniert, bleibt erhalten | MUSS | T | M4 | offen | — |
+| FA-STAT-10 | Storno auch nach vollständiger Bezahlung | SOLL | T | M4 | offen | — |
+| FA-STAT-11 | Jeder Statuswechsel im Audit-Log | MUSS | T | M4 | offen | — |
+
+## 7. Vorlagen
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-TPL-01 | Vorlage aus Liquid-HTML + CSS, als Datei oder ZIP | MUSS | M | M5 | offen | — |
+| FA-TPL-02 | Mehrere Vorlagen, eine als Standard | MUSS | T | M5 | offen | — |
+| FA-TPL-03 | Abweichende Vorlage je Rechnung wählbar | SOLL | T | M5 | offen | — |
+| FA-TPL-04 | Editor im Browser mit Highlighting und Live-Vorschau | SOLL | M | M5 | offen | — |
+| FA-TPL-05 | DIN-5008-konforme Standardvorlage, Erststart-Import | MUSS | M | M5 | offen | — |
+| FA-TPL-06 | Template-Variablen in der UI dokumentiert | MUSS | M | M5 | offen | — |
+| FA-TPL-07 | Syntaxfehler → verständliche Meldung, kein Absturz | MUSS | T | M5 | offen | — |
+| FA-TPL-08 | Seitenränder und -format je Vorlage konfigurierbar | SOLL | T | M5 | offen | — |
+| FA-TPL-09 | Vorlagenänderung verändert erzeugte PDFs nicht | MUSS | T | M5 | offen | — |
+
+## 8. PDF-Ausgabe
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-PDF-01 | Festgeschriebene Rechnung als PDF herunterladbar | MUSS | T | M5 | offen | — |
+| FA-PDF-02 | Vorschau im Editor, aktualisiert nach Eingabepause | MUSS | M | M5 | offen | — |
+| FA-PDF-03 | Entwurf als Vorschau-PDF, sichtbar gekennzeichnet | SOLL | M | M5 | offen | — |
+| FA-PDF-04 | ≥60 Positionen brechen ohne Verlust über Seiten um | MUSS | T | M5 | offen | — |
+| FA-PDF-05 | Tabellenkopf wiederholt sich auf Folgeseiten | MUSS | M | M5 | offen | — |
+| FA-PDF-06 | Seitenangabe „Seite X von Y" auf jeder Seite | MUSS | T | M5 | offen | — |
+| FA-PDF-07 | Summenblock nicht durch Seitenumbruch getrennt | SOLL | M | M5 | offen | — |
+| FA-PDF-08 | Anschriftfeld im Fensterumschlag DIN lang sichtbar | MUSS | M | M5 | offen | — |
+| FA-PDF-09 | Konfigurierbares Dateinamenmuster | SOLL | T | M5 | offen | — |
+| FA-PDF-10 | Rendering 10 Positionen unter 3 s | SOLL | T | M5 | offen | — |
+| FA-PDF-11 | Fehlgeschlagenes Rendering hinterlässt keine Datei | MUSS | T | M5 | offen | — |
+
+## 9. Pflichtangaben auf dem Dokument
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-PFL-01 | Name und Anschrift beider Parteien | MUSS | T | M5 | offen | — |
+| FA-PFL-02 | Steuernummer oder USt-IdNr des Ausstellers | MUSS | T | M5 | offen | — |
+| FA-PFL-03 | Ausstellungsdatum | MUSS | T | M5 | offen | — |
+| FA-PFL-04 | Fortlaufende Rechnungsnummer | MUSS | T | M5 | offen | — |
+| FA-PFL-05 | Menge und Art der Leistung je Position | MUSS | T | M5 | offen | — |
+| FA-PFL-06 | Zeitpunkt bzw. Zeitraum der Leistung | MUSS | T | M5 | offen | — |
+| FA-PFL-07 | Entgelt nach Steuersätzen aufgeschlüsselt | MUSS | T | M5 | offen | — |
+| FA-PFL-08 | Steuersatz und -betrag bzw. Befreiungshinweis | MUSS | T | M5 | offen | — |
+| FA-PFL-09 | Reverse Charge: beide USt-IdNr + Hinweis | MUSS | T | M5 | offen | — |
+| FA-PFL-10 | Bankverbindung und Zahlungsziel | MUSS | T | M5 | offen | — |
+| FA-PFL-11 | Stornodokument bezeichnet und mit Bezugsnummer | MUSS | T | M5 | offen | — |
+
+## 10. Dashboard
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-DASH-01 | Offener Gesamtbetrag | MUSS | T | M6 | offen | — |
+| FA-DASH-02 | Überfälliger Betrag und Anzahl | MUSS | T | M6 | offen | — |
+| FA-DASH-03 | Umsatz laufender Monat und laufendes Jahr | MUSS | T | M6 | offen | — |
+| FA-DASH-04 | Stornos und Entwürfe fließen nicht in den Umsatz | MUSS | T | M6 | offen | — |
+| FA-DASH-05 | Diagramm Umsatz je Monat über 12 Monate | MUSS | M | M6 | offen | — |
+| FA-DASH-06 | Liste überfälliger Rechnungen nach Dauer sortiert | MUSS | M | M6 | offen | — |
+| FA-DASH-07 | Liste der in 14 Tagen fälligen Rechnungen | SOLL | M | M6 | offen | — |
+| FA-DASH-08 | Zuletzt bearbeitete Rechnungen mit Status | SOLL | M | M6 | offen | — |
+| FA-DASH-09 | Alle Kennzahlen aus einer zentralen Funktion | MUSS | R | M6 | offen | — |
+| FA-DASH-10 | Umsätze auf Nettobasis, im UI beschriftet | MUSS | M | M6 | offen | — |
+| FA-DASH-11 | Umsatzstärkste Kunden des laufenden Jahres | KANN | M | M6 | offen | — |
+
+## 11. Sicherheit
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| NFA-SEC-01 | Ohne Session liefert jede Route 401/403, Test über alle Routen | MUSS | T | M1 | offen | — |
+| NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | offen | — |
+| NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | offen | — |
+| NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | offen | — |
+| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | offen | — |
+| NFA-SEC-06 | Session-Token ≥256 Bit, nur Hash in der DB | MUSS | R | M1 | offen | — |
+| NFA-SEC-07 | Cookie HttpOnly/Secure/SameSite=Lax, Rotation bei Login | MUSS | T | M1 | offen | — |
+| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | offen | — |
+| NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | offen | — |
+| NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | offen | — |
+| NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | offen | — |
+| NFA-SEC-12 | Renderer ohne Netzwerkzugriff, nachgewiesen | MUSS | T | M5 | offen | — |
+| NFA-SEC-13 | JavaScript im Rendering-Kontext deaktiviert | MUSS | R | M5 | offen | — |
+| NFA-SEC-14 | Rendering-Timeout (Standard 15 s) bricht kontrolliert ab | MUSS | T | M5 | offen | — |
+| NFA-SEC-15 | Uploads: Größe, MIME, Magic Bytes, ZIP-Slip-Schutz | MUSS | T | M5 | offen | — |
+| NFA-SEC-16 | Uploads außerhalb des Webroots, nur authentifiziert | MUSS | T | M5 | offen | — |
+| NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | offen | — |
+| NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | offen | — |
+| NFA-SEC-19 | Bindung nur an 127.0.0.1, TLS im Reverse Proxy | MUSS | R | M1 | offen | — |
+| NFA-SEC-20 | Container läuft nicht als Root | MUSS | R | M1 | offen | — |
+| NFA-SEC-21 | Keine Secrets im Repo oder Image | MUSS | R | M1 | offen | — |
+| NFA-SEC-22 † | Automatisierte Abhängigkeitsprüfung blockiert Build | SOLL | R | M0 † | umgesetzt | `.github/workflows/ci.yml`, `npm run audit` (`--audit-level=high`) |
+
+## 12. Datenschutz & Nachvollziehbarkeit
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| NFA-COMP-01 | Änderungen an Rechnungen/Kunden/Firma protokolliert | MUSS | T | M4 | offen | — |
+| NFA-COMP-02 | Audit-Log über die Anwendung nicht änder-/löschbar | MUSS | R | M4 | offen | — |
+| NFA-COMP-03 | Vollständiger Datenexport maschinenlesbar | MUSS | M | M7 | offen | — |
+| NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | offen | — |
+| NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | offen | — |
+| NFA-COMP-06 | Keine externen Fonts, Skripte, Analysedienste | MUSS | R | M7 | offen | — |
+
+## 13. Betrieb
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| NFA-BETR-01 | Start über `docker compose up` inkl. Migration | MUSS | M | M0 | umgesetzt | Manuell: `docker compose up -d --build` auf leerem Datenstand — Migration `20260810105328_init_audit_log` angewandt, Container `healthy`, `GET /api/health` → 200 |
+| NFA-BETR-02 | Konfiguration nur über ENV, vollständige `.env.example` | MUSS | R | M0 | umgesetzt | `.env.example`, `src/infrastructure/config/env.ts` (Zod-Schema, Abbruch beim Start) |
+| NFA-BETR-03 | Täglicher Backup-Job für DB und Dateispeicher | MUSS | M | M7 | offen | — |
+| NFA-BETR-04 | Konsistente DB-Sicherung, kein einfaches Kopieren | MUSS | R | M7 | offen | — |
+| NFA-BETR-05 | Backup manuell auslösbar und herunterladbar | SOLL | M | M7 | offen | — |
+| NFA-BETR-06 | Wiederherstellung dokumentiert und einmal durchgeführt | MUSS | M | M7 | offen | — |
+| NFA-BETR-07 | Nach Restore alle Daten und PDFs vollständig | MUSS | M | M7 | offen | — |
+| NFA-BETR-08 | Healthcheck prüft DB und Renderer | MUSS | T | M7 | offen | — |
+| NFA-BETR-09 | Strukturierte Logs auf stdout, Sicherheitsereignisse erkennbar | MUSS | R | M7 | offen | — |
+| NFA-BETR-10 | Keine Passwörter, Token, Kundendatensätze in Logs | MUSS | R | M7 | offen | — |
+| NFA-BETR-11 | README: Installation, Konfiguration, Backup, Restore, Update | MUSS | R | M7 | offen | — |
+
+## 14. Architektur & Erweiterbarkeit
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| NFA-ARCH-01 | Domain ohne Persistenz-/UI-/Framework-Importe, Lint erzwingt | MUSS | T | M0 | umgesetzt | `tests/architecture/layering.test.ts` |
+| NFA-ARCH-02 | Ausgabeneutrales Dokumentmodell | MUSS | R | M5 | offen | — |
+| NFA-ARCH-03 | Dokumentmodell enthält alle Felder aus Spec §9.2 | MUSS | T | M5 | offen | — |
+| NFA-ARCH-04 | Einheiten als UN/ECE-Rec-20-Codes, Labels erst in der Anzeige | MUSS | T | M5 | offen | — |
+| NFA-ARCH-05 | Steuerkategorien als UNTDID-5305-Codes | MUSS | T | M5 | offen | — |
+| NFA-ARCH-06 | Konfigurierbare PDF-Nachbearbeitungskette, Testprozessor wirkt | MUSS | T | M5 | offen | — |
+| NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | offen | — |
+| NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | offen | — |
+| NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | umgesetzt | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
+| NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | umgesetzt | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan) |
+
+## 15. Qualität, Performance & Bedienung
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| NFA-QUAL-01 | Domain-Testabdeckung ≥90 % | MUSS | T | M3 | offen | — |
+| NFA-QUAL-02 | E2E über den kritischen Gesamtpfad | MUSS | T | M7 | offen | — |
+| NFA-QUAL-03 | Build bricht bei TS-/Lint-Fehlern, kein `any` in der Domain | MUSS | R | M0 | umgesetzt | `npm run verify`; `eslint.config.mjs` (`no-explicit-any` als Fehler, `--max-warnings=0`); `next.config.ts` (`ignoreBuildErrors: false`) |
+| NFA-QUAL-04 | Listenansicht mit 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
+| NFA-QUAL-05 | Dashboard bei 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
+| NFA-QUAL-06 | Seed-Kommando mit realistischen Testdaten | MUSS | M | M7 | offen | — |
+| NFA-QUAL-07 † | UI vollständig deutsch, Texte zentral | MUSS | R | M0 † | umgesetzt | `src/i18n/de.ts`; Label-Tabellen als `Record<Code, string>` — ein fehlendes Label ist ein Compilerfehler. Bei jedem Meilenstein erneut zu prüfen |
+| NFA-QUAL-08 † | Deutsche Formatierung für Beträge, Datum, Zahlen | MUSS | T | M0 † | umgesetzt | `tests/unit/ui/format.test.ts` |
+| NFA-QUAL-09 † | Tastaturbedienbarkeit, Labels an Formularfeldern | SOLL | M | M6 † | offen | — |
+| NFA-QUAL-10 † | Nutzbar ab 1280 px voll, ab 768 px lesend | SOLL | M | M6 † | offen | — |
+| NFA-QUAL-11 † | Rückfrage bei ungespeicherten Änderungen im Editor | SOLL | M | M4 † | offen | — |
+| NFA-QUAL-12 † | Bestätigung mit Erklärtext bei destruktiven Aktionen | MUSS | M | M4 † | offen | — |
+
+---
+
+## Abnahmeszenarien (Katalog §17)
+
+| ID | Szenario | Status |
+|---|---|---|
+| A1 | Regelfall Inland | offen |
+| A2 | Gemischte Steuersätze | offen |
+| A3 | Reverse Charge | offen |
+| A4 | Storno | offen |
+| A5 | Umfangreiche Rechnung (60 Positionen) | offen |
+| A6 | Kundenumzug | offen |
+| A7 | Bösartige Vorlage | offen |
+| A8 | Zugriffsschutz | offen |
+| A9 | Wiederherstellung | offen |
