@@ -13,6 +13,7 @@ import {
 } from '@/application/catalog/catalog-service';
 import { isUnitCode } from '@/domain/codes/unit-code';
 import { type Cents, parseCents } from '@/domain/money/money';
+import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 import { messages } from '@/i18n/de';
 import { CATALOG_PATH } from '@/routes';
 import { parseGermanDecimal } from '@/ui/format';
@@ -30,7 +31,8 @@ const catalogSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2000).transform((value) => (value.length === 0 ? null : value)),
   unitCode: z.string().trim().min(1).max(8),
-  taxRate: z.coerce.number().int().min(0).max(100),
+  // Die Oberfläche fragt Prozent ab; gespeichert wird in Basispunkten.
+  taxRatePercent: z.coerce.number().int().min(0).max(100),
 });
 
 function collectValues(formData: FormData): Record<string, string> {
@@ -51,7 +53,7 @@ function parseCatalogForm(formData: FormData):
         description: string | null;
         unitPriceCents: Cents;
         unitCode: string;
-        taxRate: number;
+        taxRateBasisPoints: number;
       };
     }
   | { ok: false; state: CatalogFormState } {
@@ -62,7 +64,7 @@ function parseCatalogForm(formData: FormData):
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       errors[issue.path.join('.')] =
-        issue.path[0] === 'taxRate'
+        issue.path[0] === 'taxRatePercent'
           ? messages.catalog.taxRateInvalid
           : messages.common.validationFailed;
     }
@@ -82,9 +84,14 @@ function parseCatalogForm(formData: FormData):
     return { ok: false, state: { status: 'error', errors, values } };
   }
 
+  const { taxRatePercent, ...rest } = parsed.data;
   return {
     ok: true,
-    data: { ...parsed.data, unitPriceCents: priceCents.value },
+    data: {
+      ...rest,
+      unitPriceCents: priceCents.value,
+      taxRateBasisPoints: taxRatePercent * PERCENT_BASIS_POINTS,
+    },
   };
 }
 

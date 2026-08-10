@@ -9,7 +9,7 @@ import { messages, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { CATALOG_PATH } from '@/routes';
 import { CARD_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
-import { formatMoney, formatUnit } from '@/ui/format';
+import { formatMoney, formatPercent, formatUnit } from '@/ui/format';
 
 import { AppNav } from '../app-nav';
 import { setCatalogItemArchivedAction } from './actions';
@@ -113,7 +113,9 @@ export default async function CatalogPage({
                       <td className="py-2 pr-4">
                         {isKnownUnit(item.unitCode) ? formatUnit(item.unitCode) : item.unitCode}
                       </td>
-                      <td className="py-2 pr-4 text-right tabular-nums">{item.taxRate} %</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {formatPercent(item.taxRateBasisPoints)}
+                      </td>
                       <td className="py-2 text-right">
                         <form action={setCatalogItemArchivedAction}>
                           <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />

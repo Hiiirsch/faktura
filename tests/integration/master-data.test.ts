@@ -89,7 +89,7 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
         registerCourt: 'Amtsgericht Ulm',
         managingDirector: 'Tim',
         defaultPaymentTerms: 30,
-        defaultTaxRate: 7,
+        defaultTaxRateBasisPoints: 700,
         defaultCurrency: 'EUR',
       },
       ACTOR,
@@ -101,7 +101,7 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
     expect(saved?.iban).toBe('DE89370400440532013000');
     expect(saved?.registerCourt).toBe('Amtsgericht Ulm');
     expect(saved?.defaultPaymentTerms).toBe(30);
-    expect(saved?.defaultTaxRate).toBe(7);
+    expect(saved?.defaultTaxRateBasisPoints).toBe(700);
   });
 
   it('bleibt ein Singleton — auch nach mehrfachem Speichern', async () => {
@@ -258,7 +258,7 @@ describe('Leistungskatalog (FA-STAMM-10)', () => {
         description: 'Konzeption und Abstimmung',
         unitPriceCents: cents(9500),
         unitCode: 'HUR',
-        taxRate: 19,
+        taxRateBasisPoints: 1900,
       },
       ACTOR,
       null,
@@ -272,7 +272,7 @@ describe('Leistungskatalog (FA-STAMM-10)', () => {
 
   it('blendet archivierte Positionen aus', async () => {
     const item = await createCatalogItem(
-      { name: 'Alt', description: null, unitPriceCents: cents(100), unitCode: 'C62', taxRate: 19 },
+      { name: 'Alt', description: null, unitPriceCents: cents(100), unitCode: 'C62', taxRateBasisPoints: 1900 },
       ACTOR,
       null,
     );

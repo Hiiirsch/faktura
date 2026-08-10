@@ -13,7 +13,8 @@ export type CatalogItemData = {
   readonly description: string | null;
   readonly unitPriceCents: Cents;
   readonly unitCode: string;
-  readonly taxRate: number;
+  /** Basispunkte: 1900 = 19 %. */
+  readonly taxRateBasisPoints: number;
 };
 
 export type CatalogItem = {
@@ -22,7 +23,7 @@ export type CatalogItem = {
   readonly description: string | null;
   readonly unitPriceCents: number;
   readonly unitCode: string;
-  readonly taxRate: number;
+  readonly taxRateBasisPoints: number;
   readonly isArchived: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;

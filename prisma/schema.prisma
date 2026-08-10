@@ -1,6 +1,6 @@
 // Datenmodell nach Spec §4. Das Schema wächst meilensteinweise:
 // M0 legt den Datenbankzugang und das schichtübergreifende Audit-Log an,
-// M1 ergänzt User und Session, M2 die Stammdaten, M4 die Belege.
+// M1 ergänzt User und Session, M2 die Stammdaten, M3 die Belege.
 
 generator client {
   provider = "prisma-client-js"
@@ -52,7 +52,9 @@ model CompanyProfile {
   logoAsset   Asset?  @relation(fields: [logoAssetId], references: [id])
 
   defaultPaymentTerms Int      @default(14)
-  defaultTaxRate      Int      @default(19)
+  /// Steuersatz in Basispunkten: 1900 = 19 %. Deckt auch Sätze mit
+  /// Nachkommastellen ab (8,1 % CH, 2,5 % AT) und bleibt ganzzahlig.
+  defaultTaxRateBasisPoints Int @default(1900)
   defaultCurrency     String   @default("EUR")
   footerText          String?
   invoiceNumberFormat String   @default("RE-{YYYY}-{SEQ:4}")
@@ -83,6 +85,8 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  invoices Invoice[]
+
   @@index([isArchived])
   @@index([customerNumber])
 }
@@ -94,7 +98,8 @@ model CatalogItem {
   description    String?
   unitPriceCents Int
   unitCode       String  @default("C62")
-  taxRate        Int     @default(19)
+  /// Basispunkte: 1900 = 19 %.
+  taxRateBasisPoints Int @default(1900)
   isArchived     Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -122,6 +127,123 @@ model NumberSequence {
   id        String @id @default(cuid())
   scope     String @unique
   lastValue Int    @default(0)
+}
+
+// ─── Belege ─────────────────────────────────────────────────────────────────
+
+/// Rechnung oder Stornorechnung.
+///
+/// Kalendertage stehen als `YYYY-MM-DD` in der Datenbank, nicht als DateTime:
+/// Als Zeitpunkt gespeichert läge der 1. März in Berlin als
+/// `2026-02-28T23:00:00Z` vor, und Monatsumsatz wie Überfälligkeit kippten an
+/// der Tagesgrenze. Die Textform sortiert lexikografisch gleich chronologisch,
+/// Zeitraumfilter funktionieren damit unverändert.
+///
+/// `documentType` und `status` sind Zeichenketten, weil SQLite keine
+/// Aufzählungstypen kennt. Die Aufzählung selbst liegt in der Domain
+/// (`src/domain/document/document-type.ts`, `src/domain/invoice/status.ts`)
+/// und wird beim Schreiben geprüft (NFA-ARCH-09).
+model Invoice {
+  id            String  @id @default(cuid())
+  documentType  String  @default("INVOICE")
+  /// Erst beim Festschreiben vergeben (FA-NUM-02).
+  invoiceNumber String? @unique
+  status        String  @default("DRAFT")
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  /// Beim Festschreiben eingefrorene Käufer- und Verkäuferdaten (M4).
+  snapshotBuyer  String?
+  snapshotSeller String?
+
+  issueDate       String?
+  serviceDateFrom String?
+  serviceDateTo   String?
+  dueDate         String?
+
+  currency String @default("EUR")
+
+  /// Abweichung von Spec §4: Die Spezifikation modelliert die steuerliche
+  /// Behandlung nur je Position. FA-CALC-08 verlangt sie je Rechnung — und die
+  /// Pflichthinweise (§19, Reverse Charge) lassen sich aus den Positionen
+  /// allein nicht ableiten, etwa bei einem Beleg ohne Positionen.
+  taxScheme String @default("STANDARD")
+
+  introText        String?
+  outroText        String?
+  purchaseOrderRef String?
+
+  /// Stornobezug, BT-25/BT-26.
+  precedingInvoiceId String?
+  precedingInvoice   Invoice?  @relation("Cancellation", fields: [precedingInvoiceId], references: [id])
+  cancelledBy        Invoice[] @relation("Cancellation")
+
+  templateId String?
+
+  lines    InvoiceLine[]
+  payments Payment[]
+
+  /// Denormalisierte Summen in Cent, bei jeder Änderung neu berechnet.
+  netTotalCents   Int @default(0)
+  taxTotalCents   Int @default(0)
+  grossTotalCents Int @default(0)
+  paidTotalCents  Int @default(0)
+
+  issuedAt    DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, dueDate])
+  @@index([customerId])
+  @@index([issueDate])
+  @@index([documentType, status])
+}
+
+model InvoiceLine {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position  Int
+
+  name        String
+  description String?
+
+  /// Menge als skalierte Ganzzahl mit vier Nachkommastellen: 1,5 = 15000.
+  /// Ein Decimal-Feld legte SQLite als REAL ab und brächte damit
+  /// Fließkommazahlen in die Berechnungskette (FA-CALC-01).
+  quantityScaled Int
+  unitCode       String @default("C62")
+  unitPriceCents Int
+
+  /// Basispunkte: 1900 = 19 %.
+  taxRateBasisPoints  Int
+  taxCategory         String @default("S")
+  /// Basispunkte: 1250 = 12,5 %.
+  discountBasisPoints Int    @default(0)
+
+  /// Berechnet und persistiert — die Berechnung liegt in der Domain.
+  lineNetCents Int
+
+  @@unique([invoiceId, position])
+  @@index([invoiceId])
+}
+
+model Payment {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amountCents Int
+  /// Kalendertag des Zahlungseingangs, `YYYY-MM-DD`.
+  paidAt      String
+  method      String?
+  note        String?
+
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
 }
 
 // ─── Authentifizierung ──────────────────────────────────────────────────────

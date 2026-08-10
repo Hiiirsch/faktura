@@ -34,7 +34,8 @@ export type CompanyProfileData = {
   readonly bic: string | null;
   readonly bankName: string | null;
   readonly defaultPaymentTerms: number;
-  readonly defaultTaxRate: number;
+  /** Basispunkte: 1900 = 19 %. */
+  readonly defaultTaxRateBasisPoints: number;
   readonly defaultCurrency: string;
   readonly footerText: string | null;
 };
@@ -68,7 +69,7 @@ export const EMPTY_COMPANY_PROFILE: CompanyProfileData = {
   bic: null,
   bankName: null,
   defaultPaymentTerms: 14,
-  defaultTaxRate: 19,
+  defaultTaxRateBasisPoints: 1900,
   defaultCurrency: DEFAULT_CURRENCY_CODE,
   footerText: null,
 };
@@ -128,6 +129,28 @@ export async function saveCompanyProfile(
   }
 
   return saved;
+}
+
+/** Ändert das Nummernformat (FA-NUM-01). Wirkt nur auf künftige Belege. */
+export async function setInvoiceNumberFormat(
+  format: string,
+  actorId: string,
+  ipAddress: string | null,
+): Promise<void> {
+  await getPrismaClient().companyProfile.upsert({
+    where: { id: COMPANY_PROFILE_ID },
+    create: { id: COMPANY_PROFILE_ID, ...EMPTY_COMPANY_PROFILE, invoiceNumberFormat: format },
+    update: { invoiceNumberFormat: format },
+  });
+
+  await recordAuditEntry({
+    entityType: 'CompanyProfile',
+    entityId: String(COMPANY_PROFILE_ID),
+    action: 'UPDATED',
+    actorId,
+    ipAddress,
+    details: { changedFields: 'invoiceNumberFormat', invoiceNumberFormat: format },
+  });
 }
 
 export async function setCompanyLogo(

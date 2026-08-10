@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { CompanyProfileData } from '@/application/company/company-profile';
 import { COUNTRY_CODES } from '@/domain/codes/country-code';
 import { CURRENCY_CODES } from '@/domain/codes/currency-code';
+import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 import { currencyLabels, messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
@@ -232,14 +233,17 @@ export function CompanyForm({
             error={errors.defaultPaymentTerms}
           />
           <TextField
-            name="defaultTaxRate"
+            name="defaultTaxRatePercent"
             label={messages.company.defaultTaxRate}
             type="number"
             min={0}
             max={100}
             required
-            defaultValue={text('defaultTaxRate')}
-            error={errors.defaultTaxRate}
+            defaultValue={
+              submitted.defaultTaxRatePercent ??
+              String(profile.defaultTaxRateBasisPoints / PERCENT_BASIS_POINTS)
+            }
+            error={errors.defaultTaxRatePercent}
           />
           <SelectField
             name="defaultCurrency"

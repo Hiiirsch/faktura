@@ -17,6 +17,7 @@ import {
 } from '@/ui/components/form';
 import { formatAmount } from '@/ui/format';
 import { cents } from '@/domain/money/money';
+import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 
 import { type CatalogFormState, createCatalogItemAction, updateCatalogItemAction } from './actions';
 
@@ -92,14 +93,17 @@ export function CatalogForm({
             error={errors.unitCode}
           />
           <TextField
-            name="taxRate"
+            name="taxRatePercent"
             label={messages.catalog.taxRate}
             type="number"
             min={0}
             max={100}
             required
-            defaultValue={submitted.taxRate ?? String(item?.taxRate ?? 19)}
-            error={errors.taxRate}
+            defaultValue={
+              submitted.taxRatePercent ??
+              String((item?.taxRateBasisPoints ?? 1900) / PERCENT_BASIS_POINTS)
+            }
+            error={errors.taxRatePercent}
           />
         </div>
       </FormSection>

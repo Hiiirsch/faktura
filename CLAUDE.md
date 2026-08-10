@@ -23,6 +23,13 @@ verhandelbar. Widersprüche werden gemeldet, nicht still gelöst.
 
 1. **Geld ausschließlich als Integer in Cent.** Keine Fließkommazahlen irgendwo in der
    Berechnungskette — auch nicht als Zwischenwert, auch nicht in der Persistenz.
+   Mengen als skalierte Ganzzahl (10^4), Steuersätze und Rabatte als Basispunkte
+   (1900 = 19 %). Zwischenprodukte laufen über `bigint`; das Produkt aus Menge,
+   Cent-Betrag und Rabattfaktor überschreitet `Number.MAX_SAFE_INTEGER` schon bei
+   alltäglichen Größen.
+   Zwei Rundungsregeln aus Spec §5: je Position **einmal** runden, die Steuer **je
+   Gruppe** — nicht je Position. Gerundet wird symmetrisch zur Null, damit eine
+   Gutschrift die Rechnung exakt neutralisiert.
 2. **Normierte Codes speichern, Labels erst anzeigen** (Spec §9.2): Einheiten als
    UN/ECE Rec 20 (`C62`, `HUR`, …), Steuerkategorien als UNTDID 5305 (`S`, `AE`, `E`,
    `G`, `K`, `Z`), Länder als ISO 3166-1 alpha-2, Währungen als ISO 4217.
@@ -41,7 +48,16 @@ verhandelbar. Widersprüche werden gemeldet, nicht still gelöst.
 6. **Sicherheit ist kein Nachtrag:** M1 kommt vor allen Features. Ab dann wird jede
    neue Route und jede Server Action sofort abgesichert (`requireSession()` als erste
    Anweisung), nicht nachträglich.
-7. **Kein Roh-SQL im Anwendungscode** (NFA-ARCH-10): kein `$queryRaw*`,
+7. **Kalendertage als `YYYY-MM-DD`-String**, nicht als `DateTime`: Rechnungs-,
+   Leistungs-, Fälligkeits- und Zahlungsdatum sind Kalendertage. Als Zeitpunkt
+   gespeichert kippten Monatsumsatz und Überfälligkeit an der Tagesgrenze. Echte
+   Zeitpunkte (`issuedAt`, Protokolle) bleiben `DateTime`. „Heute" kommt aus
+   `todayIn(APP_TIMEZONE, now)`.
+8. **Umsatzrelevanz an einer Stelle** (`src/domain/invoice/revenue.ts`): Gutschriften
+   zählen nie mit — die Neutralisierung geschieht dadurch, dass das Original auf
+   `CANCELLED` wechselt. Zählte die Gutschrift zusätzlich, fehlte der Betrag zweimal.
+   Gutschriften führen positive Beträge; die Richtung steckt im Belegtyp (EN 16931).
+9. **Kein Roh-SQL im Anwendungscode** (NFA-ARCH-10): kein `$queryRaw*`,
    `$executeRaw*`. Ausnahme ist der Backup-Job (`VACUUM INTO`), der außerhalb des
    Anwendungscodes im Betriebsskript läuft.
 
@@ -100,6 +116,15 @@ für sie keine serverseitige Aktionskennung aus. Solche Seiten tragen einen
 `<NoScriptNotice>`. Wo Bedienung ohne JavaScript zählt (Anmeldung), wird das
 Formular aus einer Server-Komponente mit einfacher Server Action gerendert.
 
+SQLite hat genau einen Schreiber. `getPrismaClient()` setzt deshalb
+`connection_limit=1`; nebenläufige Transaktionen warten aufeinander, statt in einen
+Socket-Timeout zu laufen (FA-NUM-04).
+
+Migrationen, die eine Tabelle neu aufbauen, verlieren handgeschriebene
+CHECK-Bedingungen — SQLite kennt kein `ALTER TABLE ADD CONSTRAINT`. Der Singleton-
+Zwang auf `CompanyProfile` ist bei jedem Neuaufbau erneut zu setzen; ein
+Integrationstest deckt das Fehlen auf.
+
 Dateien, die sowohl von der Edge-Laufzeit, von Serverkomponenten als auch von
 Client-Komponenten gelesen werden (z. B. `infrastructure/security/csrf.ts`), bleiben
 importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bündel.
@@ -110,8 +135,8 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 |---|---|---|
 | M0 | Fundament: Next.js, TS, Tailwind, Prisma, Docker, Lint, Vitest, Schichten | abgenommen |
 | M1 | Auth & Sicherheit — vor allen Features | abgenommen |
-| M2 | Stammdaten: Firma, Kunden, Katalog | zur Abnahme |
-| M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | offen |
+| M2 | Stammdaten: Firma, Kunden, Katalog | abgenommen |
+| M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | zur Abnahme |
 | M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | offen |
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |

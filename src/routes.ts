@@ -19,6 +19,7 @@ export const COMPANY_SETTINGS_PATH = '/settings/company';
 export const CUSTOMERS_PATH = '/customers';
 export const NEW_CUSTOMER_PATH = '/customers/new';
 export const CATALOG_PATH = '/catalog';
+export const NUMBERING_SETTINGS_PATH = '/settings/numbering';
 
 export function customerPath(id: string): string {
   return `${CUSTOMERS_PATH}/${id}`;
@@ -69,6 +70,7 @@ export const routes: readonly RouteDefinition[] = [
     probePath: '/customers/probe-kennung',
   },
   { path: CATALOG_PATH, kind: 'page', access: 'authenticated' },
+  { path: NUMBERING_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   {
     path: '/api/assets/[id]',
     kind: 'api',

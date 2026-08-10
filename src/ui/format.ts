@@ -122,3 +122,23 @@ export function parseGermanDecimal(input: string): string {
 }
 
 export { QUANTITY_DECIMALS, ZERO_CENTS };
+
+/**
+ * Formatiert einen Steuersatz aus Basispunkten: 1900 → „19 %", 810 → „8,1 %".
+ *
+ * Die Nachkommastellen erscheinen nur, wenn es welche gibt — „19,00 %" wäre
+ * auf einer Rechnung unüblich.
+ */
+export function formatPercent(basisPoints: number): string {
+  const negative = basisPoints < 0;
+  const absolute = Math.abs(basisPoints);
+  const whole = Math.trunc(absolute / 100);
+  const fraction = absolute % 100;
+
+  const decimal =
+    fraction === 0
+      ? String(whole)
+      : `${String(whole)}.${String(fraction).padStart(2, '0').replace(/0$/, '')}`;
+
+  return `${negative ? '-' : ''}${decimal.replace('.', ',')} %`;
+}

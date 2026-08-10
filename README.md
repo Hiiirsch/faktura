@@ -10,10 +10,11 @@ Verbindliche Grundlagen:
 - [`CLAUDE.md`](CLAUDE.md) — technische Leitplanken
 - [`FORTSCHRITT.md`](FORTSCHRITT.md) — Stand je Anforderung
 
-**Aktueller Stand: M2 (Stammdaten).** Erfasst werden Firmendaten samt Logo und
-Bankverbindung, Kunden mit automatischer Nummernvergabe und ein
-Leistungskatalog. Rechnungen, Vorlagen und Auswertung folgen mit den nächsten
-Ausbaustufen.
+**Aktueller Stand: M3 (Domain-Kern).** Berechnung, Steueraufstellung,
+Nummernkreis und Statusmodell stehen und sind vollständig getestet. Erfasst
+werden Firmendaten samt Logo und Bankverbindung, Kunden mit automatischer
+Nummernvergabe und ein Leistungskatalog. Der Rechnungseditor, Vorlagen und die
+Auswertung folgen mit den nächsten Ausbaustufen.
 
 Die Anwendung ist vollständig zugriffsgeschützt: Anmeldung mit Passwort und
 optionaler Zweifaktorauthentifizierung, Sitzungsverwaltung, Sicherheits-Header,
@@ -222,6 +223,25 @@ Verzeichnis gegen das Dateisystem ab.
 | CSRF | Herkunftsprüfung **und** Double-Submit-Token in jeder schreibenden Aktion |
 | Header | CSP mit Nonce, HSTS, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` |
 | Zugriffsschutz | `requireSession()` als erste Anweisung jeder Seite und Aktion, zusätzlich `src/proxy.ts` |
+
+## Rechnen mit Geld
+
+| Größe | Ablage | Beispiel |
+|---|---|---|
+| Beträge | Ganzzahlige Cent | `1999` = 19,99 € |
+| Mengen | Ganzzahl, skaliert mit 10⁴ | `15000` = 1,5 |
+| Steuersätze, Rabatte | Basispunkte | `1900` = 19 %, `810` = 8,1 % |
+| Kalendertage | `YYYY-MM-DD` | `2026-03-01` |
+
+Es gibt in der Berechnungskette keine Fließkommazahl — auch nicht als
+Zwischenwert. Multiplikationen laufen über `bigint`, weil das Produkt aus Menge,
+Cent-Betrag und Rabattfaktor den sicher darstellbaren Bereich von `number` schon
+bei alltäglichen Größen überschreitet.
+
+Zwei Rundungsregeln entscheiden über Centdifferenzen: Je Position wird **einmal**
+gerundet, und die Steuer wird **je Steuergruppe** gerundet, nicht je Position.
+Drei Positionen zu 3,33 € ergeben so 1,90 € Steuer statt 1,89 €. Gerundet wird
+symmetrisch zur Null, damit eine Gutschrift die Rechnung exakt neutralisiert.
 
 Zur Content Security Policy: `script-src` kommt ohne `unsafe-inline` aus,
 Skripte laufen ausschließlich mit dem pro Anfrage erzeugten Nonce. Für

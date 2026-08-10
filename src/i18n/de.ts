@@ -105,6 +105,7 @@ export const messages = {
     customers: 'Kunden',
     catalog: 'Katalog',
     company: 'Firmendaten',
+    numbering: 'Nummernkreis',
     security: 'Sicherheit',
     logout: 'Abmelden',
     label: 'Hauptnavigation',
@@ -265,6 +266,44 @@ export const messages = {
     archive: 'Archivieren',
     unarchive: 'Wieder aktivieren',
     showArchived: 'Archivierte anzeigen',
+  },
+  numbering: {
+    title: 'Nummernkreis',
+    heading: 'Nummernkreis',
+    intro:
+      'Format und Stand der Belegnummern. Eine einmal vergebene Nummer wird nie wieder frei — eine fehlerhafte Rechnung wird storniert, nicht gelöscht.',
+
+    formatHeading: 'Format',
+    format: 'Nummernformat',
+    formatHint:
+      'Platzhalter: {YYYY} vierstelliges Jahr · {YY} zweistellig · {MM} Monat · {SEQ:n} Zähler mit n Stellen.',
+    formatPreview: 'Beispiel für heute',
+    formatInvalid: 'Das Format ist nicht gültig.',
+    formatMissingSequence: 'Das Format muss genau einen Zähler {SEQ:n} enthalten.',
+    formatMultipleSequences: 'Das Format darf nur einen Zähler enthalten.',
+    formatUnknownPlaceholder: 'Unbekannter Platzhalter: {placeholder}.',
+    formatInvalidWidth: 'Die Zählerbreite muss zwischen {min} und {max} liegen.',
+    formatChangeWarning:
+      'Eine Änderung wirkt nur auf künftige Belege. Bereits vergebene Nummern bleiben unverändert.',
+
+    statesHeading: 'Zählerstände',
+    statesIntro: 'Je Bereich der zuletzt vergebene Wert.',
+    statesEmpty: 'Es wurde noch keine Belegnummer vergeben.',
+    scope: 'Bereich',
+    lastValue: 'Zuletzt vergeben',
+    nextValue: 'Nächste Nummer',
+
+    startValueHeading: 'Startwert setzen',
+    startValueIntro:
+      'Um eine Nummernfolge aus einem Altsystem lückenlos fortzuführen. Nur möglich, solange in diesem Bereich noch keine Nummer vergeben wurde — ein nachträglich verstellter Zähler erzeugte Lücken oder Dubletten.',
+    startValueScope: 'Bereich',
+    startValueScopeHint: 'Zum Beispiel INVOICE-2026 für den Jahreszähler 2026.',
+    startValue: 'Zuletzt vergebene Nummer im Altsystem',
+    startValueSubmit: 'Startwert setzen',
+    startValueSet: 'Der Startwert wurde gesetzt.',
+    startValueInUse:
+      'In diesem Bereich wurde bereits bis {lastValue} nummeriert. Der Startwert lässt sich nicht mehr ändern.',
+    startValueInvalid: 'Bitte eine Zahl ab 0 angeben.',
   },
   security: {
     title: 'Sicherheit',

@@ -16,6 +16,10 @@ export type AuditAction =
   | 'UPDATED'
   | 'ARCHIVED'
   | 'UNARCHIVED'
+  // Belege (FA-STAT-11, NFA-COMP-01)
+  | 'ISSUED'
+  | 'PAYMENT_RECORDED'
+  | 'CANCELLED'
   // Authentifizierung
   | 'LOGIN_SUCCEEDED'
   | 'LOGIN_FAILED'

@@ -23,6 +23,7 @@ import {
   MIN_PAYMENT_TERMS_DAYS,
 } from '@/domain/customer/payment-terms';
 import { validateVatId } from '@/domain/tax/vat-id';
+import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 import { messages } from '@/i18n/de';
 import { COMPANY_SETTINGS_PATH } from '@/routes';
 
@@ -62,7 +63,8 @@ const companySchema = z.object({
   bic: optionalText,
   bankName: optionalText,
   defaultPaymentTerms: z.coerce.number().int().min(MIN_PAYMENT_TERMS_DAYS).max(MAX_PAYMENT_TERMS_DAYS),
-  defaultTaxRate: z.coerce.number().int().min(0).max(100),
+  // Die Oberfläche fragt Prozent ab; gespeichert wird in Basispunkten.
+  defaultTaxRatePercent: z.coerce.number().int().min(0).max(100),
   defaultCurrency: z.string().trim().length(3),
   footerText: z.string().trim().max(2000).transform((value) => (value.length === 0 ? null : value)),
 });
@@ -161,8 +163,10 @@ export async function saveCompanyProfileAction(
   }
 
   // Normalisierte Schreibweise speichern, nicht die Eingabe des Benutzers.
+  const { defaultTaxRatePercent, ...rest } = parsed.data;
   const data: CompanyProfileData = {
-    ...parsed.data,
+    ...rest,
+    defaultTaxRateBasisPoints: defaultTaxRatePercent * PERCENT_BASIS_POINTS,
     countryCode: parsed.data.countryCode.toUpperCase(),
     defaultCurrency: parsed.data.defaultCurrency.toUpperCase(),
     iban: parsed.data.iban === null ? null : parsed.data.iban.replace(/\s/g, '').toUpperCase(),

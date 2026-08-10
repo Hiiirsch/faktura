@@ -19,6 +19,34 @@ const globalForPrisma = globalThis as unknown as {
   prismaClient: PrismaClient | undefined;
 };
 
+/**
+ * SQLite lässt genau einen Schreiber zu. Mehrere gleichzeitige Verbindungen
+ * bringen deshalb keinen Durchsatz, sondern Konkurrenz: Nebenläufige
+ * Transaktionen — etwa zwei Festschreibungen zur selben Zeit (FA-NUM-04) —
+ * liefen sonst in einen Socket-Timeout, statt nacheinander abzulaufen.
+ *
+ * Eine einzelne Verbindung mit großzügigem Wartezeitfenster serialisiert die
+ * Zugriffe sauber. Der Wert wird nur ergänzt, wenn ihn die Konfiguration nicht
+ * bereits vorgibt.
+ */
+function withSqliteConcurrencySettings(url: string): string {
+  if (!url.startsWith('file:')) {
+    return url;
+  }
+
+  const [base, query = ''] = url.split('?');
+  const params = new URLSearchParams(query);
+
+  if (!params.has('connection_limit')) {
+    params.set('connection_limit', '1');
+  }
+  if (!params.has('socket_timeout')) {
+    params.set('socket_timeout', '30');
+  }
+
+  return `${base ?? url}?${params.toString()}`;
+}
+
 let client: PrismaClient | undefined;
 
 export function getPrismaClient(): PrismaClient {
@@ -30,7 +58,7 @@ export function getPrismaClient(): PrismaClient {
   const env = getEnv();
   const created = new PrismaClient({
     log: env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-    datasources: { db: { url: env.DATABASE_URL } },
+    datasources: { db: { url: withSqliteConcurrencySettings(env.DATABASE_URL) } },
   });
 
   client = created;
