@@ -17,6 +17,7 @@ import {
   divideRounded,
   isValidCents,
   negateCents,
+  parseCents,
   scaleCents,
   subtractCents,
   sumCents,
@@ -151,5 +152,46 @@ describe('scaleCents', () => {
 
   it('meldet ein Ergebnis außerhalb des darstellbaren Bereichs', () => {
     expect(() => scaleCents(cents(Number.MAX_SAFE_INTEGER), 2n, 1n)).toThrow(RangeError);
+  });
+});
+
+describe('parseCents — Eingabe in Cent (FA-CALC-01)', () => {
+  it('liest ganze Beträge und Nachkommastellen', () => {
+    expect(parseCents('0')).toEqual({ ok: true, value: 0 });
+    expect(parseCents('19')).toEqual({ ok: true, value: 1900 });
+    expect(parseCents('19.99')).toEqual({ ok: true, value: 1999 });
+    expect(parseCents('0.05')).toEqual({ ok: true, value: 5 });
+    expect(parseCents('1234.5')).toEqual({ ok: true, value: 123450 });
+  });
+
+  it('bleibt bei Beträgen exakt, an denen Fließkomma scheitert', () => {
+    // 19.99 * 100 ergibt in IEEE-754 1998.9999999999998.
+    for (const [input, expected] of [
+      ['19.99', 1999],
+      ['0.29', 29],
+      ['1.15', 115],
+      ['8.87', 887],
+      ['1234567.89', 123456789],
+    ] as const) {
+      expect(parseCents(input), input).toEqual({ ok: true, value: expected });
+    }
+  });
+
+  it('liest negative Beträge', () => {
+    expect(parseCents('-19.99')).toEqual({ ok: true, value: -1999 });
+  });
+
+  it('weist leere, formwidrige und zu genaue Eingaben zurück', () => {
+    expect(parseCents('   ')).toEqual({ ok: false, error: { kind: 'EMPTY' } });
+    expect(parseCents('19,99')).toEqual({ ok: false, error: { kind: 'MALFORMED' } });
+    expect(parseCents('abc')).toEqual({ ok: false, error: { kind: 'MALFORMED' } });
+    expect(parseCents('1.234')).toEqual({ ok: false, error: { kind: 'TOO_MANY_DECIMALS' } });
+  });
+
+  it('weist Beträge außerhalb des darstellbaren Bereichs zurück', () => {
+    expect(parseCents('99999999999999999')).toEqual({
+      ok: false,
+      error: { kind: 'OUT_OF_RANGE' },
+    });
   });
 });

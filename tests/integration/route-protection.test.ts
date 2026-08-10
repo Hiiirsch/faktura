@@ -13,7 +13,7 @@
 import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 
-import { authenticatedRoutes, publicRoutes, routes } from '@/routes';
+import { authenticatedRoutes, probePathFor, publicRoutes, routes } from '@/routes';
 import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 
@@ -123,11 +123,11 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
     expect(authenticatedRoutes().length).toBeGreaterThan(0);
   });
 
-  it.each(authenticatedRoutes().map((route) => route.path))(
+  it.each(authenticatedRoutes().map((route) => [route.path, probePathFor(route)] as const))(
     'verweigert %s ohne Sitzung',
-    async (pathname) => {
+    async (pattern, pathname) => {
       const response = await fetch(url(pathname), { redirect: 'manual' });
-      const route = routes.find((entry) => entry.path === pathname);
+      const route = routes.find((entry) => entry.path === pattern);
 
       if (route?.kind === 'api') {
         expect([401, 403]).toContain(response.status);
@@ -142,7 +142,7 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
     },
   );
 
-  it.each(publicRoutes().map((route) => route.path))(
+  it.each(publicRoutes().map((route) => probePathFor(route)))(
     'liefert die öffentliche Route %s aus',
     async (pathname) => {
       const response = await fetch(url(pathname), { redirect: 'manual' });
@@ -270,11 +270,18 @@ describe('Anmeldung (NFA-SEC-07)', () => {
     const token = cookieValue(sessionCookie as string);
 
     for (const route of authenticatedRoutes().filter((entry) => entry.kind === 'page')) {
-      const response = await fetch(url(route.path), {
+      const response = await fetch(url(probePathFor(route)), {
         redirect: 'manual',
         headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
       });
-      expect(response.status, `${route.path} sollte mit Sitzung erreichbar sein`).toBe(200);
+
+      // `/customers/[id]` wird mit einer erfundenen Kennung geprüft: Dort ist
+      // 404 die richtige Antwort — entscheidend ist, dass die Sitzung greift
+      // und nicht zur Anmeldung umgeleitet wird.
+      const acceptable = route.probePath === undefined ? [200] : [200, 404];
+      expect(acceptable, `${route.path} sollte mit Sitzung erreichbar sein`).toContain(
+        response.status,
+      );
     }
   });
 

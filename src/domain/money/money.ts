@@ -34,6 +34,47 @@ export function cents(value: number): Cents {
   return value as Cents;
 }
 
+export type CentsParseError =
+  | { readonly kind: 'EMPTY' }
+  | { readonly kind: 'MALFORMED' }
+  | { readonly kind: 'TOO_MANY_DECIMALS' }
+  | { readonly kind: 'OUT_OF_RANGE' };
+
+/**
+ * Liest einen Geldbetrag aus seiner kanonischen Textform („1234.56") und gibt
+ * ihn in Cent zurück.
+ *
+ * Bewusst über die Ziffern der Zeichenkette statt über `parseFloat(x) * 100`:
+ * `19.99 * 100` ergibt in Fließkomma 1998.9999999999998, und ein Abschneiden
+ * davon wäre um einen Cent falsch (FA-CALC-01). Die Umwandlung deutscher
+ * Eingaben ist Aufgabe der Anzeigeschicht.
+ */
+export function parseCents(input: string): { ok: true; value: Cents } | { ok: false; error: CentsParseError } {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return { ok: false, error: { kind: 'EMPTY' } };
+  }
+
+  const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(trimmed);
+  if (match === null) {
+    return { ok: false, error: { kind: 'MALFORMED' } };
+  }
+
+  const [, sign, whole = '0', fraction = ''] = match;
+  if (fraction.length > 2) {
+    return { ok: false, error: { kind: 'TOO_MANY_DECIMALS' } };
+  }
+
+  const total = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+  const signed = sign === '-' ? -total : total;
+
+  if (signed > BigInt(Number.MAX_SAFE_INTEGER) || signed < BigInt(Number.MIN_SAFE_INTEGER)) {
+    return { ok: false, error: { kind: 'OUT_OF_RANGE' } };
+  }
+
+  return { ok: true, value: Number(signed) as Cents };
+}
+
 export function centsToBigInt(value: Cents): bigint {
   return BigInt(value);
 }

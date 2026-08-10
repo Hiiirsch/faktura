@@ -10,11 +10,17 @@ Verbindliche Grundlagen:
 - [`CLAUDE.md`](CLAUDE.md) — technische Leitplanken
 - [`FORTSCHRITT.md`](FORTSCHRITT.md) — Stand je Anforderung
 
-**Aktueller Stand: M1 (Auth & Sicherheit).** Fachliche Funktionen — Stammdaten,
-Rechnungen, Vorlagen, Auswertung — folgen mit den nächsten Ausbaustufen. Die
-Anwendung ist bereits vollständig zugriffsgeschützt: Anmeldung mit Passwort und
+**Aktueller Stand: M2 (Stammdaten).** Erfasst werden Firmendaten samt Logo und
+Bankverbindung, Kunden mit automatischer Nummernvergabe und ein
+Leistungskatalog. Rechnungen, Vorlagen und Auswertung folgen mit den nächsten
+Ausbaustufen.
+
+Die Anwendung ist vollständig zugriffsgeschützt: Anmeldung mit Passwort und
 optionaler Zweifaktorauthentifizierung, Sitzungsverwaltung, Sicherheits-Header,
 CSRF-Schutz und Sperre nach Fehlversuchen.
+
+Die Formulare der Stammdaten setzen JavaScript voraus — sie erhalten dafür bei
+einem Validierungsfehler die Eingaben. Die Anmeldung funktioniert auch ohne.
 
 ## Voraussetzungen
 

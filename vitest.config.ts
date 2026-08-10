@@ -16,6 +16,9 @@ export default defineConfig({
     // Integrationstests brauchen einen Produktionsbuild und laufen über
     // vitest.integration.config.ts (`npm run test:integration`).
     exclude: ['tests/architecture/fixtures/**', 'tests/integration/**', 'node_modules/**'],
+    // Die Architektur-Tests führen ESLint programmatisch über den gesamten
+    // Quellbaum aus; mit dem Standardwert von fünf Sekunden reicht das nicht.
+    testTimeout: 60_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

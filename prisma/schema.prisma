@@ -15,6 +15,115 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Stammdaten ─────────────────────────────────────────────────────────────
+
+/// Die eigenen Firmendaten. Singleton mit fester Kennung 1.
+///
+/// Prisma allein erzwingt das nicht — `@default(1)` verhindert keinen zweiten
+/// Datensatz. Die Migration ergänzt deshalb eine CHECK-Bedingung auf
+/// Datenbankebene, und der Zugriff läuft ausschließlich über `upsert` mit
+/// `id: 1` in einer einzigen Repository-Funktion.
+model CompanyProfile {
+  id           Int     @id @default(1)
+  legalName    String
+  addressLine1 String
+  addressLine2 String?
+  postalCode   String
+  city         String
+  countryCode  String  @default("DE")
+  email        String?
+  phone        String?
+  website      String?
+
+  taxNumber       String?
+  vatId           String?
+  isSmallBusiness Boolean @default(false)
+
+  registerCourt    String?
+  registerNumber   String?
+  managingDirector String?
+
+  bankAccountHolder String?
+  iban              String?
+  bic               String?
+  bankName          String?
+
+  logoAssetId String?
+  logoAsset   Asset?  @relation(fields: [logoAssetId], references: [id])
+
+  defaultPaymentTerms Int      @default(14)
+  defaultTaxRate      Int      @default(19)
+  defaultCurrency     String   @default("EUR")
+  footerText          String?
+  invoiceNumberFormat String   @default("RE-{YYYY}-{SEQ:4}")
+  updatedAt           DateTime @updatedAt
+}
+
+model Customer {
+  id             String  @id @default(cuid())
+  customerNumber String  @unique
+  companyName    String?
+  contactName    String?
+  addressLine1   String
+  addressLine2   String?
+  postalCode     String
+  city           String
+  countryCode    String  @default("DE")
+  email          String?
+  phone          String?
+  vatId          String?
+  /// BT-10, Leitweg-ID für Rechnungen an öffentliche Auftraggeber.
+  buyerReference String?
+  /// Überschreibt das Standard-Zahlungsziel aus dem Firmenprofil.
+  paymentTerms   Int?
+  notes          String?
+  /// Kunden werden archiviert, nie gelöscht (Spec §4.1).
+  isArchived     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isArchived])
+  @@index([customerNumber])
+}
+
+/// Wiederverwendbare Positionen für den Rechnungseditor (FA-STAMM-10).
+model CatalogItem {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  unitPriceCents Int
+  unitCode       String  @default("C62")
+  taxRate        Int     @default(19)
+  isArchived     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isArchived])
+}
+
+/// Hochgeladene Dateien. Liegen außerhalb des ausgelieferten Verzeichnisses
+/// und sind nur über eine authentifizierte Route erreichbar (NFA-SEC-16).
+model Asset {
+  id          String   @id @default(cuid())
+  fileName    String
+  mimeType    String
+  byteSize    Int
+  sha256      String
+  storagePath String
+  createdAt   DateTime @default(now())
+
+  companyProfiles CompanyProfile[]
+}
+
+/// Fortlaufende Zähler. In M2 für Kundennummern, ab M3 für Belegnummern.
+model NumberSequence {
+  id        String @id @default(cuid())
+  scope     String @unique
+  lastValue Int    @default(0)
+}
+
 // ─── Authentifizierung ──────────────────────────────────────────────────────
 
 /// Benutzerkonto. Es gibt keine öffentliche Registrierung; das erste Konto

@@ -94,6 +94,12 @@ Module dürfen beim Import keine Seiteneffekte haben: `getPrismaClient()` und
 `getEnv()` werden erst beim Aufruf ausgewertet. Sonst scheitert der
 Produktionsbuild, der die Seiten ohne Zugangsdaten analysiert.
 
+Formulare mit `useActionState` (Client-Komponenten) erhalten Eingaben bei
+Validierungsfehlern, funktionieren aber **nur mit JavaScript** — React liefert
+für sie keine serverseitige Aktionskennung aus. Solche Seiten tragen einen
+`<NoScriptNotice>`. Wo Bedienung ohne JavaScript zählt (Anmeldung), wird das
+Formular aus einer Server-Komponente mit einfacher Server Action gerendert.
+
 Dateien, die sowohl von der Edge-Laufzeit, von Serverkomponenten als auch von
 Client-Komponenten gelesen werden (z. B. `infrastructure/security/csrf.ts`), bleiben
 importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bündel.
@@ -103,8 +109,8 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 | MS | Inhalt | Status |
 |---|---|---|
 | M0 | Fundament: Next.js, TS, Tailwind, Prisma, Docker, Lint, Vitest, Schichten | abgenommen |
-| M1 | Auth & Sicherheit — vor allen Features | zur Abnahme |
-| M2 | Stammdaten: Firma, Kunden, Katalog | offen |
+| M1 | Auth & Sicherheit — vor allen Features | abgenommen |
+| M2 | Stammdaten: Firma, Kunden, Katalog | zur Abnahme |
 | M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | offen |
 | M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | offen |
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |

@@ -19,6 +19,15 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/integration/**/*.test.ts'],
     globalSetup: ['tests/integration/setup/server.ts'],
+    // Der Testprozess greift für die Fachlogik auf dieselbe Datenbank zu wie
+    // der gestartete Server.
+    env: {
+      DATABASE_URL: 'file:../data/integration-test.db',
+      APP_URL: 'http://127.0.0.1:3987',
+      APP_TIMEZONE: 'Europe/Berlin',
+      APP_NAME: 'Faktura',
+      STORAGE_DIR: './data/integration-storage',
+    },
     // Der Server wird einmal gestartet; parallele Läufe würden sich denselben
     // Port und dieselbe Datenbankdatei streitig machen.
     fileParallelism: false,

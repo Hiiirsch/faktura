@@ -12,7 +12,7 @@ Verifikationsarten R und M.
 **keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
 Vorschlag und steht noch zur Freigabe aus.
 
-Stand: 2026-08-10 · 25 von 171 umgesetzt · 9 abgenommen (M0) · **M1 zur Abnahme vorgelegt**
+Stand: 2026-08-10 · 43 von 171 umgesetzt · 25 abgenommen (M0, M1) · **M2 zur Abnahme vorgelegt**
 
 Prüfbefehl für alle mit „T"/„R" belegten Nachweise: `npm run verify`.
 Die mit „M" belegten Nachweise sind unter „Manuell:" mit dem durchgeführten
@@ -24,31 +24,31 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-STAMM-01 | Firmendaten erfassbar/änderbar | MUSS | T | M2 | offen | — |
-| FA-STAMM-02 | Steuernummer/USt-IdNr getrennt, eines Pflicht | MUSS | T | M2 | offen | — |
-| FA-STAMM-03 | Kleinunternehmer-Flag §19 wirkt auf Steuerermittlung | MUSS | T | M2 | offen | — |
-| FA-STAMM-04 | Bankverbindung mit IBAN-Prüfsumme | MUSS | T | M2 | offen | — |
-| FA-STAMM-05 | Logo-Upload (PNG/JPG/SVG, ≤2 MB) | MUSS | M | M2 | offen | — |
-| FA-STAMM-06 | Standard-Zahlungsziel/-Steuersatz/-Währung | MUSS | T | M2 | offen | — |
-| FA-STAMM-07 | Mehrzeiliger Fußzeilentext | SOLL | M | M2 | offen | — |
-| FA-STAMM-08 | Handelsregister und Geschäftsführer optional | SOLL | T | M2 | offen | — |
-| FA-STAMM-09 | Änderungen an Firmendaten im Audit-Log | MUSS | T | M2 | offen | — |
-| FA-STAMM-10 | Leistungskatalog pflegbar | SOLL | T | M2 | offen | — |
+| FA-STAMM-01 | Firmendaten erfassbar/änderbar | MUSS | T | M2 | umgesetzt | `tests/integration/master-data.test.ts`; Formular `/settings/company` |
+| FA-STAMM-02 | Steuernummer/USt-IdNr getrennt, eines Pflicht | MUSS | T | M2 | umgesetzt | Regel in `src/app/settings/company/actions.ts`; Manuell: Speichern ohne beide Felder wird abgelehnt |
+| FA-STAMM-03 | Kleinunternehmer-Flag §19 wirkt auf Steuerermittlung | MUSS | T | M2 | umgesetzt | `tests/unit/domain/master-data.test.ts` — `determineTaxScheme` deckt §19, Reverse Charge und Drittland ab |
+| FA-STAMM-04 | Bankverbindung mit IBAN-Prüfsumme | MUSS | T | M2 | umgesetzt | `tests/unit/domain/master-data.test.ts` — IBAN-Prüfsumme nach ISO 7064, Länge je Land, BIC-Format |
+| FA-STAMM-05 | Logo-Upload (PNG/JPG/SVG, ≤2 MB) | MUSS | M | M2 | umgesetzt | `tests/integration/master-data.test.ts` (Ablage, Pfadschutz, Skript-SVG abgelehnt); Manuell: Upload und Anzeige im Container geprüft |
+| FA-STAMM-06 | Standard-Zahlungsziel/-Steuersatz/-Währung | MUSS | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — Zahlungsziel, Steuersatz und Währung werden gespeichert |
+| FA-STAMM-07 | Mehrzeiliger Fußzeilentext | SOLL | M | M2 | umgesetzt | Manuell: mehrzeiliges Feld `footerText` unter /settings/company |
+| FA-STAMM-08 | Handelsregister und Geschäftsführer optional | SOLL | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — Registergericht und Geschäftsführung werden gespeichert |
+| FA-STAMM-09 | Änderungen an Firmendaten im Audit-Log | MUSS | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — CREATED/UPDATED mit geänderten Feldnamen, ohne Bankdaten im Protokoll |
+| FA-STAMM-10 | Leistungskatalog pflegbar | SOLL | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — Katalog anlegen, listen, archivieren |
 
 ## 2. Kundenverwaltung
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-KUND-01 | Kunden anlegen, bearbeiten, durchsuchen | MUSS | T | M2 | offen | — |
-| FA-KUND-02 | Automatische eindeutige Kundennummer | MUSS | T | M2 | offen | — |
-| FA-KUND-03 | Land als ISO-3166-1-alpha-2 | MUSS | R | M2 | offen | — |
-| FA-KUND-04 | USt-IdNr formal je Land geprüft | MUSS | T | M2 | offen | — |
-| FA-KUND-05 | Kundenspezifisches Zahlungsziel überschreibt Standard | MUSS | T | M2 | offen | — |
-| FA-KUND-06 | Archivieren statt Löschen bei vorhandenen Rechnungen | MUSS | T | M2 | offen | — |
-| FA-KUND-07 | Archivierte nicht in Neuauswahl, in Altrechnungen sichtbar | MUSS | T | M2 | offen | — |
-| FA-KUND-08 | Kundendetail zeigt zugehörige Rechnungen | MUSS | M | M2 | offen | — |
-| FA-KUND-09 | Leitweg-ID optional erfassbar | SOLL | T | M2 | offen | — |
-| FA-KUND-10 | CSV-Import/-Export für Kunden | KANN | M | M2 | offen | — |
+| FA-KUND-01 | Kunden anlegen, bearbeiten, durchsuchen | MUSS | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — Anlegen, Ändern, Suche über Name, Nummer, Ort und E-Mail |
+| FA-KUND-02 | Automatische eindeutige Kundennummer | MUSS | T | M2 | umgesetzt | `tests/unit/domain/master-data.test.ts` (Format), `tests/integration/master-data.test.ts` (fortlaufend, auch bei gleichzeitiger Anlage) |
+| FA-KUND-03 | Land als ISO-3166-1-alpha-2 | MUSS | R | M2 | umgesetzt | Review: `countryCode` gegen `COUNTRY_CODES` geprüft, Auswahlfeld statt Freitext |
+| FA-KUND-04 | USt-IdNr formal je Land geprüft | MUSS | T | M2 | umgesetzt | `tests/unit/domain/master-data.test.ts` — Format je Land, Abgleich mit dem gewählten Land, Sonderfall EL/GR |
+| FA-KUND-05 | Kundenspezifisches Zahlungsziel überschreibt Standard | MUSS | T | M2 | umgesetzt | `tests/unit/domain/master-data.test.ts` (`resolvePaymentTerms`), `tests/integration/master-data.test.ts` (Persistenz) |
+| FA-KUND-06 | Archivieren statt Löschen bei vorhandenen Rechnungen | MUSS | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — Archivieren statt Löschen; strengere Auslegung nach Spec §4.1 |
+| FA-KUND-07 | Archivierte nicht in Neuauswahl, in Altrechnungen sichtbar | MUSS | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — `listSelectableCustomers` blendet Archivierte aus; Sichtbarkeit in Altrechnungen folgt mit M4 |
+| FA-KUND-08 | Kundendetail zeigt zugehörige Rechnungen | MUSS | M | M2 → M4 | offen | Abschnitt auf der Detailseite vorhanden; die Liste selbst setzt Rechnungen voraus (M4) |
+| FA-KUND-09 | Leitweg-ID optional erfassbar | SOLL | T | M2 | umgesetzt | `tests/integration/master-data.test.ts` — Leitweg-ID im Kundendatensatz |
+| FA-KUND-10 | CSV-Import/-Export für Kunden | KANN | M | M2 | offen | Nicht umgesetzt — Priorität KANN, bewusst zurückgestellt |
 
 ## 3. Rechnungserstellung
 
@@ -184,27 +184,27 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-SEC-01 | Ohne Session liefert jede Route 401/403, Test über alle Routen | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — läuft jede Route des Verzeichnisses ohne Sitzung gegen den gebauten Server |
-| NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | umgesetzt | `scripts/create-user.ts`; keine Registrierungsroute in `src/routes.ts`; Container: `node dist/create-user.mjs` |
-| NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | umgesetzt | `tests/unit/infrastructure/security.test.ts` — prüft `m=65536,t=3,p=1` im erzeugten Hash |
-| NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | umgesetzt | `tests/unit/domain/auth-policies.test.ts`, `tests/unit/infrastructure/security.test.ts`; Liste in `resources/compromised-passwords.txt` (100.000 Einträge, offline) |
-| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | umgesetzt | Manuell: TOTP unter /settings/security eingerichtet, QR-Code gescannt, Codes einmalig angezeigt · `tests/unit/domain/auth-policies.test.ts` |
-| NFA-SEC-06 | Session-Token ≥256 Bit, nur Hash in der DB | MUSS | R | M1 | umgesetzt | `tests/unit/infrastructure/security.test.ts` — 256 Bit, nur SHA-256-Hash in der Datenbank |
-| NFA-SEC-07 | Cookie HttpOnly/Secure/SameSite=Lax, Rotation bei Login | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` (Attribute + Rotation), `tests/unit/infrastructure/security.test.ts` (Secure) |
-| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — Sperre nach 10 Versuchen, Audit-Einträge |
-| NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | umgesetzt | Manuell: Sitzungsübersicht unter /settings/security, einzeln und gesammelt beendbar |
-| NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — ohne Token, fremde Herkunft, falsches Token |
-| NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | umgesetzt | Zod-Schemata in `src/app/login/actions.ts`, `src/app/settings/security/actions.ts`, `src/infrastructure/config/env.ts` |
+| NFA-SEC-01 | Ohne Session liefert jede Route 401/403, Test über alle Routen | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — läuft jede Route des Verzeichnisses ohne Sitzung gegen den gebauten Server |
+| NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | abgenommen | `scripts/create-user.ts`; keine Registrierungsroute in `src/routes.ts`; Container: `node dist/create-user.mjs` |
+| NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts` — prüft `m=65536,t=3,p=1` im erzeugten Hash |
+| NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | abgenommen | `tests/unit/domain/auth-policies.test.ts`, `tests/unit/infrastructure/security.test.ts`; Liste in `resources/compromised-passwords.txt` (100.000 Einträge, offline) |
+| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | abgenommen | Manuell: TOTP unter /settings/security eingerichtet, QR-Code gescannt, Codes einmalig angezeigt · `tests/unit/domain/auth-policies.test.ts` |
+| NFA-SEC-06 | Session-Token ≥256 Bit, nur Hash in der DB | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts` — 256 Bit, nur SHA-256-Hash in der Datenbank |
+| NFA-SEC-07 | Cookie HttpOnly/Secure/SameSite=Lax, Rotation bei Login | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` (Attribute + Rotation), `tests/unit/infrastructure/security.test.ts` (Secure) |
+| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — Sperre nach 10 Versuchen, Audit-Einträge |
+| NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | abgenommen | Manuell: Sitzungsübersicht unter /settings/security, einzeln und gesammelt beendbar |
+| NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — ohne Token, fremde Herkunft, falsches Token |
+| NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | abgenommen | Zod-Schemata in `src/app/login/actions.ts`, `src/app/settings/security/actions.ts`, `src/infrastructure/config/env.ts` |
 | NFA-SEC-12 | Renderer ohne Netzwerkzugriff, nachgewiesen | MUSS | T | M5 | offen | — |
 | NFA-SEC-13 | JavaScript im Rendering-Kontext deaktiviert | MUSS | R | M5 | offen | — |
 | NFA-SEC-14 | Rendering-Timeout (Standard 15 s) bricht kontrolliert ab | MUSS | T | M5 | offen | — |
 | NFA-SEC-15 | Uploads: Größe, MIME, Magic Bytes, ZIP-Slip-Schutz | MUSS | T | M5 | offen | — |
 | NFA-SEC-16 | Uploads außerhalb des Webroots, nur authentifiziert | MUSS | T | M5 | offen | — |
-| NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | umgesetzt | `tests/unit/infrastructure/security.test.ts`, `tests/integration/route-protection.test.ts` |
-| NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | umgesetzt | Review: generische Meldungen in `login.ts`; Healthcheck ohne Details; Ursachen nur im Serverlog |
-| NFA-SEC-19 | Bindung nur an 127.0.0.1, TLS im Reverse Proxy | MUSS | R | M1 | umgesetzt | Review: `docker-compose.yml` ohne `ports` am App-Dienst; TLS in `Caddyfile` |
-| NFA-SEC-20 | Container läuft nicht als Root | MUSS | R | M1 | umgesetzt | Manuell: `docker compose exec app id` → uid=1000(node) |
-| NFA-SEC-21 | Keine Secrets im Repo oder Image | MUSS | R | M1 | umgesetzt | Review: `.gitignore` und `.dockerignore` schließen `.env` aus; Konfiguration nur über ENV |
+| NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts`, `tests/integration/route-protection.test.ts` |
+| NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | abgenommen | Review: generische Meldungen in `login.ts`; Healthcheck ohne Details; Ursachen nur im Serverlog |
+| NFA-SEC-19 | Bindung nur an 127.0.0.1, TLS im Reverse Proxy | MUSS | R | M1 | abgenommen | Review: `docker-compose.yml` ohne `ports` am App-Dienst; TLS in `Caddyfile` |
+| NFA-SEC-20 | Container läuft nicht als Root | MUSS | R | M1 | abgenommen | Manuell: `docker compose exec app id` → uid=1000(node) |
+| NFA-SEC-21 | Keine Secrets im Repo oder Image | MUSS | R | M1 | abgenommen | Review: `.gitignore` und `.dockerignore` schließen `.env` aus; Konfiguration nur über ENV |
 | NFA-SEC-22 † | Automatisierte Abhängigkeitsprüfung blockiert Build | SOLL | R | M0 † | abgenommen | `.github/workflows/ci.yml`, `npm run audit` (`--audit-level=high`) |
 
 ## 12. Datenschutz & Nachvollziehbarkeit

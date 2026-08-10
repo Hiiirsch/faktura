@@ -15,6 +15,7 @@ services:
       DATABASE_URL: file:/app/data/faktura.db
       NODE_ENV: production
       PORT: 3000
+      STORAGE_DIR: /app/storage
     volumes:
       - ./data:/app/data
       - ./storage:/app/storage

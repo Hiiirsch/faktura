@@ -11,6 +11,12 @@
 import { getPrismaClient } from '@/infrastructure/db/prisma';
 
 export type AuditAction =
+  // Stammdaten (FA-STAMM-09, NFA-COMP-01)
+  | 'CREATED'
+  | 'UPDATED'
+  | 'ARCHIVED'
+  | 'UNARCHIVED'
+  // Authentifizierung
   | 'LOGIN_SUCCEEDED'
   | 'LOGIN_FAILED'
   | 'ACCOUNT_LOCKED'

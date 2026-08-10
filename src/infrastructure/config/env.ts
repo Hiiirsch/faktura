@@ -36,6 +36,13 @@ const envSchema = z.object({
     .default('Europe/Berlin'),
 
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+
+  /**
+   * Verzeichnis für hochgeladene Dateien und erzeugte Belege. Liegt außerhalb
+   * des öffentlich ausgelieferten Verzeichnisses; die Auslieferung läuft
+   * ausschließlich über authentifizierte Routen (NFA-SEC-16).
+   */
+  STORAGE_DIR: z.string().min(1).default('./storage'),
 });
 
 export type Env = z.infer<typeof envSchema>;
