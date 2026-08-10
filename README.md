@@ -10,10 +10,11 @@ Verbindliche Grundlagen:
 - [`CLAUDE.md`](CLAUDE.md) — technische Leitplanken
 - [`FORTSCHRITT.md`](FORTSCHRITT.md) — Stand je Anforderung
 
-**Aktueller Stand: M0 (Fundament).** Es gibt noch keine fachlichen Funktionen.
-Die Anwendung startet, migriert ihre Datenbank und zeigt eine Statusseite.
-Authentifizierung folgt mit M1 — bis dahin darf die Anwendung nicht öffentlich
-erreichbar betrieben werden.
+**Aktueller Stand: M1 (Auth & Sicherheit).** Fachliche Funktionen — Stammdaten,
+Rechnungen, Vorlagen, Auswertung — folgen mit den nächsten Ausbaustufen. Die
+Anwendung ist bereits vollständig zugriffsgeschützt: Anmeldung mit Passwort und
+optionaler Zweifaktorauthentifizierung, Sitzungsverwaltung, Sicherheits-Header,
+CSRF-Schutz und Sperre nach Fehlversuchen.
 
 ## Voraussetzungen
 
@@ -54,7 +55,7 @@ Prüfungen:
 ```bash
 npm run typecheck    # TypeScript
 npm run lint         # ESLint, auch die Schichtenregeln
-npm run test         # Vitest
+npm run test         # Vitest, schnelle Suite
 npm run test:coverage
 npm run verify       # alles zusammen, inklusive npm audit
 ```
@@ -62,6 +63,19 @@ npm run verify       # alles zusammen, inklusive npm audit
 `npm run verify` ist das, was auch die CI ausführt. Ein Verstoß gegen die
 Schichtentrennung, ein `any` in der Domain-Schicht oder ein Roh-SQL-Aufruf
 lässt den Lauf scheitern.
+
+Zusätzlich gibt es eine Integrationssuite, die den Zugriffsschutz gegen einen
+echt laufenden Server prüft (NFA-SEC-01). Sie setzt einen Produktionsbuild
+voraus:
+
+```bash
+npm run build
+npm run test:integration
+```
+
+Sie startet die gebaute Anwendung auf Port 3987 gegen eine eigene
+Datenbankdatei, läuft jede Route ohne Sitzung durch, prüft Cookie-Attribute,
+Sicherheits-Header, CSRF-Schutz und die Sperre nach zehn Fehlversuchen.
 
 ## Betrieb
 
@@ -92,6 +106,39 @@ gefährlicher als ein ausbleibender Start.
 | `storage/` | Uploads und erzeugte PDFs (ab M5)             |
 
 Beide Verzeichnisse sind Bind-Mounts und gehören in die Sicherung.
+
+### Erstes Benutzerkonto anlegen
+
+Es gibt **keine Selbstregistrierung**. Das erste Konto entsteht ausschließlich
+auf dem Server:
+
+```bash
+docker compose exec app node dist/create-user.mjs --email buchhaltung@example.org
+```
+
+Das Passwort wird verdeckt abgefragt — als Argument stünde es in der
+Shell-Historie und in der Prozessliste. Es muss mindestens zwölf Zeichen haben
+und darf nicht in der mitgelieferten Liste der 100.000 häufigsten geleakten
+Passwörter stehen; die Prüfung läuft vollständig lokal, ohne Netzwerkabfrage.
+
+Im lokalen Entwicklungsbetrieb stattdessen:
+
+```bash
+npm run user:create -- --email buchhaltung@example.org
+```
+
+### Zweifaktorauthentifizierung
+
+Nach der ersten Anmeldung unter **Sicherheit** aktivierbar. Beim Einrichten
+erscheinen zehn Wiederherstellungscodes — sie werden **nur einmal** angezeigt
+und ersetzen später das Einmalkennwort, falls das Telefon nicht verfügbar ist.
+In der Datenbank liegt nur ihr Hash.
+
+Das Anmeldeformular nimmt im Feld „Bestätigungscode" wahlweise ein
+sechsstelliges Einmalkennwort oder einen Wiederherstellungscode entgegen.
+
+Nach zehn Fehlversuchen sperrt sich der Zugang für 15 Minuten. Alle
+Anmeldeereignisse landen im Audit-Log.
 
 ### Zustand prüfen
 
@@ -132,18 +179,47 @@ eine Sicherung anlegen.
 ## Projektstruktur
 
 ```
-src/app/            Next.js App Router — Routen und Layouts
+src/app/            Next.js App Router — Routen, Seiten, Server Actions
 src/ui/             React-Komponenten und Formatierung
 src/i18n/           sämtliche deutschen Texte
 src/application/    Use Cases
 src/domain/         reine Fachlogik, ohne Fremdimporte
-src/infrastructure/ Prisma, Konfiguration
+src/infrastructure/ Prisma, Konfiguration, Kryptografie, Sicherheit
+src/proxy.ts        Sicherheits-Header, CSRF-Token, grober Zugriffsschutz
 src/routes.ts       zentrales Routenverzeichnis
+scripts/            Betriebskommandos (Erstbenutzer, Container-Start)
+resources/          mitgelieferte Daten (Liste kompromittierter Passwörter)
 tests/architecture/ Tests, die die Architekturregeln nachweisen
 tests/unit/         Unit-Tests
+tests/integration/  Tests gegen die gebaute Anwendung
 prisma/             Schema und Migrationen
 ```
 
 Die Domain-Schicht importiert nichts aus Framework-, UI- oder
 Persistenzmodulen. Das ist keine Konvention, sondern eine Lint-Regel, deren
 Wirksamkeit `tests/architecture/layering.test.ts` nachweist.
+
+Jede Route ist in `src/routes.ts` eingetragen. Ein Pfad, der dort fehlt, gilt
+als geschützt — Vergessen führt zur Weiterleitung auf die Anmeldung, nicht zu
+einer offenen Route. `tests/architecture/routes.test.ts` gleicht das
+Verzeichnis gegen das Dateisystem ab.
+
+## Sicherheitsarchitektur
+
+| Baustein | Umsetzung |
+|---|---|
+| Passwörter | Argon2id, 64 MB Speicher, 3 Iterationen |
+| Sitzungen | 256-Bit-Token, in der Datenbank nur der SHA-256-Hash, 7 Tage gültig |
+| Cookies | `HttpOnly`, `SameSite=Lax`, `Secure` bei HTTPS, neues Token je Anmeldung |
+| Zweiter Faktor | TOTP (RFC 6238) plus einmalig nutzbare Wiederherstellungscodes |
+| Sperre | 15 Minuten nach 10 Fehlversuchen, protokolliert |
+| CSRF | Herkunftsprüfung **und** Double-Submit-Token in jeder schreibenden Aktion |
+| Header | CSP mit Nonce, HSTS, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` |
+| Zugriffsschutz | `requireSession()` als erste Anweisung jeder Seite und Aktion, zusätzlich `src/proxy.ts` |
+
+Zur Content Security Policy: `script-src` kommt ohne `unsafe-inline` aus,
+Skripte laufen ausschließlich mit dem pro Anfrage erzeugten Nonce. Für
+`style-src` ist `unsafe-inline` gesetzt — React und die ab M2 vorgesehenen
+Komponenten setzen Positionierung über `style`-Attribute am Element, auf die
+ein Nonce nicht anwendbar ist. Der Sicherheitsgewinn einer strikten `style-src`
+wäre gering, der Funktionsverlust vollständig.

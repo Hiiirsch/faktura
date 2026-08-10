@@ -12,8 +12,10 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     // Fixtures enthalten absichtlich regelwidrigen Code und werden
-    // ausschließlich von den Architektur-Tests eingelesen.
-    exclude: ['tests/architecture/fixtures/**', 'node_modules/**'],
+    // ausschließlich von den Architektur-Tests eingelesen. Die
+    // Integrationstests brauchen einen Produktionsbuild und laufen über
+    // vitest.integration.config.ts (`npm run test:integration`).
+    exclude: ['tests/architecture/fixtures/**', 'tests/integration/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

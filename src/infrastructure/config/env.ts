@@ -19,6 +19,12 @@ const envSchema = z.object({
   APP_URL: z.url('APP_URL muss eine gültige URL sein'),
 
   /**
+   * Name der Installation. Erscheint als Aussteller in der Authenticator-App
+   * und unterscheidet dort mehrere Installationen voneinander.
+   */
+  APP_NAME: z.string().min(1).max(64).default('Faktura'),
+
+  /**
    * Zeitzone der Anwendung. Bestimmt, welcher Kalendertag „heute" ist — und
    * damit die Fälligkeitsberechnung und die Zuordnung zu Umsatzmonaten.
    */

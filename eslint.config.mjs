@@ -94,11 +94,24 @@ const infrastructureRestrictions = [
   ),
 ];
 
+/**
+ * Routen und Server Actions dürfen Infrastruktur-Hilfsmittel verwenden
+ * (Cookie-Optionen, Sicherheits-Header), aber niemals unmittelbar auf die
+ * Persistenz zugreifen — Datenzugriff läuft ausschließlich über die
+ * Anwendungsschicht.
+ */
 const appRestrictions = [
-  forbidLayers(
-    ['infrastructure'],
-    'Routen greifen nicht unmittelbar auf die Persistenz zu, sondern über die Anwendungsschicht (NFA-ARCH-01).',
-  ),
+  {
+    group: [
+      '@/infrastructure/db',
+      '@/infrastructure/db/**',
+      '**/infrastructure/db/**',
+      '@prisma/client',
+      '@prisma/client/**',
+    ],
+    message:
+      'Routen greifen nicht unmittelbar auf die Persistenz zu, sondern über die Anwendungsschicht (NFA-ARCH-01).',
+  },
 ];
 
 /** Dateien einer Schicht — jeweils inklusive der zugehörigen Test-Fixture. */
@@ -108,7 +121,7 @@ const layerFiles = {
   i18n: ['src/i18n/**/*.ts'],
   application: ['src/application/**/*.ts'],
   infrastructure: ['src/infrastructure/**/*.ts'],
-  app: ['src/app/**/*.{ts,tsx}'],
+  app: ['src/app/**/*.{ts,tsx}', 'src/proxy.ts'],
 };
 
 function restrictionConfig(files, patterns) {
@@ -145,6 +158,8 @@ export default tseslint.config(
       '.next/**',
       'node_modules/**',
       'coverage/**',
+      // Erzeugtes Bündel des Erstbenutzer-Kommandos (npm run build:cli).
+      'dist/**',
       'next-env.d.ts',
       // Fixtures verletzen absichtlich Regeln. Die Architektur-Tests linten sie
       // gezielt mit `ignore: false`; der reguläre Lauf lässt sie aus.
@@ -158,7 +173,7 @@ export default tseslint.config(
 
   // ── Typbewusstes Linting für den gesamten Quellcode ───────────────────────
   {
-    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts', '*.ts', '*.mts'],
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts', 'scripts/**/*.ts', '*.ts', '*.mts'],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },

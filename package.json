@@ -19,11 +19,17 @@
     "verify": "npm run typecheck && npm run lint && npm run test:coverage && npm run audit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "user:create": "tsx --env-file=.env scripts/create-user.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "build:cli": "esbuild scripts/create-user.ts --bundle --platform=node --format=esm --target=node24 --alias:@=./src --external:@prisma/client --external:@node-rs/argon2 --outfile=dist/create-user.mjs --log-level=warning"
   },
   "dependencies": {
+    "@node-rs/argon2": "2.0.2",
     "@prisma/client": "6.19.3",
     "next": "16.3.0",
+    "otpauth": "9.5.1",
+    "qrcode": "1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "4.4.3"
@@ -32,9 +38,11 @@
     "@eslint/js": "9.39.5",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.13.3",
+    "@types/qrcode": "1.5.6",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitest/coverage-v8": "4.1.10",
+    "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.0",
     "postcss": "8.5.26",

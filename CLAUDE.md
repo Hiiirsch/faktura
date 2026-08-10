@@ -80,15 +80,30 @@ Erlaubte Richtungen: `app → application, ui, i18n, domain` · `ui → domain, 
 
 Zusätzlich: `src/routes.ts` ist das zentrale Routenverzeichnis. Jede neue Route wird
 dort eingetragen — `tests/architecture/routes.test.ts` gleicht es gegen das
-Dateisystem ab, damit der Zugriffsschutz-Test aus NFA-SEC-01 ab M1 vollständig sein
-kann.
+Dateisystem ab, damit der Zugriffsschutz-Test aus NFA-SEC-01 vollständig bleibt.
+Ein Pfad, der dort fehlt, gilt als geschützt.
+
+`src/proxy.ts` (seit Next 16 der Nachfolger von `middleware.ts`) setzt Sicherheits-
+Header und CSRF-Token und wehrt Anfragen ohne Sitzungscookie früh ab. Er läuft in
+der Edge-Laufzeit ohne Datenbankzugriff und ist deshalb **nicht** die eigentliche
+Prüfung — die ist `requireSession()` bzw. `requireSessionOrThrow()` als erste
+Anweisung jeder Seite und jeder Server Action. Schreibende Aktionen rufen davor
+`assertRequestIntegrity(formData)` auf (Herkunft + CSRF-Token).
+
+Module dürfen beim Import keine Seiteneffekte haben: `getPrismaClient()` und
+`getEnv()` werden erst beim Aufruf ausgewertet. Sonst scheitert der
+Produktionsbuild, der die Seiten ohne Zugangsdaten analysiert.
+
+Dateien, die sowohl von der Edge-Laufzeit, von Serverkomponenten als auch von
+Client-Komponenten gelesen werden (z. B. `infrastructure/security/csrf.ts`), bleiben
+importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bündel.
 
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
 |---|---|---|
-| M0 | Fundament: Next.js, TS, Tailwind, Prisma, Docker, Lint, Vitest, Schichten | zur Abnahme |
-| M1 | Auth & Sicherheit — vor allen Features | offen |
+| M0 | Fundament: Next.js, TS, Tailwind, Prisma, Docker, Lint, Vitest, Schichten | abgenommen |
+| M1 | Auth & Sicherheit — vor allen Features | zur Abnahme |
 | M2 | Stammdaten: Firma, Kunden, Katalog | offen |
 | M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | offen |
 | M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | offen |

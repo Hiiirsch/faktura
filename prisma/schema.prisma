@@ -15,6 +15,65 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Authentifizierung ──────────────────────────────────────────────────────
+
+/// Benutzerkonto. Es gibt keine öffentliche Registrierung; das erste Konto
+/// wird über `npm run user:create` angelegt (NFA-SEC-02).
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  totpSecret   String?
+  totpEnabled  Boolean   @default(false)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions      Session[]
+  recoveryCodes RecoveryCode[]
+}
+
+/// Angemeldete Sitzung. In der Datenbank liegt ausschließlich der SHA-256-Hash
+/// des Sitzungstokens (NFA-SEC-06) — wer die Datenbank liest, kann sich damit
+/// nicht anmelden.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  /// Abweichung von Spec §4: für die Sitzungsübersicht (NFA-SEC-09) — ohne
+  /// diesen Zeitpunkt lässt sich eine verwaiste von einer aktiven Sitzung
+  /// nicht unterscheiden.
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Einmal verwendbare Wiederherstellungscodes für den Fall eines verlorenen
+/// TOTP-Geräts (NFA-SEC-05).
+///
+/// Abweichung von Spec §4: Die Spezifikation nennt Recovery-Codes in §11.1,
+/// modelliert sie aber nicht. Gespeichert wird nur der Hash; im Klartext
+/// erscheinen die Codes genau einmal, direkt nach der Erzeugung.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ─── Betrieb ────────────────────────────────────────────────────────────────
+
 /// Protokoll aller Änderungen an Rechnungen und Stammdaten (NFA-COMP-01).
 /// Einträge werden ausschließlich angelegt, nie geändert oder gelöscht
 /// (NFA-COMP-02) — die Durchsetzung folgt mit M4.

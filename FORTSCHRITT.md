@@ -12,7 +12,7 @@ Verifikationsarten R und M.
 **keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
 Vorschlag und steht noch zur Freigabe aus.
 
-Stand: 2026-08-10 · 9 von 171 umgesetzt · 0 abgenommen · **M0 zur Abnahme vorgelegt**
+Stand: 2026-08-10 · 25 von 171 umgesetzt · 9 abgenommen (M0) · **M1 zur Abnahme vorgelegt**
 
 Prüfbefehl für alle mit „T"/„R" belegten Nachweise: `npm run verify`.
 Die mit „M" belegten Nachweise sind unter „Manuell:" mit dem durchgeführten
@@ -184,28 +184,28 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-SEC-01 | Ohne Session liefert jede Route 401/403, Test über alle Routen | MUSS | T | M1 | offen | — |
-| NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | offen | — |
-| NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | offen | — |
-| NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | offen | — |
-| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | offen | — |
-| NFA-SEC-06 | Session-Token ≥256 Bit, nur Hash in der DB | MUSS | R | M1 | offen | — |
-| NFA-SEC-07 | Cookie HttpOnly/Secure/SameSite=Lax, Rotation bei Login | MUSS | T | M1 | offen | — |
-| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | offen | — |
-| NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | offen | — |
-| NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | offen | — |
-| NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | offen | — |
+| NFA-SEC-01 | Ohne Session liefert jede Route 401/403, Test über alle Routen | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — läuft jede Route des Verzeichnisses ohne Sitzung gegen den gebauten Server |
+| NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | umgesetzt | `scripts/create-user.ts`; keine Registrierungsroute in `src/routes.ts`; Container: `node dist/create-user.mjs` |
+| NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | umgesetzt | `tests/unit/infrastructure/security.test.ts` — prüft `m=65536,t=3,p=1` im erzeugten Hash |
+| NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | umgesetzt | `tests/unit/domain/auth-policies.test.ts`, `tests/unit/infrastructure/security.test.ts`; Liste in `resources/compromised-passwords.txt` (100.000 Einträge, offline) |
+| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | umgesetzt | Manuell: TOTP unter /settings/security eingerichtet, QR-Code gescannt, Codes einmalig angezeigt · `tests/unit/domain/auth-policies.test.ts` |
+| NFA-SEC-06 | Session-Token ≥256 Bit, nur Hash in der DB | MUSS | R | M1 | umgesetzt | `tests/unit/infrastructure/security.test.ts` — 256 Bit, nur SHA-256-Hash in der Datenbank |
+| NFA-SEC-07 | Cookie HttpOnly/Secure/SameSite=Lax, Rotation bei Login | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` (Attribute + Rotation), `tests/unit/infrastructure/security.test.ts` (Secure) |
+| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — Sperre nach 10 Versuchen, Audit-Einträge |
+| NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | umgesetzt | Manuell: Sitzungsübersicht unter /settings/security, einzeln und gesammelt beendbar |
+| NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — ohne Token, fremde Herkunft, falsches Token |
+| NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | umgesetzt | Zod-Schemata in `src/app/login/actions.ts`, `src/app/settings/security/actions.ts`, `src/infrastructure/config/env.ts` |
 | NFA-SEC-12 | Renderer ohne Netzwerkzugriff, nachgewiesen | MUSS | T | M5 | offen | — |
 | NFA-SEC-13 | JavaScript im Rendering-Kontext deaktiviert | MUSS | R | M5 | offen | — |
 | NFA-SEC-14 | Rendering-Timeout (Standard 15 s) bricht kontrolliert ab | MUSS | T | M5 | offen | — |
 | NFA-SEC-15 | Uploads: Größe, MIME, Magic Bytes, ZIP-Slip-Schutz | MUSS | T | M5 | offen | — |
 | NFA-SEC-16 | Uploads außerhalb des Webroots, nur authentifiziert | MUSS | T | M5 | offen | — |
-| NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | offen | — |
-| NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | offen | — |
-| NFA-SEC-19 | Bindung nur an 127.0.0.1, TLS im Reverse Proxy | MUSS | R | M1 | offen | — |
-| NFA-SEC-20 | Container läuft nicht als Root | MUSS | R | M1 | offen | — |
-| NFA-SEC-21 | Keine Secrets im Repo oder Image | MUSS | R | M1 | offen | — |
-| NFA-SEC-22 † | Automatisierte Abhängigkeitsprüfung blockiert Build | SOLL | R | M0 † | umgesetzt | `.github/workflows/ci.yml`, `npm run audit` (`--audit-level=high`) |
+| NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | umgesetzt | `tests/unit/infrastructure/security.test.ts`, `tests/integration/route-protection.test.ts` |
+| NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | umgesetzt | Review: generische Meldungen in `login.ts`; Healthcheck ohne Details; Ursachen nur im Serverlog |
+| NFA-SEC-19 | Bindung nur an 127.0.0.1, TLS im Reverse Proxy | MUSS | R | M1 | umgesetzt | Review: `docker-compose.yml` ohne `ports` am App-Dienst; TLS in `Caddyfile` |
+| NFA-SEC-20 | Container läuft nicht als Root | MUSS | R | M1 | umgesetzt | Manuell: `docker compose exec app id` → uid=1000(node) |
+| NFA-SEC-21 | Keine Secrets im Repo oder Image | MUSS | R | M1 | umgesetzt | Review: `.gitignore` und `.dockerignore` schließen `.env` aus; Konfiguration nur über ENV |
+| NFA-SEC-22 † | Automatisierte Abhängigkeitsprüfung blockiert Build | SOLL | R | M0 † | abgenommen | `.github/workflows/ci.yml`, `npm run audit` (`--audit-level=high`) |
 
 ## 12. Datenschutz & Nachvollziehbarkeit
 
@@ -222,8 +222,8 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-BETR-01 | Start über `docker compose up` inkl. Migration | MUSS | M | M0 | umgesetzt | Manuell: `docker compose up -d --build` auf leerem Datenstand — Migration `20260810105328_init_audit_log` angewandt, Container `healthy`, `GET /api/health` → 200 |
-| NFA-BETR-02 | Konfiguration nur über ENV, vollständige `.env.example` | MUSS | R | M0 | umgesetzt | `.env.example`, `src/infrastructure/config/env.ts` (Zod-Schema, Abbruch beim Start) |
+| NFA-BETR-01 | Start über `docker compose up` inkl. Migration | MUSS | M | M0 | abgenommen | Manuell: `docker compose up -d --build` auf leerem Datenstand — Migration `20260810105328_init_audit_log` angewandt, Container `healthy`, `GET /api/health` → 200 |
+| NFA-BETR-02 | Konfiguration nur über ENV, vollständige `.env.example` | MUSS | R | M0 | abgenommen | `.env.example`, `src/infrastructure/config/env.ts` (Zod-Schema, Abbruch beim Start) |
 | NFA-BETR-03 | Täglicher Backup-Job für DB und Dateispeicher | MUSS | M | M7 | offen | — |
 | NFA-BETR-04 | Konsistente DB-Sicherung, kein einfaches Kopieren | MUSS | R | M7 | offen | — |
 | NFA-BETR-05 | Backup manuell auslösbar und herunterladbar | SOLL | M | M7 | offen | — |
@@ -238,7 +238,7 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-ARCH-01 | Domain ohne Persistenz-/UI-/Framework-Importe, Lint erzwingt | MUSS | T | M0 | umgesetzt | `tests/architecture/layering.test.ts` |
+| NFA-ARCH-01 | Domain ohne Persistenz-/UI-/Framework-Importe, Lint erzwingt | MUSS | T | M0 | abgenommen | `tests/architecture/layering.test.ts` |
 | NFA-ARCH-02 | Ausgabeneutrales Dokumentmodell | MUSS | R | M5 | offen | — |
 | NFA-ARCH-03 | Dokumentmodell enthält alle Felder aus Spec §9.2 | MUSS | T | M5 | offen | — |
 | NFA-ARCH-04 | Einheiten als UN/ECE-Rec-20-Codes, Labels erst in der Anzeige | MUSS | T | M5 | offen | — |
@@ -246,8 +246,8 @@ Szenario benannt.
 | NFA-ARCH-06 | Konfigurierbare PDF-Nachbearbeitungskette, Testprozessor wirkt | MUSS | T | M5 | offen | — |
 | NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | offen | — |
 | NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | offen | — |
-| NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | umgesetzt | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
-| NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | umgesetzt | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan) |
+| NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | abgenommen | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
+| NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | abgenommen | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan) |
 
 ## 15. Qualität, Performance & Bedienung
 
@@ -255,12 +255,12 @@ Szenario benannt.
 |---|---|---|---|---|---|---|
 | NFA-QUAL-01 | Domain-Testabdeckung ≥90 % | MUSS | T | M3 | offen | — |
 | NFA-QUAL-02 | E2E über den kritischen Gesamtpfad | MUSS | T | M7 | offen | — |
-| NFA-QUAL-03 | Build bricht bei TS-/Lint-Fehlern, kein `any` in der Domain | MUSS | R | M0 | umgesetzt | `npm run verify`; `eslint.config.mjs` (`no-explicit-any` als Fehler, `--max-warnings=0`); `next.config.ts` (`ignoreBuildErrors: false`) |
+| NFA-QUAL-03 | Build bricht bei TS-/Lint-Fehlern, kein `any` in der Domain | MUSS | R | M0 | abgenommen | `npm run verify`; `eslint.config.mjs` (`no-explicit-any` als Fehler, `--max-warnings=0`); `next.config.ts` (`ignoreBuildErrors: false`) |
 | NFA-QUAL-04 | Listenansicht mit 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
 | NFA-QUAL-05 | Dashboard bei 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
 | NFA-QUAL-06 | Seed-Kommando mit realistischen Testdaten | MUSS | M | M7 | offen | — |
-| NFA-QUAL-07 † | UI vollständig deutsch, Texte zentral | MUSS | R | M0 † | umgesetzt | `src/i18n/de.ts`; Label-Tabellen als `Record<Code, string>` — ein fehlendes Label ist ein Compilerfehler. Bei jedem Meilenstein erneut zu prüfen |
-| NFA-QUAL-08 † | Deutsche Formatierung für Beträge, Datum, Zahlen | MUSS | T | M0 † | umgesetzt | `tests/unit/ui/format.test.ts` |
+| NFA-QUAL-07 † | UI vollständig deutsch, Texte zentral | MUSS | R | M0 † | abgenommen | `src/i18n/de.ts`; Label-Tabellen als `Record<Code, string>` — ein fehlendes Label ist ein Compilerfehler. Bei jedem Meilenstein erneut zu prüfen |
+| NFA-QUAL-08 † | Deutsche Formatierung für Beträge, Datum, Zahlen | MUSS | T | M0 † | abgenommen | `tests/unit/ui/format.test.ts` |
 | NFA-QUAL-09 † | Tastaturbedienbarkeit, Labels an Formularfeldern | SOLL | M | M6 † | offen | — |
 | NFA-QUAL-10 † | Nutzbar ab 1280 px voll, ab 768 px lesend | SOLL | M | M6 † | offen | — |
 | NFA-QUAL-11 † | Rückfrage bei ungespeicherten Änderungen im Editor | SOLL | M | M4 † | offen | — |

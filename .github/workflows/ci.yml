@@ -26,6 +26,7 @@ jobs:
       DATABASE_URL: file:../data/ci.db
       APP_URL: http://localhost:3000
       APP_TIMEZONE: Europe/Berlin
+      APP_NAME: Faktura
       NODE_ENV: test
 
     steps:
@@ -53,6 +54,13 @@ jobs:
 
       - name: Abhängigkeiten auf Schwachstellen prüfen
         run: npm run audit
+
+      - name: Produktionsbuild
+        run: npm run build
+
+      # Prüft den Zugriffsschutz gegen den echten Server (NFA-SEC-01).
+      - name: Integrationstests
+        run: npm run test:integration
 
   docker:
     runs-on: ubuntu-latest

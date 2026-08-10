@@ -57,6 +57,12 @@ RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# Das Kommando zum Anlegen des Erstbenutzers (NFA-SEC-02) wird zu einer
+# einzelnen Datei gebündelt. Andernfalls müssten TypeScript-Quellen und eine
+# Laufzeit dafür mit ins Image — für ein Kommando, das genau einmal pro
+# Installation läuft.
+RUN npm run build:cli
+
 # ── Laufzeit ────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
 WORKDIR /app
@@ -82,6 +88,10 @@ COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 # Schema und Migrationen sowie die eigenständige Prisma-Kommandozeile.
 COPY --from=builder --chown=node:node /app/prisma ./prisma
 COPY --from=migrator --chown=node:node /migrator/node_modules ./migrator/node_modules
+
+# Gebündeltes Kommando für den Erstbenutzer:
+#   docker compose exec app node dist/create-user.mjs --email <adresse>
+COPY --from=builder --chown=node:node /app/dist ./dist
 
 COPY --chown=node:node scripts/entrypoint.sh ./scripts/entrypoint.sh
 RUN chmod +x ./scripts/entrypoint.sh
