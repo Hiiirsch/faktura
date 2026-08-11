@@ -149,7 +149,7 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 | M1 | Auth & Sicherheit — vor allen Features | abgenommen |
 | M2 | Stammdaten: Firma, Kunden, Katalog | abgenommen |
 | M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | abgenommen |
-| M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | zur Abnahme |
+| M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | abgenommen |
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
