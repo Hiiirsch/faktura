@@ -145,7 +145,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-PDF-03 | Auch Entwürfe sind als Vorschau-PDF exportierbar, sichtbar als Entwurf gekennzeichnet. | SOLL | M |
 | FA-PDF-04 | Eine Rechnung mit mindestens 60 Positionen bricht über mehrere Seiten um, ohne dass Inhalte abgeschnitten werden. | MUSS | T |
 | FA-PDF-05 | Der Kopf der Positionstabelle wiederholt sich auf jeder Folgeseite. | MUSS | M |
-| FA-PDF-06 | Jede Seite trägt eine Seitenangabe im Format „Seite X von Y". | MUSS | T |
+| FA-PDF-06 | Mehrseitige Belege tragen ab Seite 2 eine Seitenangabe im Format „Seite X von Y“; einseitige tragen keine. | MUSS | T |
 | FA-PDF-07 | Der Summenblock wird nicht durch einen Seitenumbruch getrennt. | SOLL | M |
 | FA-PDF-08 | Das Anschriftfeld ist so positioniert, dass es im Fensterumschlag DIN lang sichtbar ist. | MUSS | M |
 | FA-PDF-09 | Der Dateiname des Downloads folgt einem konfigurierbaren Muster, standardmäßig `Rechnung_<Nummer>_<Kunde>.pdf`. | SOLL | T |

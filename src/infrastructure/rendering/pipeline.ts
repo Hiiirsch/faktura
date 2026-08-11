@@ -3,15 +3,19 @@
  *
  *     InvoiceDocument → TemplateEngine → PdfRenderer → PdfPostProcessor[] → PDF
  *
- * Die Kette der Nachbearbeiter ist in V1 **leer**, und das ist kein Versehen:
- * ZUGFeRD hängt sich später als zwei Prozessoren ein — PDF/A-Konvertierung und
- * XML-Einbettung —, ohne dass an dieser Stelle etwas aufgebrochen werden muss.
- * Eine leere Kette, die durchlaufen wird, ist der Unterschied zwischen einem
- * vorgesehenen Erweiterungspunkt und einem, den man später erst einbaut.
+ * In der Kette hängt genau ein Nachbearbeiter: die Seitenangabe. Sie steht hier
+ * und nicht in der Fußzeile des Renderers, weil sie erst ab Seite 2 erscheint —
+ * und dafür muss die Gesamtseitenzahl bekannt sein, die es beim Setzen noch
+ * nicht gibt (FA-PDF-06).
+ *
+ * ZUGFeRD hängt sich später an dieselbe Stelle: PDF/A-Konvertierung und
+ * XML-Einbettung als zwei weitere Prozessoren, ohne dass die Pipeline
+ * aufgebrochen werden muss.
  */
 import type { PdfPostProcessor, RenderingPipeline } from '@/domain/rendering/contracts';
 
 import { liquidTemplateEngine } from './liquid-engine';
+import { pageNumberStamp } from './page-number-stamp';
 import { playwrightPdfRenderer } from './playwright-renderer';
 
 /**
@@ -37,5 +41,5 @@ export async function applyPostProcessors(
 export const defaultPipeline: RenderingPipeline = {
   templateEngine: liquidTemplateEngine,
   pdfRenderer: playwrightPdfRenderer,
-  postProcessors: [],
+  postProcessors: [pageNumberStamp],
 };

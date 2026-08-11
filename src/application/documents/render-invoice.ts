@@ -142,22 +142,15 @@ async function resolveTemplate(
 }
 
 /**
- * Kopf- und Fußzeile stammen von Playwright, nicht aus der Vorlage (Spec §8.2).
+ * Gesetzt wird **ohne** Kopf- und Fußzeile.
  *
- * Nur so wiederholen sie sich auf jeder Seite und kennen die Gesamtseitenzahl
- * (FA-PDF-06). Ein CSS-`position: fixed` im Dokument liefert beides nicht.
+ * Die Seitenangabe erscheint erst ab Seite 2 (FA-PDF-06) und kann deshalb hier
+ * nicht entstehen: Chromium fügt die Gesamtseitenzahl erst beim Drucken ein,
+ * und in der Fußzeile lässt sich nicht darauf verzweigen. Sie wird
+ * anschließend von `pageNumberStamp` aufgebracht.
  */
 function renderOptions(geometry: PageGeometry): PdfRenderOptions {
-  return {
-    geometry,
-    headerTemplate: '<div></div>',
-    footerTemplate:
-      '<div style="width:100%;padding:0 20mm;font-family:sans-serif;font-size:7pt;' +
-      'color:#5c625c;text-align:right">' +
-      'Seite <span class="pageNumber"></span> von <span class="totalPages"></span>' +
-      '</div>',
-    timeoutMs: RENDER_TIMEOUT_MS,
-  };
+  return { geometry, timeoutMs: RENDER_TIMEOUT_MS };
 }
 
 export type PreparedDocument = {

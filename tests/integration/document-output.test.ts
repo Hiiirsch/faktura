@@ -37,6 +37,8 @@ import { applyPostProcessors } from '@/infrastructure/rendering/pipeline';
 import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 import { verifyArtifact } from '@/infrastructure/storage/artifact-store';
 
+import { pdfContainsText } from '../support/pdf-text';
+
 import { resetDatabase } from './setup/database';
 import { testOrganization as org } from './setup/organization';
 
@@ -573,7 +575,7 @@ describe('FA-PDF-11 Fehlgeschlagenes Rendering hinterlässt keine Datei', () => 
   }, 60_000);
 });
 
-describe('FA-PDF-04, -06, -10 Seitenumbruch und Zeitverhalten', () => {
+describe('FA-PDF-04, -06, -10 Seitenumbruch, Seitenangabe, Zeitverhalten', () => {
   it('bricht 60 Positionen über mehrere Seiten um', async () => {
     const invoiceId = await seedIssued(60);
 
@@ -589,6 +591,29 @@ describe('FA-PDF-04, -06, -10 Seitenumbruch und Zeitverhalten', () => {
     const html = await htmlOf(invoiceId);
     expect(html).toContain('Leistung 1');
     expect(html).toContain('Leistung 60');
+  }, 120_000);
+
+  it('lässt den einseitigen Beleg ohne Seitenangabe (FA-PDF-06)', async () => {
+    const invoiceId = await seedIssued(1);
+
+    const result = await renderInvoicePdf(org, invoiceId);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // „Seite 1 von 1" wäre eine Auskunft ohne Empfänger.
+    expect(pdfContainsText(result.value.pdf, 'Seite 1 von')).toBe(false);
+  }, 120_000);
+
+  it('setzt die Seitenangabe ab Seite 2 (FA-PDF-06)', async () => {
+    const invoiceId = await seedIssued(60);
+
+    const result = await renderInvoicePdf(org, invoiceId);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(pdfContainsText(result.value.pdf, 'Seite 2 von')).toBe(true);
+    // Die erste Seite bleibt frei.
+    expect(pdfContainsText(result.value.pdf, 'Seite 1 von')).toBe(false);
   }, 120_000);
 
   it('setzt 10 Positionen in unter 3 Sekunden (FA-PDF-10)', async () => {

@@ -18,6 +18,13 @@ Stand: 2026-08-11 · 133 von 171 erledigt (97 abgenommen: M0–M4, 36 umgesetzt)
 Hinzu kommen 21 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
 Teil der ursprünglichen 171 sind: 18 umgesetzt, 3 offen.
 
+**Geänderte Anforderung.** FA-PDF-06 verlangte die Seitenangabe auf *jeder*
+Seite. Auf einem einseitigen Beleg ist „Seite 1 von 1“ eine Auskunft ohne
+Empfänger; DIN 5008 sieht Seitennummern nur für Folgeblätter vor, und die
+verbreiteten Rechnungsprogramme halten es genauso. Der Auftraggeber hat die
+Änderung auf „ab Seite 2“ freigegeben; der Wortlaut in
+`rechnungs-app-anforderungen.md` ist entsprechend angepasst.
+
 **Einschub M5.5a — Mandantenkontext (umgesetzt, Abnahme offen).** Keine eigene
 Anforderungs-ID; verlangt vom Auftraggeber zwischen M5 und M6. Umfang:
 `organizationId` auf allen mandantengebundenen Tabellen, eine geseedete
@@ -154,7 +161,7 @@ Szenario benannt.
 | FA-PDF-03 | Entwurf als Vorschau-PDF, sichtbar gekennzeichnet | SOLL | M | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Entwurfsvermerk im Blattkopf, nach dem Festschreiben nicht mehr |
 | FA-PDF-04 | ≥60 Positionen brechen ohne Verlust über Seiten um | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — 60 Positionen, alle enthalten, mehrseitiges PDF |
 | FA-PDF-05 | Tabellenkopf wiederholt sich auf Folgeseiten | MUSS | M | M5 | umgesetzt | `display: table-header-group` in der Standardvorlage; Manuell: Tabellenkopf auf Folgeseiten |
-| FA-PDF-06 | Seitenangabe „Seite X von Y" auf jeder Seite | MUSS | T | M5 | umgesetzt | `tests/integration/rendering.test.ts`; Fußzeile über Playwright, nicht über CSS |
+| FA-PDF-06 | Seitenangabe „Seite X von Y“ ab Seite 2 | MUSS | T | M5 | umgesetzt | `tests/unit/domain/page-numbering.test.ts`, `tests/unit/infrastructure/page-number-stamp.test.ts`, `tests/integration/document-output.test.ts` — einseitiger Beleg ohne Angabe, mehrseitiger ab Seite 2 |
 | FA-PDF-07 | Summenblock nicht durch Seitenumbruch getrennt | SOLL | M | M5 | umgesetzt | `break-inside: avoid` auf Summenblock und Positionszeilen; Manuell: Summenblock bleibt zusammen |
 | FA-PDF-08 | Anschriftfeld im Fensterumschlag DIN lang sichtbar | MUSS | M | M5 | umgesetzt | Anschriftfeld 85 × 45 mm ab 45 mm Blattoberkante (DIN 5008 Form B); Manuell: Sichtprüfung im Fensterumschlag DIN lang |
 | FA-PDF-09 | Konfigurierbares Dateinamenmuster | SOLL | T | M5 | umgesetzt | `tests/unit/domain/template-upload.test.ts` (Muster und Filterung); einstellbar unter Einstellungen › Nummernkreis |

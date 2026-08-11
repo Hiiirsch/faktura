@@ -62,9 +62,16 @@ export type TemplateEngine = {
 
 export type PdfRenderOptions = {
   readonly geometry: PageGeometry;
-  /** Kopf- und Fußzeile als HTML; „Seite X von Y" entsteht hier (FA-PDF-06). */
-  readonly headerTemplate: string;
-  readonly footerTemplate: string;
+  /**
+   * Kopf- und Fußzeile als HTML, beide optional.
+   *
+   * Die Seitenangabe entsteht **nicht** hier: Sie erscheint erst ab Seite 2,
+   * und die Gesamtzahl der Seiten steht beim Setzen noch nicht fest. Sie wird
+   * nachträglich gestempelt (FA-PDF-06, `page-number-stamp.ts`). Ohne Angabe
+   * zeichnet Chromium gar keine Kopf- und Fußzeile.
+   */
+  readonly headerTemplate?: string;
+  readonly footerTemplate?: string;
   readonly timeoutMs: number;
 };
 

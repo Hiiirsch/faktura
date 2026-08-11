@@ -100,15 +100,22 @@ export const playwrightPdfRenderer: PdfRenderer = {
       await page.setContent(html, { waitUntil: 'load', timeout: options.timeoutMs });
 
       const { geometry } = options;
+      const withHeaderFooter =
+        options.headerTemplate !== undefined || options.footerTemplate !== undefined;
+
       const pdf = await page.pdf({
         format: geometry.format,
         printBackground: true,
-        // Kopf- und Fußzeile über Playwright, nicht über CSS (Spec §8.2):
-        // nur so wiederholen sie sich auf jeder Seite und kennen die
-        // Seitenzahl (FA-PDF-06).
-        displayHeaderFooter: true,
-        headerTemplate: options.headerTemplate,
-        footerTemplate: options.footerTemplate,
+        // Kopf- und Fußzeile über Playwright, nicht über CSS (Spec §8.2) —
+        // nur so wiederholen sie sich auf jeder Seite. Ohne Angabe bleiben sie
+        // weg; die Seitenangabe entsteht als Nachbearbeitung.
+        displayHeaderFooter: withHeaderFooter,
+        ...(options.headerTemplate === undefined
+          ? {}
+          : { headerTemplate: options.headerTemplate }),
+        ...(options.footerTemplate === undefined
+          ? {}
+          : { footerTemplate: options.footerTemplate }),
         margin: {
           top: `${String(geometry.marginTopMm)}mm`,
           right: `${String(geometry.marginRightMm)}mm`,

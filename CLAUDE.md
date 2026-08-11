@@ -225,6 +225,14 @@ Geschrieben wird über eine Zwischendatei und `rename`; ein abgebrochener Lauf
 hinterlässt damit nichts (FA-PDF-11). Trigger `InvoiceArtifact_no_update` weist
 jede Änderung am Artefakt ab.
 
+Die **Seitenangabe** entsteht nicht in der Fußzeile von Chromium, sondern als
+Nachbearbeiter (`page-number-stamp.ts`, pdf-lib). Grund: Sie erscheint erst ab
+Seite 2 (FA-PDF-06), und dafür muss die Gesamtseitenzahl bekannt sein — beim
+Setzen ist sie es nicht. Ein einseitiges PDF kommt **bytegleich** aus dem
+Stempel zurück, sonst hinge der Hash des Artefakts an der Version von pdf-lib.
+Damit ist die Post-Processor-Kette aus NFA-ARCH-06 kein leeres Versprechen
+mehr; ZUGFeRD hängt sich später an dieselbe Stelle.
+
 Die Schrift des Belegs ist **dieselbe wie in der Oberfläche** (Fira Sans) und
 wird als `data:`-URI in jedes Dokument eingebettet. Der Renderer hat keinen
 Netzwerkzugriff und der Container keine installierten Schriften — käme sie nicht

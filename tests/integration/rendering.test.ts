@@ -1,6 +1,6 @@
 /**
  * Vorlagen-Engine und PDF-Renderer
- * (FA-TPL-07; FA-PDF-06; NFA-SEC-12, -13, -14; NFA-ARCH-06, -07).
+ * (FA-TPL-07; FA-PDF-04; NFA-SEC-12, -13, -14; NFA-ARCH-07).
  *
  * Läuft gegen echtes Chromium — die Zusagen dieser Anforderungen stecken im
  * Verhalten des Browsers, nicht im TypeScript-Code. Ein Test mit Attrappe
@@ -275,7 +275,7 @@ describe('PDF-Renderer', () => {
     expect(after.ok).toBe(true);
   }, 60_000);
 
-  it('setzt „Seite X von Y" in die Fußzeile (FA-PDF-06)', async () => {
+  it('bricht langen Inhalt über mehrere Seiten um (FA-PDF-04)', async () => {
     const manyLines = Array.from(
       { length: 80 },
       (_, index) => `<p style="margin:12mm 0">Position ${String(index + 1)}</p>`,
@@ -289,7 +289,9 @@ describe('PDF-Renderer', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Mehrere Seiten und damit ein deutlich größeres Dokument.
+    // Mehrere Seiten und damit ein deutlich größeres Dokument. Die
+    // Seitenangabe entsteht nicht mehr hier, sondern als Nachbearbeitung
+    // (FA-PDF-06, `page-number-stamp.ts`) — sie erscheint erst ab Seite 2.
     expect(result.pdf.byteLength).toBeGreaterThan(3_000);
   }, 60_000);
 });
