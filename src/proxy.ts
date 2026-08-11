@@ -32,10 +32,74 @@ function isApiPath(pathname: string): boolean {
   return pathname.startsWith('/api/');
 }
 
+/**
+ * Meldet einmalig, wenn die aufgerufene Adresse nicht zu `APP_HOST_URL` passt.
+ *
+ * Läuft `APP_URL` von der tatsächlichen Adresse auseinander, lehnt die
+ * Herkunftsprüfung jede schreibende Aktion ab — auch die Anmeldung. Ohne diesen
+ * Hinweis merkt man das erst, wenn nichts mehr geht, und sieht dann nur
+ * „Anfrage abgelehnt".
+ *
+ * Nur für Seitenaufrufe: Der Healthcheck des Containers ruft
+ * `127.0.0.1:3000/api/health` auf und würde sonst dauerhaft warnen.
+ */
+let originMismatchReported = false;
+
+/**
+ * Die Adresse, unter der die Anwendung tatsächlich aufgerufen wurde.
+ *
+ * `nextUrl.origin` liefert hinter einem Reverse Proxy die interne
+ * Bindeadresse (`http://0.0.0.0:3000`) — als Hinweis wäre das irreführend.
+ * Maßgeblich sind die vom Proxy weitergereichten Kopfzeilen.
+ */
+function publicOrigin(request: NextRequest): string | null {
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  if (host === null || host.length === 0) {
+    return null;
+  }
+
+  const protocol =
+    request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '');
+
+  return `${protocol}://${host}`;
+}
+
+function warnOnOriginMismatch(requestOrigin: string | null, pathname: string): void {
+  if (requestOrigin === null) {
+    return;
+  }
+
+  if (originMismatchReported || isApiPath(pathname)) {
+    return;
+  }
+
+  const configured = process.env.APP_URL ?? '';
+  if (configured.length === 0) {
+    return;
+  }
+
+  try {
+    if (new URL(configured).origin === requestOrigin) {
+      return;
+    }
+  } catch {
+    return;
+  }
+
+  originMismatchReported = true;
+  console.warn(
+    `[konfiguration] Die Anwendung wird unter ${requestOrigin} aufgerufen, APP_URL steht aber ` +
+      `auf ${configured}. Solange beide auseinanderlaufen, wird jede schreibende Aktion ` +
+      'abgelehnt — auch die Anmeldung. Bitte APP_URL anpassen und den Dienst neu starten.',
+  );
+}
+
 export function proxy(request: NextRequest): NextResponse {
   const nonce = generateNonce();
   const isDevelopment = process.env.NODE_ENV === 'development';
   const { pathname } = request.nextUrl;
+
+  warnOnOriginMismatch(publicOrigin(request), pathname);
 
   const existingCsrfToken = request.cookies.get(CSRF_COOKIE_NAME)?.value;
   const csrfToken = existingCsrfToken ?? generateCsrfToken();

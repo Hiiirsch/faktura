@@ -43,6 +43,13 @@ lokale Entwicklung muss `DATABASE_URL` auf `file:../data/faktura.db` stehen
 (relativ zum Verzeichnis `prisma/`), im Container auf den absoluten Pfad
 `file:/app/data/faktura.db`.
 
+**`APP_URL` muss der Adresse entsprechen, unter der Sie die Anwendung im
+Browser aufrufen.** Sie dient der Herkunftsprüfung des CSRF-Schutzes; weicht
+sie ab, wird jede schreibende Aktion abgelehnt — auch die Anmeldung. Über
+Docker Compose mit Caddy ist das `http://localhost`, bei `npm run dev`
+dagegen `http://localhost:3000`. Die Anwendung schreibt beim ersten
+Seitenaufruf einen Hinweis ins Log, wenn beides auseinanderläuft.
+
 ## Konfiguration
 
 Die gesamte Konfiguration erfolgt über Umgebungsvariablen; `.env.example`

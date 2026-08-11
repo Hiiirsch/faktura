@@ -4,6 +4,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { describeOriginMismatch } from '@/application/auth/assert-request-integrity';
+
 import {
   compromisedPasswordCount,
   isCompromisedPassword,
@@ -220,5 +222,23 @@ describe('Liste kompromittierter Passwörter (NFA-SEC-04)', () => {
 
   it('lädt die vollständige Liste', () => {
     expect(compromisedPasswordCount()).toBeGreaterThanOrEqual(99_000);
+  });
+});
+
+describe('Diagnose einer Herkunftsabweichung', () => {
+  it('nennt beide Adressen und die Folge', () => {
+    const text = describeOriginMismatch('http://localhost', 'http://localhost:3000');
+
+    expect(text).toContain('http://localhost');
+    expect(text).toContain('http://localhost:3000');
+    expect(text).toContain('APP_URL');
+    // Die Folge ist der entscheidende Teil: Ohne sie sucht man an der
+    // falschen Stelle — die Anmeldung scheitert, nicht das Passwort.
+    expect(text).toContain('Anmeldung');
+  });
+
+  it('benennt eine fehlende Herkunftsangabe ausdrücklich', () => {
+    expect(describeOriginMismatch(null, 'http://localhost')).toContain('(keine)');
+    expect(describeOriginMismatch('', 'http://localhost')).toContain('(keine)');
   });
 });
