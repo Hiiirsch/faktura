@@ -219,6 +219,39 @@ describe('FA-UI-04 / NFA-UI-04 Keine Anfrage nach außen', () => {
   });
 });
 
+/**
+ * Kein `require.resolve` in der Quellschicht.
+ *
+ * Steht hier, weil es dieselbe Klasse von Fehler ist wie die übrigen Prüfungen
+ * dieser Datei: etwas, das in Entwicklung und Test funktioniert und erst im
+ * gebündelten Serverchunk auseinanderfällt. Der Bündler ersetzt
+ * `require.resolve` durch seine eigene Modulauflösung und liefert eine
+ * Modulnummer statt eines Dateipfads — `readFile` scheitert dann zur Laufzeit
+ * mit `ERR_INVALID_ARG_TYPE`, und zwar erst im Container.
+ *
+ * Dateipfade werden stattdessen aus `process.cwd()` gebaut, wie in
+ * `compromised-passwords.ts` und `document-font.ts`.
+ */
+describe('Dateizugriffe überstehen das Bündeln', () => {
+  it('verwendet nirgends `require.resolve`', async () => {
+    const offenders: string[] = [];
+
+    const files = [
+      ...(await collect('src', ['.ts', '.tsx'])),
+      ...(await collect('scripts', ['.ts'])),
+    ];
+
+    for (const file of files) {
+      const source = withoutComments(readFileSync(path.join(projectRoot, file), 'utf8'));
+      if (/\brequire\s*\.\s*resolve\s*\(/.test(source)) {
+        offenders.push(file);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('FA-UI-08 Bewegung nur bei Zustandswechsel und beim Festschreiben', () => {
   it('verwendet ausschließlich die drei festgelegten Dauern', async () => {
     const offenders: string[] = [];

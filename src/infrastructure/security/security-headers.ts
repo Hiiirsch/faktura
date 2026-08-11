@@ -13,10 +13,47 @@
  * Style-Attribute einschleusen kann, hat bereits eine Injektionslücke.
  */
 
+/**
+ * Wofür die Kopfzeilen gelten.
+ *
+ * `app` ist die Oberfläche. `document` sind Antworten, die **fremden Inhalt**
+ * ausliefern — die Belegvorschau aus einer hochgeladenen Vorlage und
+ * hochgeladene Dateien. Für sie gilt eine engere Richtlinie: kein Skript, kein
+ * Netz, nur eingebettete Daten.
+ *
+ * Der Unterschied, der beim Bauen der Vorschau aufgefallen ist: Das
+ * App-Profil setzt `frame-ancestors 'none'` und `X-Frame-Options: DENY`. Damit
+ * lässt sich die Vorschau **auch aus der eigenen Oberfläche heraus** nicht in
+ * einen Rahmen laden — der Rahmen bliebe leer. Das Dokumentprofil erlaubt
+ * deshalb `'self'`.
+ */
+export type SecurityProfile = 'app' | 'document';
+
 export type SecurityHeaderOptions = {
   readonly nonce: string;
   readonly isDevelopment: boolean;
+  readonly profile?: SecurityProfile;
 };
+
+/**
+ * Richtlinie für ausgelieferten Fremdinhalt.
+ *
+ * `sandbox` ohne Werte entzieht dem Dokument alles: kein Skript, keine
+ * Formulare, kein eigener Ursprung. Schrift und Bilder kommen ausschließlich
+ * als `data:`-URI mit dem Dokument — genau so, wie der Renderer sie einbettet.
+ */
+function documentContentSecurityPolicy(): string {
+  return [
+    "default-src 'none'",
+    "style-src 'unsafe-inline'",
+    'img-src data:',
+    'font-src data:',
+    "form-action 'none'",
+    // Einbettbar aus der eigenen Oberfläche, nirgendwo sonst.
+    "frame-ancestors 'self'",
+    'sandbox',
+  ].join('; ');
+}
 
 function buildContentSecurityPolicy({ nonce, isDevelopment }: SecurityHeaderOptions): string {
   // Der Entwicklungsserver von Next.js wertet Code für das Neuladen im Browser
@@ -42,10 +79,14 @@ function buildContentSecurityPolicy({ nonce, isDevelopment }: SecurityHeaderOpti
 }
 
 export function buildSecurityHeaders(options: SecurityHeaderOptions): Record<string, string> {
+  const isDocument = options.profile === 'document';
+
   const headers: Record<string, string> = {
-    'Content-Security-Policy': buildContentSecurityPolicy(options),
+    'Content-Security-Policy': isDocument
+      ? documentContentSecurityPolicy()
+      : buildContentSecurityPolicy(options),
     'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
+    'X-Frame-Options': isDocument ? 'SAMEORIGIN' : 'DENY',
     'Referrer-Policy': 'no-referrer',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',

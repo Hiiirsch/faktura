@@ -11,10 +11,13 @@ export const dynamic = 'force-dynamic';
  * Nur mit gültiger Sitzung. Die Dateien liegen außerhalb des öffentlich
  * ausgelieferten Verzeichnisses; dies ist der einzige Weg zu ihnen.
  *
- * Die Antwort trägt eine eigene, maximal enge Content Security Policy. Eine
- * hochgeladene SVG-Datei ist Markup und könnte grundsätzlich Skript enthalten
- * — unter dieser Richtlinie und mit `sandbox` wird nichts davon ausgeführt,
- * auch wenn die Datei direkt aufgerufen wird.
+ * Die Antwort trägt eine maximal enge Content Security Policy mit `sandbox`:
+ * Eine hochgeladene SVG-Datei ist Markup und könnte grundsätzlich Skript
+ * enthalten; darunter wird nichts davon ausgeführt, auch beim direkten Aufruf.
+ *
+ * Gesetzt wird sie **nicht hier**, sondern vom Proxy anhand des Eintrags
+ * `securityProfile: 'document'` in `src/routes.ts`. Der Proxy überschreibt die
+ * Kopfzeilen der Antwort; eine hier gesetzte Richtlinie käme nie an.
  */
 export async function GET(
   _request: Request,
@@ -44,7 +47,6 @@ export async function GET(
     headers: {
       'Content-Type': asset.mimeType,
       'Content-Length': String(asset.byteSize),
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
       'X-Content-Type-Options': 'nosniff',
       // Der Anzeigename wird nur hier verwendet, nie als Pfad.
       'Content-Disposition': `inline; filename="${encodeURIComponent(asset.fileName)}"`,

@@ -13,7 +13,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { buildSecurityHeaders } from '@/infrastructure/security/security-headers';
-import { LOGIN_PATH, pathRequiresAuthentication } from '@/routes';
+import { LOGIN_PATH, pathRequiresAuthentication, securityProfileFor } from '@/routes';
 
 function generateNonce(): string {
   // Web Crypto statt node:crypto — der Proxy läuft in der Edge-Laufzeit.
@@ -126,7 +126,15 @@ export function proxy(request: NextRequest): NextResponse {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  for (const [name, value] of Object.entries(buildSecurityHeaders({ nonce, isDevelopment }))) {
+  // Die Kopfzeilen werden **nach** dem Routenhandler gesetzt und überschreiben,
+  // was dieser gesetzt hat. Deshalb entscheidet das Routenverzeichnis über das
+  // Profil, nicht die Route selbst — sonst schriebe eine Route eine engere
+  // Richtlinie, die anschließend still verworfen würde.
+  const profile = securityProfileFor(pathname);
+
+  for (const [name, value] of Object.entries(
+    buildSecurityHeaders({ nonce, isDevelopment, profile }),
+  )) {
     response.headers.set(name, value);
   }
 

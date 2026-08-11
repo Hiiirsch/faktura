@@ -13,10 +13,15 @@ export const dynamic = 'force-dynamic';
  * PDF — nur ohne den Umweg über Chromium. Die Vorschau zeigt damit nicht etwas
  * Ähnliches, sondern denselben Satz.
  *
- * Ausgeliefert in einen `<iframe sandbox>`. Die Antwort trägt zusätzlich eine
- * eigene, maximal enge Content Security Policy: Eine Vorlage ist fremder
- * Inhalt, und in der Vorschau läuft sie — anders als beim Rendern — im Browser
- * des Benutzers.
+ * Ausgeliefert in einen `<iframe sandbox>`. Die enge Content Security Policy
+ * dazu — kein Skript, kein Netz, nur eingebettete Daten — kommt vom Proxy über
+ * `securityProfile: 'document'` in `src/routes.ts`. Sie hier zu setzen wäre
+ * wirkungslos: Der Proxy überschreibt die Kopfzeilen der Antwort.
+ *
+ * Dasselbe Profil erlaubt `frame-ancestors 'self'`. Ohne das bliebe der Rahmen
+ * leer — das App-Profil setzt `frame-ancestors 'none'` und
+ * `X-Frame-Options: DENY`, und die verbieten das Einbetten auch dem eigenen
+ * Ursprung.
  */
 export async function GET(
   _request: Request,
@@ -60,16 +65,6 @@ function previewHeaders(): Record<string, string> {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': [
-      "default-src 'none'",
-      // Die Vorlage bringt ihr CSS inline mit; Schrift und Logo kommen als
-      // data:-URI. Skripte sind auch hier ausgeschlossen (NFA-SEC-13).
-      "style-src 'unsafe-inline'",
-      "img-src data:",
-      "font-src data:",
-      "form-action 'none'",
-      "frame-ancestors 'self'",
-    ].join('; '),
   };
 }
 

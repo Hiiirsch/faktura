@@ -347,3 +347,24 @@ describe('NFA-SEC-08 Sperre und Protokollierung', () => {
     }
   });
 });
+
+describe('Sicherheitsprofil der Antwort (NFA-SEC-17)', () => {
+  it('legt auf Routen mit Fremdinhalt das Dokumentprofil', async () => {
+    // Ohne Sitzung antwortet bereits der Proxy — die Kopfzeilen setzt er
+    // trotzdem, und am Pfad hängt das Profil.
+    const response = await fetch(url('/api/invoices/probe-kennung/preview'), {
+      redirect: 'manual',
+    });
+
+    expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
+    expect(response.headers.get('content-security-policy')).toContain('sandbox');
+  });
+
+  it('lässt die Oberfläche selbst nicht einbetten', async () => {
+    const response = await fetch(url('/login'), { redirect: 'manual' });
+
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+  });
+});

@@ -28,6 +28,7 @@ import { buildTotpUri, generateTotpSecret, verifyTotpCode } from '@/infrastructu
 import { isSameOrigin } from '@/infrastructure/security/csrf';
 import { isValidCsrfPair } from '@/infrastructure/security/csrf-verify';
 import { buildSecurityHeaders } from '@/infrastructure/security/security-headers';
+import { securityProfileFor } from '@/routes';
 
 describe('Argon2id (NFA-SEC-03)', () => {
   it('nutzt Argon2id mit 64 MB Speicher und drei Iterationen', async () => {
@@ -240,5 +241,51 @@ describe('Diagnose einer Herkunftsabweichung', () => {
   it('benennt eine fehlende Herkunftsangabe ausdrücklich', () => {
     expect(describeOriginMismatch(null, 'http://localhost')).toContain('(keine)');
     expect(describeOriginMismatch('', 'http://localhost')).toContain('(keine)');
+  });
+});
+
+describe('Sicherheitsprofile je Route (NFA-SEC-17)', () => {
+  const options = { nonce: 'abc', isDevelopment: false } as const;
+
+  it('sperrt in der Oberfläche das Einbetten vollständig', () => {
+    const headers = buildSecurityHeaders(options);
+
+    expect(headers['X-Frame-Options']).toBe('DENY');
+    expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'none'");
+    expect(headers['Content-Security-Policy']).toContain("script-src 'self' 'nonce-abc'");
+  });
+
+  it('erlaubt für ausgelieferten Fremdinhalt den eigenen Ursprung als Rahmen', () => {
+    const headers = buildSecurityHeaders({ ...options, profile: 'document' });
+
+    // Ohne das bliebe die Belegvorschau im eigenen `<iframe>` leer.
+    expect(headers['X-Frame-Options']).toBe('SAMEORIGIN');
+    expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'self'");
+  });
+
+  it('lässt in Fremdinhalt weder Skript noch Netzzugriff zu', () => {
+    const policy = buildSecurityHeaders({ ...options, profile: 'document' })[
+      'Content-Security-Policy'
+    ];
+
+    expect(policy).toContain("default-src 'none'");
+    expect(policy).toContain('sandbox');
+    expect(policy).not.toContain('script-src');
+    expect(policy).not.toContain("connect-src 'self'");
+    // Schrift und Bilder ausschließlich als eingebettete Daten.
+    expect(policy).toContain('img-src data:');
+    expect(policy).toContain('font-src data:');
+  });
+
+  it('ordnet genau den Routen mit Fremdinhalt das Dokumentprofil zu', () => {
+    expect(securityProfileFor('/api/invoices/abc/preview')).toBe('document');
+    expect(securityProfileFor('/api/templates/preview')).toBe('document');
+    expect(securityProfileFor('/api/assets/abc')).toBe('document');
+
+    expect(securityProfileFor('/invoices')).toBe('app');
+    expect(securityProfileFor('/api/invoices/abc/pdf')).toBe('app');
+    expect(securityProfileFor('/settings/templates')).toBe('app');
+    // Unbekannte Pfade bekommen das strengere Profil.
+    expect(securityProfileFor('/gibt-es-nicht')).toBe('app');
   });
 });

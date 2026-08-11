@@ -97,14 +97,6 @@ function htmlResponse(body: string): NextResponse {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': [
-        "default-src 'none'",
-        "style-src 'unsafe-inline'",
-        'img-src data:',
-        'font-src data:',
-        "form-action 'none'",
-        "frame-ancestors 'self'",
-      ].join('; '),
     },
   });
 }

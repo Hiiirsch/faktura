@@ -55,6 +55,16 @@ export const TEMPLATE_PREVIEW_PATH = '/api/templates/preview';
 
 export type RouteKind = 'page' | 'api';
 
+/**
+ * Welches Sicherheitsprofil der Proxy auf die Antwort legt.
+ *
+ * Voreinstellung ist `app`. `document` steht an den Routen, die fremden Inhalt
+ * ausliefern: Belegvorschau und hochgeladene Dateien. Der Proxy setzt die
+ * Kopfzeilen **nach** dem Routenhandler und überschreibt dabei, was dieser
+ * gesetzt hat — deshalb steht die Entscheidung hier und nicht in der Route.
+ */
+export type RouteSecurityProfile = 'app' | 'document';
+
 export type RouteAccess =
   /** Ohne Anmeldung erreichbar. Jeder Eintrag braucht eine Begründung. */
   | 'public'
@@ -73,6 +83,7 @@ export type RouteDefinition = {
    * nötig — `/customers/[id]` lässt sich nicht wörtlich aufrufen.
    */
   readonly probePath?: string;
+  readonly securityProfile?: RouteSecurityProfile;
 };
 
 export const routes: readonly RouteDefinition[] = [
@@ -121,17 +132,20 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'api',
     access: 'authenticated',
     probePath: '/api/invoices/probe-kennung/preview',
+    securityProfile: 'document',
   },
   {
     path: TEMPLATE_PREVIEW_PATH,
     kind: 'api',
     access: 'authenticated',
+    securityProfile: 'document',
   },
   {
     path: '/api/assets/[id]',
     kind: 'api',
     access: 'authenticated',
     probePath: '/api/assets/probe-kennung',
+    securityProfile: 'document',
   },
   {
     path: '/api/health',
@@ -179,6 +193,12 @@ function escapeRegExp(value: string): string {
  * das sichere Verhalten, wenn jemand eine Route anlegt und den Eintrag hier
  * vergisst.
  */
+/** Das Sicherheitsprofil eines Pfades; unbekannte Pfade gelten als `app`. */
+export function securityProfileFor(pathname: string): RouteSecurityProfile {
+  const match = routes.find((route) => toPathMatcher(route.path).test(pathname));
+  return match?.securityProfile ?? 'app';
+}
+
 export function pathRequiresAuthentication(pathname: string): boolean {
   const match = routes.find((route) => toPathMatcher(route.path).test(pathname));
   return match?.access !== 'public';

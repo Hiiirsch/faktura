@@ -11,14 +11,21 @@
  * ist der Grund, warum die HTML-Vorschau und das PDF gleich aussehen und nicht
  * nur ähnlich: gleiche Datei, gleiche Metrik.
  *
- * Die Dateien liegen im Paket und werden zur Laufzeit gelesen. Die
- * Abhängigkeitsverfolgung von Next.js erfasst nur Importe, keine Dateizugriffe
- * — `next.config.ts` nimmt sie deshalb ausdrücklich ins Bündel auf.
+ * **Der Pfad wird aus `process.cwd()` gebaut, nicht über `require.resolve`.**
+ * Im gebündelten Serverchunk ersetzt der Bündler `require.resolve` durch seine
+ * eigene Modulauflösung und liefert eine Modulnummer statt eines Dateipfads;
+ * `readFile` scheitert dann mit `ERR_INVALID_ARG_TYPE`. Im Standalone-Build
+ * liegt `node_modules` neben dem Serverbündel, im Entwicklungsbaum im
+ * Projektwurzelverzeichnis — in beiden Fällen relativ zum Arbeitsverzeichnis.
+ * `tests/architecture/design-tokens.test.ts` hält `require.resolve` aus der
+ * Quellschicht heraus, damit dieselbe Falle nicht ein zweites Mal zuschnappt.
+ *
+ * Dass die Dateien überhaupt im Standalone-Bündel landen, sorgt
+ * `outputFileTracingIncludes` in `next.config.ts`: Die Abhängigkeitsverfolgung
+ * von Next.js sieht Importe, keine Dateizugriffe.
  */
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
+import path from 'node:path';
 
 /**
  * Nur die beiden Schnitte, die der Beleg braucht.
@@ -28,9 +35,11 @@ const require = createRequire(import.meta.url);
  * Kleinigkeit.
  */
 const FACES: readonly { readonly weight: number; readonly file: string }[] = [
-  { weight: 400, file: '@fontsource/fira-sans/files/fira-sans-latin-400-normal.woff2' },
-  { weight: 700, file: '@fontsource/fira-sans/files/fira-sans-latin-700-normal.woff2' },
+  { weight: 400, file: 'fira-sans-latin-400-normal.woff2' },
+  { weight: 700, file: 'fira-sans-latin-700-normal.woff2' },
 ];
+
+const FONT_DIRECTORY = ['node_modules', '@fontsource', 'fira-sans', 'files'];
 
 let cached: string | undefined;
 
@@ -48,7 +57,8 @@ export async function documentFontFaces(): Promise<string> {
 
   const blocks = await Promise.all(
     FACES.map(async ({ weight, file }) => {
-      const bytes = await readFile(require.resolve(file));
+      const filePath = path.join(process.cwd(), ...FONT_DIRECTORY, file);
+      const bytes = await readFile(filePath);
       const encoded = bytes.toString('base64');
 
       return `@font-face {
