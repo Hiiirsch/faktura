@@ -20,6 +20,7 @@
  */
 import { type Browser, chromium, type Page } from 'playwright';
 
+import { getEnv } from '@/infrastructure/config/env';
 import type {
   PdfRenderer,
   PdfRenderOptions,
@@ -29,10 +30,14 @@ import type {
 let browserPromise: Promise<Browser> | undefined;
 
 async function getBrowser(): Promise<Browser> {
+  const executablePath = getEnv().CHROMIUM_PATH;
+
   browserPromise ??= chromium.launch({
     // Ausdrücklich **ohne** `--no-sandbox`: Spec §11.3. Der Container stellt
     // stattdessen ein seccomp-Profil und User-Namespaces bereit.
     args: ['--disable-dev-shm-usage', '--font-render-hinting=none'],
+    // Im Container das Chromium der Distribution, lokal das mitgelieferte.
+    ...(executablePath === undefined ? {} : { executablePath }),
   });
 
   const browser = await browserPromise;

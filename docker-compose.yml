@@ -19,6 +19,23 @@ services:
     volumes:
       - ./data:/app/data
       - ./storage:/app/storage
+    # Chromium rendert **ohne** `--no-sandbox` (Spec §11.3). Seine Sandbox legt
+    # dafür PID- und Netzwerk-Namespaces an; der Standard-Seccomp-Filter von
+    # Docker lässt das nur zu, wenn der Container CAP_SYS_ADMIN trägt.
+    #
+    # Die Spezifikation nennt genau diesen Weg: „stattdessen im Container die
+    # nötigen Capabilities bereitstellen". Die Alternative wäre ein eigenes
+    # Seccomp-Profil — es müsste dieselben Systemaufrufe freigeben, wäre aber
+    # eine zusätzliche Datei, die bei jedem Docker-Update nachzuführen ist.
+    #
+    # Was das Risiko begrenzt: Der Prozess läuft weiterhin als `node`, nicht
+    # als Root, und die Sandbox ist der eigentliche Zweck der Capability.
+    cap_add:
+      - SYS_ADMIN
+    # Chromium legt seine geteilten Speicherbereiche unter /dev/shm ab; die
+    # voreingestellten 64 MB reichen für mehrseitige Belege nicht.
+    shm_size: 256m
+
     # Bewusst ohne `ports`: Der Anwendungsdienst ist ausschließlich im internen
     # Netz erreichbar, nie direkt vom Host oder aus dem Internet (NFA-SEC-19).
     expose:

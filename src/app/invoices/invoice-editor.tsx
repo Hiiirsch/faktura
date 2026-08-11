@@ -67,6 +67,7 @@ export type CustomerOption = {
 export type EditorInitialValues = {
   readonly invoiceId: string | null;
   readonly customerId: string;
+  readonly templateId: string;
   readonly taxScheme: TaxScheme;
   readonly currency: string;
   readonly issueDate: string;
@@ -342,12 +343,14 @@ export function InvoiceEditor({
   initial,
   customers,
   catalog,
+  templates,
   defaultTaxRatePercent,
   csrfToken,
 }: {
   readonly initial: EditorInitialValues;
   readonly customers: readonly CustomerOption[];
   readonly catalog: readonly CatalogItem[];
+  readonly templates: readonly { readonly id: string; readonly label: string }[];
   readonly defaultTaxRatePercent: string;
   readonly csrfToken: string;
 }): ReactNode {
@@ -513,6 +516,19 @@ export function InvoiceEditor({
         </label>
 
         <input type="hidden" name="currency" value={initial.currency} />
+
+        {/* Abweichende Vorlage je Beleg (FA-TPL-03). */}
+        <label className="flex flex-col gap-2">
+          <span className="text-ui font-medium">{messages.invoices.template}</span>
+          <select name="templateId" defaultValue={initial.templateId} className={INPUT_CLASS}>
+            <option value="">{messages.invoices.templateDefault}</option>
+            {templates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1.5">

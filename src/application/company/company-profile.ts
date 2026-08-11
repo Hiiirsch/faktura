@@ -157,6 +157,29 @@ export async function setInvoiceNumberFormat(
   });
 }
 
+/** Ändert das Dateinamenmuster erzeugter PDFs (FA-PDF-09). */
+export async function setPdfFileNamePattern(
+  context: OrganizationContext,
+  pattern: string,
+  actorId: string,
+  ipAddress: string | null,
+): Promise<void> {
+  const saved = await upsertCompanyProfile(
+    context,
+    { ...EMPTY_COMPANY_PROFILE, pdfFileNamePattern: pattern },
+    { pdfFileNamePattern: pattern },
+  );
+
+  await recordAuditEntry(context, {
+    entityType: 'CompanyProfile',
+    entityId: saved.id,
+    action: 'UPDATED',
+    actorId,
+    ipAddress,
+    details: { changedFields: 'pdfFileNamePattern', pdfFileNamePattern: pattern },
+  });
+}
+
 export async function setCompanyLogo(
   context: OrganizationContext,
   assetId: string | null,

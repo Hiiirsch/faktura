@@ -49,6 +49,8 @@ export type DraftInvoiceData = {
   readonly introText: string | null;
   readonly outroText: string | null;
   readonly purchaseOrderRef: string | null;
+  /** Abweichende Vorlage; `null` bedeutet Standardvorlage (FA-TPL-03). */
+  readonly templateId: string | null;
   readonly lines: readonly InvoiceLineData[];
 };
 
@@ -104,6 +106,7 @@ export async function createDraftInvoice(
       introText: data.introText,
       outroText: data.outroText,
       purchaseOrderRef: data.purchaseOrderRef,
+      templateId: data.templateId,
       netTotalCents: totals.netTotalCents,
       taxTotalCents: totals.taxTotalCents,
       grossTotalCents: totals.grossTotalCents,
@@ -166,6 +169,7 @@ export async function updateDraftInvoice(
         introText: data.introText,
         outroText: data.outroText,
         purchaseOrderRef: data.purchaseOrderRef,
+        templateId: data.templateId,
         netTotalCents: totals.netTotalCents,
         taxTotalCents: totals.taxTotalCents,
         grossTotalCents: totals.grossTotalCents,

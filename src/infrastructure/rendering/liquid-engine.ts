@@ -13,6 +13,7 @@
 import { Liquid, type LiquidError } from 'liquidjs';
 
 import type { InvoiceDocument } from '@/domain/document/invoice-document';
+import { buildPaymentTermsNotice } from '@/domain/document/notices';
 import {
   formatAmountDe,
   formatMoneyDe,
@@ -188,6 +189,16 @@ export function buildScope(document: InvoiceDocument): Record<string, unknown> {
       outstanding: document.totals.outstandingCents,
     },
     notices: document.notices,
+    /**
+     * Zahlungshinweise getrennt von den Pflichthinweisen (FA-PFL-10).
+     *
+     * Sie stehen im Beleg an anderer Stelle — beim Zahlungsblock, nicht bei den
+     * steuerlichen Hinweisen. Zusammengeworfen müsste die Vorlage sie wieder
+     * auseinandersortieren.
+     */
+    paymentNotices: [
+      buildPaymentTermsNotice(document.dueDate, document.documentType === 'CREDIT_NOTE'),
+    ].filter((notice): notice is string => notice !== null),
     footerText: document.footerText,
   };
 }

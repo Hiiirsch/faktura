@@ -8,6 +8,7 @@
 import { listCatalogItems } from '@/application/catalog/catalog-service';
 import { getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { listSelectableCustomers } from '@/application/customers/customer-service';
+import { listTemplates } from '@/application/templates/template-service';
 import type { OrganizationContext } from '@/application/auth/session-service';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import type { CountryCode } from '@/domain/codes/country-code';
@@ -21,6 +22,8 @@ import type { CustomerOption } from './invoice-editor';
 export type EditorContext = {
   readonly customers: readonly CustomerOption[];
   readonly catalog: Awaited<ReturnType<typeof listCatalogItems>>;
+  /** Auswahl abweichender Vorlagen je Beleg (FA-TPL-03). */
+  readonly templates: readonly { readonly id: string; readonly label: string }[];
   readonly defaultTaxRatePercent: string;
   readonly defaultCurrency: string;
   readonly today: string;
@@ -34,10 +37,11 @@ export async function loadEditorContext(
   organization: OrganizationContext,
   now: Date = new Date(),
 ): Promise<EditorContext> {
-  const [company, customers, catalog] = await Promise.all([
+  const [company, customers, catalog, templates] = await Promise.all([
     getCompanyProfileOrEmpty(organization),
     listSelectableCustomers(organization),
     listCatalogItems(organization),
+    listTemplates(organization),
   ]);
 
   const today = todayIn(getAppTimeZone(), now);
@@ -64,6 +68,7 @@ export async function loadEditorContext(
   return {
     customers: options,
     catalog,
+    templates: templates.map((template) => ({ id: template.id, label: template.name })),
     defaultTaxRatePercent: String(company.defaultTaxRateBasisPoints / PERCENT_BASIS_POINTS),
     defaultCurrency: company.defaultCurrency,
     today,

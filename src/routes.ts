@@ -22,6 +22,7 @@ export const CATALOG_PATH = '/catalog';
 export const NUMBERING_SETTINGS_PATH = '/settings/numbering';
 export const INVOICES_PATH = '/invoices';
 export const NEW_INVOICE_PATH = '/invoices/new';
+export const TEMPLATE_SETTINGS_PATH = '/settings/templates';
 
 export function invoicePath(id: string): string {
   return `${INVOICES_PATH}/${id}`;
@@ -31,9 +32,26 @@ export function customerPath(id: string): string {
   return `${CUSTOMERS_PATH}/${id}`;
 }
 
+export function templatePath(id: string): string {
+  return `${TEMPLATE_SETTINGS_PATH}/${id}`;
+}
+
 export function assetPath(id: string): string {
   return `/api/assets/${id}`;
 }
+
+/** Download des erzeugten PDF (FA-PDF-01). */
+export function invoicePdfPath(id: string): string {
+  return `/api/invoices/${id}/pdf`;
+}
+
+/** HTML-Vorschau desselben Dokuments (FA-PDF-02, -03). */
+export function invoicePreviewPath(id: string): string {
+  return `/api/invoices/${id}/preview`;
+}
+
+/** Vorschau einer noch nicht gespeicherten Vorlage (FA-TPL-04). */
+export const TEMPLATE_PREVIEW_PATH = '/api/templates/preview';
 
 export type RouteKind = 'page' | 'api';
 
@@ -85,6 +103,30 @@ export const routes: readonly RouteDefinition[] = [
   },
   { path: CATALOG_PATH, kind: 'page', access: 'authenticated' },
   { path: NUMBERING_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  { path: TEMPLATE_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  {
+    path: '/settings/templates/[id]',
+    kind: 'page',
+    access: 'authenticated',
+    probePath: '/settings/templates/probe-kennung',
+  },
+  {
+    path: '/api/invoices/[id]/pdf',
+    kind: 'api',
+    access: 'authenticated',
+    probePath: '/api/invoices/probe-kennung/pdf',
+  },
+  {
+    path: '/api/invoices/[id]/preview',
+    kind: 'api',
+    access: 'authenticated',
+    probePath: '/api/invoices/probe-kennung/preview',
+  },
+  {
+    path: TEMPLATE_PREVIEW_PATH,
+    kind: 'api',
+    access: 'authenticated',
+  },
   {
     path: '/api/assets/[id]',
     kind: 'api',

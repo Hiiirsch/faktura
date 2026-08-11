@@ -13,6 +13,7 @@ import {
   INVOICES_PATH,
   NUMBERING_SETTINGS_PATH,
   SECURITY_SETTINGS_PATH,
+  TEMPLATE_SETTINGS_PATH,
 } from '@/routes';
 import { FOCUS_RING } from '@/ui/components/form';
 
@@ -44,6 +45,7 @@ const NAVIGATION = [
 const SETTINGS = [
   { href: COMPANY_SETTINGS_PATH, label: messages.nav.company },
   { href: NUMBERING_SETTINGS_PATH, label: messages.nav.numbering },
+  { href: TEMPLATE_SETTINGS_PATH, label: messages.templates.title },
   { href: SECURITY_SETTINGS_PATH, label: messages.nav.security },
 ] as const;
 

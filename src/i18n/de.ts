@@ -280,6 +280,8 @@ export const messages = {
     taxSchemeHint:
       'Aus Kunden- und Firmendaten vorgeschlagen. Eine Änderung setzt Kategorie und Satz aller Positionen neu.',
     purchaseOrderRef: 'Bestellnummer',
+    template: 'Vorlage',
+    templateDefault: 'Standardvorlage',
     introText: 'Einleitungstext',
     outroText: 'Schlusstext',
 
@@ -391,7 +393,83 @@ export const messages = {
     errorNOT_FOUND: 'Der Beleg wurde nicht gefunden.',
     errorNO_COMPANY_PROFILE: 'Bitte zuerst die Firmendaten erfassen.',
   },
+  templates: {
+    title: 'Vorlagen',
+    heading: 'Vorlagen',
+    intro:
+      'Eine Vorlage bestimmt Aussehen und Aufbau des Belegs. Sie besteht aus Liquid-HTML und CSS.',
+    empty: 'Noch keine Vorlage. Die mitgelieferte DIN-5008-Vorlage entsteht beim ersten Beleg.',
+
+    create: 'Vorlage anlegen',
+    createHeading: 'Neue Vorlage',
+    editHeading: 'Vorlage bearbeiten',
+    name: 'Name',
+    description: 'Beschreibung',
+    htmlSource: 'HTML (Liquid)',
+    cssSource: 'CSS',
+    isDefault: 'Standardvorlage',
+    isDefaultHint: 'Wird für alle Belege ohne eigene Vorlage verwendet.',
+    makeDefault: 'Als Standard setzen',
+    defaultMarker: 'Standard',
+    duplicate: 'Duplizieren',
+    duplicateSuffix: 'Kopie',
+    remove: 'Vorlage löschen',
+    removeConfirm:
+      'Die Vorlage wird gelöscht. Bereits erzeugte PDFs bleiben unverändert — sie liegen als Datei vor.',
+    removeDefaultRejected: 'Die Standardvorlage lässt sich nicht löschen. Zuerst eine andere zum Standard machen.',
+    nameTaken: 'Unter diesem Namen gibt es bereits eine Vorlage.',
+    notFound: 'Diese Vorlage gibt es nicht.',
+    restoreDefault: 'Mitgelieferte Vorlage wiederherstellen',
+
+    sectionGeometry: 'Seitenformat',
+    sectionGeometryHint: 'Ränder in Millimetern. DIN 5008 sieht oben 25 mm und sonst 20 mm vor.',
+    marginTop: 'Rand oben',
+    marginRight: 'Rand rechts',
+    marginBottom: 'Rand unten',
+    marginLeft: 'Rand links',
+    marginInvalid: 'Ränder liegen zwischen 0 und 50 Millimetern.',
+
+    sectionUpload: 'Hochladen',
+    sectionUploadHint:
+      'Einzelne .html- und .css-Datei oder ein ZIP mit template.html und style.css.',
+    uploadFile: 'Datei',
+    upload: 'Hochladen',
+    uploadEmpty: 'Keine Datei ausgewählt.',
+    uploadTooLarge: 'Die Datei ist größer als 5 MB.',
+    uploadUnknownType: 'Zulässig sind .html, .css und .zip.',
+    uploadMissingEntries: 'Im Archiv fehlt template.html oder style.css.',
+    uploadUnsafeEntry: 'Das Archiv enthält einen Eintrag, der aus dem Zielverzeichnis führt.',
+    uploadNotUtf8: 'Die Datei ist nicht als UTF-8 lesbar.',
+
+    preview: 'Vorschau',
+    previewIntro: 'Zeigt den gewählten Beleg in dieser Vorlage.',
+    previewFrame: 'Belegvorschau',
+    previewInvoice: 'Beleg für die Vorschau',
+    previewNoInvoice: 'Sobald ein Beleg vorliegt, erscheint hier die Vorschau.',
+    previewFailed: 'Die Vorschau konnte nicht erzeugt werden.',
+    previewErrorHeading: 'Die Vorlage konnte nicht verarbeitet werden',
+    downloadPdf: 'Als PDF herunterladen',
+
+    /** FA-TPL-06: die verfügbaren Variablen, in der Oberfläche dokumentiert. */
+    sectionVariables: 'Verfügbare Variablen',
+    sectionVariablesHint:
+      'Ausgabe mit {{ … }}, Schleifen und Bedingungen mit {% … %}. Ein fehlendes optionales Feld bleibt leer.',
+    variableGroupSeller: 'Aussteller',
+    variableGroupBuyer: 'Empfänger',
+    variableGroupInvoice: 'Beleg',
+    variableGroupLines: 'Positionen (Schleife über lines)',
+    variableGroupTax: 'Steuergruppen (Schleife über taxBreakdown)',
+    variableGroupTotals: 'Summen',
+    variableGroupNotices: 'Hinweise',
+    variableGroupFilters: 'Filter',
+  },
+
   numbering: {
+    fileNameHeading: 'Dateiname der PDFs',
+    fileNameHint:
+      'Bestimmt, unter welchem Namen ein Beleg heruntergeladen wird. Platzhalter: {NUMBER}, {YYYY}, {MM}, {DD}, {CUSTOMER}, {TYPE}.',
+    fileNamePattern: 'Muster',
+    fileNameInvalid: 'Das Muster braucht mindestens einen bekannten Platzhalter.',
     title: 'Nummernkreis',
     heading: 'Nummernkreis',
     intro:

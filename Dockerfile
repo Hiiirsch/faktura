@@ -1,8 +1,16 @@
 # Anwendungscontainer (Spec §12).
 #
-# Chromium für das PDF-Rendering kommt mit M5 hinzu. Bis dahin bleibt das Image
-# schlank; die Ebenenreihenfolge ist bereits so gewählt, dass der Renderer
-# später ergänzt werden kann, ohne den Build umzustellen.
+# Chromium kommt aus der Paketverwaltung der Distribution, nicht als Download
+# von Playwright. Zwei Gründe: Es bekommt Sicherheitsaktualisierungen über
+# `apt`, statt als eingefrorener Stand im Image zu liegen, und das Image bleibt
+# um die rund 150 MB kleiner, die der zweite Browser kosten würde.
+#
+# Gestartet wird **ohne** `--no-sandbox` (Spec §11.3). Dafür kommt
+# `chromium-sandbox` mit: das setuid-Hilfsprogramm, mit dem Chromium seine
+# Sandbox auch dort aufbaut, wo unprivilegierte User-Namespaces gesperrt sind —
+# und das ist unter dem Standard-Seccomp-Profil von Docker der Fall. Ohne
+# dieses Paket bliebe nur `--no-sandbox`, und genau das schließt die
+# Spezifikation aus.
 
 ARG NODE_VERSION=24.13.0
 
@@ -75,11 +83,21 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && apt-get install -y --no-install-recommends \
+        openssl ca-certificates \
+        chromium \
+        chromium-sandbox \
+        fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
+# Der Renderer nimmt dieses Chromium statt des mitgelieferten. Die Schrift des
+# Belegs kommt als data:-URI mit dem Dokument; `fonts-liberation` ist nur die
+# Rückfallschrift für Kopf- und Fußzeile.
+ENV CHROMIUM_PATH=/usr/bin/chromium
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
 # Der Standardbenutzer `node` des Basisimages ist kein Root (NFA-SEC-20).
-RUN mkdir -p /app/data /app/storage && chown -R node:node /app
+RUN mkdir -p /app/data /app/storage/artifacts && chown -R node:node /app
 
 # Anwendungsbündel aus dem Standalone-Output.
 COPY --from=builder --chown=node:node /app/.next/standalone ./

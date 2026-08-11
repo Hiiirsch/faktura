@@ -209,6 +209,35 @@ Dateien, die sowohl von der Edge-Laufzeit, von Serverkomponenten als auch von
 Client-Komponenten gelesen werden (z. B. `infrastructure/security/csrf.ts`), bleiben
 importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bündel.
 
+## Ausgabe (seit M5)
+
+Der Weg vom Beleg zur Datei ist an einer Stelle beschrieben
+(`src/application/documents/render-invoice.ts`), damit Vorschau und Download
+nicht auseinanderlaufen: dieselbe Vorlage, dieselbe Schrift, dieselbe Geometrie.
+
+Für einen **festgeschriebenen** Beleg entsteht das PDF genau einmal und liegt
+danach als `InvoiceArtifact` mit SHA-256 vor. Deshalb verändert eine spätere
+Vorlagenänderung erzeugte PDFs nicht (FA-TPL-09) — ausgeliefert wird die Datei,
+nicht ein bei jedem Abruf neu gesetztes Dokument. Ein **Entwurf** wird bei jedem
+Abruf neu gesetzt und nie abgelegt.
+
+Geschrieben wird über eine Zwischendatei und `rename`; ein abgebrochener Lauf
+hinterlässt damit nichts (FA-PDF-11). Trigger `InvoiceArtifact_no_update` weist
+jede Änderung am Artefakt ab.
+
+Die Schrift des Belegs ist **dieselbe wie in der Oberfläche** (Fira Sans) und
+wird als `data:`-URI in jedes Dokument eingebettet. Der Renderer hat keinen
+Netzwerkzugriff und der Container keine installierten Schriften — käme sie nicht
+mit, setzte Chromium den Beleg in einer Ersatzschrift mit anderen Umbrüchen als
+in der Vorschau.
+
+Im Container läuft **Chromium aus der Paketverwaltung** (`CHROMIUM_PATH`), nicht
+der Download von Playwright: So kommt es über `apt` an Aktualisierungen. Es
+startet ohne `--no-sandbox` (Spec §11.3); dafür trägt der Dienst `SYS_ADMIN`,
+weil der Standard-Seccomp-Filter von Docker die Namespaces der Sandbox sonst
+verweigert. `playwright-core/browsers.json` wird zur Laufzeit gelesen und muss
+deshalb in `outputFileTracingIncludes` stehen.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -218,7 +247,7 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 | M2 | Stammdaten: Firma, Kunden, Katalog | abgenommen |
 | M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | abgenommen |
 | M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | abgenommen |
-| M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |
+| M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | umgesetzt |
 | M5.5a | Mandantenkontext: `organizationId`, Repository-Schicht mit Pflichtparameter | umgesetzt |
 | M5.5b | Gestaltung: Tokensatz, Schriften, Rahmen, Bestandsscreens auf Tokens | umgesetzt |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |

@@ -73,6 +73,8 @@ const headerSchema = z.object({
   introText: optionalText,
   outroText: optionalText,
   purchaseOrderRef: z.string().trim().max(200).transform((v) => (v.length === 0 ? null : v)),
+  /** Leere Auswahl bedeutet Standardvorlage (FA-TPL-03). */
+  templateId: z.string().trim().max(64).transform((v) => (v.length === 0 ? null : v)),
 });
 
 /**
@@ -150,6 +152,7 @@ function parseForm(
     introText: formData.get('introText'),
     outroText: formData.get('outroText'),
     purchaseOrderRef: formData.get('purchaseOrderRef'),
+    templateId: formData.get('templateId') ?? '',
   });
 
   if (!header.success) {

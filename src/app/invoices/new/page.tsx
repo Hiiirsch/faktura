@@ -61,6 +61,7 @@ export default async function NewInvoicePage(): Promise<ReactNode> {
               initial={{
                 invoiceId: null,
                 customerId: first.id,
+                templateId: '',
                 taxScheme: context.suggestedTaxScheme,
                 currency: context.defaultCurrency,
                 issueDate: context.today,
@@ -77,6 +78,7 @@ export default async function NewInvoicePage(): Promise<ReactNode> {
               }}
               customers={context.customers}
               catalog={context.catalog}
+              templates={context.templates}
               defaultTaxRatePercent={context.defaultTaxRatePercent}
               csrfToken={csrfToken}
             />

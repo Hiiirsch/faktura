@@ -70,7 +70,8 @@ function draft(customerId: string, overrides: Partial<DraftInvoiceData> = {}): D
     introText: null,
     outroText: null,
     purchaseOrderRef: null,
-    lines: [
+    templateId: null,
+      lines: [
       {
         position: 1,
         name: 'Beratung',

@@ -6,9 +6,13 @@ import { z } from 'zod';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
-import { setInvoiceNumberFormat } from '@/application/company/company-profile';
+import {
+  setInvoiceNumberFormat,
+  setPdfFileNamePattern,
+} from '@/application/company/company-profile';
 import { setSequenceStartValue } from '@/application/invoices/invoice-numbering';
 import { parseNumberFormat } from '@/domain/invoice/number-format';
+import { isValidFileNamePattern } from '@/domain/document/file-name';
 import { messages } from '@/i18n/de';
 import { NUMBERING_SETTINGS_PATH } from '@/routes';
 
@@ -74,6 +78,23 @@ export async function saveNumberFormatAction(
 
   revalidatePath(NUMBERING_SETTINGS_PATH);
   return { status: 'saved' };
+}
+
+export async function saveFileNamePatternAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+
+  const value = formData.get('pdfFileNamePattern');
+  const pattern = typeof value === 'string' ? value.trim() : '';
+
+  if (!isValidFileNamePattern(pattern)) {
+    return;
+  }
+
+  const context = await readRequestContext();
+  await setPdfFileNamePattern(session.organization, pattern, session.userId, context.ipAddress);
+
+  revalidatePath(NUMBERING_SETTINGS_PATH);
 }
 
 export async function setStartValueAction(

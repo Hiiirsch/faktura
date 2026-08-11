@@ -12,7 +12,8 @@ Verifikationsarten R und M.
 **keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
 Vorschlag und steht noch zur Freigabe aus.
 
-Stand: 2026-08-11 · 98 von 171 erledigt (97 abgenommen: M0–M4, 1 umgesetzt) · **M5 offen**
+Stand: 2026-08-11 · 133 von 171 erledigt (97 abgenommen: M0–M4, 36 umgesetzt) ·
+**M5 umgesetzt, Abnahme offen**
 
 Hinzu kommen 21 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
 Teil der ursprünglichen 171 sind: 18 umgesetzt, 3 offen.
@@ -112,7 +113,7 @@ Szenario benannt.
 | FA-NUM-07 | Einmaliger manueller Startwert setzbar | SOLL | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Startwert setzbar, solange nichts vergeben ist; danach abgelehnt |
 | FA-NUM-08 | Festgeschriebene Rechnung über UI nicht änderbar | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — inhaltliche Änderung am festgeschriebenen Beleg abgewiesen |
 | FA-NUM-09 | Unveränderbarkeit auch in der Persistenzschicht | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Datenbank-Trigger weisen auch den direkten Schreibzugriff ab, inklusive Rückweg auf Entwurf |
-| FA-NUM-10 | PDFs mit SHA-256 gespeichert, nie überschrieben | MUSS | T | M4 → M5 | offen | Setzt die PDF-Erzeugung voraus; Artefaktspeicher entsteht mit M5 |
+| FA-NUM-10 | PDFs mit SHA-256 gespeichert, nie überschrieben | MUSS | T | M4 → M5 | umgesetzt | `tests/integration/document-output.test.ts` — Artefakt mit SHA-256, unveränderlich per Trigger `InvoiceArtifact_no_update` |
 
 ## 6. Status & Zahlungen
 
@@ -134,47 +135,47 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-TPL-01 | Vorlage aus Liquid-HTML + CSS, als Datei oder ZIP | MUSS | M | M5 | offen | — |
-| FA-TPL-02 | Mehrere Vorlagen, eine als Standard | MUSS | T | M5 | offen | — |
-| FA-TPL-03 | Abweichende Vorlage je Rechnung wählbar | SOLL | T | M5 | offen | — |
-| FA-TPL-04 | Editor im Browser mit Highlighting und Live-Vorschau | SOLL | M | M5 | offen | — |
-| FA-TPL-05 | DIN-5008-konforme Standardvorlage, Erststart-Import | MUSS | M | M5 | offen | — |
-| FA-TPL-06 | Template-Variablen in der UI dokumentiert | MUSS | M | M5 | offen | — |
-| FA-TPL-07 | Syntaxfehler → verständliche Meldung, kein Absturz | MUSS | T | M5 | offen | — |
-| FA-TPL-08 | Seitenränder und -format je Vorlage konfigurierbar | SOLL | T | M5 | offen | — |
-| FA-TPL-09 | Vorlagenänderung verändert erzeugte PDFs nicht | MUSS | T | M5 | offen | — |
+| FA-TPL-01 | Vorlage aus Liquid-HTML + CSS, als Datei oder ZIP | MUSS | M | M5 | umgesetzt | `tests/unit/domain/template-upload.test.ts`; Upload in `src/app/settings/templates/actions.ts` — einzelne .html/.css oder ZIP mit `template.html` und `style.css` |
+| FA-TPL-02 | Mehrere Vorlagen, eine als Standard | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`; partieller eindeutiger Index `Template_one_default_per_organization` erzwingt genau eine Standardvorlage |
+| FA-TPL-03 | Abweichende Vorlage je Rechnung wählbar | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Beleg mit eigener Vorlage wird darin gesetzt, samt deren Rändern |
+| FA-TPL-04 | Editor im Browser mit Highlighting und Live-Vorschau | SOLL | M | M5 | offen | Live-Vorschau umgesetzt (`src/app/settings/templates/template-forms.tsx`, Aktualisierung nach Eingabepause). **Syntaxhervorhebung fehlt**: Monaco brächte mehrere Megabyte in das Client-Bündel für einen selten benutzten Editor — bewusst zurückgestellt |
+| FA-TPL-05 | DIN-5008-konforme Standardvorlage, Erststart-Import | MUSS | M | M5 | umgesetzt | `tests/integration/document-output.test.ts`; Vorlage in `src/infrastructure/templates/default-template.ts`, angelegt beim ersten Bedarf |
+| FA-TPL-06 | Template-Variablen in der UI dokumentiert | MUSS | M | M5 | umgesetzt | `tests/unit/domain/template-variables.test.ts` — die Referenz wird gegen den tatsächlichen Gültigkeitsbereich der Engine geprüft; angezeigt unter `/settings/templates/[id]` |
+| FA-TPL-07 | Syntaxfehler → verständliche Meldung, kein Absturz | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`, `tests/integration/rendering.test.ts` — Ergebniswert mit Meldung und Zeilenangabe statt Ausnahme |
+| FA-TPL-08 | Seitenränder und -format je Vorlage konfigurierbar | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Ränder der Vorlage landen in den `@page`-Angaben |
+| FA-TPL-09 | Vorlagenänderung verändert erzeugte PDFs nicht | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — nach vollständigem Austausch der Vorlage liefert der Abruf denselben Hash und dieselben Bytes |
 
 ## 8. PDF-Ausgabe
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-PDF-01 | Festgeschriebene Rechnung als PDF herunterladbar | MUSS | T | M5 | offen | — |
-| FA-PDF-02 | Vorschau im Editor, aktualisiert nach Eingabepause | MUSS | M | M5 | offen | — |
-| FA-PDF-03 | Entwurf als Vorschau-PDF, sichtbar gekennzeichnet | SOLL | M | M5 | offen | — |
-| FA-PDF-04 | ≥60 Positionen brechen ohne Verlust über Seiten um | MUSS | T | M5 | offen | — |
-| FA-PDF-05 | Tabellenkopf wiederholt sich auf Folgeseiten | MUSS | M | M5 | offen | — |
-| FA-PDF-06 | Seitenangabe „Seite X von Y" auf jeder Seite | MUSS | T | M5 | offen | — |
-| FA-PDF-07 | Summenblock nicht durch Seitenumbruch getrennt | SOLL | M | M5 | offen | — |
-| FA-PDF-08 | Anschriftfeld im Fensterumschlag DIN lang sichtbar | MUSS | M | M5 | offen | — |
-| FA-PDF-09 | Konfigurierbares Dateinamenmuster | SOLL | T | M5 | offen | — |
-| FA-PDF-10 | Rendering 10 Positionen unter 3 s | SOLL | T | M5 | offen | — |
-| FA-PDF-11 | Fehlgeschlagenes Rendering hinterlässt keine Datei | MUSS | T | M5 | offen | — |
+| FA-PDF-01 | Festgeschriebene Rechnung als PDF herunterladbar | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`; Route `/api/invoices/[id]/pdf` |
+| FA-PDF-02 | Vorschau im Editor, aktualisiert nach Eingabepause | MUSS | M | M5 | umgesetzt | Manuell: Vorschau im Vorlagen-Editor und auf der Belegseite, Aktualisierung 600 ms nach der letzten Eingabe; dieselbe Vorlage und Schrift wie das PDF |
+| FA-PDF-03 | Entwurf als Vorschau-PDF, sichtbar gekennzeichnet | SOLL | M | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Entwurfsvermerk im Blattkopf, nach dem Festschreiben nicht mehr |
+| FA-PDF-04 | ≥60 Positionen brechen ohne Verlust über Seiten um | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — 60 Positionen, alle enthalten, mehrseitiges PDF |
+| FA-PDF-05 | Tabellenkopf wiederholt sich auf Folgeseiten | MUSS | M | M5 | umgesetzt | `display: table-header-group` in der Standardvorlage; Manuell: Tabellenkopf auf Folgeseiten |
+| FA-PDF-06 | Seitenangabe „Seite X von Y" auf jeder Seite | MUSS | T | M5 | umgesetzt | `tests/integration/rendering.test.ts`; Fußzeile über Playwright, nicht über CSS |
+| FA-PDF-07 | Summenblock nicht durch Seitenumbruch getrennt | SOLL | M | M5 | umgesetzt | `break-inside: avoid` auf Summenblock und Positionszeilen; Manuell: Summenblock bleibt zusammen |
+| FA-PDF-08 | Anschriftfeld im Fensterumschlag DIN lang sichtbar | MUSS | M | M5 | umgesetzt | Anschriftfeld 85 × 45 mm ab 45 mm Blattoberkante (DIN 5008 Form B); Manuell: Sichtprüfung im Fensterumschlag DIN lang |
+| FA-PDF-09 | Konfigurierbares Dateinamenmuster | SOLL | T | M5 | umgesetzt | `tests/unit/domain/template-upload.test.ts` (Muster und Filterung); einstellbar unter Einstellungen › Nummernkreis |
+| FA-PDF-10 | Rendering 10 Positionen unter 3 s | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — 10 Positionen unter 3 s bei laufendem Browser |
+| FA-PDF-11 | Fehlgeschlagenes Rendering hinterlässt keine Datei | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — kaputte Vorlage hinterlässt weder Artefakt noch Datei; Schreiben über Zwischendatei und `rename` |
 
 ## 9. Pflichtangaben auf dem Dokument
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-PFL-01 | Name und Anschrift beider Parteien | MUSS | T | M5 | offen | — |
-| FA-PFL-02 | Steuernummer oder USt-IdNr des Ausstellers | MUSS | T | M5 | offen | — |
-| FA-PFL-03 | Ausstellungsdatum | MUSS | T | M5 | offen | — |
-| FA-PFL-04 | Fortlaufende Rechnungsnummer | MUSS | T | M5 | offen | — |
-| FA-PFL-05 | Menge und Art der Leistung je Position | MUSS | T | M5 | offen | — |
-| FA-PFL-06 | Zeitpunkt bzw. Zeitraum der Leistung | MUSS | T | M5 | offen | — |
-| FA-PFL-07 | Entgelt nach Steuersätzen aufgeschlüsselt | MUSS | T | M5 | offen | — |
-| FA-PFL-08 | Steuersatz und -betrag bzw. Befreiungshinweis | MUSS | T | M5 | offen | — |
-| FA-PFL-09 | Reverse Charge: beide USt-IdNr + Hinweis | MUSS | T | M5 | offen | — |
-| FA-PFL-10 | Bankverbindung und Zahlungsziel | MUSS | T | M5 | offen | — |
-| FA-PFL-11 | Stornodokument bezeichnet und mit Bezugsnummer | MUSS | T | M5 | offen | — |
+| FA-PFL-01 | Name und Anschrift beider Parteien | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-02 | Steuernummer oder USt-IdNr des Ausstellers | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-03 | Ausstellungsdatum | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-04 | Fortlaufende Rechnungsnummer | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-05 | Menge und Art der Leistung je Position | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-06 | Zeitpunkt bzw. Zeitraum der Leistung | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-07 | Entgelt nach Steuersätzen aufgeschlüsselt | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-08 | Steuersatz und -betrag bzw. Befreiungshinweis | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-09 | Reverse Charge: beide USt-IdNr + Hinweis | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — beide USt-IdNr und der Hinweis auf die Steuerschuldnerschaft |
+| FA-PFL-10 | Bankverbindung und Zahlungsziel | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Bankverbindung und Zahlungsziel |
+| FA-PFL-11 | Stornodokument bezeichnet und mit Bezugsnummer | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Stornodokument mit Bezugsnummer |
 
 ## 10. Dashboard
 
@@ -210,7 +211,7 @@ Szenario benannt.
 | NFA-SEC-12 | Renderer ohne Netzwerkzugriff, nachgewiesen | MUSS | T | M5 | offen | — |
 | NFA-SEC-13 | JavaScript im Rendering-Kontext deaktiviert | MUSS | R | M5 | offen | — |
 | NFA-SEC-14 | Rendering-Timeout (Standard 15 s) bricht kontrolliert ab | MUSS | T | M5 | offen | — |
-| NFA-SEC-15 | Uploads: Größe, MIME, Magic Bytes, ZIP-Slip-Schutz | MUSS | T | M5 | offen | — |
+| NFA-SEC-15 | Uploads: Größe, MIME, Magic Bytes, ZIP-Slip-Schutz | MUSS | T | M5 | umgesetzt | `tests/unit/domain/template-upload.test.ts` — ZIP-Slip, Magic Bytes, Größenlimit, strenges UTF-8 |
 | NFA-SEC-16 | Uploads außerhalb des Webroots, nur authentifiziert | MUSS | T | M5 | offen | — |
 | NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts`, `tests/integration/route-protection.test.ts` |
 | NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | abgenommen | Review: generische Meldungen in `login.ts`; Healthcheck ohne Details; Ursachen nur im Serverlog |
@@ -228,7 +229,7 @@ Szenario benannt.
 | NFA-COMP-03 | Vollständiger Datenexport maschinenlesbar | MUSS | M | M7 | offen | — |
 | NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | offen | — |
 | NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | offen | — |
-| NFA-COMP-06 | Keine externen Fonts, Skripte, Analysedienste | MUSS | R | M7 | offen | — |
+| NFA-COMP-06 | Keine externen Fonts, Skripte, Analysedienste | MUSS | R | M7 | umgesetzt | `tests/architecture/design-tokens.test.ts` — Schriften aus dem Paket, keine externe Adresse im Frontend |
 
 ## 13. Betrieb
 
@@ -255,7 +256,7 @@ Szenario benannt.
 | NFA-ARCH-03 | Dokumentmodell enthält alle Felder aus Spec §9.2 | MUSS | T | M5 | offen | — |
 | NFA-ARCH-04 | Einheiten als UN/ECE-Rec-20-Codes, Labels erst in der Anzeige | MUSS | T | M5 | offen | — |
 | NFA-ARCH-05 | Steuerkategorien als UNTDID-5305-Codes | MUSS | T | M5 | offen | — |
-| NFA-ARCH-06 | Konfigurierbare PDF-Nachbearbeitungskette, Testprozessor wirkt | MUSS | T | M5 | offen | — |
+| NFA-ARCH-06 | Konfigurierbare PDF-Nachbearbeitungskette, Testprozessor wirkt | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Reihenfolge, Durchreichen des Fehlers, leere Kette in V1 |
 | NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | offen | — |
 | NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — zusätzlicher Handler ohne Änderung der Kernlogik; ein fehlschlagender Handler kippt den Vorgang nicht |
 | NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | abgenommen | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
@@ -307,7 +308,7 @@ Auftraggeber vorgegeben hat.
 | FA-UI-16 | Spalte „Erstellt von" im Tabellenschema angelegt, in V1 ausgeblendet | SOLL | R | M5.5b | umgesetzt | `src/ui/components/table.tsx` (`hidden`-Spalten); Rechnungsliste führt sie im Schema |
 | NFA-UI-01 | Kontrast ≥ 4.5:1 für Text, ≥ 3:1 für Bedienelemente | MUSS | T | M5.5b | umgesetzt | `tests/unit/ui/contrast.test.ts` — beide Farbschemata; `--ink-faint` gegenüber dem Entwurf abgedunkelt |
 | NFA-UI-02 | Sichtbarer Fokusring überall; kein `outline: none` ohne Ersatz | MUSS | T | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts`; `FOCUS_RING` in `src/ui/components/form.tsx` |
-| NFA-UI-03 | Rechnungseditor inklusive Positionssortierung per Tastatur bedienbar | MUSS | M | M5.5b | offen | Sortierung über `@dnd-kit` ist angebunden, die Tastaturbedienung ist noch nicht geprüft |
+| NFA-UI-03 | Rechnungseditor inklusive Positionssortierung per Tastatur bedienbar | MUSS | M | M5.5b | umgesetzt | `src/app/invoices/invoice-editor.tsx` — `KeyboardSensor` mit `sortableKeyboardCoordinates`, zusätzlich die Knöpfe „Nach oben"/„Nach unten". Verifikationsart M: die Abnahme am Gerät steht aus |
 | NFA-UI-04 | Keine externen Netzwerkanfragen aus dem Frontend | MUSS | T | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts`; zusätzlich sperrt die CSP in `src/infrastructure/security/security-headers.ts` |
 | NFA-UI-05 | Dunkles Farbschema verfügbar; Dokumentvorschau bleibt weiß | KANN | M | M5.5b | umgesetzt | `src/app/globals.css` — Tokenüberschreibung unter `prefers-color-scheme: dark`, `--sheet` unverändert; `tests/unit/ui/contrast.test.ts` prüft beide Schemata |
 

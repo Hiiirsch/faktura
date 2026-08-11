@@ -20,7 +20,13 @@ import { todayIn } from '@/domain/time/plain-date';
 import { messages } from '@/i18n/de';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { customerPath, INVOICES_PATH, invoicePath } from '@/routes';
+import {
+  customerPath,
+  INVOICES_PATH,
+  invoicePath,
+  invoicePdfPath,
+  invoicePreviewPath,
+} from '@/routes';
 import { ConfirmButton } from '@/ui/components/confirm-button';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { formatMoney, formatPercent, formatQuantity, formatUnit } from '@/ui/format';
@@ -91,6 +97,16 @@ export default async function InvoiceDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {/* Download des Belegs (FA-PDF-01); ein Entwurf wird dabei sichtbar
+                als solcher gekennzeichnet (FA-PDF-03). */}
+            <a
+              href={invoicePdfPath(invoice.id)}
+              className={SECONDARY_BUTTON_CLASS}
+              download
+            >
+              {messages.templates.downloadPdf}
+            </a>
+
             <form action={duplicateInvoiceAction}>
               <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
               <input type="hidden" name="invoiceId" value={invoice.id} />
@@ -121,6 +137,23 @@ export default async function InvoiceDetailPage({
         ) : (
           <IssuedView invoice={invoice} currency={currency} csrfToken={csrfToken} />
         )}
+
+        {/*
+          Das Blatt: die einzige erhabene Fläche der Anwendung, eckig und weiß
+          (Frontend-Entwurf §1, FA-UI-02). Dasselbe Dokument, das der Download
+          als PDF liefert (FA-PDF-02).
+        */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-section font-semibold text-ink">{messages.templates.preview}</h2>
+          <div className="bg-sheet shadow-sheet">
+            <iframe
+              src={invoicePreviewPath(invoice.id)}
+              title={messages.templates.previewFrame}
+              sandbox=""
+              className="h-sheet-height w-full border-0"
+            />
+          </div>
+        </section>
 
         {isDraft || invoice.documentType === 'CREDIT_NOTE' ? null : (
           <PaymentSection
@@ -219,6 +252,7 @@ async function DraftEditor({
         initial={{
           invoiceId,
           customerId: invoice.customerId,
+          templateId: invoice.templateId ?? '',
           taxScheme: isTaxScheme(invoice.taxScheme) ? invoice.taxScheme : 'STANDARD',
           currency: invoice.currency,
           issueDate: invoice.issueDate ?? '',
@@ -242,6 +276,7 @@ async function DraftEditor({
         }}
         customers={context.customers}
         catalog={context.catalog}
+        templates={context.templates}
         defaultTaxRatePercent={context.defaultTaxRatePercent}
         csrfToken={csrfToken}
       />

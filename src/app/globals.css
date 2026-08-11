@@ -104,6 +104,10 @@
      späterer Organisationswechsler das Layout nicht verschiebt (FA-UI-15). */
   --spacing-sidebar: 240px;
   --spacing-zone: 56px;
+  /* Das Blatt in seiner physischen Größe: A4. Keine Gestaltungsentscheidung,
+     sondern das Papierformat, auf dem der Beleg landet. */
+  --spacing-sheet-width: 210mm;
+  --spacing-sheet-height: 297mm;
   /* `--container-*` erzeugt die `max-w-*`-Utilities, `--spacing-*` die Maße. */
   --container-content: 1200px;
 }

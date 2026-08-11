@@ -33,6 +33,8 @@ model Organization {
 
   companyProfile  CompanyProfile?
   users           User[]
+  templates       Template[]
+  artifacts       InvoiceArtifact[]
   customers       Customer[]
   catalogItems    CatalogItem[]
   assets          Asset[]
@@ -87,6 +89,8 @@ model CompanyProfile {
   defaultCurrency           String   @default("EUR")
   footerText                String?
   invoiceNumberFormat       String   @default("RE-{YYYY}-{SEQ:4}")
+  /// Muster für den Dateinamen erzeugter PDFs (FA-PDF-09).
+  pdfFileNamePattern        String   @default("{NUMBER}")
   updatedAt                 DateTime @updatedAt
 }
 
@@ -225,10 +229,14 @@ model Invoice {
   precedingInvoice   Invoice?  @relation("Cancellation", fields: [precedingInvoiceId], references: [id])
   cancelledBy        Invoice[] @relation("Cancellation")
 
+  /// Abweichende Vorlage je Beleg (FA-TPL-03); ohne Angabe gilt die
+  /// Standardvorlage der Organisation.
   templateId String?
+  template   Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
-  lines    InvoiceLine[]
-  payments Payment[]
+  lines     InvoiceLine[]
+  payments  Payment[]
+  artifacts InvoiceArtifact[]
 
   /// Denormalisierte Summen in Cent, bei jeder Änderung neu berechnet.
   netTotalCents   Int @default(0)
@@ -304,6 +312,71 @@ model Payment {
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+}
+
+/// Erzeugte Belegdateien — unveränderlich, mit Hash zur Integritätsprüfung.
+///
+/// Das Artefakt ist der Grund, warum eine spätere Vorlagenänderung ein bereits
+/// erzeugtes PDF nicht verändert (FA-TPL-09): Ausgeliefert wird die Datei, die
+/// beim Festschreiben entstanden ist, nicht ein bei jedem Abruf neu gesetztes
+/// Dokument. Der Hash macht eine nachträgliche Veränderung erkennbar.
+model InvoiceArtifact {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// `pdf`; [V2] `zugferd-pdf`, `xrechnung-xml`.
+  kind      String   @default("pdf")
+  filePath  String
+  sha256    String
+  byteSize  Int
+  /// Der Dateiname, unter dem das Artefakt ausgeliefert wird (FA-PDF-09).
+  fileName  String
+  createdAt DateTime @default(now())
+
+  /// Je Beleg und Art genau ein Artefakt — ein zweites PDF derselben Rechnung
+  /// wäre eine zweite Wahrheit.
+  @@unique([invoiceId, kind])
+  @@index([organizationId, createdAt])
+}
+
+// ─── Vorlagen ───────────────────────────────────────────────────────────────
+
+/// Rechnungsvorlage aus Liquid-HTML und CSS (Spec §8.1).
+///
+/// Abweichung von Spec §4: Die Ränder stehen in vier Ganzzahlspalten statt in
+/// einem `Json`-Feld. SQLite legte `Json` als Text ab; Millimeterangaben wären
+/// dann weder typisiert noch prüfbar, und ein Tippfehler fiele erst beim
+/// Rendern auf.
+model Template {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  htmlSource  String
+  cssSource   String
+
+  pageFormat     String @default("A4")
+  marginTopMm    Int    @default(25)
+  marginRightMm  Int    @default(20)
+  marginBottomMm Int    @default(20)
+  marginLeftMm   Int    @default(20)
+
+  /// Genau eine Vorlage je Organisation trägt die Marke; erzwungen von einem
+  /// partiellen eindeutigen Index, den die Migration anlegt (FA-TPL-02).
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 // ─── Authentifizierung ──────────────────────────────────────────────────────

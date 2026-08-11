@@ -56,7 +56,8 @@ function draft(customerId: string, issueDate: string, overrides: Partial<DraftIn
     introText: null,
     outroText: null,
     purchaseOrderRef: null,
-    lines: [
+    templateId: null,
+      lines: [
       {
         position: 1,
         name: 'Beratung',

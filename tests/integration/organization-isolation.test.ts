@@ -139,6 +139,7 @@ async function seed(organization: typeof testOrganization, marker: string) {
       introText: `Beleg ${marker}`,
       outroText: null,
       purchaseOrderRef: null,
+      templateId: null,
       lines: [
         {
           position: 1,
@@ -257,7 +258,8 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
         introText: null,
         outroText: null,
         purchaseOrderRef: null,
-        lines: [],
+      templateId: null,
+                lines: [],
       },
       ACTOR,
       null,
@@ -283,7 +285,8 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
         introText: 'Fremdzugriff',
         outroText: null,
         purchaseOrderRef: null,
-        lines: [],
+      templateId: null,
+                lines: [],
       },
       ACTOR,
       null,
@@ -312,7 +315,8 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
         introText: null,
         outroText: null,
         purchaseOrderRef: null,
-        lines: [
+      templateId: null,
+                lines: [
           {
             position: 1,
             name: 'Leistung',

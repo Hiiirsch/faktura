@@ -43,6 +43,17 @@ const envSchema = z.object({
    * ausschließlich über authentifizierte Routen (NFA-SEC-16).
    */
   STORAGE_DIR: z.string().min(1).default('./storage'),
+
+  /**
+   * Pfad zu einem vorhandenen Chromium (Spec §8.2, §11.3).
+   *
+   * Ohne Angabe nimmt Playwright den mitgelieferten Browser — der Weg für die
+   * lokale Entwicklung. Das Container-Image installiert stattdessen das
+   * Chromium der Distribution und setzt diese Variable: So kommt der Browser
+   * über die Paketverwaltung an Sicherheitsaktualisierungen, statt als
+   * eingefrorener Download im Image zu liegen.
+   */
+  CHROMIUM_PATH: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

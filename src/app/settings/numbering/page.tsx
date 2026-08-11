@@ -10,14 +10,21 @@ import {
   formatInvoiceNumber,
   sequenceScopeFor,
 } from '@/domain/invoice/number-format';
+import { DEFAULT_FILE_NAME_PATTERN } from '@/domain/document/file-name';
 import { todayIn } from '@/domain/time/plain-date';
 import { messages } from '@/i18n/de';
-import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
+import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { NUMBERING_SETTINGS_PATH } from '@/routes';
-import { SECTION_CLASS, NoScriptNotice } from '@/ui/components/form';
+import {
+  INPUT_CLASS,
+  NoScriptNotice,
+  SECONDARY_BUTTON_CLASS,
+  SECTION_CLASS,
+} from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
 
 import { AppShell } from '../../app-shell';
+import { saveFileNamePatternAction } from './actions';
 import { NumberFormatForm, StartValueForm } from './numbering-forms';
 
 export const dynamic = 'force-dynamic';
@@ -112,6 +119,34 @@ export default async function NumberingSettingsPage(): Promise<ReactNode> {
             </p>
           </div>
           <StartValueForm suggestedScope={currentScope} csrfToken={csrfToken} />
+        </section>
+
+        {/* Dateiname erzeugter PDFs (FA-PDF-09). */}
+        <section className={SECTION_CLASS}>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-section font-medium">{messages.numbering.fileNameHeading}</h2>
+            <p className="text-ui text-ink-muted">{messages.numbering.fileNameHint}</p>
+          </div>
+
+          <form action={saveFileNamePatternAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+            <label className="flex min-w-64 flex-1 flex-col gap-2">
+              <span className="text-ui font-medium">{messages.numbering.fileNamePattern}</span>
+              <input
+                name="pdfFileNamePattern"
+                defaultValue={
+                  'pdfFileNamePattern' in company &&
+                  typeof company.pdfFileNamePattern === 'string'
+                    ? company.pdfFileNamePattern
+                    : DEFAULT_FILE_NAME_PATTERN
+                }
+                className={`${INPUT_CLASS} font-mono`}
+              />
+            </label>
+            <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+              {messages.common.save}
+            </button>
+          </form>
         </section>
     </AppShell>
   );
