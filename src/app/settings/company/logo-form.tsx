@@ -22,7 +22,7 @@ export function LogoForm({ csrfToken }: { readonly csrfToken: string }): ReactNo
       {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="logo" className="text-sm font-medium">
+        <label htmlFor="logo" className="text-ui font-medium">
           {messages.company.logoUpload}
         </label>
         <input

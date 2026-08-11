@@ -1,31 +1,65 @@
 /**
- * Formularbausteine der Oberfläche.
+ * Formularbausteine der Oberfläche (Frontend-Entwurf §5).
  *
  * Jedes Feld verbindet Beschriftung und Eingabe fest über `id`/`htmlFor` und
  * hängt eine Fehlermeldung über `aria-describedby` an (NFA-QUAL-09). Als
  * eigene Bausteine statt wiederholter Klassenlisten, damit diese Zuordnung
  * nicht an einer von künftig vielen Stellen vergessen wird.
+ *
+ * Sämtliche Klassen stammen aus den Tokens in `globals.css` (FA-UI-01). Es gibt
+ * keine `dark:`-Variante: Das dunkle Schema tauscht die Tokenwerte, nicht die
+ * Klassen.
  */
 import type { ReactNode } from 'react';
 
+/**
+ * Der Fokusring (NFA-UI-02): 2 px in `--accent` mit 2 px Abstand.
+ *
+ * Als echte `outline`, nicht als `box-shadow` — nur so bleibt er im
+ * Kontrastmodus des Betriebssystems sichtbar. `outline: none` ohne Ersatz
+ * kommt in dieser Anwendung nirgends vor.
+ */
+export const FOCUS_RING =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+
+const CONTROL_BASE = `h-9 rounded-control text-ui transition-colors duration-(--duration-state) ${FOCUS_RING}`;
+
 export const INPUT_CLASS =
-  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 ' +
-  'focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-400 ' +
-  'disabled:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ' +
-  'dark:disabled:bg-neutral-800';
+  `${CONTROL_BASE} w-full border border-rule bg-surface-sunken px-3 text-ink ` +
+  'placeholder:text-ink-faint disabled:text-ink-faint';
+
+/** Mehrzeilige Eingabe: dieselbe Optik, aber ohne feste Höhe. */
+export const TEXTAREA_CLASS =
+  `rounded-control text-ui transition-colors duration-(--duration-state) ${FOCUS_RING} ` +
+  'w-full border border-rule bg-surface-sunken px-3 py-2 text-ink placeholder:text-ink-faint';
 
 export const PRIMARY_BUTTON_CLASS =
-  'rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 ' +
-  'focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:bg-neutral-100 ' +
-  'dark:text-neutral-900 dark:hover:bg-neutral-300';
+  `${CONTROL_BASE} inline-flex items-center justify-center bg-accent px-4 font-medium ` +
+  'text-surface hover:bg-accent-hover disabled:bg-ink-faint';
 
 export const SECONDARY_BUTTON_CLASS =
-  'rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 ' +
-  'focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:border-neutral-700 ' +
-  'dark:hover:bg-neutral-800';
+  `${CONTROL_BASE} inline-flex items-center justify-center border border-rule px-4 ` +
+  'text-ink hover:bg-surface-sunken disabled:text-ink-faint';
 
-export const CARD_CLASS =
-  'flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800';
+/** Tertiäre Aktionen: nur Text, keine Fläche, keine Kontur. */
+export const QUIET_BUTTON_CLASS =
+  `${CONTROL_BASE} inline-flex items-center justify-center px-2 text-accent ` +
+  'hover:text-accent-hover disabled:text-ink-faint';
+
+/**
+ * Destruktive Aktionen. Rot ist ausschließlich für Handlungen reserviert, die
+ * Daten zerstören (§2.1) — nicht für Überfälligkeit, nicht für Fehler.
+ */
+export const DESTRUCTIVE_BUTTON_CLASS =
+  `${CONTROL_BASE} inline-flex items-center justify-center bg-danger px-4 font-medium ` +
+  'text-surface hover:bg-danger disabled:bg-ink-faint';
+
+/**
+ * Abschnittsfläche. Keine Karte, kein Schatten, kein Radius — getrennt allein
+ * durch eine Haarlinie und Weißraum (§2.3). Das Blatt bleibt die einzige
+ * erhabene Fläche der Anwendung (FA-UI-02).
+ */
+export const SECTION_CLASS = 'flex flex-col gap-4 border-t border-rule pt-6';
 
 type BaseFieldProps = {
   readonly name: string;
@@ -47,19 +81,19 @@ function FieldShell({
   const errorId = error === undefined ? undefined : `${name}-error`;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="text-sm font-medium">
+    <div className="flex flex-col gap-2">
+      <label htmlFor={name} className="text-ui font-medium text-ink">
         {label}
         {required === true ? <span aria-hidden="true"> *</span> : null}
       </label>
       {children}
       {hint === undefined ? null : (
-        <p id={hintId} className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p id={hintId} className="text-small text-ink-muted">
           {hint}
         </p>
       )}
       {error === undefined ? null : (
-        <p id={errorId} className="text-sm text-red-700 dark:text-red-300">
+        <p id={errorId} className="text-small text-danger">
           {error}
         </p>
       )}
@@ -84,6 +118,8 @@ export type TextFieldProps = BaseFieldProps & {
   readonly min?: number;
   readonly max?: number;
   readonly step?: string;
+  /** Beträge, Nummern und Kennungen werden monospaced gesetzt (FA-UI-03). */
+  readonly numeric?: boolean;
 };
 
 export function TextField({
@@ -95,6 +131,7 @@ export function TextField({
   min,
   max,
   step,
+  numeric,
   ...field
 }: TextFieldProps): ReactNode {
   return (
@@ -113,7 +150,7 @@ export function TextField({
         min={min}
         max={max}
         step={step}
-        className={INPUT_CLASS}
+        className={numeric === true ? `${INPUT_CLASS} text-right font-mono` : INPUT_CLASS}
       />
     </FieldShell>
   );
@@ -133,7 +170,7 @@ export function TextAreaField({
         defaultValue={defaultValue ?? ''}
         required={field.required}
         aria-describedby={describedBy(field.name, field.hint, field.error)}
-        className={INPUT_CLASS}
+        className={TEXTAREA_CLASS}
       />
     </FieldShell>
   );
@@ -183,7 +220,7 @@ export function CheckboxField({
   const hintId = hint === undefined ? undefined : `${name}-hint`;
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <input
           id={name}
@@ -192,14 +229,14 @@ export function CheckboxField({
           value="on"
           defaultChecked={defaultChecked}
           aria-describedby={hintId}
-          className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+          className={`size-4 rounded-control border border-rule accent-accent ${FOCUS_RING}`}
         />
-        <label htmlFor={name} className="text-sm font-medium">
+        <label htmlFor={name} className="text-ui font-medium text-ink">
           {label}
         </label>
       </div>
       {hint === undefined ? null : (
-        <p id={hintId} className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p id={hintId} className="text-small text-ink-muted">
           {hint}
         </p>
       )}
@@ -217,11 +254,11 @@ export function FormSection({
   readonly children: ReactNode;
 }): ReactNode {
   return (
-    <section className={CARD_CLASS}>
+    <section className={SECTION_CLASS}>
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-medium">{title}</h2>
+        <h2 className="text-section font-semibold text-ink">{title}</h2>
         {description === undefined ? null : (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{description}</p>
+          <p className="text-small text-ink-muted">{description}</p>
         )}
       </div>
       {children}
@@ -229,6 +266,13 @@ export function FormSection({
   );
 }
 
+/**
+ * Meldung über den Ausgang einer Handlung.
+ *
+ * Fehler tragen keine Fläche in `--danger`: Rot bleibt destruktiven Aktionen
+ * vorbehalten (§2.1). Ein fehlgeschlagenes Speichern ist kein zerstörerischer
+ * Vorgang, sondern eine Auskunft — sie steht in Ocker.
+ */
 export function Alert({
   tone,
   children,
@@ -238,8 +282,8 @@ export function Alert({
 }): ReactNode {
   const className =
     tone === 'error'
-      ? 'rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200'
-      : 'rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-200';
+      ? 'rounded-control border border-rule bg-ocker-wash px-4 py-3 text-ui text-ink'
+      : 'rounded-control border border-rule bg-moss-wash px-4 py-3 text-ui text-ink';
 
   return (
     <p role={tone === 'error' ? 'alert' : 'status'} className={className}>
@@ -260,7 +304,7 @@ export function Alert({
 export function NoScriptNotice({ message }: { readonly message: string }): ReactNode {
   return (
     <noscript>
-      <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+      <p className="rounded-control border border-rule bg-ocker-wash px-4 py-3 text-ui text-ink">
         {message}
       </p>
     </noscript>

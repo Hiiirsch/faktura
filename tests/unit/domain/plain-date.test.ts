@@ -22,6 +22,7 @@ import {
   todayIn,
   yearMonthOf,
   yearOf,
+  daysBetween,
 } from '@/domain/time/plain-date';
 import { isErr, unwrap } from '@/domain/shared/result';
 
@@ -129,5 +130,26 @@ describe('Hilfsfunktionen für Kalendertage', () => {
 
   it('weist eine nicht ganzzahlige Tagesanzahl zurück', () => {
     expect(() => addDays(plainDate('2026-03-01'), 1.5)).toThrow(RangeError);
+  });
+});
+
+describe('daysBetween', () => {
+  it('zählt ganze Tage vorwärts und rückwärts', () => {
+    expect(daysBetween(plainDate('2026-03-01'), plainDate('2026-03-15'))).toBe(14);
+    expect(daysBetween(plainDate('2026-03-15'), plainDate('2026-03-01'))).toBe(-14);
+    expect(daysBetween(plainDate('2026-03-01'), plainDate('2026-03-01'))).toBe(0);
+  });
+
+  it('zählt über Monats- und Jahresgrenzen', () => {
+    expect(daysBetween(plainDate('2026-02-28'), plainDate('2026-03-01'))).toBe(1);
+    expect(daysBetween(plainDate('2024-02-28'), plainDate('2024-03-01'))).toBe(2);
+    expect(daysBetween(plainDate('2025-12-31'), plainDate('2026-01-01'))).toBe(1);
+  });
+
+  it('bleibt von der Sommerzeitumstellung unberührt', () => {
+    // In Europe/Berlin hat der 29.03.2026 nur 23 Stunden, der 25.10.2026 25.
+    // Über Ortszeit gerechnet ergäbe das 0 bzw. 2 statt jeweils 1.
+    expect(daysBetween(plainDate('2026-03-29'), plainDate('2026-03-30'))).toBe(1);
+    expect(daysBetween(plainDate('2026-10-25'), plainDate('2026-10-26'))).toBe(1);
   });
 });

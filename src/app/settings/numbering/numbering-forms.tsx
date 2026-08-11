@@ -35,7 +35,7 @@ export function NumberFormatForm({
         defaultValue={format}
       />
 
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="text-ui text-ink-muted">
         {messages.numbering.formatChangeWarning}
       </p>
 

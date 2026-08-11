@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { can } from '@/domain/policy/can';
 
 import { requireSession } from '@/application/auth/require-session';
 import { listCustomers } from '@/application/customers/customer-service';
@@ -8,8 +9,9 @@ import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { customerPath, CUSTOMERS_PATH, NEW_CUSTOMER_PATH } from '@/routes';
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { PageHeader } from '@/ui/components/page';
 
-import { AppNav } from '../app-nav';
+import { AppShell } from '../app-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,27 +30,25 @@ export default async function CustomersPage({
   const includeArchived = params.archived === '1';
 
   const customers = await listCustomers(session.organization, { search, includeArchived });
-
   return (
-    <>
-      <AppNav currentPath={CUSTOMERS_PATH} csrfToken={csrfToken} email={session.email} />
-
-      <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight">{messages.customers.heading}</h1>
-            <p className="text-neutral-600 dark:text-neutral-400">{messages.customers.intro}</p>
-          </div>
-          <Link href={NEW_CUSTOMER_PATH} className={PRIMARY_BUTTON_CLASS}>
-            {messages.customers.create}
-          </Link>
-        </header>
+    <AppShell session={session} csrfToken={csrfToken} currentPath={CUSTOMERS_PATH}>
+      <PageHeader
+        title={messages.customers.heading}
+        description={messages.customers.intro}
+        actions={
+          can('create', 'customer') ? (
+            <Link href={NEW_CUSTOMER_PATH} className={PRIMARY_BUTTON_CLASS}>
+              {messages.customers.create}
+            </Link>
+          ) : undefined
+        }
+      />
 
         {/* Suche über GET: Der Filter bleibt damit als Adresse teilbar und
             im Verlauf des Browsers erhalten. */}
         <form method="get" action={CUSTOMERS_PATH} className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-64 flex-1 flex-col gap-1.5">
-            <label htmlFor="q" className="text-sm font-medium">
+            <label htmlFor="q" className="text-ui font-medium">
               {messages.common.search}
             </label>
             <input
@@ -77,14 +77,14 @@ export default async function CustomersPage({
         </form>
 
         {customers.length === 0 ? (
-          <p className="text-neutral-600 dark:text-neutral-400">
+          <p className="text-ink-muted">
             {search === '' ? messages.customers.empty : messages.customers.emptyFiltered}
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full border-collapse text-ui">
               <thead>
-                <tr className="border-b border-neutral-200 text-left dark:border-neutral-800">
+                <tr className="border-b border-rule text-left">
                   <th scope="col" className="py-2 pr-4 font-medium">
                     {messages.customers.number}
                   </th>
@@ -103,7 +103,7 @@ export default async function CustomersPage({
                 {customers.map((customer) => (
                   <tr
                     key={customer.id}
-                    className="border-b border-neutral-100 dark:border-neutral-900"
+                    className="border-b border-rule"
                   >
                     <td className="py-2 pr-4 tabular-nums">
                       <Link
@@ -116,7 +116,7 @@ export default async function CustomersPage({
                     <td className="py-2 pr-4">
                       {customer.companyName ?? customer.contactName ?? messages.common.none}
                       {customer.isArchived ? (
-                        <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs dark:bg-neutral-800">
+                        <span className="ml-2 rounded-control bg-surface-sunken px-2 py-0.5 text-small">
                           {messages.customers.archivedBadge}
                         </span>
                       ) : null}
@@ -129,7 +129,6 @@ export default async function CustomersPage({
             </table>
           </div>
         )}
-      </main>
-    </>
+    </AppShell>
   );
 }

@@ -14,6 +14,9 @@ Vorschlag und steht noch zur Freigabe aus.
 
 Stand: 2026-08-11 · 98 von 171 erledigt (97 abgenommen: M0–M4, 1 umgesetzt) · **M5 offen**
 
+Hinzu kommen 21 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
+Teil der ursprünglichen 171 sind: 18 umgesetzt, 3 offen.
+
 **Einschub M5.5a — Mandantenkontext (umgesetzt, Abnahme offen).** Keine eigene
 Anforderungs-ID; verlangt vom Auftraggeber zwischen M5 und M6. Umfang:
 `organizationId` auf allen mandantengebundenen Tabellen, eine geseedete
@@ -274,6 +277,39 @@ Szenario benannt.
 | NFA-QUAL-10 † | Nutzbar ab 1280 px voll, ab 768 px lesend | SOLL | M | M6 † | offen | — |
 | NFA-QUAL-11 † | Rückfrage bei ungespeicherten Änderungen im Editor | SOLL | M | M4 † | abgenommen | Manuell: `beforeunload` im Rechnungseditor, sobald Änderungen vorliegen |
 | NFA-QUAL-12 † | Bestätigung mit Erklärtext bei destruktiven Aktionen | MUSS | M | M4 † | abgenommen | Manuell: `ConfirmButton` bei Festschreiben, Stornieren, Entwurf löschen und Zahlung zurücknehmen — der Text nennt die Folge |
+
+---
+
+## 16. Oberfläche & Gestaltung (Frontend-Entwurf §9)
+
+Aus `faktura-frontend-design.md`. Der Entwurf ergänzt Spec und Anforderungskatalog
+und ist für die Umsetzung verbindlich. Die IDs sind dort in §9 aufgeführt und hier
+mit demselben Wortlaut übernommen; Meilenstein M5.5b ist die Einordnung, die der
+Auftraggeber vorgegeben hat.
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-UI-01 | Alle Farben, Abstände, Radien, Schriftgrößen aus den Tokens; keine Literale | MUSS | R | M5.5b | umgesetzt | `src/app/globals.css` (Tokensatz, Standardpalette per `--color-*: initial` gelöscht); `tests/architecture/design-tokens.test.ts` |
+| FA-UI-02 | Dokumentvorschau ist die einzige Fläche mit Schatten und Radius 0 | MUSS | R | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts` — genau eine Erhebungsstufe, kein anderer Radius als `rounded-control`. Die Vorschau selbst entsteht in M5 |
+| FA-UI-03 | Beträge, Nummern, Datum monospaced mit Tabellenziffern, rechtsbündig | MUSS | M | M5.5b | umgesetzt | `src/ui/components/table.tsx` (`numeric`-Spalten); `font-variant-numeric` in `globals.css`; Manuell: Rechnungsliste — Dezimaltrennzeichen stehen untereinander |
+| FA-UI-04 | Schriften lokal, keine Anfrage an ein Font-CDN | MUSS | T | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts` — Einbindung über `@fontsource`, alle `url()` relativ |
+| FA-UI-05 | Status nie allein durch Farbe; Text und unterscheidbare Punktform | MUSS | M | M5.5b | umgesetzt | `src/ui/components/status-field.tsx` — Punkt als SVG in drei Formen (offen, halb, gefüllt) plus Beschriftung |
+| FA-UI-06 | Überfälligkeit als Zusatz am Status „Offen", nicht als eigener Status | MUSS | M | M5.5b | umgesetzt | `src/ui/components/status-field.tsx`; Rechnungsliste zeigt „Offen · 24 Tage überfällig" |
+| FA-UI-07 | Nummer beim Festschreiben animiert; ohne Bewegung bei `prefers-reduced-motion` | SOLL | T | M5 | offen | Setzt die Blattvorschau aus M5 voraus |
+| FA-UI-08 | Außer Zustandswechsel und Festschreiben keine Animation | MUSS | R | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts` — nur die drei festgelegten Dauern; `prefers-reduced-motion` schaltet alles auf 0 ms |
+| FA-UI-09 | Leerzustände nennen die nächste Handlung, ohne Illustration | SOLL | M | M5.5b | umgesetzt | `src/ui/components/page.tsx` (`EmptyState`); Manuell: leere Rechnungsliste |
+| FA-UI-10 | Fehlermeldungen nennen Ursache und Ausweg, ohne Entschuldigung | MUSS | R | M5.5b | umgesetzt | `src/i18n/de.ts` — Review der Meldungstexte; Vorlagenfehler mit Zeilenangabe folgt in M5 |
+| FA-UI-11 | Button-, Dialog- und Toast-Wortlaut mit demselben Verbstamm | MUSS | R | M5.5b | umgesetzt | `src/i18n/de.ts`; `ConfirmButton`-Texte übernehmen den Verbstamm des auslösenden Knopfes. Toasts existieren noch nicht |
+| FA-UI-12 | Sidebar textbasiert; aktiver Eintrag durch Fläche und Balken markiert | MUSS | M | M5.5b | umgesetzt | `src/app/app-shell.tsx` — `bg-accent-wash` plus 2 px `border-l` in `--accent` |
+| FA-UI-13 | Datumsfelder akzeptieren Direkteingabe `TT.MM.JJJJ` neben der Kalenderauswahl | MUSS | T | M5.5b | offen | Aktuell `<input type="date">`: Die Direkteingabe folgt dem Gebietsschema des Browsers, nicht der Anwendung |
+| FA-UI-14 | Aktionen laufen über eine zentrale `can()`-Funktion | MUSS | R | M5.5b | umgesetzt | `src/domain/policy/can.ts`; `tests/unit/domain/policy.test.ts` |
+| FA-UI-15 | Sidebar-Zonen für Organisation und Nutzer mit fester Höhe | SOLL | R | M5.5b | umgesetzt | `src/app/app-shell.tsx` — `h-zone` (56 px) für beide Zonen |
+| FA-UI-16 | Spalte „Erstellt von" im Tabellenschema angelegt, in V1 ausgeblendet | SOLL | R | M5.5b | umgesetzt | `src/ui/components/table.tsx` (`hidden`-Spalten); Rechnungsliste führt sie im Schema |
+| NFA-UI-01 | Kontrast ≥ 4.5:1 für Text, ≥ 3:1 für Bedienelemente | MUSS | T | M5.5b | umgesetzt | `tests/unit/ui/contrast.test.ts` — beide Farbschemata; `--ink-faint` gegenüber dem Entwurf abgedunkelt |
+| NFA-UI-02 | Sichtbarer Fokusring überall; kein `outline: none` ohne Ersatz | MUSS | T | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts`; `FOCUS_RING` in `src/ui/components/form.tsx` |
+| NFA-UI-03 | Rechnungseditor inklusive Positionssortierung per Tastatur bedienbar | MUSS | M | M5.5b | offen | Sortierung über `@dnd-kit` ist angebunden, die Tastaturbedienung ist noch nicht geprüft |
+| NFA-UI-04 | Keine externen Netzwerkanfragen aus dem Frontend | MUSS | T | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts`; zusätzlich sperrt die CSP in `src/infrastructure/security/security-headers.ts` |
+| NFA-UI-05 | Dunkles Farbschema verfügbar; Dokumentvorschau bleibt weiß | KANN | M | M5.5b | umgesetzt | `src/app/globals.css` — Tokenüberschreibung unter `prefers-color-scheme: dark`, `--sheet` unverändert; `tests/unit/ui/contrast.test.ts` prüft beide Schemata |
 
 ---
 

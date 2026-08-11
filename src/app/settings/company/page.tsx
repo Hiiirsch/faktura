@@ -6,9 +6,10 @@ import { getCompanyProfile, getCompanyProfileOrEmpty } from '@/application/compa
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { assetPath, COMPANY_SETTINGS_PATH } from '@/routes';
-import { CARD_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { PageHeader } from '@/ui/components/page';
 
-import { AppNav } from '../../app-nav';
+import { AppShell } from '../../app-shell';
 import { CompanyForm } from './company-form';
 import { LogoForm } from './logo-form';
 import { removeLogoAction } from './actions';
@@ -24,31 +25,24 @@ export default async function CompanySettingsPage(): Promise<ReactNode> {
     getCompanyProfile(session.organization),
   ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
-
   return (
-    <>
-      <AppNav currentPath={COMPANY_SETTINGS_PATH} csrfToken={csrfToken} email={session.email} />
-
-      <main className="mx-auto flex max-w-4xl flex-col gap-8 px-6 py-10">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{messages.company.heading}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">{messages.company.intro}</p>
-        </header>
+    <AppShell session={session} csrfToken={csrfToken} currentPath={COMPANY_SETTINGS_PATH}>
+      <PageHeader title={messages.company.heading} description={messages.company.intro} />
 
         <NoScriptNotice message={messages.common.noScript} />
 
         <CompanyForm profile={profile} csrfToken={csrfToken} />
 
-        <section className={CARD_CLASS}>
+        <section className={SECTION_CLASS}>
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-medium">{messages.company.sectionLogo}</h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <h2 className="text-section font-medium">{messages.company.sectionLogo}</h2>
+            <p className="text-ui text-ink-muted">
               {messages.company.sectionLogoHint}
             </p>
           </div>
 
           {saved?.logoAssetId == null ? (
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-ui text-ink-muted">
               {messages.company.logoNone}
             </p>
           ) : (
@@ -65,7 +59,7 @@ export default async function CompanySettingsPage(): Promise<ReactNode> {
               <img
                 src={assetPath(saved.logoAssetId)}
                 alt={messages.company.logoAlt}
-                className="max-h-24 max-w-64 bg-white p-2"
+                className="max-h-24 max-w-64 bg-surface p-2"
               />
               <form action={removeLogoAction}>
                 <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
@@ -78,7 +72,6 @@ export default async function CompanySettingsPage(): Promise<ReactNode> {
 
           <LogoForm csrfToken={csrfToken} />
         </section>
-      </main>
-    </>
+    </AppShell>
   );
 }

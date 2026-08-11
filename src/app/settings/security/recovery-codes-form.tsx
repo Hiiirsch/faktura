@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import { SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 
 import { regenerateRecoveryCodesAction, type TotpFormState } from './actions';
 import { RecoveryCodeList } from './totp-setup-form';
@@ -30,7 +31,7 @@ export function RecoveryCodesForm({
       {state.status === 'codes' ? (
         <RecoveryCodeList codes={state.codes} />
       ) : (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-ui text-ink-muted">
           {messages.security.recoveryRemaining.replace('{count}', String(unusedCount))}
         </p>
       )}
@@ -39,7 +40,7 @@ export function RecoveryCodesForm({
         <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
         <button
           type="submit"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          className={SECONDARY_BUTTON_CLASS}
         >
           {messages.security.recoveryRegenerate}
         </button>

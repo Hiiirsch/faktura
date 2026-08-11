@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 
 import { confirmTotpAction, type TotpFormState } from './actions';
 
@@ -40,28 +41,28 @@ export function TotpSetupForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="text-ui text-ink-muted">
         {messages.security.totpScan}
       </p>
 
       <div
-        className="w-fit rounded-md bg-white p-3"
+        className="w-fit rounded-control bg-surface p-3"
         // Der QR-Code wird serverseitig als SVG erzeugt und enthält keinerlei
         // Skript — er ist reine Vektorgrafik aus dem eigenen Prozess.
         dangerouslySetInnerHTML={{ __html: qrCodeSvg }}
       />
 
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="text-ui text-ink-muted">
         {messages.security.totpManualEntry}
       </p>
-      <code className="w-fit rounded bg-neutral-100 px-2 py-1 font-mono text-sm dark:bg-neutral-800">
+      <code className="w-fit rounded-control bg-surface-sunken px-2 py-1 font-mono text-ui">
         {secret}
       </code>
 
       {state.status === 'error' ? (
         <p
           role="alert"
-          className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+          className="rounded-control border border-rule bg-ocker-wash px-4 py-3 text-ui text-ink"
         >
           {errorText(state.message)}
         </p>
@@ -72,7 +73,7 @@ export function TotpSetupForm({
         <input type="hidden" name="secret" value={secret} />
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="totp-code" className="text-sm font-medium">
+          <label htmlFor="totp-code" className="text-ui font-medium">
             {messages.security.totpCode}
           </label>
           <input
@@ -82,13 +83,13 @@ export function TotpSetupForm({
             inputMode="numeric"
             autoComplete="one-time-code"
             required
-            className="w-40 rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono tracking-widest text-neutral-900 focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            className={`${INPUT_CLASS} w-40 font-mono tracking-widest`}
           />
         </div>
 
         <button
           type="submit"
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          className={PRIMARY_BUTTON_CLASS}
         >
           {messages.security.totpConfirm}
         </button>
@@ -99,11 +100,11 @@ export function TotpSetupForm({
 
 export function RecoveryCodeList({ codes }: { codes: readonly string[] }): ReactNode {
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+    <div className="flex flex-col gap-3 rounded-control border border-rule bg-ocker-wash p-4">
       <h3 className="font-medium">{messages.security.recoveryHeading}</h3>
-      <p className="text-sm">{messages.security.recoveryIntro}</p>
-      <p className="text-sm font-medium">{messages.security.recoveryOnceOnly}</p>
-      <ul className="grid grid-cols-1 gap-1 font-mono text-sm sm:grid-cols-2">
+      <p className="text-ui">{messages.security.recoveryIntro}</p>
+      <p className="text-ui font-medium">{messages.security.recoveryOnceOnly}</p>
+      <ul className="grid grid-cols-1 gap-1 font-mono text-ui sm:grid-cols-2">
         {codes.map((code) => (
           <li key={code}>{code}</li>
         ))}

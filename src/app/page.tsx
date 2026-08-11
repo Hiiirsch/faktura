@@ -8,10 +8,11 @@ import { checkSystemStatus } from '@/application/system/check-system-status';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { COMPANY_SETTINGS_PATH, DASHBOARD_PATH } from '@/routes';
-import { CARD_CLASS, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { SECTION_CLASS, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { PageHeader } from '@/ui/components/page';
 import { formatDateTime } from '@/ui/format';
 
-import { AppNav } from './app-nav';
+import { AppShell } from './app-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,21 +24,17 @@ export default async function DashboardPage(): Promise<ReactNode> {
     getCompanyProfile(session.organization),
   ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
-
   return (
-    <>
-      <AppNav currentPath={DASHBOARD_PATH} csrfToken={csrfToken} email={session.email} />
-
-      <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{messages.dashboard.heading}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">{messages.dashboard.placeholder}</p>
-        </header>
+    <AppShell session={session} csrfToken={csrfToken} currentPath={DASHBOARD_PATH}>
+      <PageHeader
+        title={messages.dashboard.heading}
+        description={messages.dashboard.placeholder}
+      />
 
         {company === null ? (
-          <section className={CARD_CLASS}>
-            <h2 className="text-lg font-medium">{messages.company.heading}</h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <section className={SECTION_CLASS}>
+            <h2 className="text-section font-medium">{messages.company.heading}</h2>
+            <p className="text-ui text-ink-muted">
               {messages.company.intro}
             </p>
             <div>
@@ -48,24 +45,24 @@ export default async function DashboardPage(): Promise<ReactNode> {
           </section>
         ) : null}
 
-        <section className={CARD_CLASS}>
+        <section className={SECTION_CLASS}>
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-medium">{messages.status.heading}</h2>
+            <h2 className="text-section font-medium">{messages.status.heading}</h2>
             <span
               className={
                 status.healthy
-                  ? 'rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-900 dark:bg-green-950 dark:text-green-200'
-                  : 'rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-900 dark:bg-red-950 dark:text-red-200'
+                  ? 'rounded-control bg-moss-wash px-3 py-1 text-ui font-medium text-ink'
+                  : 'rounded-control bg-ocker-wash px-3 py-1 text-ui font-medium text-ink'
               }
             >
               {status.healthy ? messages.status.healthy : messages.status.unhealthy}
             </span>
           </div>
 
-          <dl className="flex flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+          <dl className="flex flex-col gap-3 border-t border-rule pt-4">
             <div className="flex items-baseline justify-between gap-4">
               <dt className="font-medium">{messages.status.componentDatabase}</dt>
-              <dd className="text-sm">
+              <dd className="text-ui">
                 {status.components.database === 'UP'
                   ? messages.status.stateUp
                   : messages.status.stateDown}
@@ -73,13 +70,12 @@ export default async function DashboardPage(): Promise<ReactNode> {
             </div>
             <div className="flex items-baseline justify-between gap-4">
               <dt className="font-medium">{messages.status.checkedAt}</dt>
-              <dd className="text-sm tabular-nums">
+              <dd className="text-ui tabular-nums">
                 {formatDateTime(status.checkedAt, status.timeZone)}
               </dd>
             </div>
           </dl>
         </section>
-      </main>
-    </>
+    </AppShell>
   );
 }

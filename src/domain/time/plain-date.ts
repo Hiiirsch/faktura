@@ -110,6 +110,19 @@ function formatUtcDate(value: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Ganze Tage zwischen zwei Kalendertagen; negativ, wenn `to` vor `from` liegt.
+ *
+ * Gerechnet wird über UTC-Mitternacht, damit keine Sommerzeitumstellung
+ * dazwischenkommt: An den zwei Tagen im Jahr, an denen ein Tag 23 oder 25
+ * Stunden hat, ergäbe eine Ortszeitrechnung sonst 0 oder 2 statt 1.
+ */
+export function daysBetween(from: PlainDate, to: PlainDate): number {
+  const start = Date.UTC(yearOf(from), monthOf(from) - 1, Number(from.slice(8, 10)));
+  const end = Date.UTC(yearOf(to), monthOf(to) - 1, Number(to.slice(8, 10)));
+  return Math.round((end - start) / MS_PER_DAY);
+}
+
 export function comparePlainDates(a: PlainDate, b: PlainDate): -1 | 0 | 1 {
   if (a < b) return -1;
   if (a > b) return 1;

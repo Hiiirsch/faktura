@@ -8,10 +8,11 @@ import { cents } from '@/domain/money/money';
 import { messages, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { CATALOG_PATH } from '@/routes';
-import { CARD_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { PageHeader } from '@/ui/components/page';
 import { formatMoney, formatPercent, formatUnit } from '@/ui/format';
 
-import { AppNav } from '../app-nav';
+import { AppShell } from '../app-shell';
 import { setCatalogItemArchivedAction } from './actions';
 import { CatalogForm } from './catalog-form';
 
@@ -39,24 +40,17 @@ export default async function CatalogPage({
     listCatalogItems(session.organization, includeArchived),
     editId === null ? Promise.resolve(null) : getCatalogItem(session.organization, editId),
   ]);
-
   return (
-    <>
-      <AppNav currentPath={CATALOG_PATH} csrfToken={csrfToken} email={session.email} />
-
-      <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{messages.catalog.heading}</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">{messages.catalog.intro}</p>
-        </header>
+    <AppShell session={session} csrfToken={csrfToken} currentPath={CATALOG_PATH}>
+      <PageHeader title={messages.catalog.heading} description={messages.catalog.intro} />
 
         <NoScriptNotice message={messages.common.noScript} />
 
         <CatalogForm item={editItem ?? undefined} csrfToken={csrfToken} />
 
-        <section className={CARD_CLASS}>
+        <section className={SECTION_CLASS}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-medium">{messages.catalog.heading}</h2>
+            <h2 className="text-section font-medium">{messages.catalog.heading}</h2>
             <Link
               href={includeArchived ? CATALOG_PATH : `${CATALOG_PATH}?archived=1`}
               className={SECONDARY_BUTTON_CLASS}
@@ -66,14 +60,14 @@ export default async function CatalogPage({
           </div>
 
           {items.length === 0 ? (
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-ui text-ink-muted">
               {messages.catalog.empty}
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full border-collapse text-ui">
                 <thead>
-                  <tr className="border-b border-neutral-200 text-left dark:border-neutral-800">
+                  <tr className="border-b border-rule text-left">
                     <th scope="col" className="py-2 pr-4 font-medium">
                       {messages.catalog.name}
                     </th>
@@ -93,7 +87,7 @@ export default async function CatalogPage({
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-b border-neutral-100 dark:border-neutral-900">
+                    <tr key={item.id} className="border-b border-rule">
                       <td className="py-2 pr-4">
                         <Link
                           href={`${CATALOG_PATH}?edit=${item.id}${includeArchived ? '&archived=1' : ''}`}
@@ -102,7 +96,7 @@ export default async function CatalogPage({
                           {item.name}
                         </Link>
                         {item.isArchived ? (
-                          <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs dark:bg-neutral-800">
+                          <span className="ml-2 rounded-control bg-surface-sunken px-2 py-0.5 text-small">
                             {messages.customers.archivedBadge}
                           </span>
                         ) : null}
@@ -137,7 +131,6 @@ export default async function CatalogPage({
             </div>
           )}
         </section>
-      </main>
-    </>
+    </AppShell>
   );
 }

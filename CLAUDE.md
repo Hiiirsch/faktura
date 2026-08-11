@@ -1,8 +1,9 @@
 # CLAUDE.md — Leitplanken für dieses Projekt
 
-Verbindliche Grundlagen: `rechnungs-app-spec.md` (Architektur, Datenmodell) und
-`rechnungs-app-anforderungen.md` (prüfbarer Anforderungskatalog). Beide sind nicht
-verhandelbar. Widersprüche werden gemeldet, nicht still gelöst.
+Verbindliche Grundlagen: `rechnungs-app-spec.md` (Architektur, Datenmodell),
+`rechnungs-app-anforderungen.md` (prüfbarer Anforderungskatalog) und
+`faktura-frontend-design.md` (Gestaltung, Tokens, FA-UI-*/NFA-UI-*). Alle drei sind
+nicht verhandelbar. Widersprüche werden gemeldet, nicht still gelöst.
 
 ## Rollen & Arbeitsweise
 
@@ -45,6 +46,9 @@ verhandelbar. Widersprüche werden gemeldet, nicht still gelöst.
    Fehler; Build bricht bei TS- oder Lint-Verstößen ab (NFA-QUAL-03).
 5. **Sprache:** Oberfläche Deutsch, Code und Bezeichner Englisch. Alle UI-Texte
    zentral in `src/i18n/de.ts`, typisiert — keine deutschen Strings in Komponenten.
+   Ton nach Frontend-Entwurf §8: Die Oberfläche spricht den Nutzer nicht an,
+   sondern benennt Dinge und Handlungen — „Rechnung erstellen", nicht „Erstellen
+   Sie Ihre Rechnung".
 6. **Sicherheit ist kein Nachtrag:** M1 kommt vor allen Features. Ab dann wird jede
    neue Route und jede Server Action sofort abgesichert (`requireSession()` als erste
    Anweisung), nicht nachträglich.
@@ -78,6 +82,35 @@ jeweils neuesten Fassung, beide durch Fehlschläge belegt:
 
 Laufzeit: Node 24.13.0 (`.nvmrc`), Next 16.3.0, React 19.2.8, Tailwind 4.3.3,
 Vitest 4.1.10, Zod 4.4.3.
+
+## Gestaltung (seit M5.5b)
+
+`src/app/globals.css` ist die **einzige** Stelle mit Farbwerten, Schriftgrößen,
+Radien und Erhebungen. Im Komponentencode stehen ausschließlich die daraus
+erzeugten Utilities (`bg-surface`, `text-ink-muted`, `border-rule`) — FA-UI-01.
+
+Die Standardpalette von Tailwind ist mit `--color-*: initial` gelöscht, ebenso
+`--radius-*`, `--shadow-*`, `--text-*`, `--font-*` und `--container-*`. `bg-red-500`
+ist damit keine Regelverletzung, die jemand bemerken müsste, sondern eine Klasse,
+die es nicht gibt. `tests/architecture/design-tokens.test.ts` fängt zusätzlich ab,
+was der Compiler nicht sieht: Literalwerte in Attributen, `outline: none` ohne
+Ersatz, Verweise ins Netz.
+
+**Es gibt keine `dark:`-Variante im Komponentencode.** Das dunkle Schema
+überschreibt Tokenwerte unter `prefers-color-scheme: dark`; kein Bauteil kennt den
+Unterschied. Ausgenommen ist `--sheet`: Das Blatt bleibt auch nachts weiß, und
+`--sheet-ink` trägt dafür die feste dunkle Schrift.
+
+Genau **zwei** Erhebungsstufen: keine — und das Blatt (`shadow-sheet`). Getrennt
+wird sonst durch `1px solid var(--rule)` und Weißraum, nicht durch Karten.
+
+Schriften kommen aus `@fontsource/fira-sans` und `@fontsource/fira-mono` (nur der
+Latin-Ausschnitt, nur die Schnitte aus §2.2). Kein Font-CDN (FA-UI-04,
+NFA-COMP-06).
+
+Sichtbarkeit und Aktivierung jeder Aktion laufen über `can()` in
+`src/domain/policy/can.ts` (FA-UI-14) — ein späteres Rollenmodell füllt eine
+Funktion, statt jeden Knopf einzeln nachzurüsten.
 
 ## Schichten
 
@@ -187,6 +220,7 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 | M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | abgenommen |
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |
 | M5.5a | Mandantenkontext: `organizationId`, Repository-Schicht mit Pflichtparameter | umgesetzt |
+| M5.5b | Gestaltung: Tokensatz, Schriften, Rahmen, Bestandsscreens auf Tokens | umgesetzt |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
 

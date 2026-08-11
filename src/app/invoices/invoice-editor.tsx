@@ -32,7 +32,7 @@ import { messages, taxCategoryLabels, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
   Alert,
-  CARD_CLASS,
+  SECTION_CLASS,
   FormSection,
   INPUT_CLASS,
   PRIMARY_BUTTON_CLASS,
@@ -150,13 +150,13 @@ function SortableLineRow({
   });
   const fieldId = useId();
 
-  const cell = 'rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900';
+  const cell = 'rounded-control border border-rule bg-surface px-2 py-1.5 text-ui  ';
 
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex flex-col gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800 ${
+      className={`flex flex-col gap-2 rounded-control border border-rule p-3  ${
         isDragging ? 'opacity-60' : ''
       }`}
     >
@@ -170,7 +170,7 @@ function SortableLineRow({
         >
           ⠿
         </button>
-        <span className="text-sm font-medium tabular-nums">
+        <span className="text-ui font-medium tabular-nums">
           {messages.invoices.linePosition} {index + 1}
         </span>
 
@@ -217,7 +217,7 @@ function SortableLineRow({
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineName}</span>
           <input
             id={`${fieldId}-name`}
@@ -230,7 +230,7 @@ function SortableLineRow({
             required
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineDescription}</span>
           <input
             id={`${fieldId}-description`}
@@ -245,7 +245,7 @@ function SortableLineRow({
       </div>
 
       <div className="grid gap-2 sm:grid-cols-6">
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineQuantity}</span>
           <input
             name={`lines[${String(index)}][quantity]`}
@@ -258,7 +258,7 @@ function SortableLineRow({
             required
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineUnit}</span>
           <select
             name={`lines[${String(index)}][unitCode]`}
@@ -275,7 +275,7 @@ function SortableLineRow({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineUnitPrice}</span>
           <input
             name={`lines[${String(index)}][unitPrice]`}
@@ -288,7 +288,7 @@ function SortableLineRow({
             required
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineDiscount}</span>
           <input
             name={`lines[${String(index)}][discount]`}
@@ -300,7 +300,7 @@ function SortableLineRow({
             className={`${cell} text-right tabular-nums`}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineTaxRate}</span>
           <input
             name={`lines[${String(index)}][taxRate]`}
@@ -312,7 +312,7 @@ function SortableLineRow({
             className={`${cell} text-right tabular-nums`}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-ui">
           <span className="font-medium">{messages.invoices.lineTaxCategory}</span>
           <select
             name={`lines[${String(index)}][taxCategory]`}
@@ -331,7 +331,7 @@ function SortableLineRow({
         </label>
       </div>
 
-      <p className="text-right text-sm font-medium tabular-nums">
+      <p className="text-right text-ui font-medium tabular-nums">
         {messages.invoices.lineNet}: {formatMoney(cents(netCents), currency as 'EUR')}
       </p>
     </li>
@@ -492,7 +492,7 @@ export function InvoiceEditor({
 
       <FormSection title={messages.invoices.viewHeading}>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">{messages.invoices.customer} *</span>
+          <span className="text-ui font-medium">{messages.invoices.customer} *</span>
           <select
             name="customerId"
             required
@@ -516,7 +516,7 @@ export function InvoiceEditor({
 
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">{messages.invoices.issueDate}</span>
+            <span className="text-ui font-medium">{messages.invoices.issueDate}</span>
             <input
               name="issueDate"
               type="date"
@@ -530,7 +530,7 @@ export function InvoiceEditor({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">{messages.invoices.dueDate}</span>
+            <span className="text-ui font-medium">{messages.invoices.dueDate}</span>
             <input
               name="dueDate"
               type="date"
@@ -541,7 +541,7 @@ export function InvoiceEditor({
               }}
               className={INPUT_CLASS}
             />
-            <span className="text-sm text-neutral-600 dark:text-neutral-400">
+            <span className="text-ui text-ink-muted">
               {messages.invoices.dueDateHint}
             </span>
           </label>
@@ -554,19 +554,19 @@ export function InvoiceEditor({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">{messages.invoices.serviceDateFrom}</span>
+            <span className="text-ui font-medium">{messages.invoices.serviceDateFrom}</span>
             <input
               name="serviceDateFrom"
               type="date"
               defaultValue={initial.serviceDateFrom}
               className={INPUT_CLASS}
             />
-            <span className="text-sm text-neutral-600 dark:text-neutral-400">
+            <span className="text-ui text-ink-muted">
               {messages.invoices.serviceDateHint}
             </span>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">{messages.invoices.serviceDateTo}</span>
+            <span className="text-ui font-medium">{messages.invoices.serviceDateTo}</span>
             <input
               name="serviceDateTo"
               type="date"
@@ -577,7 +577,7 @@ export function InvoiceEditor({
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">{messages.invoices.taxScheme} *</span>
+          <span className="text-ui font-medium">{messages.invoices.taxScheme} *</span>
           <select
             name="taxScheme"
             required
@@ -593,15 +593,15 @@ export function InvoiceEditor({
               </option>
             ))}
           </select>
-          <span className="text-sm text-neutral-600 dark:text-neutral-400">
+          <span className="text-ui text-ink-muted">
             {messages.invoices.taxSchemeHint}
           </span>
         </label>
       </FormSection>
 
-      <section className={CARD_CLASS}>
+      <section className={SECTION_CLASS}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">{messages.invoices.linesHeading}</h2>
+          <h2 className="text-section font-medium">{messages.invoices.linesHeading}</h2>
           <button
             type="button"
             onClick={() => {
@@ -615,7 +615,7 @@ export function InvoiceEditor({
         </div>
 
         {catalog.length > 0 ? (
-          <label className="flex flex-col gap-1 text-sm sm:max-w-sm">
+          <label className="flex flex-col gap-1 text-ui sm:max-w-sm">
             <span className="font-medium">{messages.invoices.lineFromCatalog}</span>
             <select
               className={INPUT_CLASS}
@@ -639,7 +639,7 @@ export function InvoiceEditor({
         ) : null}
 
         {lines.length === 0 ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-ui text-ink-muted">
             {messages.invoices.linesEmpty}
           </p>
         ) : (
@@ -684,7 +684,7 @@ export function InvoiceEditor({
       </section>
 
       <FormSection title={messages.invoices.gross}>
-        <dl className="flex flex-col gap-2 text-sm">
+        <dl className="flex flex-col gap-2 text-ui">
           <div className="flex justify-between gap-4">
             <dt>{messages.invoices.net}</dt>
             <dd className="tabular-nums">
@@ -694,7 +694,7 @@ export function InvoiceEditor({
           {(totals?.taxBreakdown ?? []).map((group) => (
             <div
               key={`${String(group.taxRateBasisPoints)}-${group.taxCategory}`}
-              className="flex justify-between gap-4 text-neutral-600 dark:text-neutral-400"
+              className="flex justify-between gap-4 text-ink-muted"
             >
               <dt>
                 {formatPercent(group.taxRateBasisPoints)} ({group.taxCategory}) auf{' '}
@@ -711,7 +711,7 @@ export function InvoiceEditor({
               {formatMoney(cents(totals?.taxTotalCents ?? 0), initial.currency as 'EUR')}
             </dd>
           </div>
-          <div className="flex justify-between gap-4 border-t border-neutral-200 pt-2 font-medium dark:border-neutral-800">
+          <div className="flex justify-between gap-4 border-t border-rule pt-2 font-medium">
             <dt>{messages.invoices.gross}</dt>
             <dd className="tabular-nums">
               {formatMoney(cents(totals?.grossTotalCents ?? 0), initial.currency as 'EUR')}

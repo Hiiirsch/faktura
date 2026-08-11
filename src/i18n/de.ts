@@ -52,7 +52,7 @@ export const messages = {
   login: {
     title: 'Anmeldung',
     heading: 'Anmelden',
-    intro: 'Bitte melden Sie sich an, um fortzufahren.',
+    intro: 'Anmeldung mit E-Mail-Adresse, Passwort und zweitem Faktor.',
     email: 'E-Mail-Adresse',
     password: 'Passwort',
     secondFactor: 'Bestätigungscode',
@@ -64,7 +64,7 @@ export const messages = {
     locked:
       'Der Zugang ist wegen zu vieler Fehlversuche vorübergehend gesperrt. Bitte in {minutes} Minuten erneut versuchen.',
     missingFields: 'Bitte E-Mail-Adresse und Passwort angeben.',
-    rejected: 'Die Anfrage wurde abgelehnt. Bitte laden Sie die Seite neu und versuchen es erneut.',
+    rejected: 'Die Anmeldung wurde abgelehnt — die Seite ist veraltet. Neu laden und erneut absenden.',
     noRegistrationHint:
       'Es gibt keine Selbstregistrierung. Das erste Konto wird auf dem Server angelegt.',
   },
@@ -79,13 +79,17 @@ export const messages = {
   nav: {
     dashboard: 'Übersicht',
     customers: 'Kunden',
-    catalog: 'Katalog',
+    catalog: 'Leistungen',
     invoices: 'Rechnungen',
     company: 'Firmendaten',
     numbering: 'Nummernkreis',
     security: 'Sicherheit',
+    settings: 'Einstellungen',
     logout: 'Abmelden',
     label: 'Hauptnavigation',
+    /** Ersatzname im Sidebar-Kopf, solange keine Firmendaten erfasst sind. */
+    organizationFallback: 'Firmendaten fehlen',
+    userZone: 'Angemeldetes Konto',
   },
   common: {
     save: 'Speichern',
@@ -98,10 +102,10 @@ export const messages = {
     search: 'Suchen',
     searchPlaceholder: 'Name, Nummer, Ort oder E-Mail',
     reset: 'Filter zurücksetzen',
-    validationFailed: 'Bitte prüfen Sie die markierten Felder.',
-    rejected: 'Die Anfrage wurde abgelehnt. Bitte laden Sie die Seite neu.',
+    validationFailed: 'Die markierten Felder sind noch nicht gültig.',
+    rejected: 'Die Anfrage wurde abgelehnt — die Seite ist veraltet. Neu laden und erneut absenden.',
     noScript:
-      'Dieses Formular benötigt JavaScript. Bitte aktivieren Sie es für diese Seite — ohne JavaScript werden Eingaben nicht gespeichert.',
+      'Dieses Formular benötigt JavaScript. Ohne JavaScript werden Eingaben nicht gespeichert; die Anmeldung und alle Listen funktionieren auch ohne.',
   },
   company: {
     title: 'Firmendaten',
@@ -252,8 +256,10 @@ export const messages = {
     createHeading: 'Neue Rechnung',
     editHeading: 'Rechnung bearbeiten',
     viewHeading: 'Rechnung',
-    empty: 'Es sind noch keine Belege vorhanden.',
-    emptyFiltered: 'Zu den gewählten Filtern wurden keine Belege gefunden.',
+    empty: 'Noch keine Rechnungen. Die erste Rechnung entsteht in etwa zwei Minuten.',
+    emptyFiltered: 'Zu diesen Filtern gibt es keinen Beleg. Filter zurücksetzen zeigt wieder alle.',
+    /** Im Tabellenschema angelegt, in V1 ausgeblendet (FA-UI-16). */
+    createdBy: 'Erstellt von',
 
     number: 'Nummer',
     noNumber: 'ohne Nummer',
@@ -304,6 +310,11 @@ export const messages = {
     statusPAID: 'Bezahlt',
     statusCANCELLED: 'Storniert',
     overdue: 'Überfällig',
+    /** Nachsatz am Status „Offen" — Überfälligkeit ist kein eigener Status (FA-UI-06). */
+    overdueSince: (days: number): string =>
+      days === 1 ? '1 Tag überfällig' : `${String(days)} Tage überfällig`,
+    /** Nachsatz am Status „Teilbezahlt": wie viel von wie viel. */
+    paidOf: (paid: string, gross: string): string => `${paid} von ${gross}`,
     creditNote: 'Stornorechnung',
 
     filterStatus: 'Status',
@@ -430,8 +441,8 @@ export const messages = {
       'Mit einer Authenticator-App auf dem Telefon reicht ein gestohlenes Passwort allein nicht mehr aus.',
     totpStart: 'Einrichten',
     totpScan:
-      'Scannen Sie den Code mit Ihrer Authenticator-App und geben Sie anschließend das angezeigte Einmalkennwort ein.',
-    totpManualEntry: 'Falls das Scannen nicht möglich ist, geben Sie diesen Schlüssel manuell ein:',
+      'Code mit der Authenticator-App scannen, dann das angezeigte Einmalkennwort eintragen.',
+    totpManualEntry: 'Ohne Kamera lässt sich dieser Schlüssel von Hand eintragen:',
     totpCode: 'Einmalkennwort',
     totpConfirm: 'Aktivieren',
     totpCancel: 'Abbrechen',
@@ -441,13 +452,13 @@ export const messages = {
 
     recoveryHeading: 'Wiederherstellungscodes',
     recoveryIntro:
-      'Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code funktioniert genau einmal und ersetzt das Einmalkennwort, falls Sie keinen Zugriff auf Ihr Telefon haben.',
+      'Diese Codes gehören an einen sicheren Ort. Jeder Code funktioniert genau einmal und ersetzt das Einmalkennwort, wenn das Telefon nicht erreichbar ist.',
     recoveryOnceOnly: 'Diese Codes werden nur jetzt angezeigt und danach nie wieder.',
     recoveryRegenerate: 'Neue Codes erzeugen',
     recoveryRemaining: 'Noch nicht verwendete Codes: {count}',
 
     sessionsHeading: 'Aktive Sitzungen',
-    sessionsIntro: 'Geräte, auf denen Sie derzeit angemeldet sind.',
+    sessionsIntro: 'Geräte mit einer derzeit gültigen Sitzung.',
     sessionCurrent: 'Diese Sitzung',
     sessionUnknownDevice: 'Unbekanntes Gerät',
     sessionLastSeen: 'Zuletzt aktiv',
