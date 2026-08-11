@@ -9,26 +9,23 @@
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  createDraftInvoice,
-  type DraftInvoiceData,
-  issueInvoice,
-  recordPayment,
-} from '@/application/invoices/invoice-service';
+import { createDraftInvoice, type DraftInvoiceData } from '@/application/invoices/invoice-service';
+import { issueInvoice } from '@/application/invoices/issue-invoice';
+import { addPayment } from '@/application/invoices/payments';
 import {
   listInvoiceSequences,
   setSequenceStartValue,
 } from '@/application/invoices/invoice-numbering';
 import { createCustomer, type CustomerData } from '@/application/customers/customer-service';
+import { EMPTY_COMPANY_PROFILE, saveCompanyProfile } from '@/application/company/company-profile';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 
-import { TEST_DATABASE_URL } from './setup/server';
+import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 
-const prisma = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } });
+const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
 const ACTOR = 'pruef-akteur';
-const FORMAT = 'RE-{YYYY}-{SEQ:4}';
 
 const CUSTOMER: CustomerData = {
   companyName: 'Beispiel GmbH',
@@ -52,9 +49,9 @@ function draft(customerId: string, issueDate: string, overrides: Partial<DraftIn
     taxScheme: 'STANDARD' as const,
     currency: 'EUR',
     issueDate,
-    serviceDateFrom: null,
+    serviceDateFrom: issueDate,
     serviceDateTo: null,
-    dueDate: null,
+    dueDate: issueDate,
     introText: null,
     outroText: null,
     purchaseOrderRef: null,
@@ -75,19 +72,27 @@ function draft(customerId: string, issueDate: string, overrides: Partial<DraftIn
   } satisfies DraftInvoiceData;
 }
 
-async function reset(): Promise<void> {
-  await prisma.payment.deleteMany();
-  await prisma.invoiceLine.deleteMany();
-  await prisma.invoice.deleteMany();
-  await prisma.customer.deleteMany();
-  await prisma.numberSequence.deleteMany();
-  await prisma.auditLog.deleteMany({ where: { entityType: { not: 'User' } } });
-}
+beforeEach(async () => {
+  await resetDatabase();
+  await prisma.$disconnect();
 
-beforeEach(reset);
+  // Das Festschreiben liest Nummernformat und Verkäuferdaten aus dem Profil
+  // und verlangt eine Steuernummer (FA-RECH-12, FA-RECH-13).
+  await saveCompanyProfile(
+    {
+      ...EMPTY_COMPANY_PROFILE,
+      legalName: 'Musterbetrieb Tim',
+      addressLine1: 'Hauptstr. 1',
+      postalCode: '89518',
+      city: 'Heidenheim',
+      taxNumber: '12/345/67890',
+    },
+    ACTOR,
+    null,
+  );
+});
 
 afterAll(async () => {
-  await reset();
   await prisma.$disconnect();
 });
 
@@ -110,7 +115,7 @@ describe('Nummernvergabe (FA-NUM-02, -03)', () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
 
-    const result = await issueInvoice(id, FORMAT, ACTOR, null);
+    const result = await issueInvoice(id, ACTOR, null);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -128,7 +133,7 @@ describe('Nummernvergabe (FA-NUM-02, -03)', () => {
 
     for (let index = 0; index < 3; index += 1) {
       const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-      const result = await issueInvoice(id, FORMAT, ACTOR, null);
+      const result = await issueInvoice(id, ACTOR, null);
       if (result.ok) {
         numbers.push(result.invoiceNumber);
       }
@@ -141,8 +146,8 @@ describe('Nummernvergabe (FA-NUM-02, -03)', () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
 
-    await issueInvoice(id, FORMAT, ACTOR, null);
-    const second = await issueInvoice(id, FORMAT, ACTOR, null);
+    await issueInvoice(id, ACTOR, null);
+    const second = await issueInvoice(id, ACTOR, null);
 
     expect(second.ok).toBe(false);
     if (!second.ok) {
@@ -153,22 +158,24 @@ describe('Nummernvergabe (FA-NUM-02, -03)', () => {
   it('verlangt ein Rechnungsdatum', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(
-      draft(customerId, '2026-03-01', { issueDate: null }),
+      draft(customerId, '2026-03-01', { issueDate: null, dueDate: null, serviceDateFrom: null }),
       ACTOR,
       null,
     );
 
-    const result = await issueInvoice(id, FORMAT, ACTOR, null);
+    const result = await issueInvoice(id, ACTOR, null);
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.kind).toBe('MISSING_ISSUE_DATE');
+    if (!result.ok && result.error.kind === 'INCOMPLETE') {
+      expect(result.error.violations.map((violation) => violation.kind)).toContain('NO_ISSUE_DATE');
+    } else {
+      expect.unreachable('Es wurde eine Vollständigkeitsmeldung erwartet');
     }
   });
 
   it('protokolliert das Festschreiben (FA-STAT-11)', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    await issueInvoice(id, FORMAT, ACTOR, '10.0.0.1');
+    await issueInvoice(id, ACTOR, '10.0.0.1');
 
     const entries = await prisma.auditLog.findMany({
       where: { entityType: 'Invoice', entityId: id },
@@ -191,7 +198,7 @@ describe('FA-NUM-04 Nebenläufigkeit', () => {
     );
 
     const results = await Promise.all(
-      drafts.map((created) => issueInvoice(created.id, FORMAT, ACTOR, null)),
+      drafts.map((created) => issueInvoice(created.id, ACTOR, null)),
     );
 
     const numbers = results
@@ -210,7 +217,7 @@ describe('FA-NUM-04 Nebenläufigkeit', () => {
   it('hält die Eindeutigkeit auch auf Datenbankebene', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    await issueInvoice(id, FORMAT, ACTOR, null);
+    await issueInvoice(id, ACTOR, null);
 
     const second = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
     await expect(
@@ -227,10 +234,10 @@ describe('Zählerbereiche (FA-NUM-05, -06, -07)', () => {
     const customerId = await makeCustomer();
 
     const first = await createDraftInvoice(draft(customerId, '2026-12-31'), ACTOR, null);
-    const firstResult = await issueInvoice(first.id, FORMAT, ACTOR, null);
+    const firstResult = await issueInvoice(first.id, ACTOR, null);
 
     const second = await createDraftInvoice(draft(customerId, '2027-01-02'), ACTOR, null);
-    const secondResult = await issueInvoice(second.id, FORMAT, ACTOR, null);
+    const secondResult = await issueInvoice(second.id, ACTOR, null);
 
     expect(firstResult.ok && firstResult.invoiceNumber).toBe('RE-2026-0001');
     expect(secondResult.ok && secondResult.invoiceNumber).toBe('RE-2027-0001');
@@ -239,7 +246,7 @@ describe('Zählerbereiche (FA-NUM-05, -06, -07)', () => {
   it('führt die Zählerstände je Bereich (FA-NUM-06)', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    await issueInvoice(id, FORMAT, ACTOR, null);
+    await issueInvoice(id, ACTOR, null);
 
     const sequences = await listInvoiceSequences();
     expect(sequences).toEqual([{ scope: 'INVOICE-2026', lastValue: 1 }]);
@@ -251,14 +258,14 @@ describe('Zählerbereiche (FA-NUM-05, -06, -07)', () => {
     expect(await setSequenceStartValue('INVOICE-2026', 1_000)).toEqual({ ok: true });
 
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    const result = await issueInvoice(id, FORMAT, ACTOR, null);
+    const result = await issueInvoice(id, ACTOR, null);
     expect(result.ok && result.invoiceNumber).toBe('RE-2026-1001');
   });
 
   it('verweigert den Startwert, sobald eine Nummer vergeben wurde', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    await issueInvoice(id, FORMAT, ACTOR, null);
+    await issueInvoice(id, ACTOR, null);
 
     const result = await setSequenceStartValue('INVOICE-2026', 5_000);
     expect(result.ok).toBe(false);
@@ -278,10 +285,10 @@ describe('Zeitliche Ordnung des Nummernkreises', () => {
     const customerId = await makeCustomer();
 
     const later = await createDraftInvoice(draft(customerId, '2026-03-10'), ACTOR, null);
-    await issueInvoice(later.id, FORMAT, ACTOR, null);
+    await issueInvoice(later.id, ACTOR, null);
 
     const earlier = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    const result = await issueInvoice(earlier.id, FORMAT, ACTOR, null);
+    const result = await issueInvoice(earlier.id, ACTOR, null);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -296,10 +303,10 @@ describe('Zeitliche Ordnung des Nummernkreises', () => {
     const customerId = await makeCustomer();
 
     const first = await createDraftInvoice(draft(customerId, '2026-03-10'), ACTOR, null);
-    await issueInvoice(first.id, FORMAT, ACTOR, null);
+    await issueInvoice(first.id, ACTOR, null);
 
     const second = await createDraftInvoice(draft(customerId, '2026-03-10'), ACTOR, null);
-    const result = await issueInvoice(second.id, FORMAT, ACTOR, null);
+    const result = await issueInvoice(second.id, ACTOR, null);
 
     expect(result.ok).toBe(true);
   });
@@ -309,7 +316,7 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
   async function issuedInvoice(): Promise<string> {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    await issueInvoice(id, FORMAT, ACTOR, null);
+    await issueInvoice(id, ACTOR, null);
     return id;
   }
 
@@ -325,7 +332,7 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
 
   it('wechselt bei Teilzahlung auf teilbezahlt (FA-STAT-04)', async () => {
     const id = await issuedInvoice();
-    await recordPayment(id, cents(5_000), plainDate('2026-03-05'), 'Überweisung', null);
+    await addPayment(id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: 'Überweisung', note: null });
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('PARTIALLY_PAID');
@@ -334,8 +341,8 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
 
   it('wechselt bei vollständiger Zahlung auf bezahlt (FA-STAT-05)', async () => {
     const id = await issuedInvoice();
-    await recordPayment(id, cents(5_000), plainDate('2026-03-05'), null, null);
-    await recordPayment(id, cents(6_900), plainDate('2026-03-08'), null, null);
+    await addPayment(id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: null, note: null });
+    await addPayment(id, { amountCents: cents(6_900), paidAt: plainDate('2026-03-08'), method: null, note: null });
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('PAID');
@@ -344,8 +351,8 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
 
   it('speichert Zahlungen als einzelne Datensätze (FA-STAT-03)', async () => {
     const id = await issuedInvoice();
-    await recordPayment(id, cents(5_000), plainDate('2026-03-05'), 'Überweisung', 'Teilbetrag');
-    await recordPayment(id, cents(6_900), plainDate('2026-03-08'), 'Lastschrift', null);
+    await addPayment(id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: 'Überweisung', note: 'Teilbetrag' });
+    await addPayment(id, { amountCents: cents(6_900), paidAt: plainDate('2026-03-08'), method: 'Lastschrift', note: null });
 
     const payments = await prisma.payment.findMany({
       where: { invoiceId: id },
@@ -361,7 +368,7 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
   it('lässt einen Entwurf trotz Zahlung ein Entwurf bleiben', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(draft(customerId, '2026-03-01'), ACTOR, null);
-    await recordPayment(id, cents(11_900), plainDate('2026-03-05'), null, null);
+    await addPayment(id, { amountCents: cents(11_900), paidAt: plainDate('2026-03-05'), method: null, note: null });
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('DRAFT');

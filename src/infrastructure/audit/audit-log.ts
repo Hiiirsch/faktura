@@ -19,7 +19,11 @@ export type AuditAction =
   // Belege (FA-STAT-11, NFA-COMP-01)
   | 'ISSUED'
   | 'PAYMENT_RECORDED'
+  | 'PAYMENT_REMOVED'
+  | 'PAID'
   | 'CANCELLED'
+  | 'DELETED'
+  | 'DUPLICATED'
   // Authentifizierung
   | 'LOGIN_SUCCEEDED'
   | 'LOGIN_FAILED'

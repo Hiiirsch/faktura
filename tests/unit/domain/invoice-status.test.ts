@@ -20,6 +20,7 @@ import {
   outstandingAmount,
 } from '@/domain/invoice/status';
 import { countsTowardReceivables, countsTowardRevenue } from '@/domain/invoice/revenue';
+import { INVOICE_EVENT_TYPES } from '@/domain/invoice/events';
 
 describe('Statuswerte (FA-STAT-01)', () => {
   it('kennt genau die fünf vorgesehenen Zustände', () => {
@@ -246,5 +247,16 @@ describe('Offene Forderungen für das Dashboard (FA-DASH-01)', () => {
 
   it('zählt Gutschriften nicht', () => {
     expect(countsTowardReceivables({ documentType: 'CREDIT_NOTE', status: 'ISSUED' })).toBe(false);
+  });
+});
+
+describe('Domain-Ereignisse (NFA-ARCH-08)', () => {
+  it('führt die Ereignisse, an die sich Handler hängen lassen', () => {
+    expect([...INVOICE_EVENT_TYPES]).toEqual([
+      'InvoiceIssued',
+      'InvoicePaymentRecorded',
+      'InvoicePaid',
+      'InvoiceCancelled',
+    ]);
   });
 });

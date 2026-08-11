@@ -10,11 +10,12 @@ Verbindliche Grundlagen:
 - [`CLAUDE.md`](CLAUDE.md) — technische Leitplanken
 - [`FORTSCHRITT.md`](FORTSCHRITT.md) — Stand je Anforderung
 
-**Aktueller Stand: M3 (Domain-Kern).** Berechnung, Steueraufstellung,
-Nummernkreis und Statusmodell stehen und sind vollständig getestet. Erfasst
-werden Firmendaten samt Logo und Bankverbindung, Kunden mit automatischer
-Nummernvergabe und ein Leistungskatalog. Der Rechnungseditor, Vorlagen und die
-Auswertung folgen mit den nächsten Ausbaustufen.
+**Aktueller Stand: M4 (Rechnungen).** Rechnungen lassen sich anlegen,
+bearbeiten, festschreiben, bezahlen und stornieren. Ab dem Festschreiben ist der
+Beleg unveränderlich — durchgesetzt von Datenbank-Triggern, nicht nur vom
+Anwendungscode. Erfasst werden außerdem Firmendaten samt Logo und
+Bankverbindung, Kunden mit automatischer Nummernvergabe und ein
+Leistungskatalog. PDF-Ausgabe, Vorlagen und Auswertung folgen.
 
 Die Anwendung ist vollständig zugriffsgeschützt: Anmeldung mit Passwort und
 optionaler Zweifaktorauthentifizierung, Sitzungsverwaltung, Sicherheits-Header,
@@ -223,6 +224,27 @@ Verzeichnis gegen das Dateisystem ab.
 | CSRF | Herkunftsprüfung **und** Double-Submit-Token in jeder schreibenden Aktion |
 | Header | CSP mit Nonce, HSTS, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` |
 | Zugriffsschutz | `requireSession()` als erste Anweisung jeder Seite und Aktion, zusätzlich `src/proxy.ts` |
+
+## Unveränderbarkeit
+
+Ab dem Festschreiben sind Rechnung und Positionen fest. Durchgesetzt auf zwei
+Ebenen, wie es die Spezifikation verlangt:
+
+1. Guards in den Use Cases — sie liefern verständliche Meldungen.
+2. Datenbank-Trigger — sie greifen auch dann, wenn jemand am Anwendungscode
+   vorbei schreibt, und lassen sich nicht durch ein Zurücksetzen auf „Entwurf"
+   umgehen.
+
+Änderbar bleiben nur Status, Zahlungsstand und Stornovermerk. Ein
+festgeschriebener Beleg lässt sich nicht löschen — eine fehlerhafte Rechnung
+wird storniert. Das Audit-Log ist weder änder- noch löschbar.
+
+Eine Stornierung erzeugt eine **eigenständige Stornorechnung** mit eigener
+Nummer aus demselben fortlaufenden Kreis und Bezug auf das Original; das
+Original wechselt auf „Storniert" und bleibt vollständig erhalten. Die
+Stornorechnung führt positive Beträge — die Richtung steckt im Belegtyp, so wie
+EN 16931 es vorsieht — und zählt nie in den Umsatz, weil das Original bereits
+ausscheidet.
 
 ## Rechnen mit Geld
 

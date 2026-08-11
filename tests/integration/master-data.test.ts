@@ -36,9 +36,9 @@ import {
 } from '@/application/customers/customer-service';
 import { cents } from '@/domain/money/money';
 
-import { TEST_DATABASE_URL } from './setup/server';
+import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 
-const prisma = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } });
+const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
 const ACTOR = 'pruef-akteur';
 const STORAGE_DIR = path.resolve('./data/integration-storage');
@@ -59,18 +59,17 @@ const CUSTOMER: CustomerData = {
   notes: null,
 };
 
-async function resetMasterData(): Promise<void> {
-  await prisma.customer.deleteMany();
-  await prisma.catalogItem.deleteMany();
-  await prisma.numberSequence.deleteMany();
-  await prisma.companyProfile.deleteMany();
-  await prisma.auditLog.deleteMany({ where: { entityType: { not: 'User' } } });
+/** Zuwachs im Protokoll seit einem Merkpunkt (es ist unveränderlich). */
+async function auditEntries(entityType: string) {
+  return prisma.auditLog.findMany({ where: { entityType }, orderBy: { createdAt: 'asc' } });
 }
 
-beforeEach(resetMasterData);
+beforeEach(async () => {
+  await resetDatabase();
+  await prisma.$disconnect();
+});
 
 afterAll(async () => {
-  await resetMasterData();
   await prisma.$disconnect();
   await rm(STORAGE_DIR, { recursive: true, force: true });
 });
@@ -131,10 +130,7 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
     await saveCompanyProfile({ ...EMPTY_COMPANY_PROFILE, legalName: 'Erst' }, ACTOR, '10.0.0.1');
     await saveCompanyProfile({ ...EMPTY_COMPANY_PROFILE, legalName: 'Dann' }, ACTOR, '10.0.0.1');
 
-    const entries = await prisma.auditLog.findMany({
-      where: { entityType: 'CompanyProfile' },
-      orderBy: { createdAt: 'asc' },
-    });
+    const entries = await auditEntries('CompanyProfile');
 
     expect(entries.map((entry) => entry.action)).toEqual(['CREATED', 'UPDATED']);
     expect(entries[1]?.diffJson).toContain('legalName');
@@ -147,8 +143,7 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
     await saveCompanyProfile(data, ACTOR, null);
     await saveCompanyProfile(data, ACTOR, null);
 
-    const entries = await prisma.auditLog.findMany({ where: { entityType: 'CompanyProfile' } });
-    expect(entries).toHaveLength(1);
+    expect(await auditEntries('CompanyProfile')).toHaveLength(1);
   });
 
   it('legt keine Werte der Bankverbindung ins Protokoll (NFA-BETR-10)', async () => {
@@ -158,7 +153,7 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
       null,
     );
 
-    const entries = await prisma.auditLog.findMany({ where: { entityType: 'CompanyProfile' } });
+    const entries = await auditEntries('CompanyProfile');
     expect(JSON.stringify(entries)).not.toContain('DE89370400440532013000');
   });
 });

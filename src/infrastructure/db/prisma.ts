@@ -14,6 +14,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import { getEnv } from '@/infrastructure/config/env';
+import { withImmutabilityGuards } from '@/infrastructure/db/immutability';
 
 const globalForPrisma = globalThis as unknown as {
   prismaClient: PrismaClient | undefined;
@@ -61,10 +62,15 @@ export function getPrismaClient(): PrismaClient {
     datasources: { db: { url: withSqliteConcurrencySettings(env.DATABASE_URL) } },
   });
 
-  client = created;
+  // Ausschließlich der abgesicherte Client verlässt diese Datei: Die
+  // Unveränderbarkeit festgeschriebener Belege und des Protokolls gilt damit
+  // für jeden Zugriff, nicht nur für die Use Cases, die daran denken.
+  const guarded = withImmutabilityGuards(created);
+
+  client = guarded;
   if (env.NODE_ENV !== 'production') {
-    globalForPrisma.prismaClient = created;
+    globalForPrisma.prismaClient = guarded;
   }
 
-  return created;
+  return guarded;
 }

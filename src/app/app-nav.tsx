@@ -8,6 +8,7 @@ import {
   COMPANY_SETTINGS_PATH,
   CUSTOMERS_PATH,
   DASHBOARD_PATH,
+  INVOICES_PATH,
   NUMBERING_SETTINGS_PATH,
   SECURITY_SETTINGS_PATH,
 } from '@/routes';
@@ -22,6 +23,7 @@ const ACTIVE_LINK_CLASS = `${LINK_CLASS} bg-neutral-100 dark:bg-neutral-800`;
 
 const ITEMS = [
   { href: DASHBOARD_PATH, label: messages.nav.dashboard },
+  { href: INVOICES_PATH, label: messages.nav.invoices },
   { href: CUSTOMERS_PATH, label: messages.nav.customers },
   { href: CATALOG_PATH, label: messages.nav.catalog },
   { href: COMPANY_SETTINGS_PATH, label: messages.nav.company },

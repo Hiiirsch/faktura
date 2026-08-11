@@ -22,7 +22,9 @@ export default defineConfig({
     // Der Testprozess greift für die Fachlogik auf dieselbe Datenbank zu wie
     // der gestartete Server.
     env: {
-      DATABASE_URL: 'file:../data/integration-test.db',
+      // Der Testprozess arbeitet auf einer eigenen Datenbank, die vor jedem
+      // Test aus einer Vorlage neu entsteht.
+      DATABASE_URL: 'file:../data/integration-data.db',
       APP_URL: 'http://127.0.0.1:3987',
       APP_TIMEZONE: 'Europe/Berlin',
       APP_NAME: 'Faktura',

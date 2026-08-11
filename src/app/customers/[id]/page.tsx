@@ -6,13 +6,18 @@ import type { ReactNode } from 'react';
 import { requireSession } from '@/application/auth/require-session';
 import { getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { getCustomer } from '@/application/customers/customer-service';
+import { listInvoicesForCustomer } from '@/application/invoices/invoice-queries';
+import { cents } from '@/domain/money/money';
 import type { CountryCode } from '@/domain/codes/country-code';
 import { resolvePaymentTerms } from '@/domain/customer/payment-terms';
 import { determineTaxScheme } from '@/domain/tax/tax-scheme';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { CUSTOMERS_PATH } from '@/routes';
+import { CUSTOMERS_PATH, invoicePath } from '@/routes';
 import { CARD_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { formatMoney } from '@/ui/format';
+
+import { formatGermanDate, InvoiceStatusBadge } from '../../invoices/status-badge';
 
 import { AppNav } from '../../app-nav';
 import { setCustomerArchivedAction } from '../actions';
@@ -36,7 +41,10 @@ export default async function CustomerDetailPage({
     notFound();
   }
 
-  const company = await getCompanyProfileOrEmpty();
+  const [company, invoices] = await Promise.all([
+    getCompanyProfileOrEmpty(),
+    listInvoicesForCustomer(id),
+  ]);
 
   // Vorschlag für neue Rechnungen an diesen Kunden (FA-STAMM-03).
   const taxScheme = determineTaxScheme({
@@ -98,9 +106,62 @@ export default async function CustomerDetailPage({
 
         <section className={CARD_CLASS}>
           <h2 className="text-lg font-medium">{messages.customers.invoicesHeading}</h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            {messages.customers.invoicesPending}
-          </p>
+
+          {invoices.length === 0 ? (
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {messages.customers.invoicesEmpty}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-200 text-left dark:border-neutral-800">
+                    <th scope="col" className="py-2 pr-4 font-medium">
+                      {messages.invoices.number}
+                    </th>
+                    <th scope="col" className="py-2 pr-4 font-medium">
+                      {messages.invoices.issueDate}
+                    </th>
+                    <th scope="col" className="py-2 pr-4 text-right font-medium">
+                      {messages.invoices.gross}
+                    </th>
+                    <th scope="col" className="py-2 font-medium">
+                      {messages.invoices.filterStatus}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice) => (
+                    <tr
+                      key={invoice.id}
+                      className="border-b border-neutral-100 dark:border-neutral-900"
+                    >
+                      <td className="py-2 pr-4 tabular-nums">
+                        <Link
+                          href={invoicePath(invoice.id)}
+                          className="underline underline-offset-4"
+                        >
+                          {invoice.invoiceNumber ?? messages.invoices.noNumber}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {formatGermanDate(invoice.issueDate)}
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {formatMoney(cents(invoice.grossTotalCents), invoice.currency as 'EUR')}
+                      </td>
+                      <td className="py-2">
+                        <InvoiceStatusBadge
+                          status={invoice.status}
+                          isOverdue={invoice.isOverdue}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className={CARD_CLASS}>

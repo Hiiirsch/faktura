@@ -11,7 +11,7 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +27,16 @@ export const TEST_USER_PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 const TEST_DB_FILE = path.join(projectRoot, 'data', 'integration-test.db');
 export const TEST_DATABASE_URL = 'file:../data/integration-test.db';
 
+/**
+ * Zweite Datenbank für die Prüfungen der Fachlogik.
+ *
+ * Getrennt von der des Servers: Diese Datei wird vor jedem Test aus einer
+ * Vorlage neu angelegt, was den laufenden Server stören würde.
+ */
+const TEMPLATE_DB_FILE = path.join(projectRoot, 'data', 'integration-template.db');
+const DATA_DB_FILE = path.join(projectRoot, 'data', 'integration-data.db');
+const TEMPLATE_DATABASE_URL = 'file:../data/integration-template.db';
+
 const serverEnv = {
   ...process.env,
   NODE_ENV: 'production',
@@ -40,11 +50,13 @@ const serverEnv = {
 
 let server: ChildProcess | undefined;
 
-function removeTestDatabase(): void {
-  for (const suffix of ['', '-journal', '-wal', '-shm']) {
-    const file = `${TEST_DB_FILE}${suffix}`;
-    if (existsSync(file)) {
-      rmSync(file);
+function removeDatabases(): void {
+  for (const base of [TEST_DB_FILE, TEMPLATE_DB_FILE, DATA_DB_FILE]) {
+    for (const suffix of ['', '-journal', '-wal', '-shm']) {
+      const file = `${base}${suffix}`;
+      if (existsSync(file)) {
+        rmSync(file);
+      }
     }
   }
 }
@@ -78,13 +90,18 @@ export async function setup(): Promise<void> {
     );
   }
 
-  removeTestDatabase();
+  removeDatabases();
 
-  execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
-    cwd: projectRoot,
-    env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
-    stdio: 'pipe',
-  });
+  for (const url of [TEST_DATABASE_URL, TEMPLATE_DATABASE_URL]) {
+    execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
+      cwd: projectRoot,
+      env: { ...process.env, DATABASE_URL: url },
+      stdio: 'pipe',
+    });
+  }
+
+  // Startzustand für die Fachlogik-Prüfungen.
+  copyFileSync(TEMPLATE_DB_FILE, DATA_DB_FILE);
 
   execFileSync('npx', ['tsx', 'tests/integration/setup/seed-user.ts'], {
     cwd: projectRoot,
@@ -109,5 +126,5 @@ export async function teardown(): Promise<void> {
       server.kill('SIGKILL');
     }
   }
-  removeTestDatabase();
+  removeDatabases();
 }

@@ -20,6 +20,12 @@ export const CUSTOMERS_PATH = '/customers';
 export const NEW_CUSTOMER_PATH = '/customers/new';
 export const CATALOG_PATH = '/catalog';
 export const NUMBERING_SETTINGS_PATH = '/settings/numbering';
+export const INVOICES_PATH = '/invoices';
+export const NEW_INVOICE_PATH = '/invoices/new';
+
+export function invoicePath(id: string): string {
+  return `${INVOICES_PATH}/${id}`;
+}
 
 export function customerPath(id: string): string {
   return `${CUSTOMERS_PATH}/${id}`;
@@ -68,6 +74,14 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'page',
     access: 'authenticated',
     probePath: '/customers/probe-kennung',
+  },
+  { path: INVOICES_PATH, kind: 'page', access: 'authenticated' },
+  { path: NEW_INVOICE_PATH, kind: 'page', access: 'authenticated' },
+  {
+    path: '/invoices/[id]',
+    kind: 'page',
+    access: 'authenticated',
+    probePath: '/invoices/probe-kennung',
   },
   { path: CATALOG_PATH, kind: 'page', access: 'authenticated' },
   { path: NUMBERING_SETTINGS_PATH, kind: 'page', access: 'authenticated' },

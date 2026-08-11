@@ -1,21 +1,19 @@
 /**
- * Belege: Anlegen, Neuberechnen, Festschreiben
- * (FA-NUM-02, -03, -04; FA-STAT-01, -03, -04, -05).
+ * Belege im Entwurfsstadium: Anlegen, Ändern, Duplizieren, Löschen
+ * (FA-RECH-01, -10, -11; FA-STAT-01).
  *
- * M3 liefert den Kern: Nummernvergabe, Summenberechnung und Statusableitung.
- * Editor, Snapshot, Unveränderbarkeits-Guards und Storno folgen mit M4.
+ * Festschreiben, Storno und Zahlungen liegen in eigenen Dateien — es sind
+ * eigene Vorgänge mit eigenen Vorbedingungen und gehören nicht in dieselbe
+ * Datei wie das alltägliche Bearbeiten eines Entwurfs.
  */
 import { isTaxCategoryCode, type TaxCategoryCode } from '@/domain/codes/tax-category';
-import { type Cents, cents, sumCents } from '@/domain/money/money';
+import { deriveStatus } from '@/domain/invoice/status';
 import { calculateInvoiceTotals, type InvoiceLineInput } from '@/domain/invoice/totals';
-import { allowedTransitionsFrom, deriveStatus, type InvoiceStatus } from '@/domain/invoice/status';
+import { cents, sumCents } from '@/domain/money/money';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
-import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
-import { type TaxScheme } from '@/domain/tax/tax-scheme';
+import type { TaxScheme } from '@/domain/tax/tax-scheme';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { getPrismaClient } from '@/infrastructure/db/prisma';
-
-import { allocateInvoiceNumber, type TransactionClient } from './invoice-numbering';
 
 export type InvoiceLineData = {
   readonly position: number;
@@ -43,7 +41,7 @@ export type DraftInvoiceData = {
   readonly lines: readonly InvoiceLineData[];
 };
 
-function toDomainLine(line: InvoiceLineData): InvoiceLineInput {
+export function toDomainLine(line: InvoiceLineData): InvoiceLineInput {
   if (!isTaxCategoryCode(line.taxCategory)) {
     throw new RangeError(`Unbekannte Steuerkategorie: ${line.taxCategory}`);
   }
@@ -57,13 +55,27 @@ function toDomainLine(line: InvoiceLineData): InvoiceLineInput {
   };
 }
 
+function lineCreateData(lines: readonly InvoiceLineData[], lineNets: readonly number[]) {
+  return lines.map((line, index) => ({
+    position: line.position,
+    name: line.name,
+    description: line.description,
+    quantityScaled: line.quantityScaled,
+    unitCode: line.unitCode,
+    unitPriceCents: line.unitPriceCents,
+    taxRateBasisPoints: line.taxRateBasisPoints,
+    taxCategory: line.taxCategory,
+    discountBasisPoints: line.discountBasisPoints,
+    lineNetCents: lineNets[index] ?? 0,
+  }));
+}
+
 export async function createDraftInvoice(
   data: DraftInvoiceData,
   actorId: string,
   ipAddress: string | null,
 ): Promise<{ id: string }> {
-  const domainLines = data.lines.map(toDomainLine);
-  const totals = calculateInvoiceTotals(domainLines);
+  const totals = calculateInvoiceTotals(data.lines.map(toDomainLine));
 
   const invoice = await getPrismaClient().invoice.create({
     data: {
@@ -82,20 +94,7 @@ export async function createDraftInvoice(
       netTotalCents: totals.netTotalCents,
       taxTotalCents: totals.taxTotalCents,
       grossTotalCents: totals.grossTotalCents,
-      lines: {
-        create: data.lines.map((line, index) => ({
-          position: line.position,
-          name: line.name,
-          description: line.description,
-          quantityScaled: line.quantityScaled,
-          unitCode: line.unitCode,
-          unitPriceCents: line.unitPriceCents,
-          taxRateBasisPoints: line.taxRateBasisPoints,
-          taxCategory: line.taxCategory,
-          discountBasisPoints: line.discountBasisPoints,
-          lineNetCents: totals.lineNets[index] ?? 0,
-        })),
-      },
+      lines: { create: lineCreateData(data.lines, totals.lineNets) },
     },
   });
 
@@ -110,10 +109,176 @@ export async function createDraftInvoice(
   return { id: invoice.id };
 }
 
+export type DraftError =
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'NOT_A_DRAFT'; readonly status: string };
+
 /**
- * Berechnet Positionsbeträge, Summen und Zahlungsstand neu und leitet daraus
- * den Status ab. Einzige Stelle, an der die denormalisierten Summen entstehen
- * (Spec §4.1).
+ * Ersetzt Kopfdaten und Positionen eines Entwurfs.
+ *
+ * Die Positionen werden vollständig neu geschrieben statt einzeln abgeglichen:
+ * Der Editor liefert ohnehin die komplette Liste, und ein Abgleich brächte nur
+ * die Möglichkeit, eine Position zu übersehen.
+ */
+export async function updateDraftInvoice(
+  invoiceId: string,
+  data: DraftInvoiceData,
+  actorId: string,
+  ipAddress: string | null,
+): Promise<{ ok: true } | { ok: false; error: DraftError }> {
+  const prisma = getPrismaClient();
+  const existing = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+
+  if (existing === null) {
+    return { ok: false, error: { kind: 'NOT_FOUND' } };
+  }
+  if (existing.status !== 'DRAFT') {
+    return { ok: false, error: { kind: 'NOT_A_DRAFT', status: existing.status } };
+  }
+
+  const totals = calculateInvoiceTotals(data.lines.map(toDomainLine));
+
+  await prisma.$transaction([
+    prisma.invoiceLine.deleteMany({ where: { invoiceId } }),
+    prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        customerId: data.customerId,
+        taxScheme: data.taxScheme,
+        currency: data.currency,
+        issueDate: data.issueDate,
+        serviceDateFrom: data.serviceDateFrom,
+        serviceDateTo: data.serviceDateTo,
+        dueDate: data.dueDate,
+        introText: data.introText,
+        outroText: data.outroText,
+        purchaseOrderRef: data.purchaseOrderRef,
+        netTotalCents: totals.netTotalCents,
+        taxTotalCents: totals.taxTotalCents,
+        grossTotalCents: totals.grossTotalCents,
+        lines: { create: lineCreateData(data.lines, totals.lineNets) },
+      },
+    }),
+  ]);
+
+  await recordAuditEntry({
+    entityType: 'Invoice',
+    entityId: invoiceId,
+    action: 'UPDATED',
+    actorId,
+    ipAddress,
+  });
+
+  return { ok: true };
+}
+
+/** Entwürfe dürfen gelöscht werden, festgeschriebene Belege nicht (FA-RECH-11). */
+export async function deleteDraftInvoice(
+  invoiceId: string,
+  actorId: string,
+  ipAddress: string | null,
+): Promise<{ ok: true } | { ok: false; error: DraftError }> {
+  const prisma = getPrismaClient();
+  const existing = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+
+  if (existing === null) {
+    return { ok: false, error: { kind: 'NOT_FOUND' } };
+  }
+  if (existing.status !== 'DRAFT') {
+    return { ok: false, error: { kind: 'NOT_A_DRAFT', status: existing.status } };
+  }
+
+  await prisma.invoice.delete({ where: { id: invoiceId } });
+
+  await recordAuditEntry({
+    entityType: 'Invoice',
+    entityId: invoiceId,
+    action: 'DELETED',
+    actorId,
+    ipAddress,
+  });
+
+  return { ok: true };
+}
+
+/**
+ * Dupliziert einen Beleg als neuen Entwurf (FA-RECH-10).
+ *
+ * Die Kopie erhält **keine** Nummer, keinen Snapshot und keine Zahlungen — sie
+ * ist ein frischer Entwurf, kein zweites Exemplar des Originals.
+ */
+export async function duplicateInvoice(
+  invoiceId: string,
+  actorId: string,
+  ipAddress: string | null,
+): Promise<{ ok: true; id: string } | { ok: false; error: { kind: 'NOT_FOUND' } }> {
+  const prisma = getPrismaClient();
+  const source = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { lines: { orderBy: { position: 'asc' } } },
+  });
+
+  if (source === null) {
+    return { ok: false, error: { kind: 'NOT_FOUND' } };
+  }
+
+  const copy = await prisma.invoice.create({
+    data: {
+      customerId: source.customerId,
+      documentType: 'INVOICE',
+      status: 'DRAFT',
+      invoiceNumber: null,
+      taxScheme: source.taxScheme,
+      currency: source.currency,
+      issueDate: null,
+      serviceDateFrom: source.serviceDateFrom,
+      serviceDateTo: source.serviceDateTo,
+      dueDate: null,
+      introText: source.introText,
+      outroText: source.outroText,
+      purchaseOrderRef: source.purchaseOrderRef,
+      templateId: source.templateId,
+      netTotalCents: source.netTotalCents,
+      taxTotalCents: source.taxTotalCents,
+      grossTotalCents: source.grossTotalCents,
+      paidTotalCents: 0,
+      lines: {
+        create: source.lines.map((line) => ({
+          position: line.position,
+          name: line.name,
+          description: line.description,
+          quantityScaled: line.quantityScaled,
+          unitCode: line.unitCode,
+          unitPriceCents: line.unitPriceCents,
+          taxRateBasisPoints: line.taxRateBasisPoints,
+          taxCategory: line.taxCategory,
+          discountBasisPoints: line.discountBasisPoints,
+          lineNetCents: line.lineNetCents,
+        })),
+      },
+    },
+  });
+
+  await recordAuditEntry({
+    entityType: 'Invoice',
+    entityId: copy.id,
+    action: 'DUPLICATED',
+    actorId,
+    ipAddress,
+    details: { sourceInvoiceId: invoiceId },
+  });
+
+  return { ok: true, id: copy.id };
+}
+
+/**
+ * Berechnet Summen und Zahlungsstand neu und leitet daraus den Status ab.
+ * Einzige Stelle, an der die denormalisierten Summen entstehen (Spec §4.1).
+ *
+ * Bei einem festgeschriebenen Beleg werden **nur** Zahlungsstand und Status
+ * fortgeschrieben. Die Beträge sind ab dem Festschreiben eingefroren — sie neu
+ * zu berechnen wäre eine nachträgliche Änderung, und die Prisma-Erweiterung
+ * würde sie ohnehin abweisen (FA-NUM-08, FA-NUM-09).
  */
 export async function recalculateInvoice(invoiceId: string): Promise<void> {
   const prisma = getPrismaClient();
@@ -123,17 +288,24 @@ export async function recalculateInvoice(invoiceId: string): Promise<void> {
     include: { lines: { orderBy: { position: 'asc' } }, payments: true },
   });
 
-  const totals = calculateInvoiceTotals(invoice.lines.map(toDomainLine));
   const paidTotalCents = sumCents(invoice.payments.map((payment) => cents(payment.amountCents)));
 
-  const status: InvoiceStatus =
-    invoice.status === 'DRAFT'
-      ? 'DRAFT'
-      : deriveStatus({
+  if (invoice.status !== 'DRAFT') {
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        paidTotalCents,
+        status: deriveStatus({
           isCancelled: invoice.status === 'CANCELLED',
-          grossTotalCents: totals.grossTotalCents,
+          grossTotalCents: cents(invoice.grossTotalCents),
           paidTotalCents,
-        });
+        }),
+      },
+    });
+    return;
+  }
+
+  const totals = calculateInvoiceTotals(invoice.lines.map(toDomainLine));
 
   await prisma.$transaction([
     ...invoice.lines.map((line, index) =>
@@ -149,129 +321,8 @@ export async function recalculateInvoice(invoiceId: string): Promise<void> {
         taxTotalCents: totals.taxTotalCents,
         grossTotalCents: totals.grossTotalCents,
         paidTotalCents,
-        status,
+        status: 'DRAFT',
       },
     }),
   ]);
-}
-
-export type IssueError =
-  | { readonly kind: 'NOT_A_DRAFT'; readonly status: InvoiceStatus }
-  | { readonly kind: 'MISSING_ISSUE_DATE' }
-  | { readonly kind: 'INVALID_ISSUE_DATE' }
-  /** Rückdatierung vor eine bereits vergebene Nummer desselben Bereichs. */
-  | { readonly kind: 'BACKDATED'; readonly lastIssuedDate: string };
-
-/**
- * Festschreiben: Nummernvergabe und Statuswechsel in **einer** Transaktion
- * (FA-NUM-02, -03).
- *
- * Die Prüfung auf Rückdatierung sichert die zeitliche Ordnung des
- * Nummernkreises: Eine neue Nummer darf kein früheres Rechnungsdatum tragen
- * als die zuletzt vergebene desselben Bereichs, sonst liefe die Nummernfolge
- * der Datumsfolge zuwider.
- *
- * Vollständigkeitsprüfung, Snapshot und Unveränderbarkeits-Guards folgen mit
- * M4 (FA-RECH-12, -13, FA-NUM-08, -09).
- */
-export async function issueInvoice(
-  invoiceId: string,
-  numberFormat: string,
-  actorId: string,
-  ipAddress: string | null,
-  now: Date = new Date(),
-): Promise<{ ok: true; invoiceNumber: string } | { ok: false; error: IssueError }> {
-  const prisma = getPrismaClient();
-  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
-
-  if (invoice.status !== 'DRAFT') {
-    return { ok: false, error: { kind: 'NOT_A_DRAFT', status: invoice.status as InvoiceStatus } };
-  }
-  if (invoice.issueDate === null) {
-    return { ok: false, error: { kind: 'MISSING_ISSUE_DATE' } };
-  }
-
-  const parsedDate = parsePlainDate(invoice.issueDate);
-  if (!parsedDate.ok) {
-    return { ok: false, error: { kind: 'INVALID_ISSUE_DATE' } };
-  }
-  const issueDate: PlainDate = parsedDate.value;
-
-  const result = await prisma.$transaction(
-    async (tx) => {
-      const backdating = await findBackdating(tx, issueDate);
-      if (backdating !== null) {
-        return { ok: false as const, error: backdating };
-      }
-
-      const invoiceNumber = await allocateInvoiceNumber(tx, numberFormat, issueDate);
-
-      await tx.invoice.update({
-        where: { id: invoiceId },
-        data: { invoiceNumber, status: 'ISSUED', issuedAt: now },
-      });
-
-      return { ok: true as const, invoiceNumber };
-    },
-    {
-      // Auf einer einzelnen SQLite-Verbindung warten gleichzeitige
-      // Festschreibungen aufeinander. `maxWait` muss diese Wartezeit
-      // abdecken, sonst bricht die zweite Anfrage ab, statt ihre Nummer zu
-      // bekommen (FA-NUM-04).
-      maxWait: 30_000,
-      timeout: 15_000,
-    },
-  );
-
-  if (!result.ok) {
-    return result;
-  }
-
-  await recordAuditEntry({
-    entityType: 'Invoice',
-    entityId: invoiceId,
-    action: 'ISSUED',
-    actorId,
-    ipAddress,
-    details: { invoiceNumber: result.invoiceNumber },
-  });
-
-  return result;
-}
-
-/** Prüft, ob das Rechnungsdatum vor dem zuletzt festgeschriebenen liegt. */
-async function findBackdating(
-  tx: TransactionClient,
-  issueDate: PlainDate,
-): Promise<IssueError | null> {
-  const latest = await tx.invoice.findFirst({
-    where: { invoiceNumber: { not: null }, documentType: 'INVOICE' },
-    orderBy: { issueDate: 'desc' },
-    select: { issueDate: true },
-  });
-
-  if (latest?.issueDate == null || latest.issueDate <= issueDate) {
-    return null;
-  }
-
-  return { kind: 'BACKDATED', lastIssuedDate: latest.issueDate };
-}
-
-/** Erfasst eine Zahlung und leitet den Status neu ab (FA-STAT-03, -04, -05). */
-export async function recordPayment(
-  invoiceId: string,
-  amountCents: Cents,
-  paidAt: PlainDate,
-  method: string | null,
-  note: string | null,
-): Promise<void> {
-  await getPrismaClient().payment.create({
-    data: { invoiceId, amountCents, paidAt, method, note },
-  });
-
-  await recalculateInvoice(invoiceId);
-}
-
-export function transitionsFor(status: InvoiceStatus): readonly InvoiceStatus[] {
-  return allowedTransitionsFrom(status);
 }

@@ -116,6 +116,18 @@ für sie keine serverseitige Aktionskennung aus. Solche Seiten tragen einen
 `<NoScriptNotice>`. Wo Bedienung ohne JavaScript zählt (Anmeldung), wird das
 Formular aus einer Server-Komponente mit einfacher Server Action gerendert.
 
+Unveränderbarkeit liegt in **Datenbank-Triggern**, nicht in einer Prisma-Erweiterung:
+Um zu entscheiden, ob ein Beleg festgeschrieben ist, müsste die Erweiterung seinen
+Status lesen — diese Zusatzabfrage liefe innerhalb einer Transaktion auf der
+einzigen SQLite-Verbindung in einen Deadlock. Trigger laufen in derselben
+Transaktion und greifen auch ohne Prisma. Geschützt sind Belege ab dem
+Festschreiben (inklusive Rückweg auf Entwurf), ihre Positionen und das Audit-Log.
+Änderbar bleiben nur Status, Zahlungsstand, Stornovermerk.
+
+Weil sich festgeschriebene Belege und Protokolleinträge **nicht löschen lassen**,
+räumen die Integrationstests nicht per `deleteMany` auf, sondern kopieren eine
+migrierte Vorlagendatenbank (`tests/integration/setup/database.ts`).
+
 SQLite hat genau einen Schreiber. `getPrismaClient()` setzt deshalb
 `connection_limit=1`; nebenläufige Transaktionen warten aufeinander, statt in einen
 Socket-Timeout zu laufen (FA-NUM-04).
@@ -136,8 +148,8 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 | M0 | Fundament: Next.js, TS, Tailwind, Prisma, Docker, Lint, Vitest, Schichten | abgenommen |
 | M1 | Auth & Sicherheit — vor allen Features | abgenommen |
 | M2 | Stammdaten: Firma, Kunden, Katalog | abgenommen |
-| M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | zur Abnahme |
-| M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | offen |
+| M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | abgenommen |
+| M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | zur Abnahme |
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |

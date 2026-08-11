@@ -12,7 +12,7 @@ Verifikationsarten R und M.
 **keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
 Vorschlag und steht noch zur Freigabe aus.
 
-Stand: 2026-08-10 · 69 von 171 umgesetzt · 43 abgenommen (M0, M1, M2) · **M3 zur Abnahme vorgelegt**
+Stand: 2026-08-11 · 98 von 171 erledigt (67 abgenommen: M0–M3, 31 umgesetzt) · **M4 zur Abnahme vorgelegt**
 
 Prüfbefehl für alle mit „T"/„R" belegten Nachweise: `npm run verify`.
 Die mit „M" belegten Nachweise sind unter „Manuell:" mit dem durchgeführten
@@ -46,7 +46,7 @@ Szenario benannt.
 | FA-KUND-05 | Kundenspezifisches Zahlungsziel überschreibt Standard | MUSS | T | M2 | abgenommen | `tests/unit/domain/master-data.test.ts` (`resolvePaymentTerms`), `tests/integration/master-data.test.ts` (Persistenz) |
 | FA-KUND-06 | Archivieren statt Löschen bei vorhandenen Rechnungen | MUSS | T | M2 | abgenommen | `tests/integration/master-data.test.ts` — Archivieren statt Löschen; strengere Auslegung nach Spec §4.1 |
 | FA-KUND-07 | Archivierte nicht in Neuauswahl, in Altrechnungen sichtbar | MUSS | T | M2 | abgenommen | `tests/integration/master-data.test.ts` — `listSelectableCustomers` blendet Archivierte aus; Sichtbarkeit in Altrechnungen folgt mit M4 |
-| FA-KUND-08 | Kundendetail zeigt zugehörige Rechnungen | MUSS | M | M2 → M4 | offen | Abschnitt auf der Detailseite vorhanden; die Liste selbst setzt Rechnungen voraus (M4) |
+| FA-KUND-08 | Kundendetail zeigt zugehörige Rechnungen | MUSS | M | M2 → M4 | umgesetzt | Manuell: Kundendetailseite listet alle Belege mit Nummer, Datum, Betrag und Status |
 | FA-KUND-09 | Leitweg-ID optional erfassbar | SOLL | T | M2 | abgenommen | `tests/integration/master-data.test.ts` — Leitweg-ID im Kundendatensatz |
 | FA-KUND-10 | CSV-Import/-Export für Kunden | KANN | M | M2 | offen | Nicht umgesetzt — Priorität KANN, bewusst zurückgestellt |
 
@@ -54,69 +54,69 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-RECH-01 | Entwurf ohne Nummernvergabe speicherbar | MUSS | T | M4 | offen | — |
-| FA-RECH-02 | Kundenauswahl befüllt Adresse/Ziel/Steuerkategorie vor | MUSS | T | M4 | offen | — |
-| FA-RECH-03 | Positionen hinzufügen, löschen, duplizieren, sortieren | MUSS | M | M4 | offen | — |
-| FA-RECH-04 | Positionsfelder vollständig | MUSS | T | M4 | offen | — |
-| FA-RECH-05 | Positionsrabatt in Prozent | SOLL | T | M4 | offen | — |
-| FA-RECH-06 | Katalog-Autocomplete im Bezeichnungsfeld | SOLL | M | M4 | offen | — |
-| FA-RECH-07 | Rechnungs-, Leistungs- und Fälligkeitsdatum erfassbar | MUSS | T | M4 | offen | — |
-| FA-RECH-08 | Fälligkeit aus Datum + Zahlungsziel vorbelegt, überschreibbar | MUSS | T | M4 | offen | — |
-| FA-RECH-09 | Einleitungs- und Schlusstext je Rechnung | SOLL | T | M4 | offen | — |
-| FA-RECH-10 | Duplizieren als neuer Entwurf ohne Nummer | MUSS | T | M4 | offen | — |
-| FA-RECH-11 | Entwürfe löschbar, festgeschriebene nicht | MUSS | T | M4 | offen | — |
-| FA-RECH-12 | Vollständigkeitsprüfung vor Festschreiben blockiert | MUSS | T | M4 | offen | — |
-| FA-RECH-13 | Käufer-/Verkäufer-Snapshot beim Festschreiben | MUSS | T | M4 | offen | — |
-| FA-RECH-14 | Stammdatenänderung ändert Altrechnungen nicht | MUSS | T | M4 | offen | — |
-| FA-RECH-15 | Liste filterbar nach Status/Kunde/Zeitraum/Volltext | MUSS | M | M4 | offen | — |
-| FA-RECH-16 | Liste sortierbar nach Nummer/Datum/Betrag/Fälligkeit | SOLL | M | M4 | offen | — |
+| FA-RECH-01 | Entwurf ohne Nummernvergabe speicherbar | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-numbering.test.ts` — Entwurf ohne Nummer; Editor unter /invoices/new |
+| FA-RECH-02 | Kundenauswahl befüllt Adresse/Ziel/Steuerkategorie vor | MUSS | T | M4 | umgesetzt | Manuell: Kundenauswahl im Editor belegt Zahlungsziel und Steuerverfahren vor (`src/app/invoices/editor-data.ts`) |
+| FA-RECH-03 | Positionen hinzufügen, löschen, duplizieren, sortieren | MUSS | M | M4 | umgesetzt | Manuell: Positionen hinzufügen, löschen, duplizieren; Sortieren per Drag & Drop und über Schaltflächen oben/unten (tastaturbedienbar) |
+| FA-RECH-04 | Positionsfelder vollständig | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Bezeichnung, Beschreibung, Menge, Einheit, Preis, Satz je Position |
+| FA-RECH-05 | Positionsrabatt in Prozent | SOLL | T | M4 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts`, `tests/integration/invoice-lifecycle.test.ts` — Positionsrabatt in Prozent, auch mit Nachkommastellen |
+| FA-RECH-06 | Katalog-Autocomplete im Bezeichnungsfeld | SOLL | M | M4 | umgesetzt | Manuell: Auswahlfeld „Aus Katalog übernehmen" im Editor füllt die letzte Position |
+| FA-RECH-07 | Rechnungs-, Leistungs- und Fälligkeitsdatum erfassbar | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Rechnungs-, Leistungs- und Fälligkeitsdatum als Kalendertage |
+| FA-RECH-08 | Fälligkeit aus Datum + Zahlungsziel vorbelegt, überschreibbar | MUSS | T | M4 | umgesetzt | Manuell: Fälligkeit wird aus Rechnungsdatum und Zahlungsziel vorbelegt und ist überschreibbar |
+| FA-RECH-09 | Einleitungs- und Schlusstext je Rechnung | SOLL | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Einleitungs- und Schlusstext je Beleg |
+| FA-RECH-10 | Duplizieren als neuer Entwurf ohne Nummer | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Kopie ohne Nummer, ohne Snapshot, ohne Zahlungen |
+| FA-RECH-11 | Entwürfe löschbar, festgeschriebene nicht | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Entwurf löschbar, festgeschriebener Beleg nicht (auch nicht am Use Case vorbei) |
+| FA-RECH-12 | Vollständigkeitsprüfung vor Festschreiben blockiert | MUSS | T | M4 | umgesetzt | `tests/unit/domain/invoice-completeness.test.ts`, `tests/integration/invoice-lifecycle.test.ts` — alle Verstöße gemeinsam gemeldet, Beleg bleibt Entwurf |
+| FA-RECH-13 | Käufer-/Verkäufer-Snapshot beim Festschreiben | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts`, `tests/unit/domain/invoice-snapshot.test.ts` — Käufer- und Verkäuferdaten beim Festschreiben eingefroren |
+| FA-RECH-14 | Stammdatenänderung ändert Altrechnungen nicht | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Kundenumzug lässt die Altrechnung unberührt (A6) |
+| FA-RECH-15 | Liste filterbar nach Status/Kunde/Zeitraum/Volltext | MUSS | M | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Filter nach Status, Kunde, Zeitraum und Volltext |
+| FA-RECH-16 | Liste sortierbar nach Nummer/Datum/Betrag/Fälligkeit | SOLL | M | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Sortierung nach Nummer, Datum, Betrag und Fälligkeit |
 
 ## 4. Berechnung & Steuer
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-CALC-01 | Geld ausschließlich Integer in Cent, kein Float | MUSS | R | M3 | umgesetzt | Review: `src/domain/money/money.ts`, `quantity.ts` — Cent und skalierte Mengen als Ganzzahlen, Zwischenprodukte über `bigint`; `Decimal` kommt im Schema nicht vor |
-| FA-CALC-02 | Positionsnetto kaufmännisch auf Cent gerundet | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts` — kaufmännisch, symmetrisch zur Null, ein Rundungsschritt je Position |
-| FA-CALC-03 | Gruppierung nach Satz+Kategorie, Steuer je Gruppe gerundet | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts` — drei Positionen zu 3,33 € ergeben je Gruppe 1,90 € statt 1,89 € je Position |
-| FA-CALC-04 | Summe der Gruppensteuern = Gesamtsteuer | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts` — Summe der Gruppensteuern gleich Gesamtsteuer, Netto plus Steuer gleich Brutto |
-| FA-CALC-05 | §19: Satz 0, Kategorie E, Pflichthinweis | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts`, `tests/unit/domain/master-data.test.ts` — §19 setzt sich über Kundenland und USt-IdNr hinweg |
-| FA-CALC-06 | EU-B2B mit USt-IdNr: Kategorie AE, Satz 0, Hinweis | MUSS | T | M3 | umgesetzt | `tests/unit/domain/master-data.test.ts` — EU-Kunde mit USt-IdNr ergibt AE mit Satz 0 |
-| FA-CALC-07 | Drittland: Kategorie G vorgeschlagen | SOLL | T | M3 | umgesetzt | `tests/unit/domain/master-data.test.ts` — CH, US und GB ergeben G |
-| FA-CALC-08 | Vorgeschlagene Kategorie je Rechnung überschreibbar | MUSS | T | M3 | umgesetzt | `tests/integration/invoice-numbering.test.ts` — Beleg mit abweichendem Verfahren wird übernommen; Feld `Invoice.taxScheme` |
-| FA-CALC-09 | Gemischte Steuersätze korrekt und getrennt ausgewiesen | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts`, `tests/integration/invoice-numbering.test.ts` — 7 % und 19 % getrennt ausgewiesen |
-| FA-CALC-10 | Berechnung als reine Funktion ohne DB-Zugriff | MUSS | R | M3 | umgesetzt | Review: `src/domain/invoice/totals.ts` ohne Datenbankbezug; `tests/unit/domain/invoice-totals.test.ts` prüft Wiederholbarkeit und Seiteneffektfreiheit |
-| FA-CALC-11 | Tests: Rundung, Rabatt, Gruppen, §19, RC, Null, negativ | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-totals.test.ts` — Rundungsgrenzfälle, Rabatte, mehrere Gruppen, §19, Reverse Charge, Nullbeträge, negative Positionen |
+| FA-CALC-01 | Geld ausschließlich Integer in Cent, kein Float | MUSS | R | M3 | abgenommen | Review: `src/domain/money/money.ts`, `quantity.ts` — Cent und skalierte Mengen als Ganzzahlen, Zwischenprodukte über `bigint`; `Decimal` kommt im Schema nicht vor |
+| FA-CALC-02 | Positionsnetto kaufmännisch auf Cent gerundet | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-totals.test.ts` — kaufmännisch, symmetrisch zur Null, ein Rundungsschritt je Position |
+| FA-CALC-03 | Gruppierung nach Satz+Kategorie, Steuer je Gruppe gerundet | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-totals.test.ts` — drei Positionen zu 3,33 € ergeben je Gruppe 1,90 € statt 1,89 € je Position |
+| FA-CALC-04 | Summe der Gruppensteuern = Gesamtsteuer | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-totals.test.ts` — Summe der Gruppensteuern gleich Gesamtsteuer, Netto plus Steuer gleich Brutto |
+| FA-CALC-05 | §19: Satz 0, Kategorie E, Pflichthinweis | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-totals.test.ts`, `tests/unit/domain/master-data.test.ts` — §19 setzt sich über Kundenland und USt-IdNr hinweg |
+| FA-CALC-06 | EU-B2B mit USt-IdNr: Kategorie AE, Satz 0, Hinweis | MUSS | T | M3 | abgenommen | `tests/unit/domain/master-data.test.ts` — EU-Kunde mit USt-IdNr ergibt AE mit Satz 0 |
+| FA-CALC-07 | Drittland: Kategorie G vorgeschlagen | SOLL | T | M3 | abgenommen | `tests/unit/domain/master-data.test.ts` — CH, US und GB ergeben G |
+| FA-CALC-08 | Vorgeschlagene Kategorie je Rechnung überschreibbar | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Beleg mit abweichendem Verfahren wird übernommen; Feld `Invoice.taxScheme` |
+| FA-CALC-09 | Gemischte Steuersätze korrekt und getrennt ausgewiesen | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-totals.test.ts`, `tests/integration/invoice-numbering.test.ts` — 7 % und 19 % getrennt ausgewiesen |
+| FA-CALC-10 | Berechnung als reine Funktion ohne DB-Zugriff | MUSS | R | M3 | abgenommen | Review: `src/domain/invoice/totals.ts` ohne Datenbankbezug; `tests/unit/domain/invoice-totals.test.ts` prüft Wiederholbarkeit und Seiteneffektfreiheit |
+| FA-CALC-11 | Tests: Rundung, Rabatt, Gruppen, §19, RC, Null, negativ | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-totals.test.ts` — Rundungsgrenzfälle, Rabatte, mehrere Gruppen, §19, Reverse Charge, Nullbeträge, negative Positionen |
 
 ## 5. Nummernkreis & Unveränderbarkeit
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-NUM-01 | Format konfigurierbar mit `{YYYY}` `{YY}` `{MM}` `{SEQ:n}` | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-number.test.ts` — alle vier Platzhalter, Mehrfachnutzung, Breitenwachstum |
-| FA-NUM-02 | Nummer ausschließlich beim Festschreiben | MUSS | T | M3 | umgesetzt | `tests/integration/invoice-numbering.test.ts` — Entwurf ohne Nummer, Vergabe erst beim Festschreiben |
-| FA-NUM-03 | Nummer und Statuswechsel in einer Transaktion | MUSS | R | M3 | umgesetzt | Review: `issueInvoice` in `src/application/invoices/invoice-service.ts` — Nummer und Statuswechsel in einem `$transaction`-Aufruf |
-| FA-NUM-04 | Nebenläufige Festschreibungen ohne Nummernkollision | MUSS | T | M3 | umgesetzt | `tests/integration/invoice-numbering.test.ts` — zwölf gleichzeitige Festschreibungen ergeben lückenlos 0001 bis 0012 |
-| FA-NUM-05 | Jahreswechsel startet Zähler neu | SOLL | T | M3 | umgesetzt | `tests/unit/domain/invoice-number.test.ts`, `tests/integration/invoice-numbering.test.ts` — Jahreswechsel startet neu; Monatszähler nur mit Jahreskomponente |
-| FA-NUM-06 | Zählerstand in Einstellungen einsehbar | SOLL | M | M3 | umgesetzt | Manuell: `/settings/numbering` zeigt Format, Beispielnummer und Zählerstand je Bereich |
-| FA-NUM-07 | Einmaliger manueller Startwert setzbar | SOLL | T | M3 | umgesetzt | `tests/integration/invoice-numbering.test.ts` — Startwert setzbar, solange nichts vergeben ist; danach abgelehnt |
-| FA-NUM-08 | Festgeschriebene Rechnung über UI nicht änderbar | MUSS | T | M4 | offen | — |
-| FA-NUM-09 | Unveränderbarkeit auch in der Persistenzschicht | MUSS | T | M4 | offen | — |
-| FA-NUM-10 | PDFs mit SHA-256 gespeichert, nie überschrieben | MUSS | T | M4 | offen | — |
+| FA-NUM-01 | Format konfigurierbar mit `{YYYY}` `{YY}` `{MM}` `{SEQ:n}` | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-number.test.ts` — alle vier Platzhalter, Mehrfachnutzung, Breitenwachstum |
+| FA-NUM-02 | Nummer ausschließlich beim Festschreiben | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Entwurf ohne Nummer, Vergabe erst beim Festschreiben |
+| FA-NUM-03 | Nummer und Statuswechsel in einer Transaktion | MUSS | R | M3 | abgenommen | Review: `issueInvoice` in `src/application/invoices/invoice-service.ts` — Nummer und Statuswechsel in einem `$transaction`-Aufruf |
+| FA-NUM-04 | Nebenläufige Festschreibungen ohne Nummernkollision | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — zwölf gleichzeitige Festschreibungen ergeben lückenlos 0001 bis 0012 |
+| FA-NUM-05 | Jahreswechsel startet Zähler neu | SOLL | T | M3 | abgenommen | `tests/unit/domain/invoice-number.test.ts`, `tests/integration/invoice-numbering.test.ts` — Jahreswechsel startet neu; Monatszähler nur mit Jahreskomponente |
+| FA-NUM-06 | Zählerstand in Einstellungen einsehbar | SOLL | M | M3 | abgenommen | Manuell: `/settings/numbering` zeigt Format, Beispielnummer und Zählerstand je Bereich |
+| FA-NUM-07 | Einmaliger manueller Startwert setzbar | SOLL | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Startwert setzbar, solange nichts vergeben ist; danach abgelehnt |
+| FA-NUM-08 | Festgeschriebene Rechnung über UI nicht änderbar | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — inhaltliche Änderung am festgeschriebenen Beleg abgewiesen |
+| FA-NUM-09 | Unveränderbarkeit auch in der Persistenzschicht | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Datenbank-Trigger weisen auch den direkten Schreibzugriff ab, inklusive Rückweg auf Entwurf |
+| FA-NUM-10 | PDFs mit SHA-256 gespeichert, nie überschrieben | MUSS | T | M4 → M5 | offen | Setzt die PDF-Erzeugung voraus; Artefaktspeicher entsteht mit M5 |
 
 ## 6. Status & Zahlungen
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-STAT-01 | Genau ein Status aus fünf definierten Werten | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-status.test.ts` — genau fünf Zustände, kein OVERDUE |
-| FA-STAT-02 | Überfälligkeit abgeleitet, nicht persistiert | MUSS | R | M3 | umgesetzt | Review: kein Statuswert und keine Spalte für Überfälligkeit; `tests/unit/domain/invoice-status.test.ts` prüft die Ableitung |
-| FA-STAT-03 | Zahlungen als Einzeldatensätze | MUSS | T | M3 | umgesetzt | `tests/integration/invoice-numbering.test.ts` — Zahlungen als einzelne Datensätze mit Betrag, Kalendertag und Zahlungsart |
-| FA-STAT-04 | Teilzahlung → Status Teilbezahlt | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-status.test.ts`, `tests/integration/invoice-numbering.test.ts` |
-| FA-STAT-05 | Zahlungssumme ≥ Brutto → Status Bezahlt | MUSS | T | M3 | umgesetzt | `tests/unit/domain/invoice-status.test.ts`, `tests/integration/invoice-numbering.test.ts` — auch bei Überzahlung und Bruttobetrag null |
-| FA-STAT-06 | Schnellaktion „als vollständig bezahlt markieren" | MUSS | T | M4 | offen | — |
-| FA-STAT-07 | Zahlungen korrigier-/stornierbar, Status neu abgeleitet | SOLL | T | M4 | offen | — |
-| FA-STAT-08 | Storno erzeugt eigenständiges Dokument mit Bezug | MUSS | T | M4 | offen | — |
-| FA-STAT-09 | Original wechselt auf Storniert, bleibt erhalten | MUSS | T | M4 | offen | — |
-| FA-STAT-10 | Storno auch nach vollständiger Bezahlung | SOLL | T | M4 | offen | — |
-| FA-STAT-11 | Jeder Statuswechsel im Audit-Log | MUSS | T | M4 | offen | — |
+| FA-STAT-01 | Genau ein Status aus fünf definierten Werten | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-status.test.ts` — genau fünf Zustände, kein OVERDUE |
+| FA-STAT-02 | Überfälligkeit abgeleitet, nicht persistiert | MUSS | R | M3 | abgenommen | Review: kein Statuswert und keine Spalte für Überfälligkeit; `tests/unit/domain/invoice-status.test.ts` prüft die Ableitung |
+| FA-STAT-03 | Zahlungen als Einzeldatensätze | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Zahlungen als einzelne Datensätze mit Betrag, Kalendertag und Zahlungsart |
+| FA-STAT-04 | Teilzahlung → Status Teilbezahlt | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-status.test.ts`, `tests/integration/invoice-numbering.test.ts` |
+| FA-STAT-05 | Zahlungssumme ≥ Brutto → Status Bezahlt | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-status.test.ts`, `tests/integration/invoice-numbering.test.ts` — auch bei Überzahlung und Bruttobetrag null |
+| FA-STAT-06 | Schnellaktion „als vollständig bezahlt markieren" | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Schnellaktion erfasst den Restbetrag, nicht den Gesamtbetrag |
+| FA-STAT-07 | Zahlungen korrigier-/stornierbar, Status neu abgeleitet | SOLL | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Zahlung korrigierbar und zurücknehmbar, Status wird neu abgeleitet |
+| FA-STAT-08 | Storno erzeugt eigenständiges Dokument mit Bezug | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Stornodokument mit eigener Nummer und Bezug, positive Beträge |
+| FA-STAT-09 | Original wechselt auf Storniert, bleibt erhalten | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Original wechselt auf storniert und bleibt vollständig erhalten |
+| FA-STAT-10 | Storno auch nach vollständiger Bezahlung | SOLL | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Storno auch nach vollständiger Bezahlung |
+| FA-STAT-11 | Jeder Statuswechsel im Audit-Log | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — CREATED, ISSUED, PAYMENT_RECORDED, PAID, CANCELLED im Protokoll |
 
 ## 7. Vorlagen
 
@@ -211,8 +211,8 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-COMP-01 | Änderungen an Rechnungen/Kunden/Firma protokolliert | MUSS | T | M4 | offen | — |
-| NFA-COMP-02 | Audit-Log über die Anwendung nicht änder-/löschbar | MUSS | R | M4 | offen | — |
+| NFA-COMP-01 | Änderungen an Rechnungen/Kunden/Firma protokolliert | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts`, `tests/integration/master-data.test.ts` — Rechnungen, Kunden und Firmendaten mit Zeitpunkt, Aktion und Akteur |
+| NFA-COMP-02 | Audit-Log über die Anwendung nicht änder-/löschbar | MUSS | R | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — Prisma-Erweiterung und Datenbank-Trigger weisen Ändern und Löschen ab |
 | NFA-COMP-03 | Vollständiger Datenexport maschinenlesbar | MUSS | M | M7 | offen | — |
 | NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | offen | — |
 | NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | offen | — |
@@ -245,7 +245,7 @@ Szenario benannt.
 | NFA-ARCH-05 | Steuerkategorien als UNTDID-5305-Codes | MUSS | T | M5 | offen | — |
 | NFA-ARCH-06 | Konfigurierbare PDF-Nachbearbeitungskette, Testprozessor wirkt | MUSS | T | M5 | offen | — |
 | NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | offen | — |
-| NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | offen | — |
+| NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — zusätzlicher Handler ohne Änderung der Kernlogik; ein fehlschlagender Handler kippt den Vorgang nicht |
 | NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | abgenommen | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
 | NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | abgenommen | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan) |
 
@@ -253,7 +253,7 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-QUAL-01 | Domain-Testabdeckung ≥90 % | MUSS | T | M3 | umgesetzt | `npm run test:coverage` — Domain-Schicht 100 % Statements, Functions und Lines bei einer Schwelle von 90 % |
+| NFA-QUAL-01 | Domain-Testabdeckung ≥90 % | MUSS | T | M3 | abgenommen | `npm run test:coverage` — Domain-Schicht 100 % Statements, Functions und Lines bei einer Schwelle von 90 % |
 | NFA-QUAL-02 | E2E über den kritischen Gesamtpfad | MUSS | T | M7 | offen | — |
 | NFA-QUAL-03 | Build bricht bei TS-/Lint-Fehlern, kein `any` in der Domain | MUSS | R | M0 | abgenommen | `npm run verify`; `eslint.config.mjs` (`no-explicit-any` als Fehler, `--max-warnings=0`); `next.config.ts` (`ignoreBuildErrors: false`) |
 | NFA-QUAL-04 | Listenansicht mit 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
@@ -263,8 +263,8 @@ Szenario benannt.
 | NFA-QUAL-08 † | Deutsche Formatierung für Beträge, Datum, Zahlen | MUSS | T | M0 † | abgenommen | `tests/unit/ui/format.test.ts` |
 | NFA-QUAL-09 † | Tastaturbedienbarkeit, Labels an Formularfeldern | SOLL | M | M6 † | offen | — |
 | NFA-QUAL-10 † | Nutzbar ab 1280 px voll, ab 768 px lesend | SOLL | M | M6 † | offen | — |
-| NFA-QUAL-11 † | Rückfrage bei ungespeicherten Änderungen im Editor | SOLL | M | M4 † | offen | — |
-| NFA-QUAL-12 † | Bestätigung mit Erklärtext bei destruktiven Aktionen | MUSS | M | M4 † | offen | — |
+| NFA-QUAL-11 † | Rückfrage bei ungespeicherten Änderungen im Editor | SOLL | M | M4 † | umgesetzt | Manuell: `beforeunload` im Rechnungseditor, sobald Änderungen vorliegen |
+| NFA-QUAL-12 † | Bestätigung mit Erklärtext bei destruktiven Aktionen | MUSS | M | M4 † | umgesetzt | Manuell: `ConfirmButton` bei Festschreiben, Stornieren, Entwurf löschen und Zahlung zurücknehmen — der Text nennt die Folge |
 
 ---
 
