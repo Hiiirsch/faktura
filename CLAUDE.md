@@ -233,10 +233,21 @@ in der Vorschau.
 
 Im Container läuft **Chromium aus der Paketverwaltung** (`CHROMIUM_PATH`), nicht
 der Download von Playwright: So kommt es über `apt` an Aktualisierungen. Es
-startet ohne `--no-sandbox` (Spec §11.3); dafür trägt der Dienst `SYS_ADMIN`,
-weil der Standard-Seccomp-Filter von Docker die Namespaces der Sandbox sonst
-verweigert. `playwright-core/browsers.json` wird zur Laufzeit gelesen und muss
-deshalb in `outputFileTracingIncludes` stehen.
+startet ohne `--no-sandbox` (Spec §11.3).
+
+Dafür wirft `docker-compose.yml` erst **alle** Capabilities ab und gibt genau
+vier zurück: `SYS_ADMIN`, `SETUID`, `SETGID`, `SYS_CHROOT`. Am Image
+ausprobiert — ohne `SYS_CHROOT` scheitert die Sandbox an
+`sys_chroot("/proc/self/fdinfo/")`, ohne `SETUID`/`SETGID` am Benutzerwechsel,
+und ohne `SYS_ADMIN` gibt es unter Dockers Standard-Seccomp gar keine Sandbox.
+Damit trägt der Dienst weniger als die vierzehn Capabilities der Voreinstellung.
+Der Anwendungsprozess selbst hat davon nichts: Er läuft als `node` mit leerer
+effektiver Menge; erreichbar sind die vier nur über das setuid-Hilfsprogramm
+`chrome-sandbox` aus dem Paket `chromium-sandbox`.
+
+`playwright-core/browsers.json` wird zur Laufzeit gelesen und muss deshalb in
+`outputFileTracingIncludes` stehen — sonst scheitert der Renderer im Container
+schon beim Laden des Moduls.
 
 ## Meilensteine (Spec §14)
 

@@ -20,18 +20,28 @@ services:
       - ./data:/app/data
       - ./storage:/app/storage
     # Chromium rendert **ohne** `--no-sandbox` (Spec §11.3). Seine Sandbox legt
-    # dafür PID- und Netzwerk-Namespaces an; der Standard-Seccomp-Filter von
-    # Docker lässt das nur zu, wenn der Container CAP_SYS_ADMIN trägt.
+    # dafür Namespaces an und wechselt den Benutzer; unter dem
+    # Standard-Seccomp-Filter von Docker geht das nur mit CAP_SYS_ADMIN.
     #
-    # Die Spezifikation nennt genau diesen Weg: „stattdessen im Container die
-    # nötigen Capabilities bereitstellen". Die Alternative wäre ein eigenes
-    # Seccomp-Profil — es müsste dieselben Systemaufrufe freigeben, wäre aber
-    # eine zusätzliche Datei, die bei jedem Docker-Update nachzuführen ist.
+    # Statt sie einfach zu **ergänzen**, wird zuerst alles abgeworfen und dann
+    # genau das zurückgegeben, was die Sandbox braucht. Ermittelt durch
+    # Ausprobieren am Image: ohne SYS_CHROOT scheitert sie an
+    # `sys_chroot("/proc/self/fdinfo/")`, ohne SETUID/SETGID am Benutzerwechsel.
+    # Unterm Strich trägt der Dienst damit **vier** Capabilities statt der
+    # vierzehn, die Docker voreinstellt — weniger als vorher, nicht mehr.
     #
-    # Was das Risiko begrenzt: Der Prozess läuft weiterhin als `node`, nicht
-    # als Root, und die Sandbox ist der eigentliche Zweck der Capability.
+    # Der Anwendungsprozess selbst hat davon nichts: Er läuft als `node` mit
+    # leerer effektiver Menge (`CapEff: 0000…0`). Erreichbar sind die vier
+    # ausschließlich über das setuid-Hilfsprogramm `chrome-sandbox`, dessen
+    # einzige Aufgabe es ist, die Sandbox aufzuspannen und die Rechte sofort
+    # wieder abzugeben.
+    cap_drop:
+      - ALL
     cap_add:
       - SYS_ADMIN
+      - SETUID
+      - SETGID
+      - SYS_CHROOT
     # Chromium legt seine geteilten Speicherbereiche unter /dev/shm ab; die
     # voreingestellten 64 MB reichen für mehrseitige Belege nicht.
     shm_size: 256m
