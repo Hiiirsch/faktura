@@ -37,6 +37,16 @@ const TEMPLATE_DB_FILE = path.join(projectRoot, 'data', 'integration-template.db
 const DATA_DB_FILE = path.join(projectRoot, 'data', 'integration-data.db');
 const TEMPLATE_DATABASE_URL = 'file:../data/integration-template.db';
 
+const TEST_STORAGE_DIR = path.join(projectRoot, 'data', 'integration-server-storage');
+
+/**
+ * Umgebung des Testservers.
+ *
+ * **Jede** Variable, die die Anwendung liest, wird hier ausdrücklich gesetzt.
+ * `next start` lädt sonst die `.env` des Entwicklungsstands — und die zeigt auf
+ * die Pfade im Container. Aufgefallen ist das erst, als der Server anfing,
+ * Dateien abzulegen: Er versuchte, `/app/storage` anzulegen.
+ */
 const serverEnv = {
   ...process.env,
   NODE_ENV: 'production',
@@ -46,9 +56,14 @@ const serverEnv = {
   APP_URL: TEST_BASE_URL,
   APP_TIMEZONE: 'Europe/Berlin',
   APP_NAME: 'Faktura',
+  STORAGE_DIR: TEST_STORAGE_DIR,
 } as const;
 
 let server: ChildProcess | undefined;
+
+function removeStorage(): void {
+  rmSync(TEST_STORAGE_DIR, { recursive: true, force: true });
+}
 
 function removeDatabases(): void {
   for (const base of [TEST_DB_FILE, TEMPLATE_DB_FILE, DATA_DB_FILE]) {
@@ -91,6 +106,7 @@ export async function setup(): Promise<void> {
   }
 
   removeDatabases();
+  removeStorage();
 
   for (const url of [TEST_DATABASE_URL, TEMPLATE_DATABASE_URL]) {
     execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
@@ -112,7 +128,10 @@ export async function setup(): Promise<void> {
   server = spawn('npx', ['next', 'start', '--port', String(TEST_PORT), '--hostname', '127.0.0.1'], {
     cwd: projectRoot,
     env: serverEnv,
-    stdio: 'pipe',
+    // Die Ausgabe des Servers bleibt sichtbar. Ein Fehler in einem
+    // Routenhandler erscheint sonst nur als 500 im Test, und die Ursache
+    // steht in einem Log, das niemand liest.
+    stdio: 'inherit',
   });
 
   await waitForServer();
@@ -127,4 +146,5 @@ export async function teardown(): Promise<void> {
     }
   }
   removeDatabases();
+  removeStorage();
 }

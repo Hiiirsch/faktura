@@ -71,6 +71,12 @@ function buildContentSecurityPolicy({ nonce, isDevelopment }: SecurityHeaderOpti
     "font-src 'self'",
     `connect-src ${connectSrc}`,
     "form-action 'self'",
+    // Die Belegvorschau wird als `<iframe>` derselben Herkunft eingebettet.
+    // Ohne diese Angabe fällt `frame-src` auf `default-src 'none'` zurück, und
+    // der Browser lädt den Rahmen gar nicht erst — sichtbar als weiße Fläche.
+    // Die Gegenrichtung regelt `frame-ancestors` im Dokumentprofil; nötig sind
+    // **beide**, die des Einbettenden und die des Eingebetteten.
+    "frame-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'none'",
     "object-src 'none'",
