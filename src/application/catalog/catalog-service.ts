@@ -6,7 +6,13 @@
  */
 import type { Cents } from '@/domain/money/money';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import {
+  createCatalogItem as insertCatalogItem,
+  findCatalogItem,
+  listCatalogItems as queryCatalogItems,
+  updateCatalogItem as writeCatalogItem,
+} from '@/infrastructure/repositories/catalog-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type CatalogItemData = {
   readonly name: string;
@@ -29,25 +35,29 @@ export type CatalogItem = {
   readonly updatedAt: Date;
 };
 
-export async function listCatalogItems(includeArchived = false): Promise<readonly CatalogItem[]> {
-  return getPrismaClient().catalogItem.findMany({
-    where: includeArchived ? {} : { isArchived: false },
-    orderBy: { name: 'asc' },
-  });
+export async function listCatalogItems(
+  context: OrganizationContext,
+  includeArchived = false,
+): Promise<readonly CatalogItem[]> {
+  return queryCatalogItems(context, includeArchived);
 }
 
-export async function getCatalogItem(id: string): Promise<CatalogItem | null> {
-  return getPrismaClient().catalogItem.findUnique({ where: { id } });
+export async function getCatalogItem(
+  context: OrganizationContext,
+  id: string,
+): Promise<CatalogItem | null> {
+  return findCatalogItem(context, id);
 }
 
 export async function createCatalogItem(
+  context: OrganizationContext,
   data: CatalogItemData,
   actorId: string,
   ipAddress: string | null,
 ): Promise<CatalogItem> {
-  const item = await getPrismaClient().catalogItem.create({ data });
+  const item = await insertCatalogItem(context, data);
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'CatalogItem',
     entityId: item.id,
     action: 'CREATED',
@@ -60,14 +70,18 @@ export async function createCatalogItem(
 }
 
 export async function updateCatalogItem(
+  context: OrganizationContext,
   id: string,
   data: CatalogItemData,
   actorId: string,
   ipAddress: string | null,
-): Promise<CatalogItem> {
-  const item = await getPrismaClient().catalogItem.update({ where: { id }, data });
+): Promise<CatalogItem | null> {
+  const item = await writeCatalogItem(context, id, data);
+  if (item === null) {
+    return null;
+  }
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'CatalogItem',
     entityId: id,
     action: 'UPDATED',
@@ -79,17 +93,18 @@ export async function updateCatalogItem(
 }
 
 export async function setCatalogItemArchived(
+  context: OrganizationContext,
   id: string,
   isArchived: boolean,
   actorId: string,
   ipAddress: string | null,
-): Promise<CatalogItem> {
-  const item = await getPrismaClient().catalogItem.update({
-    where: { id },
-    data: { isArchived },
-  });
+): Promise<CatalogItem | null> {
+  const item = await writeCatalogItem(context, id, { isArchived });
+  if (item === null) {
+    return null;
+  }
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'CatalogItem',
     entityId: id,
     action: isArchived ? 'ARCHIVED' : 'UNARCHIVED',

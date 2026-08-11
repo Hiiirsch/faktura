@@ -6,22 +6,21 @@
  * Infrastrukturfunktionen prüft dieselbe Hashing-Konfiguration.
  */
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { createUser, findUserByEmail } from '@/infrastructure/repositories/auth-repository';
+import { disconnectDatabase } from '@/infrastructure/repositories/client';
+import { DEFAULT_ORGANIZATION_ID } from '@/infrastructure/repositories/organization-context';
 
 const EMAIL = 'pruefung@example.org';
 /** Eigenes Konto für den Sperrtest — es wird dabei für 15 Minuten gesperrt. */
 const LOCKOUT_EMAIL = 'sperre@example.org';
 const PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
-const prisma = getPrismaClient();
 const passwordHash = await hashPassword(PASSWORD);
 
 for (const email of [EMAIL, LOCKOUT_EMAIL]) {
-  await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: { email, passwordHash },
-  });
+  if ((await findUserByEmail(email)) === null) {
+    await createUser({ email, passwordHash, organizationId: DEFAULT_ORGANIZATION_ID });
+  }
 }
 
-await prisma.$disconnect();
+await disconnectDatabase();

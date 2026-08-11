@@ -48,8 +48,19 @@ export type InvoiceEvent =
 
 export type InvoiceEventType = InvoiceEvent['type'];
 
-/** Ein Handler nimmt ein Ereignis entgegen; Fehler dürfen den Vorgang nicht kippen. */
-export type InvoiceEventHandler = (event: InvoiceEvent) => Promise<void> | void;
+/**
+ * Ein Handler nimmt ein Ereignis entgegen; Fehler dürfen den Vorgang nicht
+ * kippen.
+ *
+ * Der zweite Parameter trägt den Ausführungskontext — in dieser Anwendung den
+ * Mandanten. Sein Typ bleibt offen: Die Domain kennt weder Organisationen noch
+ * Persistenz, muss den Wert aber durchreichen, damit ein Handler weiß, wessen
+ * Beleg er gerade sieht.
+ */
+export type InvoiceEventHandler<TContext = unknown> = (
+  event: InvoiceEvent,
+  context: TContext,
+) => Promise<void> | void;
 
 export const INVOICE_EVENT_TYPES: readonly InvoiceEventType[] = [
   'InvoiceIssued',

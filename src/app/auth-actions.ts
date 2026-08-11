@@ -21,7 +21,7 @@ export async function logoutAction(formData: FormData): Promise<void> {
     await deleteSessionByToken(token);
   }
 
-  await recordAuditEntry({
+  await recordAuditEntry(session.organization, {
     entityType: 'User',
     entityId: session.userId,
     action: 'LOGOUT',

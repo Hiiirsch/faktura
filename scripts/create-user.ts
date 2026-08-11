@@ -20,7 +20,9 @@ import {
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { isCompromisedPassword } from '@/infrastructure/auth/compromised-passwords';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { createUser, findUserByEmail } from '@/infrastructure/repositories/auth-repository';
+import { disconnectDatabase } from '@/infrastructure/repositories/client';
+import { defaultOrganizationContext } from '@/infrastructure/repositories/organization-repository';
 
 function parseEmailArgument(argv: readonly string[]): string | null {
   const index = argv.indexOf('--email');
@@ -123,9 +125,19 @@ async function main(): Promise<void> {
     return;
   }
 
-  const prisma = getPrismaClient();
+  // Ohne Organisation gibt es kein Konto: Sie entsteht in der Migration
+  // `organization_context`. Fehlt sie, ist die Datenbank nicht migriert.
+  const organization = await defaultOrganizationContext();
+  if (organization === null) {
+    stdout.write(
+      'Keine Organisation gefunden. Zuerst die Migrationen anwenden ' +
+        '(npm run db:deploy).\n',
+    );
+    process.exitCode = 1;
+    return;
+  }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await findUserByEmail(email);
   if (existing !== null) {
     stdout.write(`Es existiert bereits ein Konto mit der Adresse ${email}.\n`);
     process.exitCode = 1;
@@ -154,11 +166,13 @@ async function main(): Promise<void> {
     return;
   }
 
-  const user = await prisma.user.create({
-    data: { email, passwordHash: await hashPassword(password) },
+  const user = await createUser({
+    email,
+    passwordHash: await hashPassword(password),
+    organizationId: organization.organizationId,
   });
 
-  await recordAuditEntry({
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: user.id,
     action: 'USER_CREATED',
@@ -179,5 +193,5 @@ try {
   process.exitCode = 1;
 } finally {
   closePipedInput();
-  await getPrismaClient().$disconnect();
+  await disconnectDatabase();
 }

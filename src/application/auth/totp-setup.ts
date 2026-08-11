@@ -14,7 +14,14 @@ import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { generateRecoveryCodeRaw, hashToken } from '@/infrastructure/auth/tokens';
 import { buildTotpUri, generateTotpSecret, verifyTotpCode } from '@/infrastructure/auth/totp';
 import { getEnv } from '@/infrastructure/config/env';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { runInTransaction } from '@/infrastructure/repositories/client';
+import {
+  deleteRecoveryCodes,
+  findUserById,
+  replaceRecoveryCodes as writeRecoveryCodes,
+  updateUser,
+} from '@/infrastructure/repositories/auth-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type TotpSetupOffer = {
   readonly secret: string;
@@ -37,7 +44,6 @@ export function beginTotpSetup(email: string): TotpSetupOffer {
 }
 
 async function replaceRecoveryCodes(userId: string): Promise<readonly string[]> {
-  const prisma = getPrismaClient();
   const codes: string[] = [];
   const rows: { userId: string; codeHash: string }[] = [];
 
@@ -47,10 +53,11 @@ async function replaceRecoveryCodes(userId: string): Promise<readonly string[]> 
     rows.push({ userId, codeHash: hashToken(raw) });
   }
 
-  await prisma.$transaction([
-    prisma.recoveryCode.deleteMany({ where: { userId } }),
-    prisma.recoveryCode.createMany({ data: rows }),
-  ]);
+  // Alte Codes und neue Codes in einem Zug: Ein Abbruch dazwischen ließe den
+  // Benutzer ohne jeden gültigen Wiederherstellungscode zurück.
+  await runInTransaction(async (handle) => {
+    await writeRecoveryCodes(userId, rows, handle);
+  });
 
   return codes;
 }
@@ -60,14 +67,14 @@ async function replaceRecoveryCodes(userId: string): Promise<readonly string[]> 
  * Wiederherstellungscodes zurück.
  */
 export async function confirmTotpSetup(
+  organization: OrganizationContext,
   userId: string,
   email: string,
   secret: string,
   submittedCode: string,
   ipAddress: string | null,
 ): Promise<Result<readonly string[], TotpSetupError>> {
-  const prisma = getPrismaClient();
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await findUserById(userId);
 
   if (user === null) {
     return err({ kind: 'INVALID_CODE' });
@@ -79,14 +86,11 @@ export async function confirmTotpSetup(
     return err({ kind: 'INVALID_CODE' });
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { totpSecret: secret, totpEnabled: true },
-  });
+  await updateUser(userId, { totpSecret: secret, totpEnabled: true });
 
   const codes = await replaceRecoveryCodes(userId);
 
-  await recordAuditEntry({
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: userId,
     action: 'TOTP_ENABLED',
@@ -98,18 +102,17 @@ export async function confirmTotpSetup(
   return ok(codes);
 }
 
-export async function disableTotp(userId: string, ipAddress: string | null): Promise<void> {
-  const prisma = getPrismaClient();
+export async function disableTotp(
+  organization: OrganizationContext,
+  userId: string,
+  ipAddress: string | null,
+): Promise<void> {
+  await runInTransaction(async (handle) => {
+    await updateUser(userId, { totpSecret: null, totpEnabled: false }, handle);
+    await deleteRecoveryCodes(userId, handle);
+  });
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { totpSecret: null, totpEnabled: false },
-    }),
-    prisma.recoveryCode.deleteMany({ where: { userId } }),
-  ]);
-
-  await recordAuditEntry({
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: userId,
     action: 'TOTP_DISABLED',
@@ -119,12 +122,13 @@ export async function disableTotp(userId: string, ipAddress: string | null): Pro
 }
 
 export async function regenerateRecoveryCodes(
+  organization: OrganizationContext,
   userId: string,
   ipAddress: string | null,
 ): Promise<readonly string[]> {
   const codes = await replaceRecoveryCodes(userId);
 
-  await recordAuditEntry({
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: userId,
     action: 'RECOVERY_CODES_REGENERATED',

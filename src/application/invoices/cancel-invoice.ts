@@ -15,7 +15,14 @@
 import { cents } from '@/domain/money/money';
 import { parsePlainDate, type PlainDate, todayIn } from '@/domain/time/plain-date';
 import { getEnv } from '@/infrastructure/config/env';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { runInTransaction } from '@/infrastructure/repositories/client';
+import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
+import {
+  createInvoice,
+  findInvoiceWithLines,
+  updateInvoice,
+} from '@/infrastructure/repositories/invoice-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
 import { allocateInvoiceNumber } from './invoice-numbering';
@@ -32,6 +39,7 @@ export type CancelResult =
   | { readonly ok: false; readonly error: CancelError };
 
 export async function cancelInvoice(
+  context: OrganizationContext,
   invoiceId: string,
   reason: string | null,
   actorId: string,
@@ -39,14 +47,10 @@ export async function cancelInvoice(
   now: Date = new Date(),
 ): Promise<CancelResult> {
   ensureDefaultHandlers();
-  const prisma = getPrismaClient();
 
   const [invoice, company] = await Promise.all([
-    prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: { lines: { orderBy: { position: 'asc' } } },
-    }),
-    prisma.companyProfile.findUnique({ where: { id: 1 } }),
+    findInvoiceWithLines(context, invoiceId),
+    findCompanyProfile(context),
   ]);
 
   if (invoice === null) {
@@ -73,68 +77,68 @@ export async function cancelInvoice(
     ? originalIssueDate.value
     : today;
 
-  const result = await prisma.$transaction(
-    async (tx) => {
-      const creditNoteNumber = await allocateInvoiceNumber(
-        tx,
-        company.invoiceNumberFormat,
+  const result = await runInTransaction(async (handle) => {
+    const creditNoteNumber = await allocateInvoiceNumber(
+      context,
+      handle,
+      company.invoiceNumberFormat,
+      issueDate,
+    );
+
+    const creditNote = await createInvoice(
+      context,
+      {
+        documentType: 'CREDIT_NOTE',
+        invoiceNumber: creditNoteNumber,
+        status: 'ISSUED',
+        customerId: invoice.customerId,
+        snapshotBuyer: invoice.snapshotBuyer,
+        snapshotSeller: invoice.snapshotSeller,
         issueDate,
-      );
+        serviceDateFrom: invoice.serviceDateFrom,
+        serviceDateTo: invoice.serviceDateTo,
+        // Eine Gutschrift ist nicht zahlbar; ein Fälligkeitsdatum wäre
+        // irreführend und tauchte in der Fälligkeitsliste auf.
+        dueDate: null,
+        currency: invoice.currency,
+        taxScheme: invoice.taxScheme,
+        introText: reason,
+        outroText: invoice.outroText,
+        purchaseOrderRef: invoice.purchaseOrderRef,
+        precedingInvoiceId: invoice.id,
+        templateId: invoice.templateId,
+        netTotalCents: invoice.netTotalCents,
+        taxTotalCents: invoice.taxTotalCents,
+        grossTotalCents: invoice.grossTotalCents,
+        paidTotalCents: 0,
+        issuedAt: now,
+      },
+      invoice.lines.map((line) => ({
+        position: line.position,
+        name: line.name,
+        description: line.description,
+        quantityScaled: line.quantityScaled,
+        unitCode: line.unitCode,
+        unitPriceCents: line.unitPriceCents,
+        taxRateBasisPoints: line.taxRateBasisPoints,
+        taxCategory: line.taxCategory,
+        discountBasisPoints: line.discountBasisPoints,
+        lineNetCents: line.lineNetCents,
+      })),
+      handle,
+    );
 
-      const creditNote = await tx.invoice.create({
-        data: {
-          documentType: 'CREDIT_NOTE',
-          invoiceNumber: creditNoteNumber,
-          status: 'ISSUED',
-          customerId: invoice.customerId,
-          snapshotBuyer: invoice.snapshotBuyer,
-          snapshotSeller: invoice.snapshotSeller,
-          issueDate,
-          serviceDateFrom: invoice.serviceDateFrom,
-          serviceDateTo: invoice.serviceDateTo,
-          // Eine Gutschrift ist nicht zahlbar; ein Fälligkeitsdatum wäre
-          // irreführend und tauchte in der Fälligkeitsliste auf.
-          dueDate: null,
-          currency: invoice.currency,
-          taxScheme: invoice.taxScheme,
-          introText: reason,
-          outroText: invoice.outroText,
-          purchaseOrderRef: invoice.purchaseOrderRef,
-          precedingInvoiceId: invoice.id,
-          templateId: invoice.templateId,
-          netTotalCents: invoice.netTotalCents,
-          taxTotalCents: invoice.taxTotalCents,
-          grossTotalCents: invoice.grossTotalCents,
-          paidTotalCents: 0,
-          issuedAt: now,
-          lines: {
-            create: invoice.lines.map((line) => ({
-              position: line.position,
-              name: line.name,
-              description: line.description,
-              quantityScaled: line.quantityScaled,
-              unitCode: line.unitCode,
-              unitPriceCents: line.unitPriceCents,
-              taxRateBasisPoints: line.taxRateBasisPoints,
-              taxCategory: line.taxCategory,
-              discountBasisPoints: line.discountBasisPoints,
-              lineNetCents: line.lineNetCents,
-            })),
-          },
-        },
-      });
+    await updateInvoice(
+      context,
+      invoice.id,
+      { status: 'CANCELLED', cancelledAt: now },
+      handle,
+    );
 
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: { status: 'CANCELLED', cancelledAt: now },
-      });
+    return { creditNoteId: creditNote.id, creditNoteNumber };
+  });
 
-      return { creditNoteId: creditNote.id, creditNoteNumber };
-    },
-    { maxWait: 30_000, timeout: 15_000 },
-  );
-
-  await dispatchInvoiceEvent({
+  await dispatchInvoiceEvent(context, {
     type: 'InvoiceCancelled',
     invoiceId: invoice.id,
     creditNoteId: result.creditNoteId,

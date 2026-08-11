@@ -6,7 +6,7 @@
  * (NFA-BETR-08); bis dahin bleibt die Datenbank die einzige Komponente.
  */
 import { getEnv } from '@/infrastructure/config/env';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { pingDatabase } from '@/infrastructure/repositories/client';
 
 export type ComponentState = 'UP' | 'DOWN';
 
@@ -26,7 +26,7 @@ export type SystemStatus = {
  */
 async function checkDatabase(): Promise<ComponentState> {
   try {
-    await getPrismaClient().auditLog.count();
+    await pingDatabase();
     return 'UP';
   } catch (error) {
     // Die Ursache gehört ins Log des Servers, aber nicht in die Antwort an den

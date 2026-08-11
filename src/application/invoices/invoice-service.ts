@@ -13,7 +13,18 @@ import { cents, sumCents } from '@/domain/money/money';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
 import type { TaxScheme } from '@/domain/tax/tax-scheme';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { runInTransaction } from '@/infrastructure/repositories/client';
+import {
+  createInvoice,
+  deleteInvoice,
+  findInvoice,
+  findInvoiceWithLines,
+  findInvoiceWithLinesAndPayments,
+  replaceDraftContent,
+  updateInvoice,
+  updateLineNet,
+} from '@/infrastructure/repositories/invoice-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type InvoiceLineData = {
   readonly position: number;
@@ -71,14 +82,16 @@ function lineCreateData(lines: readonly InvoiceLineData[], lineNets: readonly nu
 }
 
 export async function createDraftInvoice(
+  context: OrganizationContext,
   data: DraftInvoiceData,
   actorId: string,
   ipAddress: string | null,
 ): Promise<{ id: string }> {
   const totals = calculateInvoiceTotals(data.lines.map(toDomainLine));
 
-  const invoice = await getPrismaClient().invoice.create({
-    data: {
+  const invoice = await createInvoice(
+    context,
+    {
       customerId: data.customerId,
       documentType: 'INVOICE',
       status: 'DRAFT',
@@ -94,11 +107,11 @@ export async function createDraftInvoice(
       netTotalCents: totals.netTotalCents,
       taxTotalCents: totals.taxTotalCents,
       grossTotalCents: totals.grossTotalCents,
-      lines: { create: lineCreateData(data.lines, totals.lineNets) },
     },
-  });
+    lineCreateData(data.lines, totals.lineNets),
+  );
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'Invoice',
     entityId: invoice.id,
     action: 'CREATED',
@@ -121,13 +134,13 @@ export type DraftError =
  * die Möglichkeit, eine Position zu übersehen.
  */
 export async function updateDraftInvoice(
+  context: OrganizationContext,
   invoiceId: string,
   data: DraftInvoiceData,
   actorId: string,
   ipAddress: string | null,
 ): Promise<{ ok: true } | { ok: false; error: DraftError }> {
-  const prisma = getPrismaClient();
-  const existing = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  const existing = await findInvoice(context, invoiceId);
 
   if (existing === null) {
     return { ok: false, error: { kind: 'NOT_FOUND' } };
@@ -138,11 +151,11 @@ export async function updateDraftInvoice(
 
   const totals = calculateInvoiceTotals(data.lines.map(toDomainLine));
 
-  await prisma.$transaction([
-    prisma.invoiceLine.deleteMany({ where: { invoiceId } }),
-    prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
+  await runInTransaction(async (handle) => {
+    await replaceDraftContent(
+      context,
+      invoiceId,
+      {
         customerId: data.customerId,
         taxScheme: data.taxScheme,
         currency: data.currency,
@@ -156,12 +169,13 @@ export async function updateDraftInvoice(
         netTotalCents: totals.netTotalCents,
         taxTotalCents: totals.taxTotalCents,
         grossTotalCents: totals.grossTotalCents,
-        lines: { create: lineCreateData(data.lines, totals.lineNets) },
       },
-    }),
-  ]);
+      lineCreateData(data.lines, totals.lineNets),
+      handle,
+    );
+  });
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'Invoice',
     entityId: invoiceId,
     action: 'UPDATED',
@@ -174,12 +188,12 @@ export async function updateDraftInvoice(
 
 /** Entwürfe dürfen gelöscht werden, festgeschriebene Belege nicht (FA-RECH-11). */
 export async function deleteDraftInvoice(
+  context: OrganizationContext,
   invoiceId: string,
   actorId: string,
   ipAddress: string | null,
 ): Promise<{ ok: true } | { ok: false; error: DraftError }> {
-  const prisma = getPrismaClient();
-  const existing = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  const existing = await findInvoice(context, invoiceId);
 
   if (existing === null) {
     return { ok: false, error: { kind: 'NOT_FOUND' } };
@@ -188,9 +202,9 @@ export async function deleteDraftInvoice(
     return { ok: false, error: { kind: 'NOT_A_DRAFT', status: existing.status } };
   }
 
-  await prisma.invoice.delete({ where: { id: invoiceId } });
+  await deleteInvoice(context, invoiceId);
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'Invoice',
     entityId: invoiceId,
     action: 'DELETED',
@@ -208,22 +222,20 @@ export async function deleteDraftInvoice(
  * ist ein frischer Entwurf, kein zweites Exemplar des Originals.
  */
 export async function duplicateInvoice(
+  context: OrganizationContext,
   invoiceId: string,
   actorId: string,
   ipAddress: string | null,
 ): Promise<{ ok: true; id: string } | { ok: false; error: { kind: 'NOT_FOUND' } }> {
-  const prisma = getPrismaClient();
-  const source = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
-    include: { lines: { orderBy: { position: 'asc' } } },
-  });
+  const source = await findInvoiceWithLines(context, invoiceId);
 
   if (source === null) {
     return { ok: false, error: { kind: 'NOT_FOUND' } };
   }
 
-  const copy = await prisma.invoice.create({
-    data: {
+  const copy = await createInvoice(
+    context,
+    {
       customerId: source.customerId,
       documentType: 'INVOICE',
       status: 'DRAFT',
@@ -242,24 +254,22 @@ export async function duplicateInvoice(
       taxTotalCents: source.taxTotalCents,
       grossTotalCents: source.grossTotalCents,
       paidTotalCents: 0,
-      lines: {
-        create: source.lines.map((line) => ({
-          position: line.position,
-          name: line.name,
-          description: line.description,
-          quantityScaled: line.quantityScaled,
-          unitCode: line.unitCode,
-          unitPriceCents: line.unitPriceCents,
-          taxRateBasisPoints: line.taxRateBasisPoints,
-          taxCategory: line.taxCategory,
-          discountBasisPoints: line.discountBasisPoints,
-          lineNetCents: line.lineNetCents,
-        })),
-      },
     },
-  });
+    source.lines.map((line) => ({
+      position: line.position,
+      name: line.name,
+      description: line.description,
+      quantityScaled: line.quantityScaled,
+      unitCode: line.unitCode,
+      unitPriceCents: line.unitPriceCents,
+      taxRateBasisPoints: line.taxRateBasisPoints,
+      taxCategory: line.taxCategory,
+      discountBasisPoints: line.discountBasisPoints,
+      lineNetCents: line.lineNetCents,
+    })),
+  );
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'Invoice',
     entityId: copy.id,
     action: 'DUPLICATED',
@@ -280,49 +290,47 @@ export async function duplicateInvoice(
  * zu berechnen wäre eine nachträgliche Änderung, und die Prisma-Erweiterung
  * würde sie ohnehin abweisen (FA-NUM-08, FA-NUM-09).
  */
-export async function recalculateInvoice(invoiceId: string): Promise<void> {
-  const prisma = getPrismaClient();
-
-  const invoice = await prisma.invoice.findUniqueOrThrow({
-    where: { id: invoiceId },
-    include: { lines: { orderBy: { position: 'asc' } }, payments: true },
-  });
+export async function recalculateInvoice(
+  context: OrganizationContext,
+  invoiceId: string,
+): Promise<void> {
+  const invoice = await findInvoiceWithLinesAndPayments(context, invoiceId);
+  if (invoice === null) {
+    return;
+  }
 
   const paidTotalCents = sumCents(invoice.payments.map((payment) => cents(payment.amountCents)));
 
   if (invoice.status !== 'DRAFT') {
-    await prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
+    await updateInvoice(context, invoiceId, {
+      paidTotalCents,
+      status: deriveStatus({
+        isCancelled: invoice.status === 'CANCELLED',
+        grossTotalCents: cents(invoice.grossTotalCents),
         paidTotalCents,
-        status: deriveStatus({
-          isCancelled: invoice.status === 'CANCELLED',
-          grossTotalCents: cents(invoice.grossTotalCents),
-          paidTotalCents,
-        }),
-      },
+      }),
     });
     return;
   }
 
   const totals = calculateInvoiceTotals(invoice.lines.map(toDomainLine));
 
-  await prisma.$transaction([
-    ...invoice.lines.map((line, index) =>
-      prisma.invoiceLine.update({
-        where: { id: line.id },
-        data: { lineNetCents: totals.lineNets[index] ?? 0 },
-      }),
-    ),
-    prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
+  await runInTransaction(async (handle) => {
+    for (const [index, line] of invoice.lines.entries()) {
+      await updateLineNet(context, line.id, totals.lineNets[index] ?? 0, handle);
+    }
+
+    await updateInvoice(
+      context,
+      invoiceId,
+      {
         netTotalCents: totals.netTotalCents,
         taxTotalCents: totals.taxTotalCents,
         grossTotalCents: totals.grossTotalCents,
         paidTotalCents,
         status: 'DRAFT',
       },
-    }),
-  ]);
+      handle,
+    );
+  });
 }

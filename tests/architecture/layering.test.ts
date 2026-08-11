@@ -52,6 +52,40 @@ describe('NFA-ARCH-01 Schichtentrennung', () => {
     expect(restrictedImportMessages[0]?.message).toContain('äußere Schichten');
   });
 
+  it('verwehrt der Anwendungsschicht den unmittelbaren Prisma-Zugriff (M5.5a)', async () => {
+    const results = await createLinter().lintFiles([
+      'tests/architecture/fixtures/persistence/violation.ts',
+    ]);
+
+    const restrictedImportMessages = results
+      .flatMap((result) => result.messages)
+      .filter((message) => message.ruleId === '@typescript-eslint/no-restricted-imports');
+
+    // Zwei Verstöße: der Typimport aus @prisma/client und getPrismaClient selbst.
+    expect(restrictedImportMessages.length).toBeGreaterThanOrEqual(2);
+
+    const combined = restrictedImportMessages.map((message) => message.message).join('\n');
+    expect(combined).toContain('src/infrastructure/repositories');
+  });
+
+  it('erlaubt der Repository-Schicht genau diesen Zugriff', async () => {
+    const results = await new ESLint({ cwd: projectRoot }).lintFiles([
+      'src/infrastructure/repositories/**/*.ts',
+    ]);
+
+    expect(results.length).toBeGreaterThan(0);
+
+    const problems = results.flatMap((result) =>
+      result.messages.map((message) => ({
+        file: result.filePath.replace(projectRoot, ''),
+        rule: message.ruleId,
+        message: message.message,
+      })),
+    );
+
+    expect(problems).toEqual([]);
+  });
+
   it('hält die tatsächliche Domain-Schicht frei von Verstößen', async () => {
     const results = await new ESLint({ cwd: projectRoot }).lintFiles(['src/domain/**/*.ts']);
 

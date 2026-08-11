@@ -26,7 +26,7 @@ export async function GET(
   }
 
   const { id } = await context.params;
-  const asset = await getAsset(id);
+  const asset = await getAsset(session.organization, id);
   if (asset === null) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }

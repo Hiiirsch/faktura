@@ -23,6 +23,8 @@ import { formatMoney, formatPercent, formatQuantity, formatUnit } from '@/ui/for
 
 import { AppNav } from '../../app-nav';
 import { cancelInvoiceAction, deleteDraftAction, duplicateInvoiceAction } from '../actions';
+import type { OrganizationContext } from '@/application/auth/session-service';
+
 import { loadEditorContext } from '../editor-data';
 import { InvoiceEditor } from '../invoice-editor';
 import { PaymentSection } from './payment-section';
@@ -41,7 +43,7 @@ export default async function InvoiceDetailPage({
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const { id } = await params;
-  const invoice = await loadInvoiceDetail(id);
+  const invoice = await loadInvoiceDetail(session.organization, id);
   if (invoice === null) {
     notFound();
   }
@@ -98,7 +100,12 @@ export default async function InvoiceDetailPage({
         </header>
 
         {isDraft ? (
-          <DraftEditor invoiceId={invoice.id} csrfToken={csrfToken} invoice={invoice} />
+          <DraftEditor
+            invoiceId={invoice.id}
+            csrfToken={csrfToken}
+            invoice={invoice}
+            organization={session.organization}
+          />
         ) : (
           <IssuedView invoice={invoice} currency={currency} csrfToken={csrfToken} />
         )}
@@ -185,12 +192,14 @@ async function DraftEditor({
   invoiceId,
   csrfToken,
   invoice,
+  organization,
 }: {
   readonly invoiceId: string;
   readonly csrfToken: string;
   readonly invoice: NonNullable<Awaited<ReturnType<typeof loadInvoiceDetail>>>;
+  readonly organization: OrganizationContext;
 }): Promise<ReactNode> {
-  const context = await loadEditorContext();
+  const context = await loadEditorContext(organization);
 
   return (
     <>

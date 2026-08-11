@@ -11,7 +11,15 @@ import {
   formatCustomerNumber,
 } from '@/domain/customer/customer-number';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import {
+  createCustomer as insertCustomer,
+  findCustomer,
+  findCustomerByNumber,
+  listCustomers as queryCustomers,
+  updateCustomer as writeCustomer,
+} from '@/infrastructure/repositories/customer-repository';
+import { incrementSequence } from '@/infrastructure/repositories/number-sequence-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type CustomerData = {
   readonly companyName: string | null;
@@ -49,35 +57,18 @@ export type CustomerListFilter = {
  * Anlagen erhalten unterschiedliche Nummern, ohne dass der Zählerstand zuvor
  * gelesen und zurückgeschrieben werden müsste.
  */
-async function allocateCustomerNumber(): Promise<string> {
-  const sequence = await getPrismaClient().numberSequence.upsert({
-    where: { scope: CUSTOMER_NUMBER_SEQUENCE_SCOPE },
-    create: { scope: CUSTOMER_NUMBER_SEQUENCE_SCOPE, lastValue: 1 },
-    update: { lastValue: { increment: 1 } },
-  });
-
-  return formatCustomerNumber(sequence.lastValue);
+async function allocateCustomerNumber(context: OrganizationContext): Promise<string> {
+  const lastValue = await incrementSequence(context, CUSTOMER_NUMBER_SEQUENCE_SCOPE);
+  return formatCustomerNumber(lastValue);
 }
 
-export async function listCustomers(filter: CustomerListFilter = {}): Promise<readonly Customer[]> {
-  const search = filter.search?.trim() ?? '';
-
-  return getPrismaClient().customer.findMany({
-    where: {
-      ...(filter.includeArchived === true ? {} : { isArchived: false }),
-      ...(search.length === 0
-        ? {}
-        : {
-            OR: [
-              { companyName: { contains: search } },
-              { contactName: { contains: search } },
-              { customerNumber: { contains: search } },
-              { city: { contains: search } },
-              { email: { contains: search } },
-            ],
-          }),
-    },
-    orderBy: { customerNumber: 'asc' },
+export async function listCustomers(
+  context: OrganizationContext,
+  filter: CustomerListFilter = {},
+): Promise<readonly Customer[]> {
+  return queryCustomers(context, {
+    includeArchived: filter.includeArchived === true,
+    search: filter.search ?? '',
   });
 }
 
@@ -86,26 +77,30 @@ export async function listCustomers(filter: CustomerListFilter = {}): Promise<re
  * Archivierte erscheinen hier nicht; in bereits erfassten Belegen bleiben sie
  * über den Snapshot sichtbar (ab M4).
  */
-export async function listSelectableCustomers(): Promise<readonly Customer[]> {
-  return listCustomers({ includeArchived: false });
+export async function listSelectableCustomers(
+  context: OrganizationContext,
+): Promise<readonly Customer[]> {
+  return listCustomers(context, { includeArchived: false });
 }
 
-export async function getCustomer(id: string): Promise<Customer | null> {
-  return getPrismaClient().customer.findUnique({ where: { id } });
+export async function getCustomer(
+  context: OrganizationContext,
+  id: string,
+): Promise<Customer | null> {
+  return findCustomer(context, id);
 }
 
 export async function createCustomer(
+  context: OrganizationContext,
   data: CustomerData,
   actorId: string,
   ipAddress: string | null,
 ): Promise<Customer> {
-  const customerNumber = await allocateCustomerNumber();
+  const customerNumber = await allocateCustomerNumber(context);
 
-  const customer = await getPrismaClient().customer.create({
-    data: { ...data, customerNumber },
-  });
+  const customer = await insertCustomer(context, { ...data, customerNumber });
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'Customer',
     entityId: customer.id,
     action: 'CREATED',
@@ -117,22 +112,29 @@ export async function createCustomer(
   return customer;
 }
 
+/** `null`, wenn es den Kunden in dieser Organisation nicht gibt. */
 export async function updateCustomer(
+  context: OrganizationContext,
   id: string,
   data: CustomerData,
   actorId: string,
   ipAddress: string | null,
-): Promise<Customer> {
-  const prisma = getPrismaClient();
-  const before = await prisma.customer.findUniqueOrThrow({ where: { id } });
+): Promise<Customer | null> {
+  const before = await findCustomer(context, id);
+  if (before === null) {
+    return null;
+  }
 
-  const customer = await prisma.customer.update({ where: { id }, data });
+  const customer = await writeCustomer(context, id, data);
+  if (customer === null) {
+    return null;
+  }
 
   const keys = Object.keys(data) as (keyof CustomerData)[];
   const changed = keys.filter((key) => before[key] !== data[key]).map(String);
 
   if (changed.length > 0) {
-    await recordAuditEntry({
+    await recordAuditEntry(context, {
       entityType: 'Customer',
       entityId: id,
       action: 'UPDATED',
@@ -146,17 +148,18 @@ export async function updateCustomer(
 }
 
 export async function setCustomerArchived(
+  context: OrganizationContext,
   id: string,
   isArchived: boolean,
   actorId: string,
   ipAddress: string | null,
-): Promise<Customer> {
-  const customer = await getPrismaClient().customer.update({
-    where: { id },
-    data: { isArchived },
-  });
+): Promise<Customer | null> {
+  const customer = await writeCustomer(context, id, { isArchived });
+  if (customer === null) {
+    return null;
+  }
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'Customer',
     entityId: id,
     action: isArchived ? 'ARCHIVED' : 'UNARCHIVED',
@@ -167,10 +170,9 @@ export async function setCustomerArchived(
   return customer;
 }
 
-export async function customerNumberExists(customerNumber: string): Promise<boolean> {
-  const found = await getPrismaClient().customer.findUnique({
-    where: { customerNumber },
-    select: { id: true },
-  });
-  return found !== null;
+export async function customerNumberExists(
+  context: OrganizationContext,
+  customerNumber: string,
+): Promise<boolean> {
+  return (await findCustomerByNumber(context, customerNumber)) !== null;
 }

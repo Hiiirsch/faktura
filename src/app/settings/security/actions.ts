@@ -46,6 +46,7 @@ export async function confirmTotpAction(
 
   const context = await readRequestContext();
   const result = await confirmTotpSetup(
+    session.organization,
     session.userId,
     session.email,
     parsed.data.secret,
@@ -69,7 +70,7 @@ export async function regenerateRecoveryCodesAction(
   const session = await requireSessionOrThrow();
   const context = await readRequestContext();
 
-  const codes = await regenerateRecoveryCodes(session.userId, context.ipAddress);
+  const codes = await regenerateRecoveryCodes(session.organization, session.userId, context.ipAddress);
 
   revalidatePath(SECURITY_SETTINGS_PATH);
   return { status: 'codes', codes };
@@ -80,7 +81,7 @@ export async function disableTotpAction(formData: FormData): Promise<void> {
   const session = await requireSessionOrThrow();
   const context = await readRequestContext();
 
-  await disableTotp(session.userId, context.ipAddress);
+  await disableTotp(session.organization, session.userId, context.ipAddress);
   revalidatePath(SECURITY_SETTINGS_PATH);
 }
 
@@ -96,7 +97,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
   const revoked = await revokeSession(session.userId, parsed.data);
   if (revoked) {
     const context = await readRequestContext();
-    await recordAuditEntry({
+    await recordAuditEntry(session.organization, {
       entityType: 'Session',
       entityId: parsed.data,
       action: 'SESSION_REVOKED',
@@ -115,7 +116,7 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
 
   const count = await revokeAllSessions(session.userId, session.sessionId);
 
-  await recordAuditEntry({
+  await recordAuditEntry(session.organization, {
     entityType: 'User',
     entityId: session.userId,
     action: 'SESSIONS_REVOKED_ALL',

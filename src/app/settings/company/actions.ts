@@ -180,7 +180,7 @@ export async function saveCompanyProfileAction(
   }
 
   const context = await readRequestContext();
-  await saveCompanyProfile(data, session.userId, context.ipAddress);
+  await saveCompanyProfile(session.organization, data, session.userId, context.ipAddress);
 
   revalidatePath(COMPANY_SETTINGS_PATH);
   return { status: 'saved' };
@@ -217,7 +217,7 @@ export async function uploadLogoAction(
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const result = await storeImageAsset(bytes, file.type, file.name);
+  const result = await storeImageAsset(session.organization, bytes, file.type, file.name);
 
   if (!result.ok) {
     return {
@@ -227,14 +227,14 @@ export async function uploadLogoAction(
   }
 
   const context = await readRequestContext();
-  const previous = await getCompanyProfile();
+  const previous = await getCompanyProfile(session.organization);
 
-  await setCompanyLogo(result.value.id, session.userId, context.ipAddress);
+  await setCompanyLogo(session.organization, result.value.id, session.userId, context.ipAddress);
 
   // Das ersetzte Logo wird entfernt, damit der Speicher nicht mit
   // unerreichbaren Dateien zuwächst.
   if (previous?.logoAssetId != null) {
-    await deleteAsset(previous.logoAssetId);
+    await deleteAsset(session.organization, previous.logoAssetId);
   }
 
   revalidatePath(COMPANY_SETTINGS_PATH);
@@ -246,13 +246,13 @@ export async function removeLogoAction(formData: FormData): Promise<void> {
   const session = await requireSessionOrThrow();
   const context = await readRequestContext();
 
-  const profile = await getCompanyProfile();
+  const profile = await getCompanyProfile(session.organization);
   if (profile?.logoAssetId == null) {
     return;
   }
 
-  await setCompanyLogo(null, session.userId, context.ipAddress);
-  await deleteAsset(profile.logoAssetId);
+  await setCompanyLogo(session.organization, null, session.userId, context.ipAddress);
+  await deleteAsset(session.organization, profile.logoAssetId);
 
   revalidatePath(COMPANY_SETTINGS_PATH);
 }

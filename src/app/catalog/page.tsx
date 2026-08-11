@@ -36,8 +36,8 @@ export default async function CatalogPage({
   const editId = typeof params.edit === 'string' ? params.edit : null;
 
   const [items, editItem] = await Promise.all([
-    listCatalogItems(includeArchived),
-    editId === null ? Promise.resolve(null) : getCatalogItem(editId),
+    listCatalogItems(session.organization, includeArchived),
+    editId === null ? Promise.resolve(null) : getCatalogItem(session.organization, editId),
   ]);
 
   return (

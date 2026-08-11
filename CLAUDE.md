@@ -88,11 +88,38 @@ src/i18n/           zentrale deutsche Texte
 src/application/    Use Cases / Server Actions
 src/domain/         reine TypeScript-Logik — keine Fremdimporte
 src/infrastructure/ Prisma, Dateisystem, Renderer, Auth
+  └ repositories/   der einzige Ort, an dem der Prisma-Client erreichbar ist
 ```
 
 Erlaubte Richtungen: `app → application, ui, i18n, domain` · `ui → domain, i18n` ·
 `i18n → domain` · `application → domain, infrastructure` · `infrastructure → domain` ·
 `domain → domain`.
+
+**Mandantenkontext (seit M5.5a).** Aller Datenzugriff läuft über
+`src/infrastructure/repositories/**`. Jede Funktion dort nimmt einen
+`OrganizationContext` als **ersten Pflichtparameter** — eine ungefilterte Abfrage
+ist damit ein Typfehler, kein übersehener Filter. Der Typ ist markiert und
+entsteht ausschließlich in `organizationContextOf()`; aufgerufen wird die
+Funktion beim Auflösen der Sitzung (`ActiveSession.organization`) und im
+Einrichtungsskript.
+
+`getPrismaClient()` ist nur noch aus `infrastructure/repositories/**` und
+`infrastructure/db/**` importierbar (Lint-Regel `persistenceRestriction`,
+nachgewiesen in `tests/architecture/layering.test.ts`). Der Typ schützt vor
+Vergessen, die Lint-Regel vor Umgehen — eines allein genügt nicht.
+
+Zwei dokumentierte Ausnahmen ohne Kontext: `auth-repository.ts` (die Anmeldung
+löst über die global eindeutige E-Mail auf — welcher Mandant, ist das *Ergebnis*
+der Abfrage) und `pingDatabase()` für den Healthcheck.
+
+Transaktionen öffnet `runInTransaction`. Der Rückruf bekommt **keinen**
+Prisma-Client, sondern einen undurchsichtigen `TransactionHandle`; sonst ließe
+sich innerhalb einer Transaktion an der Repository-Schicht vorbei abfragen.
+
+`InvoiceLine` und `Payment` tragen `organizationId` mit, gefiltert wird aber über
+`invoice.organizationId` — genau ein maßgeblicher Abfragepfad. Die Spalte ist
+Absicherung für eine spätere Row Level Security unter PostgreSQL (Spec §13);
+Trigger halten sie mit dem Beleg gleich.
 
 Zusätzlich: `src/routes.ts` ist das zentrale Routenverzeichnis. Jede neue Route wird
 dort eingetragen — `tests/architecture/routes.test.ts` gleicht es gegen das
@@ -133,9 +160,17 @@ SQLite hat genau einen Schreiber. `getPrismaClient()` setzt deshalb
 Socket-Timeout zu laufen (FA-NUM-04).
 
 Migrationen, die eine Tabelle neu aufbauen, verlieren handgeschriebene
-CHECK-Bedingungen — SQLite kennt kein `ALTER TABLE ADD CONSTRAINT`. Der Singleton-
-Zwang auf `CompanyProfile` ist bei jedem Neuaufbau erneut zu setzen; ein
-Integrationstest deckt das Fehlen auf.
+CHECK-Bedingungen **und alle Trigger** — SQLite kennt kein
+`ALTER TABLE ADD CONSTRAINT`. Jede solche Migration legt sie am Ende neu an;
+`20260811113615_organization_context` ist die Vorlage dafür. Zwei Fallen dabei:
+
+- Trigger, die eine *andere* Tabelle lesen (`InvoiceLine_immutable_after_issue`
+  liest `Invoice`), lassen `ALTER TABLE … RENAME` scheitern, solange diese
+  Tabelle gerade nicht existiert. Sie werden deshalb **vor** dem Neuaufbau
+  ausdrücklich verworfen und danach neu angelegt.
+- Der Singleton-Zwang auf `CompanyProfile` liegt seit M5.5a im eindeutigen Index
+  auf `organizationId` statt in einer CHECK-Bedingung. Ein Integrationstest
+  deckt sein Fehlen auf.
 
 Dateien, die sowohl von der Edge-Laufzeit, von Serverkomponenten als auch von
 Client-Komponenten gelesen werden (z. B. `infrastructure/security/csrf.ts`), bleiben
@@ -151,6 +186,7 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 | M3 | Domain-Kern: Berechnung, Steuer, Nummernkreis, Status — **Tests zuerst** | abgenommen |
 | M4 | Rechnungen: Editor, Festschreiben, Zahlungen, Storno, Audit | abgenommen |
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | offen |
+| M5.5a | Mandantenkontext: `organizationId`, Repository-Schicht mit Pflichtparameter | umgesetzt |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
 

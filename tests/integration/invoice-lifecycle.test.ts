@@ -37,6 +37,7 @@ import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 const ACTOR = 'pruef-akteur';
@@ -90,7 +91,7 @@ beforeEach(async () => {
   await resetDatabase();
   await prisma.$disconnect();
 
-  await saveCompanyProfile(
+  await saveCompanyProfile(testOrganization, 
     {
       ...EMPTY_COMPANY_PROFILE,
       legalName: 'Musterbetrieb Tim',
@@ -110,14 +111,14 @@ afterAll(async () => {
 });
 
 async function makeCustomer(overrides: Partial<CustomerData> = {}): Promise<string> {
-  const customer = await createCustomer({ ...CUSTOMER, ...overrides }, ACTOR, null);
+  const customer = await createCustomer(testOrganization, { ...CUSTOMER, ...overrides }, ACTOR, null);
   return customer.id;
 }
 
 async function issuedInvoice(): Promise<string> {
   const customerId = await makeCustomer();
-  const { id } = await createDraftInvoice(draft(customerId), ACTOR, null);
-  const result = await issueInvoice(id, ACTOR, null);
+  const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
+  const result = await issueInvoice(testOrganization, id, ACTOR, null);
   expect(result.ok, 'Der Beleg sollte festschreibbar sein').toBe(true);
   return id;
 }
@@ -125,9 +126,9 @@ async function issuedInvoice(): Promise<string> {
 describe('Entwurf bearbeiten, duplizieren, löschen (FA-RECH-01, -10, -11)', () => {
   it('ändert Kopfdaten und Positionen eines Entwurfs', async () => {
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(draft(customerId), ACTOR, null);
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
 
-    const result = await updateDraftInvoice(
+    const result = await updateDraftInvoice(testOrganization, 
       id,
       draft(customerId, {
         introText: 'Vielen Dank für Ihren Auftrag.',
@@ -164,7 +165,7 @@ describe('Entwurf bearbeiten, duplizieren, löschen (FA-RECH-01, -10, -11)', () 
 
   it('dupliziert als frischen Entwurf ohne Nummer (FA-RECH-10)', async () => {
     const id = await issuedInvoice();
-    const copy = await duplicateInvoice(id, ACTOR, null);
+    const copy = await duplicateInvoice(testOrganization, id, ACTOR, null);
 
     expect(copy.ok).toBe(true);
     if (!copy.ok) return;
@@ -184,13 +185,13 @@ describe('Entwurf bearbeiten, duplizieren, löschen (FA-RECH-01, -10, -11)', () 
 
   it('löscht Entwürfe, aber keine festgeschriebenen Belege (FA-RECH-11)', async () => {
     const customerId = await makeCustomer();
-    const { id: draftId } = await createDraftInvoice(draft(customerId), ACTOR, null);
+    const { id: draftId } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
 
-    expect((await deleteDraftInvoice(draftId, ACTOR, null)).ok).toBe(true);
+    expect((await deleteDraftInvoice(testOrganization, draftId, ACTOR, null)).ok).toBe(true);
     expect(await prisma.invoice.findUnique({ where: { id: draftId } })).toBeNull();
 
     const issuedId = await issuedInvoice();
-    const rejected = await deleteDraftInvoice(issuedId, ACTOR, null);
+    const rejected = await deleteDraftInvoice(testOrganization, issuedId, ACTOR, null);
     expect(rejected.ok).toBe(false);
     expect(await prisma.invoice.findUnique({ where: { id: issuedId } })).not.toBeNull();
   });
@@ -199,9 +200,9 @@ describe('Entwurf bearbeiten, duplizieren, löschen (FA-RECH-01, -10, -11)', () 
 describe('Vollständigkeit vor dem Festschreiben (FA-RECH-12)', () => {
   it('blockiert einen Beleg ohne Positionen', async () => {
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(draft(customerId, { lines: [] }), ACTOR, null);
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId, { lines: [] }), ACTOR, null);
 
-    const result = await issueInvoice(id, ACTOR, null);
+    const result = await issueInvoice(testOrganization, id, ACTOR, null);
     expect(result.ok).toBe(false);
     if (!result.ok && result.error.kind === 'INCOMPLETE') {
       expect(result.error.violations.map((violation) => violation.kind)).toContain('NO_LINES');
@@ -216,7 +217,7 @@ describe('Vollständigkeit vor dem Festschreiben (FA-RECH-12)', () => {
   });
 
   it('blockiert ohne Steuernummer des eigenen Unternehmens', async () => {
-    await saveCompanyProfile(
+    await saveCompanyProfile(testOrganization, 
       {
         ...EMPTY_COMPANY_PROFILE,
         legalName: 'Ohne Steuernummer',
@@ -229,9 +230,9 @@ describe('Vollständigkeit vor dem Festschreiben (FA-RECH-12)', () => {
     );
 
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(draft(customerId), ACTOR, null);
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
 
-    const result = await issueInvoice(id, ACTOR, null);
+    const result = await issueInvoice(testOrganization, id, ACTOR, null);
     expect(result.ok).toBe(false);
     if (!result.ok && result.error.kind === 'INCOMPLETE') {
       expect(result.error.violations.map((violation) => violation.kind)).toContain(
@@ -244,7 +245,7 @@ describe('Vollständigkeit vor dem Festschreiben (FA-RECH-12)', () => {
 describe('Snapshot beim Festschreiben (FA-RECH-13, -14)', () => {
   it('friert Käufer- und Verkäuferdaten ein', async () => {
     const id = await issuedInvoice();
-    const detail = await loadInvoiceDetail(id);
+    const detail = await loadInvoiceDetail(testOrganization, id);
 
     expect(detail?.buyerSnapshot?.name).toBe('Beispiel GmbH');
     expect(detail?.buyerSnapshot?.city).toBe('Berlin');
@@ -255,17 +256,17 @@ describe('Snapshot beim Festschreiben (FA-RECH-13, -14)', () => {
 
   it('lässt eine Altrechnung durch einen Kundenumzug unberührt (FA-RECH-14, A6)', async () => {
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(draft(customerId), ACTOR, null);
-    await issueInvoice(id, ACTOR, null);
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
+    await issueInvoice(testOrganization, id, ACTOR, null);
 
-    await updateCustomer(
+    await updateCustomer(testOrganization, 
       customerId,
       { ...CUSTOMER, addressLine1: 'Neue Straße 99', postalCode: '20095', city: 'Hamburg' },
       ACTOR,
       null,
     );
 
-    const detail = await loadInvoiceDetail(id);
+    const detail = await loadInvoiceDetail(testOrganization, id);
     expect(detail?.buyerSnapshot?.addressLine1).toBe('Weg 1');
     expect(detail?.buyerSnapshot?.city).toBe('Berlin');
 
@@ -330,7 +331,12 @@ describe('Unveränderbarkeit in der Persistenzschicht (FA-NUM-08, -09)', () => {
 describe('Audit-Log ist unveränderlich (NFA-COMP-02)', () => {
   it('weist Ändern und Löschen ab', async () => {
     const entry = await prisma.auditLog.create({
-      data: { entityType: 'Test', entityId: 'x', action: 'CREATED' },
+      data: {
+        organizationId: testOrganization.organizationId,
+        entityType: 'Test',
+        entityId: 'x',
+        action: 'CREATED',
+      },
     });
 
     await expect(
@@ -344,14 +350,14 @@ describe('Audit-Log ist unveränderlich (NFA-COMP-02)', () => {
 describe('Zahlungen (FA-STAT-06, -07)', () => {
   it('markiert als vollständig bezahlt über den Restbetrag (FA-STAT-06)', async () => {
     const id = await issuedInvoice();
-    await addPayment(id, {
+    await addPayment(testOrganization, id, {
       amountCents: cents(5_000),
       paidAt: plainDate('2026-03-05'),
       method: null,
       note: null,
     });
 
-    expect((await markAsFullyPaid(id, plainDate('2026-03-10'), 'Überweisung')).ok).toBe(true);
+    expect((await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), 'Überweisung')).ok).toBe(true);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({
       where: { id },
@@ -367,9 +373,9 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('meldet, wenn nichts mehr offen ist', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
 
-    const again = await markAsFullyPaid(id, plainDate('2026-03-11'), null);
+    const again = await markAsFullyPaid(testOrganization, id, plainDate('2026-03-11'), null);
     expect(again.ok).toBe(false);
     if (!again.ok) {
       expect(again.error.kind).toBe('NOTHING_OUTSTANDING');
@@ -378,10 +384,10 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('korrigiert eine Zahlung und leitet den Status neu ab (FA-STAT-07)', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
 
     const payment = await prisma.payment.findFirstOrThrow({ where: { invoiceId: id } });
-    await updatePayment(payment.id, {
+    await updatePayment(testOrganization, payment.id, {
       amountCents: cents(5_000),
       paidAt: plainDate('2026-03-10'),
       method: null,
@@ -395,10 +401,10 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('nimmt eine Zahlung zurück und stellt den offenen Zustand wieder her', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
 
     const payment = await prisma.payment.findFirstOrThrow({ where: { invoiceId: id } });
-    expect((await removePayment(payment.id)).ok).toBe(true);
+    expect((await removePayment(testOrganization, payment.id)).ok).toBe(true);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('ISSUED');
@@ -407,9 +413,9 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('nimmt auf einen Entwurf keine Zahlung entgegen', async () => {
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(draft(customerId), ACTOR, null);
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
 
-    const result = await addPayment(id, {
+    const result = await addPayment(testOrganization, id, {
       amountCents: cents(100),
       paidAt: plainDate('2026-03-05'),
       method: null,
@@ -426,7 +432,7 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
   it('erzeugt ein Stornodokument mit eigener Nummer und Bezug', async () => {
     const id = await issuedInvoice();
-    const result = await cancelInvoice(id, 'Falscher Leistungszeitraum', ACTOR, null);
+    const result = await cancelInvoice(testOrganization, id, 'Falscher Leistungszeitraum', ACTOR, null);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -448,7 +454,7 @@ describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
 
   it('setzt das Original auf storniert und lässt es vollständig erhalten (FA-STAT-09)', async () => {
     const id = await issuedInvoice();
-    await cancelInvoice(id, null, ACTOR, null);
+    await cancelInvoice(testOrganization, id, null, ACTOR, null);
 
     const original = await prisma.invoice.findUniqueOrThrow({
       where: { id },
@@ -464,18 +470,18 @@ describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
 
   it('storniert auch eine bereits bezahlte Rechnung (FA-STAT-10)', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
 
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe('PAID');
 
-    const result = await cancelInvoice(id, 'Rückzahlung erfolgt', ACTOR, null);
+    const result = await cancelInvoice(testOrganization, id, 'Rückzahlung erfolgt', ACTOR, null);
     expect(result.ok).toBe(true);
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe('CANCELLED');
   });
 
   it('lässt einen Nummernkreis ohne Lücke zurück (A4)', async () => {
     const id = await issuedInvoice();
-    await cancelInvoice(id, null, ACTOR, null);
+    await cancelInvoice(testOrganization, id, null, ACTOR, null);
 
     const numbers = (
       await prisma.invoice.findMany({
@@ -489,24 +495,24 @@ describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
 
   it('storniert weder Entwürfe noch Gutschriften noch doppelt', async () => {
     const customerId = await makeCustomer();
-    const { id: draftId } = await createDraftInvoice(draft(customerId), ACTOR, null);
-    expect((await cancelInvoice(draftId, null, ACTOR, null)).ok).toBe(false);
+    const { id: draftId } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
+    expect((await cancelInvoice(testOrganization, draftId, null, ACTOR, null)).ok).toBe(false);
 
     const id = await issuedInvoice();
-    const first = await cancelInvoice(id, null, ACTOR, null);
+    const first = await cancelInvoice(testOrganization, id, null, ACTOR, null);
     expect(first.ok).toBe(true);
     if (!first.ok) return;
 
-    expect((await cancelInvoice(id, null, ACTOR, null)).ok).toBe(false);
-    expect((await cancelInvoice(first.creditNoteId, null, ACTOR, null)).ok).toBe(false);
+    expect((await cancelInvoice(testOrganization, id, null, ACTOR, null)).ok).toBe(false);
+    expect((await cancelInvoice(testOrganization, first.creditNoteId, null, ACTOR, null)).ok).toBe(false);
   });
 
   it('nimmt auf eine Gutschrift keine Zahlung entgegen', async () => {
     const id = await issuedInvoice();
-    const result = await cancelInvoice(id, null, ACTOR, null);
+    const result = await cancelInvoice(testOrganization, id, null, ACTOR, null);
     if (!result.ok) return;
 
-    const payment = await addPayment(result.creditNoteId, {
+    const payment = await addPayment(testOrganization, result.creditNoteId, {
       amountCents: cents(100),
       paidAt: plainDate('2026-03-20'),
       method: null,
@@ -523,13 +529,13 @@ describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
 describe('Protokollierung (FA-STAT-11, NFA-COMP-01)', () => {
   it('hält jeden Schritt fest', async () => {
     const id = await issuedInvoice();
-    await addPayment(id, {
+    await addPayment(testOrganization, id, {
       amountCents: cents(11_900),
       paidAt: plainDate('2026-03-10'),
       method: 'Überweisung',
       note: null,
     });
-    await cancelInvoice(id, null, ACTOR, null);
+    await cancelInvoice(testOrganization, id, null, ACTOR, null);
 
     const actions = (
       await prisma.auditLog.findMany({
@@ -555,8 +561,8 @@ describe('Domain-Ereignisse (NFA-ARCH-08)', () => {
 
     try {
       const id = await issuedInvoice();
-      await markAsFullyPaid(id, plainDate('2026-03-10'), null);
-      await cancelInvoice(id, null, ACTOR, null);
+      await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
+      await cancelInvoice(testOrganization, id, null, ACTOR, null);
 
       expect(seen.map((event) => event.type)).toEqual([
         'InvoiceIssued',
@@ -576,7 +582,7 @@ describe('Domain-Ereignisse (NFA-ARCH-08)', () => {
 
     try {
       await expect(
-        dispatchInvoiceEvent({
+        dispatchInvoiceEvent(testOrganization, {
           type: 'InvoicePaid',
           invoiceId: 'x',
           grossTotalCents: cents(100),
@@ -593,49 +599,49 @@ describe('Liste und Filter (FA-RECH-15, -16; FA-STAT-02)', () => {
     const customerA = await makeCustomer();
     const customerB = await makeCustomer({ companyName: 'Zweiter Kunde' });
 
-    const { id: issuedId } = await createDraftInvoice(draft(customerA), ACTOR, null);
-    await issueInvoice(issuedId, ACTOR, null);
-    await createDraftInvoice(draft(customerB, { issueDate: '2026-05-01' }), ACTOR, null);
+    const { id: issuedId } = await createDraftInvoice(testOrganization, draft(customerA), ACTOR, null);
+    await issueInvoice(testOrganization, issuedId, ACTOR, null);
+    await createDraftInvoice(testOrganization, draft(customerB, { issueDate: '2026-05-01' }), ACTOR, null);
 
-    expect(await listInvoices({ status: 'ISSUED' })).toHaveLength(1);
-    expect(await listInvoices({ status: 'DRAFT' })).toHaveLength(1);
-    expect(await listInvoices({ customerId: customerB })).toHaveLength(1);
-    expect(await listInvoices({ from: '2026-04-01' })).toHaveLength(1);
-    expect(await listInvoices({ to: '2026-03-31' })).toHaveLength(1);
-    expect(await listInvoices()).toHaveLength(2);
+    expect(await listInvoices(testOrganization, { status: 'ISSUED' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { status: 'DRAFT' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { customerId: customerB })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { from: '2026-04-01' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { to: '2026-03-31' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization)).toHaveLength(2);
   });
 
   it('findet über Nummer, Kundenname und Positionsbezeichnung', async () => {
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(draft(customerId), ACTOR, null);
-    await issueInvoice(id, ACTOR, null);
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
+    await issueInvoice(testOrganization, id, ACTOR, null);
 
-    expect(await listInvoices({ search: 'RE-2026-0001' })).toHaveLength(1);
-    expect(await listInvoices({ search: 'Beispiel' })).toHaveLength(1);
-    expect(await listInvoices({ search: 'Beratung' })).toHaveLength(1);
-    expect(await listInvoices({ search: 'gibtesnicht' })).toHaveLength(0);
+    expect(await listInvoices(testOrganization, { search: 'RE-2026-0001' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { search: 'Beispiel' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { search: 'Beratung' })).toHaveLength(1);
+    expect(await listInvoices(testOrganization, { search: 'gibtesnicht' })).toHaveLength(0);
   });
 
   it('leitet Überfälligkeit ab, statt sie zu speichern (FA-STAT-02)', async () => {
     const customerId = await makeCustomer();
-    const { id } = await createDraftInvoice(
+    const { id } = await createDraftInvoice(testOrganization, 
       draft(customerId, { dueDate: '2026-03-10' }),
       ACTOR,
       null,
     );
-    await issueInvoice(id, ACTOR, null);
+    await issueInvoice(testOrganization, id, ACTOR, null);
 
-    const before = await listInvoices({}, new Date('2026-03-09T12:00:00Z'));
+    const before = await listInvoices(testOrganization, {}, new Date('2026-03-09T12:00:00Z'));
     expect(before[0]?.isOverdue).toBe(false);
 
-    const after = await listInvoices({}, new Date('2026-03-11T12:00:00Z'));
+    const after = await listInvoices(testOrganization, {}, new Date('2026-03-11T12:00:00Z'));
     expect(after[0]?.isOverdue).toBe(true);
 
     // Der Filter „überfällig" nutzt dieselbe Ableitung.
-    expect(await listInvoices({ status: 'OVERDUE' }, new Date('2026-03-11T12:00:00Z'))).toHaveLength(
+    expect(await listInvoices(testOrganization, { status: 'OVERDUE' }, new Date('2026-03-11T12:00:00Z'))).toHaveLength(
       1,
     );
-    expect(await listInvoices({ status: 'OVERDUE' }, new Date('2026-03-09T12:00:00Z'))).toHaveLength(
+    expect(await listInvoices(testOrganization, { status: 'OVERDUE' }, new Date('2026-03-09T12:00:00Z'))).toHaveLength(
       0,
     );
   });
@@ -644,7 +650,7 @@ describe('Liste und Filter (FA-RECH-15, -16; FA-STAT-02)', () => {
     const customerId = await makeCustomer();
 
     for (const price of [5_000, 20_000, 10_000]) {
-      const { id } = await createDraftInvoice(
+      const { id } = await createDraftInvoice(testOrganization, 
         draft(customerId, {
           lines: [
             {
@@ -663,13 +669,13 @@ describe('Liste und Filter (FA-RECH-15, -16; FA-STAT-02)', () => {
         ACTOR,
         null,
       );
-      await issueInvoice(id, ACTOR, null);
+      await issueInvoice(testOrganization, id, ACTOR, null);
     }
 
-    const byGross = await listInvoices({ sort: 'gross', direction: 'asc' });
+    const byGross = await listInvoices(testOrganization, { sort: 'gross', direction: 'asc' });
     expect(byGross.map((entry) => entry.grossTotalCents)).toEqual([5_950, 11_900, 23_800]);
 
-    const byNumber = await listInvoices({ sort: 'number', direction: 'asc' });
+    const byNumber = await listInvoices(testOrganization, { sort: 'number', direction: 'asc' });
     expect(byNumber.map((entry) => entry.invoiceNumber)).toEqual([
       'RE-2026-0001',
       'RE-2026-0002',

@@ -8,6 +8,7 @@
 import { listCatalogItems } from '@/application/catalog/catalog-service';
 import { getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { listSelectableCustomers } from '@/application/customers/customer-service';
+import type { OrganizationContext } from '@/application/auth/session-service';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import type { CountryCode } from '@/domain/codes/country-code';
 import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
@@ -29,11 +30,14 @@ export type EditorContext = {
   readonly suggestedDueDate: string;
 };
 
-export async function loadEditorContext(now: Date = new Date()): Promise<EditorContext> {
+export async function loadEditorContext(
+  organization: OrganizationContext,
+  now: Date = new Date(),
+): Promise<EditorContext> {
   const [company, customers, catalog] = await Promise.all([
-    getCompanyProfileOrEmpty(),
-    listSelectableCustomers(),
-    listCatalogItems(),
+    getCompanyProfileOrEmpty(organization),
+    listSelectableCustomers(organization),
+    listCatalogItems(organization),
   ]);
 
   const today = todayIn(getAppTimeZone(), now);

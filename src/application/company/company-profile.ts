@@ -1,17 +1,20 @@
 /**
  * Firmenstammdaten (FA-STAMM-01 bis -09).
  *
- * Das Profil ist ein Singleton mit der Kennung 1. Der Zugriff läuft
- * ausschließlich über diese Datei — `upsert` mit fester Kennung ist die einzige
- * Schreiboperation, und die Datenbank setzt zusätzlich eine CHECK-Bedingung
- * durch.
+ * Genau ein Profil je Organisation. Die Eindeutigkeit liegt seit M5.5a im
+ * eindeutigen Index auf `organizationId`, nicht mehr in einer CHECK-Bedingung
+ * auf einer festen Kennung — die schärfere Zusage, weil sie auch bei mehreren
+ * Organisationen trägt.
  */
 import { DEFAULT_COUNTRY_CODE } from '@/domain/codes/country-code';
 import { DEFAULT_CURRENCY_CODE } from '@/domain/codes/currency-code';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
-
-export const COMPANY_PROFILE_ID = 1;
+import {
+  findCompanyProfile,
+  setCompanyLogoAsset,
+  upsertCompanyProfile,
+} from '@/infrastructure/repositories/company-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type CompanyProfileData = {
   readonly legalName: string;
@@ -41,7 +44,7 @@ export type CompanyProfileData = {
 };
 
 export type CompanyProfile = CompanyProfileData & {
-  readonly id: number;
+  readonly id: string;
   readonly logoAssetId: string | null;
   readonly invoiceNumberFormat: string;
   readonly updatedAt: Date;
@@ -74,13 +77,17 @@ export const EMPTY_COMPANY_PROFILE: CompanyProfileData = {
   footerText: null,
 };
 
-export async function getCompanyProfile(): Promise<CompanyProfile | null> {
-  return getPrismaClient().companyProfile.findUnique({ where: { id: COMPANY_PROFILE_ID } });
+export async function getCompanyProfile(
+  context: OrganizationContext,
+): Promise<CompanyProfile | null> {
+  return findCompanyProfile(context);
 }
 
 /** Liefert das gespeicherte Profil oder die leere Vorbelegung für das Formular. */
-export async function getCompanyProfileOrEmpty(): Promise<CompanyProfileData> {
-  return (await getCompanyProfile()) ?? EMPTY_COMPANY_PROFILE;
+export async function getCompanyProfileOrEmpty(
+  context: OrganizationContext,
+): Promise<CompanyProfileData> {
+  return (await getCompanyProfile(context)) ?? EMPTY_COMPANY_PROFILE;
 }
 
 /**
@@ -103,24 +110,20 @@ function changedFieldNames(
 }
 
 export async function saveCompanyProfile(
+  context: OrganizationContext,
   data: CompanyProfileData,
   actorId: string,
   ipAddress: string | null,
 ): Promise<CompanyProfile> {
-  const prisma = getPrismaClient();
-  const before = await getCompanyProfile();
+  const before = await getCompanyProfile(context);
 
-  const saved = await prisma.companyProfile.upsert({
-    where: { id: COMPANY_PROFILE_ID },
-    create: { id: COMPANY_PROFILE_ID, ...data },
-    update: data,
-  });
+  const saved = await upsertCompanyProfile(context, data, data);
 
   const changed = changedFieldNames(before, data);
   if (changed.length > 0) {
-    await recordAuditEntry({
+    await recordAuditEntry(context, {
       entityType: 'CompanyProfile',
-      entityId: String(COMPANY_PROFILE_ID),
+      entityId: saved.id,
       action: before === null ? 'CREATED' : 'UPDATED',
       actorId,
       ipAddress,
@@ -133,19 +136,20 @@ export async function saveCompanyProfile(
 
 /** Ändert das Nummernformat (FA-NUM-01). Wirkt nur auf künftige Belege. */
 export async function setInvoiceNumberFormat(
+  context: OrganizationContext,
   format: string,
   actorId: string,
   ipAddress: string | null,
 ): Promise<void> {
-  await getPrismaClient().companyProfile.upsert({
-    where: { id: COMPANY_PROFILE_ID },
-    create: { id: COMPANY_PROFILE_ID, ...EMPTY_COMPANY_PROFILE, invoiceNumberFormat: format },
-    update: { invoiceNumberFormat: format },
-  });
+  const saved = await upsertCompanyProfile(
+    context,
+    { ...EMPTY_COMPANY_PROFILE, invoiceNumberFormat: format },
+    { invoiceNumberFormat: format },
+  );
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'CompanyProfile',
-    entityId: String(COMPANY_PROFILE_ID),
+    entityId: saved.id,
     action: 'UPDATED',
     actorId,
     ipAddress,
@@ -154,18 +158,16 @@ export async function setInvoiceNumberFormat(
 }
 
 export async function setCompanyLogo(
+  context: OrganizationContext,
   assetId: string | null,
   actorId: string,
   ipAddress: string | null,
 ): Promise<void> {
-  await getPrismaClient().companyProfile.update({
-    where: { id: COMPANY_PROFILE_ID },
-    data: { logoAssetId: assetId },
-  });
+  await setCompanyLogoAsset(context, assetId);
 
-  await recordAuditEntry({
+  await recordAuditEntry(context, {
     entityType: 'CompanyProfile',
-    entityId: String(COMPANY_PROFILE_ID),
+    entityId: context.organizationId,
     action: 'UPDATED',
     actorId,
     ipAddress,

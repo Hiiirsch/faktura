@@ -24,7 +24,16 @@ import { hashPassword, verifyPassword } from '@/infrastructure/auth/password-has
 import { hashToken } from '@/infrastructure/auth/tokens';
 import { verifyTotpCode } from '@/infrastructure/auth/totp';
 import { getEnv } from '@/infrastructure/config/env';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import {
+  findRecoveryCodeByHash,
+  findUserByEmail,
+  markRecoveryCodeUsed,
+  updateUser,
+} from '@/infrastructure/repositories/auth-repository';
+import {
+  type OrganizationContext,
+  organizationContextOf,
+} from '@/infrastructure/repositories/organization-context';
 
 import { createSession, type IssuedSession, type RequestContext } from './session-service';
 
@@ -60,6 +69,7 @@ function toLockoutState(user: { failedLogins: number; lockedUntil: Date | null }
 /** Prüft den zweiten Faktor: erst TOTP, dann Wiederherstellungscode. */
 async function verifySecondFactor(
   userId: string,
+  organization: OrganizationContext,
   totpSecret: string,
   submitted: string,
   context: RequestContext,
@@ -75,21 +85,15 @@ async function verifySecondFactor(
   }
 
   const normalized = normalizeRecoveryCode(submitted);
-  const prisma = getPrismaClient();
-  const candidate = await prisma.recoveryCode.findUnique({
-    where: { codeHash: hashToken(normalized) },
-  });
+  const candidate = await findRecoveryCodeByHash(hashToken(normalized));
 
   if (candidate === null || candidate.userId !== userId || candidate.usedAt !== null) {
     return false;
   }
 
   // Ein Wiederherstellungscode gilt genau einmal.
-  await prisma.recoveryCode.update({
-    where: { id: candidate.id },
-    data: { usedAt: new Date() },
-  });
-  await recordAuditEntry({
+  await markRecoveryCodeUsed(candidate.id, new Date());
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: userId,
     action: 'RECOVERY_CODE_USED',
@@ -102,18 +106,19 @@ async function verifySecondFactor(
 
 async function registerFailure(
   userId: string,
+  organization: OrganizationContext,
   state: LockoutState,
   context: RequestContext,
   now: Date,
 ): Promise<void> {
   const next = registerFailedAttempt(state, now);
 
-  await getPrismaClient().user.update({
-    where: { id: userId },
-    data: { failedLogins: next.failedLogins, lockedUntil: next.lockedUntil },
+  await updateUser(userId, {
+    failedLogins: next.failedLogins,
+    lockedUntil: next.lockedUntil,
   });
 
-  await recordAuditEntry({
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: userId,
     action: 'LOGIN_FAILED',
@@ -123,7 +128,7 @@ async function registerFailure(
   });
 
   if (next.lockedUntil !== null) {
-    await recordAuditEntry({
+    await recordAuditEntry(organization, {
       entityType: 'User',
       entityId: userId,
       action: 'ACCOUNT_LOCKED',
@@ -140,14 +145,17 @@ export async function login(
   now: Date = new Date(),
 ): Promise<Result<IssuedSession, LoginError>> {
   const email = input.email.trim().toLowerCase();
-  const prisma = getPrismaClient();
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await findUserByEmail(email);
 
   if (user === null) {
     // Gleicher Rechenaufwand wie bei einem existierenden Konto.
     await verifyPassword(await getDecoyHash(), input.password);
     return err({ kind: 'INVALID_CREDENTIALS' });
   }
+
+  // Der Mandantenkontext steht ab hier fest: Er kommt aus dem Konto, nie aus
+  // der Anfrage.
+  const organization = organizationContextOf(user.organizationId);
 
   const lockout = toLockoutState(user);
   if (isLocked(lockout, now)) {
@@ -159,33 +167,34 @@ export async function login(
 
   const passwordMatches = await verifyPassword(user.passwordHash, input.password);
   if (!passwordMatches) {
-    await registerFailure(user.id, lockout, context, now);
+    await registerFailure(user.id, organization, lockout, context, now);
     return err({ kind: 'INVALID_CREDENTIALS' });
   }
 
   if (user.totpEnabled && user.totpSecret !== null) {
     const secondFactorValid = await verifySecondFactor(
       user.id,
+      organization,
       user.totpSecret,
       input.secondFactor,
       context,
     );
     if (!secondFactorValid) {
-      await registerFailure(user.id, lockout, context, now);
+      await registerFailure(user.id, organization, lockout, context, now);
       return err({ kind: 'INVALID_CREDENTIALS' });
     }
   }
 
   const cleared = clearFailedAttempts();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { failedLogins: cleared.failedLogins, lockedUntil: cleared.lockedUntil },
+  await updateUser(user.id, {
+    failedLogins: cleared.failedLogins,
+    lockedUntil: cleared.lockedUntil,
   });
 
   // Jede Anmeldung erzeugt ein frisches Token (NFA-SEC-07).
   const session = await createSession(user.id, context, now);
 
-  await recordAuditEntry({
+  await recordAuditEntry(organization, {
     entityType: 'User',
     entityId: user.id,
     action: 'LOGIN_SUCCEEDED',

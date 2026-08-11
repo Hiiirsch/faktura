@@ -20,7 +20,6 @@ import {
   setCatalogItemArchived,
 } from '@/application/catalog/catalog-service';
 import {
-  COMPANY_PROFILE_ID,
   EMPTY_COMPANY_PROFILE,
   getCompanyProfile,
   saveCompanyProfile,
@@ -37,6 +36,7 @@ import {
 import { cents } from '@/domain/money/money';
 
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
@@ -76,7 +76,7 @@ afterAll(async () => {
 
 describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
   it('legt das Profil an und liest es zurück', async () => {
-    await saveCompanyProfile(
+    await saveCompanyProfile(testOrganization, 
       {
         ...EMPTY_COMPANY_PROFILE,
         legalName: 'Musterbetrieb Tim',
@@ -95,7 +95,7 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
       null,
     );
 
-    const saved = await getCompanyProfile();
+    const saved = await getCompanyProfile(testOrganization);
     expect(saved?.legalName).toBe('Musterbetrieb Tim');
     expect(saved?.iban).toBe('DE89370400440532013000');
     expect(saved?.registerCourt).toBe('Amtsgericht Ulm');
@@ -105,30 +105,36 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
 
   it('bleibt ein Singleton — auch nach mehrfachem Speichern', async () => {
     for (const name of ['Erster Name', 'Zweiter Name', 'Dritter Name']) {
-      await saveCompanyProfile({ ...EMPTY_COMPANY_PROFILE, legalName: name }, ACTOR, null);
+      await saveCompanyProfile(testOrganization, { ...EMPTY_COMPANY_PROFILE, legalName: name }, ACTOR, null);
     }
 
     const all = await prisma.companyProfile.findMany();
     expect(all).toHaveLength(1);
-    expect(all[0]?.id).toBe(COMPANY_PROFILE_ID);
+    expect(all[0]?.organizationId).toBe(testOrganization.organizationId);
     expect(all[0]?.legalName).toBe('Dritter Name');
   });
 
   it('lässt sich auf Datenbankebene nicht durch einen zweiten Datensatz ergänzen', async () => {
-    await saveCompanyProfile({ ...EMPTY_COMPANY_PROFILE, legalName: 'Einziger' }, ACTOR, null);
+    await saveCompanyProfile(testOrganization, { ...EMPTY_COMPANY_PROFILE, legalName: 'Einziger' }, ACTOR, null);
 
-    // Die CHECK-Bedingung der Migration greift, selbst wenn jemand am
+    // Der eindeutige Index auf organizationId greift, selbst wenn jemand am
     // Repository vorbei schreibt.
     await expect(
       prisma.companyProfile.create({
-        data: { id: 2, legalName: 'Zweiter', addressLine1: 'A', postalCode: '1', city: 'B' },
+        data: {
+          organizationId: testOrganization.organizationId,
+          legalName: 'Zweiter',
+          addressLine1: 'A',
+          postalCode: '1',
+          city: 'B',
+        },
       }),
     ).rejects.toThrow();
   });
 
   it('protokolliert das Anlegen und jede Änderung mit den betroffenen Feldern (FA-STAMM-09)', async () => {
-    await saveCompanyProfile({ ...EMPTY_COMPANY_PROFILE, legalName: 'Erst' }, ACTOR, '10.0.0.1');
-    await saveCompanyProfile({ ...EMPTY_COMPANY_PROFILE, legalName: 'Dann' }, ACTOR, '10.0.0.1');
+    await saveCompanyProfile(testOrganization, { ...EMPTY_COMPANY_PROFILE, legalName: 'Erst' }, ACTOR, '10.0.0.1');
+    await saveCompanyProfile(testOrganization, { ...EMPTY_COMPANY_PROFILE, legalName: 'Dann' }, ACTOR, '10.0.0.1');
 
     const entries = await auditEntries('CompanyProfile');
 
@@ -140,14 +146,14 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
 
   it('schreibt keinen Protokolleintrag, wenn sich nichts geändert hat', async () => {
     const data = { ...EMPTY_COMPANY_PROFILE, legalName: 'Unverändert' };
-    await saveCompanyProfile(data, ACTOR, null);
-    await saveCompanyProfile(data, ACTOR, null);
+    await saveCompanyProfile(testOrganization, data, ACTOR, null);
+    await saveCompanyProfile(testOrganization, data, ACTOR, null);
 
     expect(await auditEntries('CompanyProfile')).toHaveLength(1);
   });
 
   it('legt keine Werte der Bankverbindung ins Protokoll (NFA-BETR-10)', async () => {
-    await saveCompanyProfile(
+    await saveCompanyProfile(testOrganization, 
       { ...EMPTY_COMPANY_PROFILE, legalName: 'Mit Bank', iban: 'DE89370400440532013000' },
       ACTOR,
       null,
@@ -160,9 +166,9 @@ describe('Firmenstammdaten (FA-STAMM-01, -02, -06, -08, -09)', () => {
 
 describe('Kundenverwaltung (FA-KUND-01, -02, -05, -06, -07)', () => {
   it('vergibt fortlaufende Kundennummern (FA-KUND-02)', async () => {
-    const first = await createCustomer(CUSTOMER, ACTOR, null);
-    const second = await createCustomer({ ...CUSTOMER, companyName: 'Zweiter' }, ACTOR, null);
-    const third = await createCustomer({ ...CUSTOMER, companyName: 'Dritter' }, ACTOR, null);
+    const first = await createCustomer(testOrganization, CUSTOMER, ACTOR, null);
+    const second = await createCustomer(testOrganization, { ...CUSTOMER, companyName: 'Zweiter' }, ACTOR, null);
+    const third = await createCustomer(testOrganization, { ...CUSTOMER, companyName: 'Dritter' }, ACTOR, null);
 
     expect([first.customerNumber, second.customerNumber, third.customerNumber]).toEqual([
       'K-0001',
@@ -174,7 +180,7 @@ describe('Kundenverwaltung (FA-KUND-01, -02, -05, -06, -07)', () => {
   it('vergibt auch bei gleichzeitiger Anlage eindeutige Nummern', async () => {
     const created = await Promise.all(
       Array.from({ length: 8 }, (_, index) =>
-        createCustomer({ ...CUSTOMER, companyName: `Kunde ${String(index)}` }, ACTOR, null),
+        createCustomer(testOrganization, { ...CUSTOMER, companyName: `Kunde ${String(index)}` }, ACTOR, null),
       ),
     );
 
@@ -183,26 +189,26 @@ describe('Kundenverwaltung (FA-KUND-01, -02, -05, -06, -07)', () => {
   });
 
   it('findet Kunden über Name, Nummer, Ort und E-Mail (FA-KUND-01)', async () => {
-    await createCustomer(CUSTOMER, ACTOR, null);
-    await createCustomer(
+    await createCustomer(testOrganization, CUSTOMER, ACTOR, null);
+    await createCustomer(testOrganization, 
       { ...CUSTOMER, companyName: 'Nordlicht KG', city: 'Kiel', email: 'kontakt@nordlicht.de' },
       ACTOR,
       null,
     );
 
-    expect(await listCustomers({ search: 'Alpen' })).toHaveLength(1);
-    expect(await listCustomers({ search: 'Kiel' })).toHaveLength(1);
-    expect(await listCustomers({ search: 'nordlicht.de' })).toHaveLength(1);
-    expect(await listCustomers({ search: 'K-0001' })).toHaveLength(1);
-    expect(await listCustomers({ search: 'gibtesnicht' })).toHaveLength(0);
-    expect(await listCustomers()).toHaveLength(2);
+    expect(await listCustomers(testOrganization, { search: 'Alpen' })).toHaveLength(1);
+    expect(await listCustomers(testOrganization, { search: 'Kiel' })).toHaveLength(1);
+    expect(await listCustomers(testOrganization, { search: 'nordlicht.de' })).toHaveLength(1);
+    expect(await listCustomers(testOrganization, { search: 'K-0001' })).toHaveLength(1);
+    expect(await listCustomers(testOrganization, { search: 'gibtesnicht' })).toHaveLength(0);
+    expect(await listCustomers(testOrganization)).toHaveLength(2);
   });
 
   it('übernimmt Änderungen und protokolliert die geänderten Felder', async () => {
-    const customer = await createCustomer(CUSTOMER, ACTOR, null);
-    await updateCustomer(customer.id, { ...CUSTOMER, city: 'Graz' }, ACTOR, null);
+    const customer = await createCustomer(testOrganization, CUSTOMER, ACTOR, null);
+    await updateCustomer(testOrganization, customer.id, { ...CUSTOMER, city: 'Graz' }, ACTOR, null);
 
-    expect((await getCustomer(customer.id))?.city).toBe('Graz');
+    expect((await getCustomer(testOrganization, customer.id))?.city).toBe('Graz');
 
     const entries = await prisma.auditLog.findMany({
       where: { entityType: 'Customer', entityId: customer.id },
@@ -213,29 +219,29 @@ describe('Kundenverwaltung (FA-KUND-01, -02, -05, -06, -07)', () => {
   });
 
   it('behält das kundenspezifische Zahlungsziel (FA-KUND-05)', async () => {
-    const customer = await createCustomer({ ...CUSTOMER, paymentTerms: 45 }, ACTOR, null);
-    expect((await getCustomer(customer.id))?.paymentTerms).toBe(45);
+    const customer = await createCustomer(testOrganization, { ...CUSTOMER, paymentTerms: 45 }, ACTOR, null);
+    expect((await getCustomer(testOrganization, customer.id))?.paymentTerms).toBe(45);
 
-    const withoutTerms = await createCustomer(
+    const withoutTerms = await createCustomer(testOrganization, 
       { ...CUSTOMER, companyName: 'Ohne Ziel', paymentTerms: null },
       ACTOR,
       null,
     );
-    expect((await getCustomer(withoutTerms.id))?.paymentTerms).toBeNull();
+    expect((await getCustomer(testOrganization, withoutTerms.id))?.paymentTerms).toBeNull();
   });
 
   it('archiviert statt zu löschen und nimmt aus der Auswahl (FA-KUND-06, -07)', async () => {
-    const customer = await createCustomer(CUSTOMER, ACTOR, null);
+    const customer = await createCustomer(testOrganization, CUSTOMER, ACTOR, null);
 
-    await setCustomerArchived(customer.id, true, ACTOR, null);
+    await setCustomerArchived(testOrganization, customer.id, true, ACTOR, null);
 
     // Weiterhin vorhanden — nur nicht mehr auswählbar.
-    expect(await getCustomer(customer.id)).not.toBeNull();
-    expect(await listSelectableCustomers()).toHaveLength(0);
-    expect(await listCustomers({ includeArchived: true })).toHaveLength(1);
+    expect(await getCustomer(testOrganization, customer.id)).not.toBeNull();
+    expect(await listSelectableCustomers(testOrganization)).toHaveLength(0);
+    expect(await listCustomers(testOrganization, { includeArchived: true })).toHaveLength(1);
 
-    await setCustomerArchived(customer.id, false, ACTOR, null);
-    expect(await listSelectableCustomers()).toHaveLength(1);
+    await setCustomerArchived(testOrganization, customer.id, false, ACTOR, null);
+    expect(await listSelectableCustomers(testOrganization)).toHaveLength(1);
 
     const entries = await prisma.auditLog.findMany({
       where: { entityType: 'Customer', entityId: customer.id },
@@ -247,7 +253,7 @@ describe('Kundenverwaltung (FA-KUND-01, -02, -05, -06, -07)', () => {
 
 describe('Leistungskatalog (FA-STAMM-10)', () => {
   it('legt Positionen an und führt sie in der Liste', async () => {
-    await createCatalogItem(
+    await createCatalogItem(testOrganization, 
       {
         name: 'Beratung',
         description: 'Konzeption und Abstimmung',
@@ -259,22 +265,22 @@ describe('Leistungskatalog (FA-STAMM-10)', () => {
       null,
     );
 
-    const items = await listCatalogItems();
+    const items = await listCatalogItems(testOrganization);
     expect(items).toHaveLength(1);
     expect(items[0]?.unitPriceCents).toBe(9500);
     expect(items[0]?.unitCode).toBe('HUR');
   });
 
   it('blendet archivierte Positionen aus', async () => {
-    const item = await createCatalogItem(
+    const item = await createCatalogItem(testOrganization, 
       { name: 'Alt', description: null, unitPriceCents: cents(100), unitCode: 'C62', taxRateBasisPoints: 1900 },
       ACTOR,
       null,
     );
 
-    await setCatalogItemArchived(item.id, true, ACTOR, null);
-    expect(await listCatalogItems()).toHaveLength(0);
-    expect(await listCatalogItems(true)).toHaveLength(1);
+    await setCatalogItemArchived(testOrganization, item.id, true, ACTOR, null);
+    expect(await listCatalogItems(testOrganization)).toHaveLength(0);
+    expect(await listCatalogItems(testOrganization, true)).toHaveLength(1);
   });
 });
 
@@ -284,13 +290,13 @@ describe('Dateiablage (FA-STAMM-05, NFA-SEC-15, NFA-SEC-16)', () => {
   ]);
 
   it('legt eine geprüfte Datei ab und liest sie zurück', async () => {
-    const result = await storeImageAsset(png, 'image/png', 'logo.png');
+    const result = await storeImageAsset(testOrganization, png, 'image/png', 'logo.png');
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
     }
 
-    const asset = await getAsset(result.value.id);
+    const asset = await getAsset(testOrganization, result.value.id);
     expect(asset?.mimeType).toBe('image/png');
     // Erzeugter Name, nicht der gelieferte — der bleibt nur Anzeigename.
     expect(asset?.storagePath).toMatch(/^assets\/[0-9a-f-]+\.png$/);
@@ -302,13 +308,13 @@ describe('Dateiablage (FA-STAMM-05, NFA-SEC-15, NFA-SEC-16)', () => {
   });
 
   it('entschärft einen Dateinamen mit Pfadanteilen', async () => {
-    const result = await storeImageAsset(png, 'image/png', '../../etc/passwd.png');
+    const result = await storeImageAsset(testOrganization, png, 'image/png', '../../etc/passwd.png');
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
     }
 
-    const asset = await getAsset(result.value.id);
+    const asset = await getAsset(testOrganization, result.value.id);
     expect(asset?.fileName).not.toContain('/');
     expect(asset?.fileName).not.toContain('..');
   });
@@ -328,7 +334,7 @@ describe('Dateiablage (FA-STAMM-05, NFA-SEC-15, NFA-SEC-16)', () => {
 
   it('speichert eine SVG-Datei mit Skript gar nicht erst (A7)', async () => {
     const boeswillig = new TextEncoder().encode('<svg><script>alert(1)</script></svg>');
-    const result = await storeImageAsset(boeswillig, 'image/svg+xml', 'boese.svg');
+    const result = await storeImageAsset(testOrganization, boeswillig, 'image/svg+xml', 'boese.svg');
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

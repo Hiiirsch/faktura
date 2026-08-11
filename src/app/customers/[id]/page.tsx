@@ -36,14 +36,14 @@ export default async function CustomerDetailPage({
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const { id } = await params;
-  const customer = await getCustomer(id);
+  const customer = await getCustomer(session.organization, id);
   if (customer === null) {
     notFound();
   }
 
   const [company, invoices] = await Promise.all([
-    getCompanyProfileOrEmpty(),
-    listInvoicesForCustomer(id),
+    getCompanyProfileOrEmpty(session.organization),
+    listInvoicesForCustomer(session.organization, id),
   ]);
 
   // Vorschlag für neue Rechnungen an diesen Kunden (FA-STAMM-03).

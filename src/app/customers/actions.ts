@@ -159,7 +159,12 @@ export async function createCustomerAction(
   }
 
   const context = await readRequestContext();
-  const customer = await createCustomer(parsed.data, session.userId, context.ipAddress);
+  const customer = await createCustomer(
+    session.organization,
+    parsed.data,
+    session.userId,
+    context.ipAddress,
+  );
 
   revalidatePath(CUSTOMERS_PATH);
   redirect(customerPath(customer.id));
@@ -188,7 +193,13 @@ export async function updateCustomerAction(
   }
 
   const context = await readRequestContext();
-  await updateCustomer(id.data, parsed.data, session.userId, context.ipAddress);
+  await updateCustomer(
+    session.organization,
+    id.data,
+    parsed.data,
+    session.userId,
+    context.ipAddress,
+  );
 
   revalidatePath(CUSTOMERS_PATH);
   revalidatePath(customerPath(id.data));
@@ -206,6 +217,7 @@ export async function setCustomerArchivedAction(formData: FormData): Promise<voi
 
   const context = await readRequestContext();
   await setCustomerArchived(
+    session.organization,
     id.data,
     formData.get('isArchived') === 'true',
     session.userId,

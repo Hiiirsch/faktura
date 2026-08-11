@@ -15,7 +15,11 @@ import {
 import type { DocumentType } from '@/domain/document/document-type';
 import { parsePlainDate, type PlainDate, todayIn } from '@/domain/time/plain-date';
 import { getEnv } from '@/infrastructure/config/env';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import {
+  findInvoiceDetail,
+  listInvoices as queryInvoices,
+} from '@/infrastructure/repositories/invoice-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type InvoiceListFilter = {
   readonly status?: InvoiceStatus | 'OVERDUE';
@@ -60,10 +64,10 @@ export function today(now: Date = new Date()): PlainDate {
 }
 
 export async function listInvoices(
+  context: OrganizationContext,
   filter: InvoiceListFilter = {},
   now: Date = new Date(),
 ): Promise<readonly InvoiceListEntry[]> {
-  const search = filter.search?.trim() ?? '';
   const reference = today(now);
 
   const sortField = filter.sort ?? 'issueDate';
@@ -77,40 +81,17 @@ export async function listInvoices(
           ? { dueDate: direction }
           : { issueDate: direction };
 
-  const invoices = await getPrismaClient().invoice.findMany({
-    where: {
-      ...(filter.customerId === undefined ? {} : { customerId: filter.customerId }),
-      // „Überfällig" ist kein Status, sondern ein abgeleiteter Zustand: offene
-      // Belege mit Fälligkeitsdatum vor heute (FA-STAT-02).
-      ...(filter.status === 'OVERDUE'
-        ? { status: { in: ['ISSUED', 'PARTIALLY_PAID'] }, dueDate: { lt: reference } }
-        : filter.status === undefined
-          ? {}
-          : { status: filter.status }),
-      ...(filter.from === undefined && filter.to === undefined
-        ? {}
-        : {
-            issueDate: {
-              ...(filter.from === undefined ? {} : { gte: filter.from }),
-              ...(filter.to === undefined ? {} : { lte: filter.to }),
-            },
-          }),
-      ...(search.length === 0
-        ? {}
-        : {
-            OR: [
-              { invoiceNumber: { contains: search } },
-              { introText: { contains: search } },
-              { purchaseOrderRef: { contains: search } },
-              { customer: { companyName: { contains: search } } },
-              { customer: { contactName: { contains: search } } },
-              { customer: { customerNumber: { contains: search } } },
-              { lines: { some: { name: { contains: search } } } },
-            ],
-          }),
-    },
-    orderBy: [orderBy, { createdAt: 'desc' }],
-    include: { customer: { select: { id: true, companyName: true, contactName: true } } },
+  const invoices = await queryInvoices(context, {
+    customerId: filter.customerId,
+    // „Überfällig" ist kein Status, sondern ein abgeleiteter Zustand: offene
+    // Belege mit Fälligkeitsdatum vor heute (FA-STAT-02).
+    ...(filter.status === 'OVERDUE'
+      ? { statusIn: ['ISSUED', 'PARTIALLY_PAID'], dueBefore: reference }
+      : { status: filter.status }),
+    issuedFrom: filter.from,
+    issuedTo: filter.to,
+    search: filter.search ?? '',
+    orderBy,
   });
 
   return invoices.map((invoice) => {
@@ -136,17 +117,12 @@ export async function listInvoices(
 
 export type InvoiceDetail = Awaited<ReturnType<typeof loadInvoiceDetail>>;
 
-export async function loadInvoiceDetail(invoiceId: string, now: Date = new Date()) {
-  const invoice = await getPrismaClient().invoice.findUnique({
-    where: { id: invoiceId },
-    include: {
-      lines: { orderBy: { position: 'asc' } },
-      payments: { orderBy: [{ paidAt: 'asc' }, { createdAt: 'asc' }] },
-      customer: true,
-      precedingInvoice: { select: { id: true, invoiceNumber: true } },
-      cancelledBy: { select: { id: true, invoiceNumber: true } },
-    },
-  });
+export async function loadInvoiceDetail(
+  context: OrganizationContext,
+  invoiceId: string,
+  now: Date = new Date(),
+) {
+  const invoice = await findInvoiceDetail(context, invoiceId);
 
   if (invoice === null) {
     return null;
@@ -181,8 +157,9 @@ export type { BuyerSnapshot, SellerSnapshot };
 
 /** Belege eines Kunden für die Kundendetailseite (FA-KUND-08). */
 export async function listInvoicesForCustomer(
+  context: OrganizationContext,
   customerId: string,
   now: Date = new Date(),
 ): Promise<readonly InvoiceListEntry[]> {
-  return listInvoices({ customerId, sort: 'issueDate', direction: 'desc' }, now);
+  return listInvoices(context, { customerId, sort: 'issueDate', direction: 'desc' }, now);
 }

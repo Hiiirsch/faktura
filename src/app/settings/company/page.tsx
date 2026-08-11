@@ -19,7 +19,10 @@ export const metadata = { title: `${messages.company.title} · ${messages.app.na
 
 export default async function CompanySettingsPage(): Promise<ReactNode> {
   const session = await requireSession();
-  const [profile, saved] = await Promise.all([getCompanyProfileOrEmpty(), getCompanyProfile()]);
+  const [profile, saved] = await Promise.all([
+    getCompanyProfileOrEmpty(session.organization),
+    getCompanyProfile(session.organization),
+  ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   return (

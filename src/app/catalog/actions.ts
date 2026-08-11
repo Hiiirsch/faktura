@@ -112,7 +112,7 @@ export async function createCatalogItemAction(
   }
 
   const context = await readRequestContext();
-  await createCatalogItem(parsed.data, session.userId, context.ipAddress);
+  await createCatalogItem(session.organization, parsed.data, session.userId, context.ipAddress);
 
   revalidatePath(CATALOG_PATH);
   return { status: 'saved' };
@@ -141,7 +141,13 @@ export async function updateCatalogItemAction(
   }
 
   const context = await readRequestContext();
-  await updateCatalogItem(id.data, parsed.data, session.userId, context.ipAddress);
+  await updateCatalogItem(
+    session.organization,
+    id.data,
+    parsed.data,
+    session.userId,
+    context.ipAddress,
+  );
 
   revalidatePath(CATALOG_PATH);
   return { status: 'saved' };
@@ -158,6 +164,7 @@ export async function setCatalogItemArchivedAction(formData: FormData): Promise<
 
   const context = await readRequestContext();
   await setCatalogItemArchived(
+    session.organization,
     id.data,
     formData.get('isArchived') === 'true',
     session.userId,

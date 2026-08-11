@@ -12,7 +12,12 @@ import {
   validateImageUpload,
 } from '@/domain/assets/image-upload';
 import { err, ok, type Result } from '@/domain/shared/result';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import {
+  createAsset,
+  deleteAsset as removeAsset,
+  findAsset,
+} from '@/infrastructure/repositories/asset-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 import { deleteStoredFile, readStoredFile, storeImage } from '@/infrastructure/storage/asset-store';
 
 export type StoredAsset = {
@@ -31,6 +36,7 @@ function sanitizeDisplayName(fileName: string): string {
 }
 
 export async function storeImageAsset(
+  context: OrganizationContext,
   bytes: Uint8Array,
   declaredMimeType: string,
   originalFileName: string,
@@ -43,21 +49,22 @@ export async function storeImageAsset(
 
   const stored = await storeImage(bytes, validated.value.type);
 
-  const asset = await getPrismaClient().asset.create({
-    data: {
-      fileName: sanitizeDisplayName(originalFileName),
-      mimeType: validated.value.type,
-      byteSize: stored.byteSize,
-      sha256: stored.sha256,
-      storagePath: stored.storagePath,
-    },
+  const asset = await createAsset(context, {
+    fileName: sanitizeDisplayName(originalFileName),
+    mimeType: validated.value.type,
+    byteSize: stored.byteSize,
+    sha256: stored.sha256,
+    storagePath: stored.storagePath,
   });
 
   return ok(asset);
 }
 
-export async function getAsset(id: string): Promise<StoredAsset | null> {
-  return getPrismaClient().asset.findUnique({ where: { id } });
+export async function getAsset(
+  context: OrganizationContext,
+  id: string,
+): Promise<StoredAsset | null> {
+  return findAsset(context, id);
 }
 
 export async function readAssetContent(asset: StoredAsset): Promise<Buffer> {
@@ -65,13 +72,15 @@ export async function readAssetContent(asset: StoredAsset): Promise<Buffer> {
 }
 
 /** Entfernt Datensatz und Datei. Wird nur für ersetzte Logos aufgerufen. */
-export async function deleteAsset(id: string): Promise<void> {
-  const prisma = getPrismaClient();
-  const asset = await prisma.asset.findUnique({ where: { id } });
+export async function deleteAsset(context: OrganizationContext, id: string): Promise<void> {
+  const asset = await findAsset(context, id);
   if (asset === null) {
     return;
   }
 
-  await prisma.asset.delete({ where: { id } });
-  await deleteStoredFile(asset.storagePath);
+  // Erst der Datensatz, dann die Datei: Bricht es dazwischen ab, bleibt eine
+  // verwaiste Datei zurück — harmloser als ein Datensatz ohne Datei.
+  if (await removeAsset(context, id)) {
+    await deleteStoredFile(asset.storagePath);
+  }
 }

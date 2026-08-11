@@ -19,7 +19,7 @@ export const metadata = { title: `${messages.invoices.createHeading} · ${messag
 export default async function NewInvoicePage(): Promise<ReactNode> {
   const session = await requireSession();
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
-  const context = await loadEditorContext();
+  const context = await loadEditorContext(session.organization);
 
   const first = context.customers[0];
 

@@ -65,7 +65,12 @@ export async function saveNumberFormatAction(
   }
 
   const context = await readRequestContext();
-  await setInvoiceNumberFormat(parsed.value.format, session.userId, context.ipAddress);
+  await setInvoiceNumberFormat(
+    session.organization,
+    parsed.value.format,
+    session.userId,
+    context.ipAddress,
+  );
 
   revalidatePath(NUMBERING_SETTINGS_PATH);
   return { status: 'saved' };
@@ -81,7 +86,7 @@ export async function setStartValueAction(
     return { status: 'error', message: messages.common.rejected };
   }
 
-  await requireSessionOrThrow();
+  const session = await requireSessionOrThrow();
 
   const scope = scopeSchema.safeParse(formData.get('scope'));
   const startValue = startValueSchema.safeParse(formData.get('startValue'));
@@ -90,7 +95,7 @@ export async function setStartValueAction(
     return { status: 'error', message: messages.numbering.startValueInvalid };
   }
 
-  const result = await setSequenceStartValue(scope.data, startValue.data);
+  const result = await setSequenceStartValue(session.organization, scope.data, startValue.data);
   if (!result.ok) {
     return {
       status: 'error',

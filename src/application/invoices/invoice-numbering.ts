@@ -6,19 +6,25 @@
  * nebenläufige Festschreibungen können dadurch nie dieselbe Nummer erhalten:
  * Das `increment` läuft atomar in der Datenbank, ohne den Zählerstand vorher
  * zu lesen und zurückzuschreiben.
+ *
+ * Der Zählerbereich ist seit M5.5a je Organisation eindeutig — sonst zählte
+ * eine zweite Organisation im Kreis der ersten weiter, und beide bekämen
+ * Lücken.
  */
-import type { Prisma } from '@prisma/client';
-
 import {
   formatInvoiceNumber,
   INVOICE_SEQUENCE_PREFIX,
   sequenceScopeFor,
 } from '@/domain/invoice/number-format';
 import type { PlainDate } from '@/domain/time/plain-date';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
-
-/** Der Ausschnitt des Prisma-Clients, der innerhalb einer Transaktion gilt. */
-export type TransactionClient = Prisma.TransactionClient;
+import type { TransactionHandle } from '@/infrastructure/repositories/client';
+import {
+  findSequence,
+  incrementSequence,
+  listSequencesWithPrefix,
+  setSequenceValue,
+} from '@/infrastructure/repositories/number-sequence-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type SequenceState = {
   readonly scope: string;
@@ -30,27 +36,22 @@ export type SequenceState = {
  * Muss innerhalb einer Transaktion aufgerufen werden (FA-NUM-03).
  */
 export async function allocateInvoiceNumber(
-  tx: TransactionClient,
+  context: OrganizationContext,
+  handle: TransactionHandle,
   format: string,
   issueDate: PlainDate,
 ): Promise<string> {
   const scope = sequenceScopeFor(format, issueDate);
+  const lastValue = await incrementSequence(context, scope, handle);
 
-  const sequence = await tx.numberSequence.upsert({
-    where: { scope },
-    create: { scope, lastValue: 1 },
-    update: { lastValue: { increment: 1 } },
-  });
-
-  return formatInvoiceNumber(format, issueDate, sequence.lastValue);
+  return formatInvoiceNumber(format, issueDate, lastValue);
 }
 
 /** Zählerstände aller Belegbereiche (FA-NUM-06). */
-export async function listInvoiceSequences(): Promise<readonly SequenceState[]> {
-  const sequences = await getPrismaClient().numberSequence.findMany({
-    where: { scope: { startsWith: INVOICE_SEQUENCE_PREFIX } },
-    orderBy: { scope: 'asc' },
-  });
+export async function listInvoiceSequences(
+  context: OrganizationContext,
+): Promise<readonly SequenceState[]> {
+  const sequences = await listSequencesWithPrefix(context, INVOICE_SEQUENCE_PREFIX);
 
   return sequences.map((sequence) => ({ scope: sequence.scope, lastValue: sequence.lastValue }));
 }
@@ -68,6 +69,7 @@ export type StartValueError =
  * und beides ließe sich nicht mehr heilen.
  */
 export async function setSequenceStartValue(
+  context: OrganizationContext,
   scope: string,
   startValue: number,
 ): Promise<{ ok: true } | { ok: false; error: StartValueError }> {
@@ -75,18 +77,13 @@ export async function setSequenceStartValue(
     return { ok: false, error: { kind: 'INVALID_VALUE' } };
   }
 
-  const prisma = getPrismaClient();
-  const existing = await prisma.numberSequence.findUnique({ where: { scope } });
+  const existing = await findSequence(context, scope);
 
   if (existing !== null && existing.lastValue > 0) {
     return { ok: false, error: { kind: 'ALREADY_IN_USE', lastValue: existing.lastValue } };
   }
 
-  await prisma.numberSequence.upsert({
-    where: { scope },
-    create: { scope, lastValue: startValue },
-    update: { lastValue: startValue },
-  });
+  await setSequenceValue(context, scope, startValue);
 
   return { ok: true };
 }

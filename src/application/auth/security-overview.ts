@@ -4,7 +4,10 @@
  * Eine einzige Abfrage für die gesamte Seite, damit der angezeigte Zustand in
  * sich stimmig ist.
  */
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import {
+  countUnusedRecoveryCodes,
+  findUserById,
+} from '@/infrastructure/repositories/auth-repository';
 
 import { listSessions, type SessionSummary } from './session-service';
 
@@ -18,19 +21,14 @@ export async function getSecurityOverview(
   userId: string,
   currentSessionId: string,
 ): Promise<SecurityOverview> {
-  const prisma = getPrismaClient();
-
   const [user, unusedRecoveryCodes, sessions] = await Promise.all([
-    prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { totpEnabled: true },
-    }),
-    prisma.recoveryCode.count({ where: { userId, usedAt: null } }),
+    findUserById(userId),
+    countUnusedRecoveryCodes(userId),
     listSessions(userId, currentSessionId),
   ]);
 
   return {
-    totpEnabled: user.totpEnabled,
+    totpEnabled: user?.totpEnabled ?? false,
     unusedRecoveryCodes,
     sessions,
   };

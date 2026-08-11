@@ -14,6 +14,15 @@ Vorschlag und steht noch zur Freigabe aus.
 
 Stand: 2026-08-11 · 98 von 171 erledigt (97 abgenommen: M0–M4, 1 umgesetzt) · **M5 offen**
 
+**Einschub M5.5a — Mandantenkontext (umgesetzt, Abnahme offen).** Keine eigene
+Anforderungs-ID; verlangt vom Auftraggeber zwischen M5 und M6. Umfang:
+`organizationId` auf allen mandantengebundenen Tabellen, eine geseedete
+Organisation mit allen Bestandsdaten, zusammengesetzte Eindeutigkeit für
+Kunden- und Rechnungsnummer, Repository-Schicht mit Pflichtparameter.
+Nachweis: `tests/integration/organization-isolation.test.ts` (13 Prüfungen);
+Lint-Nachweis in `tests/architecture/layering.test.ts`. Berührt NFA-ARCH-01
+(zusätzliche Regel) und NFA-ARCH-10 (Zugriffspfad verengt).
+
 Prüfbefehl für alle mit „T"/„R" belegten Nachweise: `npm run verify`.
 Die mit „M" belegten Nachweise sind unter „Manuell:" mit dem durchgeführten
 Szenario benannt.
@@ -238,7 +247,7 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| NFA-ARCH-01 | Domain ohne Persistenz-/UI-/Framework-Importe, Lint erzwingt | MUSS | T | M0 | abgenommen | `tests/architecture/layering.test.ts` |
+| NFA-ARCH-01 | Domain ohne Persistenz-/UI-/Framework-Importe, Lint erzwingt | MUSS | T | M0 | abgenommen | `tests/architecture/layering.test.ts` — seit M5.5a zusätzlich: Prisma-Client nur aus `src/infrastructure/repositories/**` |
 | NFA-ARCH-02 | Ausgabeneutrales Dokumentmodell | MUSS | R | M5 | offen | — |
 | NFA-ARCH-03 | Dokumentmodell enthält alle Felder aus Spec §9.2 | MUSS | T | M5 | offen | — |
 | NFA-ARCH-04 | Einheiten als UN/ECE-Rec-20-Codes, Labels erst in der Anzeige | MUSS | T | M5 | offen | — |
@@ -247,7 +256,7 @@ Szenario benannt.
 | NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | offen | — |
 | NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — zusätzlicher Handler ohne Änderung der Kernlogik; ein fehlschlagender Handler kippt den Vorgang nicht |
 | NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | abgenommen | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
-| NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | abgenommen | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan) |
+| NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | abgenommen | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan); seit M5.5a führt jeder Zugriff zusätzlich über die Repository-Schicht |
 
 ## 15. Qualität, Performance & Bedienung
 

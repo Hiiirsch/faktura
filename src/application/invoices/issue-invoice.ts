@@ -12,10 +12,17 @@ import type { BuyerSnapshot, SellerSnapshot } from '@/domain/invoice/snapshot';
 import { cents } from '@/domain/money/money';
 import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
 import { isTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { runInTransaction, type TransactionHandle } from '@/infrastructure/repositories/client';
+import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
+import {
+  findInvoiceWithLinesAndCustomer,
+  findLatestIssueDate,
+  updateInvoice,
+} from '@/infrastructure/repositories/invoice-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
-import { allocateInvoiceNumber, type TransactionClient } from './invoice-numbering';
+import { allocateInvoiceNumber } from './invoice-numbering';
 
 export type IssueError =
   | { readonly kind: 'NOT_FOUND' }
@@ -38,20 +45,17 @@ function toDate(value: string | null): PlainDate | null {
 }
 
 export async function issueInvoice(
+  context: OrganizationContext,
   invoiceId: string,
   actorId: string,
   ipAddress: string | null,
   now: Date = new Date(),
 ): Promise<IssueResult> {
   ensureDefaultHandlers();
-  const prisma = getPrismaClient();
 
   const [invoice, company] = await Promise.all([
-    prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: { lines: { orderBy: { position: 'asc' } }, customer: true },
-    }),
-    prisma.companyProfile.findUnique({ where: { id: 1 } }),
+    findInvoiceWithLinesAndCustomer(context, invoiceId),
+    findCompanyProfile(context),
   ]);
 
   if (invoice === null) {
@@ -137,40 +141,40 @@ export async function issueInvoice(
     buyerReference: invoice.customer.buyerReference,
   };
 
-  const result = await prisma.$transaction(
-    async (tx) => {
-      const backdating = await findBackdating(tx, issueDate, invoice.documentType);
-      if (backdating !== null) {
-        return { ok: false as const, error: backdating };
-      }
+  const result = await runInTransaction(async (handle) => {
+    const backdating = await findBackdating(context, handle, issueDate, invoice.documentType);
+    if (backdating !== null) {
+      return { ok: false as const, error: backdating };
+    }
 
-      const invoiceNumber = await allocateInvoiceNumber(
-        tx,
-        company.invoiceNumberFormat,
-        issueDate,
-      );
+    const invoiceNumber = await allocateInvoiceNumber(
+      context,
+      handle,
+      company.invoiceNumberFormat,
+      issueDate,
+    );
 
-      await tx.invoice.update({
-        where: { id: invoiceId },
-        data: {
-          invoiceNumber,
-          status: 'ISSUED',
-          issuedAt: now,
-          snapshotSeller: JSON.stringify(seller),
-          snapshotBuyer: JSON.stringify(buyer),
-        },
-      });
+    await updateInvoice(
+      context,
+      invoiceId,
+      {
+        invoiceNumber,
+        status: 'ISSUED',
+        issuedAt: now,
+        snapshotSeller: JSON.stringify(seller),
+        snapshotBuyer: JSON.stringify(buyer),
+      },
+      handle,
+    );
 
-      return { ok: true as const, invoiceNumber };
-    },
-    { maxWait: 30_000, timeout: 15_000 },
-  );
+    return { ok: true as const, invoiceNumber };
+  });
 
   if (!result.ok) {
     return result;
   }
 
-  await dispatchInvoiceEvent({
+  await dispatchInvoiceEvent(context, {
     type: 'InvoiceIssued',
     invoiceId,
     invoiceNumber: result.invoiceNumber,
@@ -191,19 +195,16 @@ export async function issueInvoice(
  * eine Rechnung mit höherer Nummer und früherem Datum.
  */
 export async function findBackdating(
-  tx: TransactionClient,
+  context: OrganizationContext,
+  handle: TransactionHandle,
   issueDate: PlainDate,
   documentType: string,
 ): Promise<IssueError | null> {
-  const latest = await tx.invoice.findFirst({
-    where: { invoiceNumber: { not: null }, documentType },
-    orderBy: { issueDate: 'desc' },
-    select: { issueDate: true },
-  });
+  const latest = await findLatestIssueDate(context, documentType, handle);
 
-  if (latest?.issueDate == null || latest.issueDate <= issueDate) {
+  if (latest === null || latest <= issueDate) {
     return null;
   }
 
-  return { kind: 'BACKDATED', lastIssuedDate: latest.issueDate };
+  return { kind: 'BACKDATED', lastIssuedDate: latest };
 }

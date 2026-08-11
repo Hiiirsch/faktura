@@ -194,12 +194,23 @@ export async function saveDraftAction(
   const existingId = readText(formData, 'invoiceId').trim();
 
   if (existingId.length === 0) {
-    const created = await createDraftInvoice(parsed.data, session.userId, context.ipAddress);
+    const created = await createDraftInvoice(
+      session.organization,
+      parsed.data,
+      session.userId,
+      context.ipAddress,
+    );
     revalidatePath(INVOICES_PATH);
     redirect(invoicePath(created.id));
   }
 
-  const result = await updateDraftInvoice(existingId, parsed.data, session.userId, context.ipAddress);
+  const result = await updateDraftInvoice(
+    session.organization,
+    existingId,
+    parsed.data,
+    session.userId,
+    context.ipAddress,
+  );
   if (!result.ok) {
     return {
       status: 'error',
@@ -240,12 +251,23 @@ export async function issueInvoiceAction(
       : parsed.state;
   }
 
-  const saved = await updateDraftInvoice(invoiceId, parsed.data, session.userId, context.ipAddress);
+  const saved = await updateDraftInvoice(
+    session.organization,
+    invoiceId,
+    parsed.data,
+    session.userId,
+    context.ipAddress,
+  );
   if (!saved.ok) {
     return { status: 'error', messages: [messages.invoices.errorNOT_A_DRAFT] };
   }
 
-  const result = await issueInvoice(invoiceId, session.userId, context.ipAddress);
+  const result = await issueInvoice(
+    session.organization,
+    invoiceId,
+    session.userId,
+    context.ipAddress,
+  );
 
   if (!result.ok) {
     switch (result.error.kind) {
@@ -282,7 +304,12 @@ export async function deleteDraftAction(formData: FormData): Promise<void> {
     return;
   }
 
-  const result = await deleteDraftInvoice(id.data, session.userId, context.ipAddress);
+  const result = await deleteDraftInvoice(
+    session.organization,
+    id.data,
+    session.userId,
+    context.ipAddress,
+  );
   revalidatePath(INVOICES_PATH);
 
   if (result.ok) {
@@ -300,7 +327,12 @@ export async function duplicateInvoiceAction(formData: FormData): Promise<void> 
     return;
   }
 
-  const result = await duplicateInvoice(id.data, session.userId, context.ipAddress);
+  const result = await duplicateInvoice(
+    session.organization,
+    id.data,
+    session.userId,
+    context.ipAddress,
+  );
   revalidatePath(INVOICES_PATH);
 
   if (result.ok) {
@@ -320,6 +352,7 @@ export async function cancelInvoiceAction(formData: FormData): Promise<void> {
 
   const reason = readText(formData, 'reason').trim();
   const result = await cancelInvoice(
+    session.organization,
     id.data,
     reason.length === 0 ? null : reason,
     session.userId,
@@ -344,7 +377,7 @@ const paymentSchema = z.object({
 
 export async function addPaymentAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
-  await requireSessionOrThrow();
+  const session = await requireSessionOrThrow();
 
   const parsed = paymentSchema.safeParse({
     invoiceId: formData.get('invoiceId'),
@@ -365,7 +398,7 @@ export async function addPaymentAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await addPayment(parsed.data.invoiceId, {
+  await addPayment(session.organization, parsed.data.invoiceId, {
     amountCents: amount.value,
     paidAt: paidAt.value,
     method: parsed.data.method,
@@ -378,7 +411,7 @@ export async function addPaymentAction(formData: FormData): Promise<void> {
 
 export async function markPaidAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
-  await requireSessionOrThrow();
+  const session = await requireSessionOrThrow();
 
   const id = idSchema.safeParse(formData.get('invoiceId'));
   const paidAt = parsePlainDate(readText(formData, 'paidAt'));
@@ -387,7 +420,12 @@ export async function markPaidAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await markAsFullyPaid(id.data, paidAt.value, readText(formData, 'method').trim() || null);
+  await markAsFullyPaid(
+    session.organization,
+    id.data,
+    paidAt.value,
+    readText(formData, 'method').trim() || null,
+  );
 
   revalidatePath(invoicePath(id.data));
   revalidatePath(INVOICES_PATH);
@@ -395,7 +433,7 @@ export async function markPaidAction(formData: FormData): Promise<void> {
 
 export async function removePaymentAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
-  await requireSessionOrThrow();
+  const session = await requireSessionOrThrow();
 
   const paymentId = idSchema.safeParse(formData.get('paymentId'));
   const invoiceId = idSchema.safeParse(formData.get('invoiceId'));
@@ -404,7 +442,7 @@ export async function removePaymentAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await removePayment(paymentId.data);
+  await removePayment(session.organization, paymentId.data);
 
   revalidatePath(invoicePath(invoiceId.data));
   revalidatePath(INVOICES_PATH);

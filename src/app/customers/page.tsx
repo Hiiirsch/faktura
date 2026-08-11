@@ -27,7 +27,7 @@ export default async function CustomersPage({
   const search = typeof params.q === 'string' ? params.q : '';
   const includeArchived = params.archived === '1';
 
-  const customers = await listCustomers({ search, includeArchived });
+  const customers = await listCustomers(session.organization, { search, includeArchived });
 
   return (
     <>

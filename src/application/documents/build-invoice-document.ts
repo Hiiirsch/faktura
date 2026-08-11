@@ -31,7 +31,9 @@ import { cents } from '@/domain/money/money';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
 import { isTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
 import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
+import { findInvoiceForDocument } from '@/infrastructure/repositories/invoice-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 const DOCUMENT_TYPE_LABELS: Readonly<Record<DocumentType, string>> = {
   INVOICE: 'Rechnung',
@@ -61,20 +63,12 @@ function parseSnapshot<T>(raw: string | null, guard: (value: unknown) => value i
 export type BuildDocumentError = { readonly kind: 'NOT_FOUND' } | { readonly kind: 'NO_COMPANY_PROFILE' };
 
 export async function buildInvoiceDocument(
+  context: OrganizationContext,
   invoiceId: string,
 ): Promise<{ ok: true; document: InvoiceDocument } | { ok: false; error: BuildDocumentError }> {
-  const prisma = getPrismaClient();
-
   const [invoice, company] = await Promise.all([
-    prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        lines: { orderBy: { position: 'asc' } },
-        customer: true,
-        precedingInvoice: { select: { invoiceNumber: true, issueDate: true } },
-      },
-    }),
-    prisma.companyProfile.findUnique({ where: { id: 1 } }),
+    findInvoiceForDocument(context, invoiceId),
+    findCompanyProfile(context),
   ]);
 
   if (invoice === null) {

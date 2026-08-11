@@ -18,7 +18,10 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage(): Promise<ReactNode> {
   // Erste Anweisung: die Sitzungsprüfung (Spec §11.2).
   const session = await requireSession();
-  const [status, company] = await Promise.all([checkSystemStatus(), getCompanyProfile()]);
+  const [status, company] = await Promise.all([
+    checkSystemStatus(),
+    getCompanyProfile(session.organization),
+  ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   return (

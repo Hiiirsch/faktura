@@ -2,13 +2,18 @@
  * Schreibzugriff auf das Protokoll (NFA-COMP-01, NFA-SEC-08).
  *
  * Einträge werden ausschließlich angelegt. Es gibt hier bewusst keine Funktion
- * zum Ändern oder Löschen — die Durchsetzung auf Datenbankebene folgt mit M4
+ * zum Ändern oder Löschen; auf Datenbankebene wehren Trigger beides ab
  * (NFA-COMP-02).
+ *
+ * Jeder Eintrag gehört zu einer Organisation — auch die Anmeldeereignisse:
+ * Ohne Zuordnung stünde im Protokoll der einen Organisation, wer sich bei
+ * einer anderen angemeldet hat.
  *
  * Was hier hineingeschrieben wird, unterliegt NFA-BETR-10: keine Passwörter,
  * keine Token, keine vollständigen Kundendatensätze.
  */
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { createAuditEntry } from '@/infrastructure/repositories/audit-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 export type AuditAction =
   // Stammdaten (FA-STAMM-09, NFA-COMP-01)
@@ -46,15 +51,16 @@ export type AuditEntry = {
   readonly details?: Readonly<Record<string, string | number | boolean | null>>;
 };
 
-export async function recordAuditEntry(entry: AuditEntry): Promise<void> {
-  await getPrismaClient().auditLog.create({
-    data: {
-      entityType: entry.entityType,
-      entityId: entry.entityId,
-      action: entry.action,
-      actorId: entry.actorId ?? null,
-      ipAddress: entry.ipAddress ?? null,
-      diffJson: entry.details === undefined ? null : JSON.stringify(entry.details),
-    },
+export async function recordAuditEntry(
+  context: OrganizationContext,
+  entry: AuditEntry,
+): Promise<void> {
+  await createAuditEntry(context, {
+    entityType: entry.entityType,
+    entityId: entry.entityId,
+    action: entry.action,
+    actorId: entry.actorId ?? null,
+    ipAddress: entry.ipAddress ?? null,
+    diffJson: entry.details === undefined ? null : JSON.stringify(entry.details),
   });
 }

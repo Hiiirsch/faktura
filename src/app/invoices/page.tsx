@@ -60,7 +60,10 @@ export default async function InvoicesPage({
   const filter = readFilter(params);
   const timeZone = getAppTimeZone();
 
-  const [invoices, customers] = await Promise.all([listInvoices(filter), listCustomers()]);
+  const [invoices, customers] = await Promise.all([
+    listInvoices(session.organization, filter),
+    listCustomers(session.organization),
+  ]);
 
   const currentStatus = typeof params.status === 'string' ? params.status : '';
   const currentSort = filter.sort ?? 'issueDate';

@@ -8,7 +8,15 @@
 import { type Cents, cents, subtractCents } from '@/domain/money/money';
 import { outstandingAmount } from '@/domain/invoice/status';
 import type { PlainDate } from '@/domain/time/plain-date';
-import { getPrismaClient } from '@/infrastructure/db/prisma';
+import { findInvoice } from '@/infrastructure/repositories/invoice-repository';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import {
+  createPayment,
+  deletePayment,
+  findPayment,
+  listPayments as queryPayments,
+  updatePayment as writePayment,
+} from '@/infrastructure/repositories/payment-repository';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
 import { recalculateInvoice } from './invoice-service';
@@ -27,8 +35,8 @@ export type PaymentInput = {
   readonly note: string | null;
 };
 
-async function loadPayableInvoice(invoiceId: string) {
-  const invoice = await getPrismaClient().invoice.findUnique({ where: { id: invoiceId } });
+async function loadPayableInvoice(context: OrganizationContext, invoiceId: string) {
+  const invoice = await findInvoice(context, invoiceId);
 
   if (invoice === null) {
     return { ok: false as const, error: { kind: 'NOT_FOUND' as const } };
@@ -48,28 +56,26 @@ async function loadPayableInvoice(invoiceId: string) {
 }
 
 export async function addPayment(
+  context: OrganizationContext,
   invoiceId: string,
   input: PaymentInput,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
   ensureDefaultHandlers();
 
-  const loaded = await loadPayableInvoice(invoiceId);
+  const loaded = await loadPayableInvoice(context, invoiceId);
   if (!loaded.ok) {
     return loaded;
   }
 
-  await getPrismaClient().payment.create({
-    data: {
-      invoiceId,
-      amountCents: input.amountCents,
-      paidAt: input.paidAt,
-      method: input.method,
-      note: input.note,
-    },
+  await createPayment(context, invoiceId, {
+    amountCents: input.amountCents,
+    paidAt: input.paidAt,
+    method: input.method,
+    note: input.note,
   });
 
-  await recalculateInvoice(invoiceId);
-  await announce(invoiceId, input.amountCents);
+  await recalculateInvoice(context, invoiceId);
+  await announce(context, invoiceId, input.amountCents);
 
   return { ok: true };
 }
@@ -80,11 +86,12 @@ export async function addPayment(
  * bereits teilbezahlten Rechnung entstünde sonst eine Überzahlung.
  */
 export async function markAsFullyPaid(
+  context: OrganizationContext,
   invoiceId: string,
   paidAt: PlainDate,
   method: string | null,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
-  const loaded = await loadPayableInvoice(invoiceId);
+  const loaded = await loadPayableInvoice(context, invoiceId);
   if (!loaded.ok) {
     return loaded;
   }
@@ -98,67 +105,71 @@ export async function markAsFullyPaid(
     return { ok: false, error: { kind: 'NOTHING_OUTSTANDING' } };
   }
 
-  return addPayment(invoiceId, { amountCents: outstanding, paidAt, method, note: null });
+  return addPayment(context, invoiceId, { amountCents: outstanding, paidAt, method, note: null });
 }
 
 /** Korrigiert eine erfasste Zahlung (FA-STAT-07). */
 export async function updatePayment(
+  context: OrganizationContext,
   paymentId: string,
   input: PaymentInput,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
-  const prisma = getPrismaClient();
-  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  const payment = await findPayment(context, paymentId);
 
   if (payment === null) {
     return { ok: false, error: { kind: 'NOT_FOUND' } };
   }
 
-  const loaded = await loadPayableInvoice(payment.invoiceId);
+  const loaded = await loadPayableInvoice(context, payment.invoiceId);
   if (!loaded.ok) {
     return loaded;
   }
 
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      amountCents: input.amountCents,
-      paidAt: input.paidAt,
-      method: input.method,
-      note: input.note,
-    },
+  await writePayment(context, paymentId, {
+    amountCents: input.amountCents,
+    paidAt: input.paidAt,
+    method: input.method,
+    note: input.note,
   });
 
-  await recalculateInvoice(payment.invoiceId);
+  await recalculateInvoice(context, payment.invoiceId);
   return { ok: true };
 }
 
 /** Nimmt eine irrtümlich erfasste Zahlung zurück (FA-STAT-07). */
 export async function removePayment(
+  context: OrganizationContext,
   paymentId: string,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
-  const prisma = getPrismaClient();
-  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  const payment = await findPayment(context, paymentId);
 
   if (payment === null) {
     return { ok: false, error: { kind: 'NOT_FOUND' } };
   }
 
-  const loaded = await loadPayableInvoice(payment.invoiceId);
+  const loaded = await loadPayableInvoice(context, payment.invoiceId);
   if (!loaded.ok) {
     return loaded;
   }
 
-  await prisma.payment.delete({ where: { id: paymentId } });
-  await recalculateInvoice(payment.invoiceId);
+  await deletePayment(context, paymentId);
+  await recalculateInvoice(context, payment.invoiceId);
 
   return { ok: true };
 }
 
 /** Meldet Zahlungseingang und — falls erreicht — vollständige Bezahlung. */
-async function announce(invoiceId: string, amountCents: Cents): Promise<void> {
-  const invoice = await getPrismaClient().invoice.findUniqueOrThrow({ where: { id: invoiceId } });
+async function announce(
+  context: OrganizationContext,
+  invoiceId: string,
+  amountCents: Cents,
+): Promise<void> {
+  const invoice = await findInvoice(context, invoiceId);
+  if (invoice === null) {
+    return;
+  }
 
-  await dispatchInvoiceEvent({
+  await dispatchInvoiceEvent(context, {
     type: 'InvoicePaymentRecorded',
     invoiceId,
     amountCents,
@@ -167,7 +178,7 @@ async function announce(invoiceId: string, amountCents: Cents): Promise<void> {
   });
 
   if (invoice.status === 'PAID') {
-    await dispatchInvoiceEvent({
+    await dispatchInvoiceEvent(context, {
       type: 'InvoicePaid',
       invoiceId,
       grossTotalCents: cents(invoice.grossTotalCents),
@@ -177,9 +188,6 @@ async function announce(invoiceId: string, amountCents: Cents): Promise<void> {
   void subtractCents;
 }
 
-export async function listPayments(invoiceId: string) {
-  return getPrismaClient().payment.findMany({
-    where: { invoiceId },
-    orderBy: [{ paidAt: 'asc' }, { createdAt: 'asc' }],
-  });
+export async function listPayments(context: OrganizationContext, invoiceId: string) {
+  return queryPayments(context, invoiceId);
 }

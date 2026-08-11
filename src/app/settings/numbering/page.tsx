@@ -28,8 +28,8 @@ export default async function NumberingSettingsPage(): Promise<ReactNode> {
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const [company, sequences] = await Promise.all([
-    getCompanyProfileOrEmpty(),
-    listInvoiceSequences(),
+    getCompanyProfileOrEmpty(session.organization),
+    listInvoiceSequences(session.organization),
   ]);
 
   const format =

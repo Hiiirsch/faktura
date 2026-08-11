@@ -83,8 +83,33 @@ const uiRestrictions = [
 
 const i18nRestrictions = [forbidLayers(['app', 'ui', 'application', 'infrastructure'], OUTWARD)];
 
+/**
+ * Der Prisma-Client ist ab M5.5a nur noch aus der Repository-Schicht
+ * erreichbar (`src/infrastructure/repositories/**`).
+ *
+ * Der Grund ist die Mandantentrennung: Jede Repository-Funktion nimmt den
+ * Organisationskontext als Pflichtparameter, eine ungefilterte Abfrage ist dort
+ * ein Typfehler. Bliebe `getPrismaClient()` überall importierbar, ließe sich
+ * genau daran vorbeigehen — der Typ schützt vor Vergessen, diese Regel vor
+ * Umgehen.
+ */
+const persistenceRestriction = {
+  group: [
+    '@/infrastructure/db',
+    '@/infrastructure/db/**',
+    '**/infrastructure/db/**',
+    '@prisma/client',
+    '@prisma/client/**',
+    '.prisma/**',
+  ],
+  message:
+    'Datenbankzugriff ausschließlich über src/infrastructure/repositories/** — ' +
+    'nur dort ist der Organisationskontext Pflicht (NFA-ARCH-01, M5.5a).',
+};
+
 const applicationRestrictions = [
   forbidLayers(['app', 'ui', 'i18n'], 'Die Anwendungsschicht kennt keine Oberfläche (NFA-ARCH-01).'),
+  persistenceRestriction,
 ];
 
 const infrastructureRestrictions = [
@@ -106,6 +131,9 @@ const appRestrictions = [
       '@/infrastructure/db',
       '@/infrastructure/db/**',
       '**/infrastructure/db/**',
+      '@/infrastructure/repositories',
+      '@/infrastructure/repositories/**',
+      '**/infrastructure/repositories/**',
       '@prisma/client',
       '@prisma/client/**',
     ],
@@ -114,12 +142,24 @@ const appRestrictions = [
   },
 ];
 
+/**
+ * Die einzige Schicht, die den Prisma-Client sehen darf — und die Datei, die
+ * ihn erzeugt.
+ */
+const persistenceFiles = [
+  'src/infrastructure/db/**/*.ts',
+  'src/infrastructure/repositories/**/*.ts',
+];
+
 /** Dateien einer Schicht — jeweils inklusive der zugehörigen Test-Fixture. */
 const layerFiles = {
   domain: ['src/domain/**/*.ts', 'tests/architecture/fixtures/domain/**/*.ts'],
   ui: ['src/ui/**/*.{ts,tsx}', 'tests/architecture/fixtures/ui/**/*.ts'],
   i18n: ['src/i18n/**/*.ts'],
-  application: ['src/application/**/*.ts'],
+  application: [
+    'src/application/**/*.ts',
+    'tests/architecture/fixtures/persistence/**/*.ts',
+  ],
   infrastructure: ['src/infrastructure/**/*.ts'],
   app: ['src/app/**/*.{ts,tsx}', 'src/proxy.ts'],
 };
@@ -205,8 +245,21 @@ export default tseslint.config(
   restrictionConfig(layerFiles.ui, uiRestrictions),
   restrictionConfig(layerFiles.i18n, i18nRestrictions),
   restrictionConfig(layerFiles.application, applicationRestrictions),
-  restrictionConfig(layerFiles.infrastructure, infrastructureRestrictions),
+  {
+    ...restrictionConfig(layerFiles.infrastructure, [
+      ...infrastructureRestrictions,
+      persistenceRestriction,
+    ]),
+    ignores: persistenceFiles,
+  },
+  // Muss **nach** dem vorigen Block stehen: Flat Config lässt für dieselbe
+  // Regel den letzten passenden Eintrag gewinnen. Hier fällt die
+  // Persistenzsperre weg, die Schichtgrenzen bleiben.
+  restrictionConfig(persistenceFiles, infrastructureRestrictions),
   restrictionConfig(layerFiles.app, appRestrictions),
+  // Betriebsskripte laufen außerhalb der Schichten, greifen aber auf dieselben
+  // Daten zu — auch für sie gilt der Weg über die Repository-Schicht.
+  restrictionConfig(['scripts/**/*.ts'], [persistenceRestriction]),
 
   // ── Domain-Schicht: härteste Stufe ────────────────────────────────────────
   {

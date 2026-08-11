@@ -11,10 +11,14 @@
  */
 import type { InvoiceEvent, InvoiceEventHandler } from '@/domain/invoice/events';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
+import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
-const handlers: InvoiceEventHandler[] = [];
+/** In dieser Anwendung ist der Ausführungskontext eines Ereignisses der Mandant. */
+export type InvoiceEventListener = InvoiceEventHandler<OrganizationContext>;
 
-export function registerInvoiceEventHandler(handler: InvoiceEventHandler): () => void {
+const handlers: InvoiceEventListener[] = [];
+
+export function registerInvoiceEventHandler(handler: InvoiceEventListener): () => void {
   handlers.push(handler);
   return () => {
     const index = handlers.indexOf(handler);
@@ -28,10 +32,13 @@ export function registeredHandlerCount(): number {
   return handlers.length;
 }
 
-export async function dispatchInvoiceEvent(event: InvoiceEvent): Promise<void> {
+export async function dispatchInvoiceEvent(
+  context: OrganizationContext,
+  event: InvoiceEvent,
+): Promise<void> {
   for (const handler of handlers) {
     try {
-      await handler(event);
+      await handler(event, context);
     } catch (error) {
       console.error(`[events] Handler für ${event.type} fehlgeschlagen:`, error);
     }
@@ -39,10 +46,10 @@ export async function dispatchInvoiceEvent(event: InvoiceEvent): Promise<void> {
 }
 
 /** Schreibt jedes Ereignis ins Protokoll (NFA-COMP-01, FA-STAT-11). */
-export const auditLogEventHandler: InvoiceEventHandler = async (event) => {
+export const auditLogEventHandler: InvoiceEventListener = async (event, context) => {
   switch (event.type) {
     case 'InvoiceIssued':
-      await recordAuditEntry({
+      await recordAuditEntry(context, {
         entityType: 'Invoice',
         entityId: event.invoiceId,
         action: 'ISSUED',
@@ -50,7 +57,7 @@ export const auditLogEventHandler: InvoiceEventHandler = async (event) => {
       });
       break;
     case 'InvoicePaymentRecorded':
-      await recordAuditEntry({
+      await recordAuditEntry(context, {
         entityType: 'Invoice',
         entityId: event.invoiceId,
         action: 'PAYMENT_RECORDED',
@@ -58,7 +65,7 @@ export const auditLogEventHandler: InvoiceEventHandler = async (event) => {
       });
       break;
     case 'InvoicePaid':
-      await recordAuditEntry({
+      await recordAuditEntry(context, {
         entityType: 'Invoice',
         entityId: event.invoiceId,
         action: 'PAID',
@@ -66,7 +73,7 @@ export const auditLogEventHandler: InvoiceEventHandler = async (event) => {
       });
       break;
     case 'InvoiceCancelled':
-      await recordAuditEntry({
+      await recordAuditEntry(context, {
         entityType: 'Invoice',
         entityId: event.invoiceId,
         action: 'CANCELLED',

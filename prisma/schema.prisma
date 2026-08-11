@@ -3,7 +3,7 @@
 // M1 ergänzt User und Session, M2 die Stammdaten, M3 die Belege.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // Die Abfrage-Engine wird zur Bauzeit ausgewählt. Ohne ausdrückliche Angabe
   // rät Prisma anhand der Bauumgebung — und liefert eine Engine für die falsche
   // OpenSSL-Version aus, sobald sich Bau- und Laufzeitumgebung unterscheiden.
@@ -15,25 +15,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Mandant ────────────────────────────────────────────────────────────────
+
+/// Die Organisation, der alle kaufmännischen Daten gehören.
+///
+/// V1 arbeitet mit genau einer, die beim Einrichten angelegt wird. Die Spalte
+/// `organizationId` auf den mandantengebundenen Tabellen macht den Umstieg auf
+/// mehrere Mandanten zu einer Erweiterung statt zu einem Umbau — und wäre
+/// nachträglich nur mit einer Datenmigration einzuführen.
+///
+/// Sie trägt nur die technische Identität; die kaufmännischen Stammdaten
+/// stehen in `CompanyProfile`, das 1:1 daran hängt.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  companyProfile  CompanyProfile?
+  users           User[]
+  customers       Customer[]
+  catalogItems    CatalogItem[]
+  assets          Asset[]
+  numberSequences NumberSequence[]
+  invoices        Invoice[]
+  invoiceLines    InvoiceLine[]
+  payments        Payment[]
+  auditEntries    AuditLog[]
+}
+
 // ─── Stammdaten ─────────────────────────────────────────────────────────────
 
-/// Die eigenen Firmendaten. Singleton mit fester Kennung 1.
+/// Die eigenen Firmendaten — genau ein Datensatz je Organisation.
 ///
-/// Prisma allein erzwingt das nicht — `@default(1)` verhindert keinen zweiten
-/// Datensatz. Die Migration ergänzt deshalb eine CHECK-Bedingung auf
-/// Datenbankebene, und der Zugriff läuft ausschließlich über `upsert` mit
-/// `id: 1` in einer einzigen Repository-Funktion.
+/// Die Eindeutigkeit erzwingt seit M5.5a `@@unique([organizationId])`. Zuvor
+/// stand hier eine CHECK-Bedingung auf `id = 1`; die entfällt, weil der
+/// Singleton jetzt mandantenbezogen ist.
 model CompanyProfile {
-  id           Int     @id @default(1)
-  legalName    String
-  addressLine1 String
-  addressLine2 String?
-  postalCode   String
-  city         String
-  countryCode  String  @default("DE")
-  email        String?
-  phone        String?
-  website      String?
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  legalName      String
+  addressLine1   String
+  addressLine2   String?
+  postalCode     String
+  city           String
+  countryCode    String       @default("DE")
+  email          String?
+  phone          String?
+  website        String?
 
   taxNumber       String?
   vatId           String?
@@ -51,26 +80,28 @@ model CompanyProfile {
   logoAssetId String?
   logoAsset   Asset?  @relation(fields: [logoAssetId], references: [id])
 
-  defaultPaymentTerms Int      @default(14)
+  defaultPaymentTerms       Int      @default(14)
   /// Steuersatz in Basispunkten: 1900 = 19 %. Deckt auch Sätze mit
   /// Nachkommastellen ab (8,1 % CH, 2,5 % AT) und bleibt ganzzahlig.
-  defaultTaxRateBasisPoints Int @default(1900)
-  defaultCurrency     String   @default("EUR")
-  footerText          String?
-  invoiceNumberFormat String   @default("RE-{YYYY}-{SEQ:4}")
-  updatedAt           DateTime @updatedAt
+  defaultTaxRateBasisPoints Int      @default(1900)
+  defaultCurrency           String   @default("EUR")
+  footerText                String?
+  invoiceNumberFormat       String   @default("RE-{YYYY}-{SEQ:4}")
+  updatedAt                 DateTime @updatedAt
 }
 
 model Customer {
-  id             String  @id @default(cuid())
-  customerNumber String  @unique
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerNumber String
   companyName    String?
   contactName    String?
   addressLine1   String
   addressLine2   String?
   postalCode     String
   city           String
-  countryCode    String  @default("DE")
+  countryCode    String       @default("DE")
   email          String?
   phone          String?
   vatId          String?
@@ -80,53 +111,66 @@ model Customer {
   paymentTerms   Int?
   notes          String?
   /// Kunden werden archiviert, nie gelöscht (Spec §4.1).
-  isArchived     Boolean @default(false)
+  isArchived     Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   invoices Invoice[]
 
-  @@index([isArchived])
-  @@index([customerNumber])
+  /// Kundennummern sind je Organisation eindeutig, nicht global.
+  @@unique([organizationId, customerNumber])
+  @@index([organizationId, isArchived])
 }
 
 /// Wiederverwendbare Positionen für den Rechnungseditor (FA-STAMM-10).
 model CatalogItem {
-  id             String  @id @default(cuid())
-  name           String
-  description    String?
-  unitPriceCents Int
-  unitCode       String  @default("C62")
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  unitPriceCents     Int
+  unitCode           String       @default("C62")
   /// Basispunkte: 1900 = 19 %.
-  taxRateBasisPoints Int @default(1900)
-  isArchived     Boolean @default(false)
+  taxRateBasisPoints Int          @default(1900)
+  isArchived         Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([isArchived])
+  @@index([organizationId, isArchived])
 }
 
 /// Hochgeladene Dateien. Liegen außerhalb des ausgelieferten Verzeichnisses
 /// und sind nur über eine authentifizierte Route erreichbar (NFA-SEC-16).
 model Asset {
-  id          String   @id @default(cuid())
-  fileName    String
-  mimeType    String
-  byteSize    Int
-  sha256      String
-  storagePath String
-  createdAt   DateTime @default(now())
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fileName       String
+  mimeType       String
+  byteSize       Int
+  sha256         String
+  storagePath    String
+  createdAt      DateTime     @default(now())
 
   companyProfiles CompanyProfile[]
+
+  @@index([organizationId])
 }
 
 /// Fortlaufende Zähler. In M2 für Kundennummern, ab M3 für Belegnummern.
 model NumberSequence {
-  id        String @id @default(cuid())
-  scope     String @unique
-  lastValue Int    @default(0)
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scope          String
+  lastValue      Int          @default(0)
+
+  /// Der Zählerbereich gilt je Organisation — sonst zählte die zweite im
+  /// Nummernkreis der ersten weiter.
+  @@unique([organizationId, scope])
 }
 
 // ─── Belege ─────────────────────────────────────────────────────────────────
@@ -144,11 +188,13 @@ model NumberSequence {
 /// (`src/domain/document/document-type.ts`, `src/domain/invoice/status.ts`)
 /// und wird beim Schreiben geprüft (NFA-ARCH-09).
 model Invoice {
-  id            String  @id @default(cuid())
-  documentType  String  @default("INVOICE")
-  /// Erst beim Festschreiben vergeben (FA-NUM-02).
-  invoiceNumber String? @unique
-  status        String  @default("DRAFT")
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType   String       @default("INVOICE")
+  /// Erst beim Festschreiben vergeben (FA-NUM-02). Eindeutig je Organisation.
+  invoiceNumber  String?
+  status         String       @default("DRAFT")
 
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
@@ -195,17 +241,27 @@ model Invoice {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@index([status, dueDate])
-  @@index([customerId])
-  @@index([issueDate])
-  @@index([documentType, status])
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId, status, dueDate])
+  @@index([organizationId, customerId])
+  @@index([organizationId, issueDate])
+  @@index([organizationId, documentType, status])
 }
 
+/// Rechnungsposition.
+///
+/// `organizationId` ist hier redundant — maßgeblich gefiltert wird über
+/// `invoice.organizationId`, damit es genau einen Abfragepfad gibt. Die Spalte
+/// steht trotzdem da: Spec §13 sieht den Umstieg auf PostgreSQL vor, und dessen
+/// Row Level Security wirkt je Tabelle. Ohne die Spalte bliebe diese Tabelle
+/// davon ausgenommen. Ein Trigger erzwingt Gleichheit mit der Rechnung.
 model InvoiceLine {
-  id        String  @id @default(cuid())
-  invoiceId String
-  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  position  Int
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position       Int
 
   name        String
   description String?
@@ -230,10 +286,14 @@ model InvoiceLine {
   @@index([invoiceId])
 }
 
+/// Zahlungseingang. `organizationId` aus demselben Grund wie bei
+/// `InvoiceLine`: Absicherung für Row Level Security, nicht Abfragepfad.
 model Payment {
-  id        String  @id @default(cuid())
-  invoiceId String
-  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   amountCents Int
   /// Kalendertag des Zahlungseingangs, `YYYY-MM-DD`.
@@ -251,32 +311,38 @@ model Payment {
 /// Benutzerkonto. Es gibt keine öffentliche Registrierung; das erste Konto
 /// wird über `npm run user:create` angelegt (NFA-SEC-02).
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  totpSecret   String?
-  totpEnabled  Boolean   @default(false)
-  failedLogins Int       @default(0)
-  lockedUntil  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Global eindeutig, nicht je Organisation: Die Anmeldung löst allein über
+  /// die Adresse auf — es gibt kein Feld, in dem der Mandant mit angegeben wird.
+  email          String       @unique
+  passwordHash   String
+  totpSecret     String?
+  totpEnabled    Boolean      @default(false)
+  failedLogins   Int          @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   sessions      Session[]
   recoveryCodes RecoveryCode[]
+
+  @@index([organizationId])
 }
 
 /// Angemeldete Sitzung. In der Datenbank liegt ausschließlich der SHA-256-Hash
 /// des Sitzungstokens (NFA-SEC-06) — wer die Datenbank liest, kann sich damit
 /// nicht anmelden.
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
-  userAgent String?
-  ipAddress String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
   /// Abweichung von Spec §4: für die Sitzungsübersicht (NFA-SEC-09) — ohne
   /// diesen Zeitpunkt lässt sich eine verwaiste von einer aktiven Sitzung
   /// nicht unterscheiden.
@@ -309,15 +375,17 @@ model RecoveryCode {
 /// Einträge werden ausschließlich angelegt, nie geändert oder gelöscht
 /// (NFA-COMP-02) — die Durchsetzung folgt mit M4.
 model AuditLog {
-  id         String   @id @default(cuid())
-  entityType String
-  entityId   String
-  action     String
-  actorId    String?
-  diffJson   String?
-  ipAddress  String?
-  createdAt  DateTime @default(now())
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entityType     String
+  entityId       String
+  action         String
+  actorId        String?
+  diffJson       String?
+  ipAddress      String?
+  createdAt      DateTime     @default(now())
 
-  @@index([entityType, entityId])
-  @@index([createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, createdAt])
 }
