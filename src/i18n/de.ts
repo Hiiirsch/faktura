@@ -3,48 +3,24 @@
  * englisch, die Oberfläche ist deutsch — deutsche Zeichenketten stehen
  * ausschließlich hier, nicht in Komponenten.
  *
- * Die Label-Tabellen sind als vollständige Abbildung über den jeweiligen
- * Code-Typ deklariert. Ein neuer Einheiten- oder Steuerkategorie-Code ohne
- * deutsches Label führt damit zu einem Übersetzungsfehler, nicht zu einer
- * Lücke im UI.
+ * Die Tabellen für normierte Codes liegen in der Domain (Spec §9.2) und werden
+ * hier weitergereicht; sie sind als vollständige Abbildung über den jeweiligen
+ * Code-Typ deklariert. Ein neuer Code ohne deutsche Bezeichnung führt damit zu
+ * einem Übersetzungsfehler, nicht zu einer Lücke im UI.
  */
-import type { CurrencyCode } from '@/domain/codes/currency-code';
-import type { TaxCategoryCode } from '@/domain/codes/tax-category';
-import type { UnitCode } from '@/domain/codes/unit-code';
 import type { DocumentType } from '@/domain/document/document-type';
 
-export const unitLabels: Readonly<Record<UnitCode, string>> = {
-  C62: 'Stück',
-  HUR: 'Stunde',
-  DAY: 'Tag',
-  MON: 'Monat',
-  KGM: 'Kilogramm',
-  MTR: 'Meter',
-  MTK: 'Quadratmeter',
-  LTR: 'Liter',
-  E48: 'Leistungseinheit',
-};
-
-export const taxCategoryLabels: Readonly<Record<TaxCategoryCode, string>> = {
-  S: 'Regelsatz',
-  AE: 'Steuerschuldnerschaft des Leistungsempfängers',
-  E: 'Steuerbefreit',
-  G: 'Ausfuhrlieferung',
-  K: 'Innergemeinschaftliche Lieferung',
-  Z: 'Nullsatz',
-};
-
-export const currencyLabels: Readonly<Record<CurrencyCode, string>> = {
-  EUR: 'Euro',
-  CHF: 'Schweizer Franken',
-  GBP: 'Britisches Pfund',
-  USD: 'US-Dollar',
-  DKK: 'Dänische Krone',
-  SEK: 'Schwedische Krone',
-  NOK: 'Norwegische Krone',
-  PLN: 'Polnischer Złoty',
-  CZK: 'Tschechische Krone',
-};
+/**
+ * Die Code-Tabellen liegen in der Domain (Spec §9.2) und werden hier
+ * unverändert weitergereicht — so bleibt `src/i18n/de.ts` der eine Bezugspunkt
+ * für Texte der Oberfläche, und der Renderer kommt ohne Umweg an dieselben
+ * Bezeichnungen.
+ */
+export {
+  currencyLabelsDe as currencyLabels,
+  taxCategoryLabelsDe as taxCategoryLabels,
+  unitLabelsDe as unitLabels,
+} from '@/domain/codes/labels-de';
 
 export const documentTypeLabels: Readonly<Record<DocumentType, string>> = {
   INVOICE: 'Rechnung',
