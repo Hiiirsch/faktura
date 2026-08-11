@@ -1,82 +1,43 @@
 /**
- * Deutsche Formatierung für Beträge, Mengen, Zahlen und Daten (NFA-QUAL-08).
+ * Formatierung für die Oberfläche (NFA-QUAL-08).
  *
- * Die Anzeigeschicht ist der einzige Ort, an dem aus Codes Klartext und aus
- * skalierten Ganzzahlen lesbare Zeichenketten werden. In der Gegenrichtung
- * übersetzt `parseGermanDecimal` deutsche Eingaben in die kanonische Form,
- * die die Domain erwartet.
+ * Die eigentlichen Umwandlungen liegen in `@/domain/format/de` — dieselben
+ * Funktionen nutzt der Vorlagen-Renderer für die Filter aus Spec §8.1. Läge die
+ * Formatierung nur hier, käme er nicht heran, und eine zweite Umsetzung wiche
+ * früher oder später ab: Dann stünde im PDF ein anderer Betrag als auf dem
+ * Bildschirm.
+ *
+ * Was in dieser Datei bleibt, ist das, was nur die Oberfläche braucht: die
+ * Umsetzung normierter Codes in deutsche Bezeichnungen und die Ausgabe echter
+ * Zeitpunkte in der konfigurierten Zeitzone.
  */
 import type { CurrencyCode } from '@/domain/codes/currency-code';
 import type { TaxCategoryCode } from '@/domain/codes/tax-category';
 import type { UnitCode } from '@/domain/codes/unit-code';
-import { type Cents, ZERO_CENTS } from '@/domain/money/money';
 import {
-  QUANTITY_DECIMALS,
-  type Quantity,
-  quantityToCanonicalString,
-} from '@/domain/quantity/quantity';
+  formatAmountDe,
+  formatMoneyDe,
+  formatPercentDe,
+  formatPlainDateDe,
+  formatQuantityDe,
+  parseGermanDecimal,
+} from '@/domain/format/de';
+import { type Cents, ZERO_CENTS } from '@/domain/money/money';
+import { QUANTITY_DECIMALS, type Quantity } from '@/domain/quantity/quantity';
 import { currencyLabels, taxCategoryLabels, unitLabels } from '@/i18n/de';
 
 const LOCALE = 'de-DE';
 
-const currencyFormatters = new Map<CurrencyCode, Intl.NumberFormat>();
-
-function currencyFormatter(currency: CurrencyCode): Intl.NumberFormat {
-  const cached = currencyFormatters.get(currency);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const formatter = new Intl.NumberFormat(LOCALE, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  currencyFormatters.set(currency, formatter);
-  return formatter;
-}
-
-const plainAmountFormatter = new Intl.NumberFormat(LOCALE, {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-/**
- * Wandelt Cent in die dezimale Zeichenkette „1234.56" um — ausschließlich über
- * Ganzzahlarithmetik. Intl.NumberFormat nimmt diese Zeichenkette direkt
- * entgegen, sodass auch in der Anzeigeschicht kein `number`-Wert mit
- * Nachkommastellen entsteht (FA-CALC-01).
- */
-function centsToDecimalString(value: Cents): `${number}` {
-  const numeric: number = value;
-  const negative = numeric < 0;
-  const absolute = BigInt(negative ? -numeric : numeric);
-  const major = absolute / 100n;
-  const minor = (absolute % 100n).toString().padStart(2, '0');
-  const decimal = `${negative ? '-' : ''}${major.toString()}.${minor}`;
-  // Die Zeichenkette ist konstruktionsbedingt eine Dezimalzahl; der Typ
-  // `${number}` lässt sich aus einem zusammengesetzten Template nicht ableiten.
-  return decimal as `${number}`;
-}
-
-/** Formatiert einen Cent-Betrag als deutschen Währungsbetrag, z. B. „1.234,56 €". */
-export function formatMoney(value: Cents, currency: CurrencyCode = 'EUR'): string {
-  return currencyFormatter(currency).format(centsToDecimalString(value));
-}
-
-/** Formatiert einen Cent-Betrag ohne Währungssymbol, z. B. „1.234,56". */
-export function formatAmount(value: Cents): string {
-  return plainAmountFormatter.format(centsToDecimalString(value));
-}
-
-/** Formatiert eine Menge, z. B. 15000 → „1,5". */
-export function formatQuantity(quantity: Quantity): string {
-  return quantityToCanonicalString(quantity).replace('.', ',');
-}
+export const formatMoney = formatMoneyDe;
+export const formatAmount = formatAmountDe;
+export const formatQuantity = formatQuantityDe;
+export const formatPercent = formatPercentDe;
+export const formatPlainDate = formatPlainDateDe;
+export { parseGermanDecimal };
 
 /** Formatiert eine Menge samt deutschem Einheitenlabel, z. B. „1,5 Stunde". */
 export function formatQuantityWithUnit(quantity: Quantity, unit: UnitCode): string {
-  return `${formatQuantity(quantity)} ${unitLabels[unit]}`;
+  return `${formatQuantityDe(quantity)} ${unitLabels[unit]}`;
 }
 
 export function formatUnit(unit: UnitCode): string {
@@ -91,7 +52,12 @@ export function formatCurrency(currency: CurrencyCode): string {
   return currencyLabels[currency];
 }
 
-/** Formatiert ein Datum als „TT.MM.JJJJ" in der Zeitzone der Anwendung. */
+/**
+ * Formatiert einen Zeitpunkt als „TT.MM.JJJJ" in der Zeitzone der Anwendung.
+ *
+ * Nur für echte Zeitpunkte — Kalendertage gehen über `formatPlainDate`, damit
+ * sie nicht durch eine Zeitzone verschoben werden.
+ */
 export function formatDate(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat(LOCALE, {
     day: '2-digit',
@@ -113,32 +79,5 @@ export function formatDateTime(date: Date, timeZone: string): string {
   }).format(date);
 }
 
-/**
- * Übersetzt eine deutsche Zahleingabe in die kanonische Form für die Domain:
- * Tausenderpunkte entfallen, das Komma wird zum Punkt. „1.234,50" → „1234.50".
- */
-export function parseGermanDecimal(input: string): string {
-  return input.trim().replace(/\./g, '').replace(',', '.');
-}
-
 export { QUANTITY_DECIMALS, ZERO_CENTS };
-
-/**
- * Formatiert einen Steuersatz aus Basispunkten: 1900 → „19 %", 810 → „8,1 %".
- *
- * Die Nachkommastellen erscheinen nur, wenn es welche gibt — „19,00 %" wäre
- * auf einer Rechnung unüblich.
- */
-export function formatPercent(basisPoints: number): string {
-  const negative = basisPoints < 0;
-  const absolute = Math.abs(basisPoints);
-  const whole = Math.trunc(absolute / 100);
-  const fraction = absolute % 100;
-
-  const decimal =
-    fraction === 0
-      ? String(whole)
-      : `${String(whole)}.${String(fraction).padStart(2, '0').replace(/0$/, '')}`;
-
-  return `${negative ? '-' : ''}${decimal.replace('.', ',')} %`;
-}
+export type { Cents };
