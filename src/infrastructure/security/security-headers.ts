@@ -16,18 +16,19 @@
 /**
  * Wofür die Kopfzeilen gelten.
  *
- * `app` ist die Oberfläche. `document` sind Antworten, die **fremden Inhalt**
- * ausliefern — die Belegvorschau aus einer hochgeladenen Vorlage und
- * hochgeladene Dateien. Für sie gilt eine engere Richtlinie: kein Skript, kein
- * Netz, nur eingebettete Daten.
+ * - `app` ist die Oberfläche.
+ * - `document` sind Antworten, die **fremdes Markup** ausliefern: hochgeladene
+ *   Dateien und die Fehlerseite der Vorlagenvorschau. Für sie gilt eine enge
+ *   Richtlinie — kein Skript, kein Netz, nur eingebettete Daten.
+ * - `pdf` sind erzeugte Belege. Sie sind kein Markup, sondern eine Binärdatei,
+ *   die der eingebaute Betrachter des Browsers darstellt.
  *
- * Der Unterschied, der beim Bauen der Vorschau aufgefallen ist: Das
- * App-Profil setzt `frame-ancestors 'none'` und `X-Frame-Options: DENY`. Damit
- * lässt sich die Vorschau **auch aus der eigenen Oberfläche heraus** nicht in
- * einen Rahmen laden — der Rahmen bliebe leer. Das Dokumentprofil erlaubt
- * deshalb `'self'`.
+ * Der Unterschied, der beim Bauen der Vorschau aufgefallen ist: Das App-Profil
+ * setzt `frame-ancestors 'none'` und `X-Frame-Options: DENY`. Damit lässt sich
+ * eine Antwort **auch aus der eigenen Oberfläche heraus** nicht in einen Rahmen
+ * laden — er bliebe leer. Beide anderen Profile erlauben deshalb `'self'`.
  */
-export type SecurityProfile = 'app' | 'document';
+export type SecurityProfile = 'app' | 'document' | 'pdf';
 
 export type SecurityHeaderOptions = {
   readonly nonce: string;
@@ -36,7 +37,7 @@ export type SecurityHeaderOptions = {
 };
 
 /**
- * Richtlinie für ausgelieferten Fremdinhalt.
+ * Richtlinie für ausgeliefertes Fremdmarkup.
  *
  * `sandbox` ohne Werte entzieht dem Dokument alles: kein Skript, keine
  * Formulare, kein eigener Ursprung. Schrift und Bilder kommen ausschließlich
@@ -53,6 +54,24 @@ function documentContentSecurityPolicy(): string {
     "frame-ancestors 'self'",
     'sandbox',
   ].join('; ');
+}
+
+/**
+ * Richtlinie für erzeugte PDF-Dateien.
+ *
+ * Bewusst **nur** `frame-ancestors`. Zwei Gründe:
+ *
+ * 1. Die übrigen Direktiven greifen an einer Binärdatei ins Leere — ein PDF hat
+ *    keine Skripte, keine Stile und keine Unterressourcen im Sinne der CSP.
+ * 2. `sandbox` würde den eingebauten Betrachter des Browsers ausschalten. Er
+ *    ist eine eigene, vom Browser gekapselte Anwendung; unter `sandbox` startet
+ *    er nicht, und im Rahmen erschiene wieder eine weiße Fläche.
+ *
+ * Die Datei selbst ist unser Erzeugnis, kein hochgeladener Fremdinhalt: Sie
+ * entsteht aus dem Dokumentmodell in einem Chromium ohne Netzzugriff.
+ */
+function pdfContentSecurityPolicy(): string {
+  return "frame-ancestors 'self'";
 }
 
 function buildContentSecurityPolicy({ nonce, isDevelopment }: SecurityHeaderOptions): string {
@@ -84,15 +103,24 @@ function buildContentSecurityPolicy({ nonce, isDevelopment }: SecurityHeaderOpti
   ].join('; ');
 }
 
+function contentSecurityPolicyFor(options: SecurityHeaderOptions): string {
+  switch (options.profile) {
+    case 'document':
+      return documentContentSecurityPolicy();
+    case 'pdf':
+      return pdfContentSecurityPolicy();
+    default:
+      return buildContentSecurityPolicy(options);
+  }
+}
+
 export function buildSecurityHeaders(options: SecurityHeaderOptions): Record<string, string> {
-  const isDocument = options.profile === 'document';
+  const isEmbeddable = options.profile === 'document' || options.profile === 'pdf';
 
   const headers: Record<string, string> = {
-    'Content-Security-Policy': isDocument
-      ? documentContentSecurityPolicy()
-      : buildContentSecurityPolicy(options),
+    'Content-Security-Policy': contentSecurityPolicyFor(options),
     'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': isDocument ? 'SAMEORIGIN' : 'DENY',
+    'X-Frame-Options': isEmbeddable ? 'SAMEORIGIN' : 'DENY',
     'Referrer-Policy': 'no-referrer',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',

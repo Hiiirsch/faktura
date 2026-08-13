@@ -263,7 +263,17 @@ describe('Sicherheitsprofile je Route (NFA-SEC-17)', () => {
     expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'self'");
   });
 
-  it('lässt in Fremdinhalt weder Skript noch Netzzugriff zu', () => {
+  it('lässt für ein PDF nur das Einbetten offen', () => {
+    const headers = buildSecurityHeaders({ ...options, profile: 'pdf' });
+    const policy = headers['Content-Security-Policy'] ?? '';
+
+    expect(headers['X-Frame-Options']).toBe('SAMEORIGIN');
+    expect(policy).toContain("frame-ancestors 'self'");
+    // Kein `sandbox` — darunter startet der Betrachter des Browsers nicht.
+    expect(policy).not.toContain('sandbox');
+  });
+
+  it('lässt in Fremdmarkup weder Skript noch Netzzugriff zu', () => {
     const policy = buildSecurityHeaders({ ...options, profile: 'document' })[
       'Content-Security-Policy'
     ];
@@ -277,13 +287,19 @@ describe('Sicherheitsprofile je Route (NFA-SEC-17)', () => {
     expect(policy).toContain('font-src data:');
   });
 
-  it('ordnet genau den Routen mit Fremdinhalt das Dokumentprofil zu', () => {
-    expect(securityProfileFor('/api/invoices/abc/preview')).toBe('document');
+  it('ordnet den Routen mit Fremdmarkup das Dokumentprofil zu', () => {
     expect(securityProfileFor('/api/templates/preview')).toBe('document');
     expect(securityProfileFor('/api/assets/abc')).toBe('document');
+  });
 
+  it('ordnet erzeugten Belegen das PDF-Profil zu', () => {
+    // Ohne dieses Profil griffe `X-Frame-Options: DENY`, und die Vorschau auf
+    // der Belegseite bliebe eine weiße Fläche.
+    expect(securityProfileFor('/api/invoices/abc/pdf')).toBe('pdf');
+  });
+
+  it('lässt alles andere beim App-Profil', () => {
     expect(securityProfileFor('/invoices')).toBe('app');
-    expect(securityProfileFor('/api/invoices/abc/pdf')).toBe('app');
     expect(securityProfileFor('/settings/templates')).toBe('app');
     // Unbekannte Pfade bekommen das strengere Profil.
     expect(securityProfileFor('/gibt-es-nicht')).toBe('app');

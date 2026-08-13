@@ -18,6 +18,15 @@ Stand: 2026-08-11 · 133 von 171 erledigt (97 abgenommen: M0–M4, 36 umgesetzt)
 Hinzu kommen 21 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
 Teil der ursprünglichen 171 sind: 18 umgesetzt, 3 offen.
 
+**Verworfene HTML-Vorschau (M5.6).** Die Vorschau zeigte bis dahin eine
+HTML-Nachbildung des Belegs. Sie konnte nie stimmen: `@page`-Ränder gelten nur
+beim Drucken, am Bildschirm lief der Inhalt randlos über die volle Breite. Seit
+M5.6 steht im Rahmen das erzeugte PDF. Folge für die Nachweise: Die
+Pflichtangaben FA-PFL-01 bis -11 werden am Satz geprüft, den der Renderer
+erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
+Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
+PDF-Parser nicht lesbar.
+
 **Geänderte Anforderung.** FA-PDF-06 verlangte die Seitenangabe auf *jeder*
 Seite. Auf einem einseitigen Beleg ist „Seite 1 von 1“ eine Auskunft ohne
 Empfänger; DIN 5008 sieht Seitennummern nur für Folgeblätter vor, und die
@@ -157,7 +166,7 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | FA-PDF-01 | Festgeschriebene Rechnung als PDF herunterladbar | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`; Route `/api/invoices/[id]/pdf` |
-| FA-PDF-02 | Vorschau im Editor, aktualisiert nach Eingabepause | MUSS | M | M5 | umgesetzt | Manuell: Vorschau im Vorlagen-Editor und auf der Belegseite, Aktualisierung 600 ms nach der letzten Eingabe; dieselbe Vorlage und Schrift wie das PDF |
+| FA-PDF-02 | Vorschau des Belegs, aktualisiert nach Eingabepause | MUSS | T | M5 | umgesetzt | `tests/integration/browser-preview.test.ts` — im Rahmen steht seit M5.6 das erzeugte PDF selbst, nicht mehr eine HTML-Nachbildung; `tests/integration/document-output.test.ts` |
 | FA-PDF-03 | Entwurf als Vorschau-PDF, sichtbar gekennzeichnet | SOLL | M | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Entwurfsvermerk im Blattkopf, nach dem Festschreiben nicht mehr |
 | FA-PDF-04 | ≥60 Positionen brechen ohne Verlust über Seiten um | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — 60 Positionen, alle enthalten, mehrseitiges PDF |
 | FA-PDF-05 | Tabellenkopf wiederholt sich auf Folgeseiten | MUSS | M | M5 | umgesetzt | `display: table-header-group` in der Standardvorlage; Manuell: Tabellenkopf auf Folgeseiten |

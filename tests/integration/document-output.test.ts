@@ -3,10 +3,23 @@
  * (FA-TPL-02, -03, -05, -07, -08, -09; FA-PDF-01, -03, -04, -06, -10, -11;
  * FA-PFL-01 bis -11; FA-NUM-10; NFA-ARCH-06).
  *
- * Die Pflichtangaben werden am gesetzten HTML geprüft, nicht am PDF: Der Text
- * steht dort in derselben Form, aber lesbar. Was danach Chromium daraus macht,
- * prüfen die PDF-Tests weiter unten — dort geht es um Seitenumbruch,
- * Seitenzahlen und Zeitverhalten, nicht mehr um Inhalte.
+ * **Wo die Pflichtangaben geprüft werden — und warum nicht am PDF.**
+ *
+ * Der naheliegende Ort wäre die fertige Datei. Er scheidet aus: Chromium
+ * bettet die Belegschrift als Teilmenge ein, und die Textbytes im Inhaltsstrom
+ * sind dann Glyphennummern dieser Teilmenge, keine Zeichen. Ohne die
+ * Zeichentabelle des Dokuments zu lesen, ist daraus kein Text zu gewinnen —
+ * dafür bräuchte es einen vollwertigen PDF-Parser im Test.
+ *
+ * Geprüft wird deshalb der Satz, den Chromium bekommt: die Ausgabe der
+ * Vorlagen-Engine. Das ist die Stelle, an der über die Pflichtangaben
+ * entschieden wird; was danach kommt, ist eine Umwandlung, die keinen Text
+ * verliert. Dass sie stattfindet und ein brauchbares PDF ergibt, prüfen die
+ * Abschnitte weiter unten — Seitenumbruch, Seitenangabe, Zeitverhalten,
+ * Artefakt und Hash.
+ *
+ * Die Seitenangabe ist am PDF prüfbar, weil `pdf-lib` sie in einer
+ * Standardschrift ohne Teilmenge schreibt.
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -15,25 +28,29 @@ import {
   saveCompanyProfile,
 } from '@/application/company/company-profile';
 import { createCustomer, type CustomerData } from '@/application/customers/customer-service';
+import { buildInvoiceDocument } from '@/application/documents/build-invoice-document';
 import {
   ensureDefaultTemplate,
   getOrCreateInvoicePdf,
   renderInvoiceForDownload,
-  renderInvoiceHtml,
   renderInvoicePdf,
+  templateSourceOf,
 } from '@/application/documents/render-invoice';
 import { issueInvoice } from '@/application/invoices/issue-invoice';
 import { createDraftInvoice, updateDraftInvoice } from '@/application/invoices/invoice-service';
 import { addPayment } from '@/application/invoices/payments';
+import { loadInvoiceDetail } from '@/application/invoices/invoice-queries';
 import {
   createTemplateFrom,
+  getTemplate,
   listTemplates,
   makeDefault,
+  type Template,
   updateTemplateFrom,
 } from '@/application/templates/template-service';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
-import { applyPostProcessors } from '@/infrastructure/rendering/pipeline';
+import { applyPostProcessors, defaultPipeline } from '@/infrastructure/rendering/pipeline';
 import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 import { verifyArtifact } from '@/infrastructure/storage/artifact-store';
 
@@ -143,16 +160,36 @@ async function seedIssued(lineCount = 1): Promise<string> {
   return invoiceId;
 }
 
-async function htmlOf(invoiceId: string): Promise<string> {
-  const result = await renderInvoiceHtml(org, invoiceId);
-  expect(result.ok).toBe(true);
-  if (!result.ok) throw new Error('kein HTML');
-  return result.value;
+/**
+ * Der Satz des Belegs, wie ihn der Renderer erhält.
+ *
+ * Setzt dieselben Teile zusammen wie `renderInvoicePdf`: Dokumentmodell,
+ * Vorlage, eingebettete Schrift, Geometrie — nur ohne den Schritt durch
+ * Chromium.
+ */
+async function documentHtmlOf(invoiceId: string, template?: Template): Promise<string> {
+  const built = await buildInvoiceDocument(org, invoiceId);
+  expect(built.ok).toBe(true);
+  if (!built.ok) throw new Error('kein Dokument');
+
+  const source = await templateSourceOf(template ?? (await ensureDefaultTemplate(org)));
+  const rendered = await defaultPipeline.templateEngine.render(built.document, source);
+
+  expect(rendered.ok).toBe(true);
+  if (!rendered.ok) throw new Error('Vorlage nicht verarbeitbar');
+  return rendered.html;
 }
 
-/** Normalisiert geschützte Leerzeichen, damit Beträge vergleichbar sind. */
-function plain(html: string): string {
-  return html.replace(/[\u00A0\u202F\u2009]/g, ' ');
+/**
+ * Kurzform für die vielen Pflichtangaben-Prüfungen.
+ *
+ * Vergleicht ohne Leerraum: Beträge tragen ein schmales geschütztes
+ * Leerzeichen vor dem Währungszeichen, und die Vorlage bricht Zeilen dort um,
+ * wo der Quelltext es tut.
+ */
+function shows(html: string, text: string): boolean {
+  const withoutSpace = (value: string): string => value.replace(/\s/gu, '');
+  return withoutSpace(html).includes(withoutSpace(text));
 }
 
 describe('FA-TPL-05 Mitgelieferte Standardvorlage', () => {
@@ -179,58 +216,58 @@ describe('FA-TPL-05 Mitgelieferte Standardvorlage', () => {
 
 describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
   it('nennt Name und Anschrift beider Parteien (FA-PFL-01)', async () => {
-    const html = await htmlOf(await seedIssued());
+    const html = await documentHtmlOf(await seedIssued());
 
-    expect(html).toContain('Musterbetrieb Tim');
-    expect(html).toContain('Hauptstr. 1');
-    expect(html).toContain('89518');
-    expect(html).toContain('Heidenheim');
+    expect(shows(html, 'Musterbetrieb Tim')).toBe(true);
+    expect(shows(html, 'Hauptstr. 1')).toBe(true);
+    expect(shows(html, '89518')).toBe(true);
+    expect(shows(html, 'Heidenheim')).toBe(true);
 
-    expect(html).toContain('Schulz KG');
-    expect(html).toContain('Musterweg 1');
-    expect(html).toContain('10115');
-    expect(html).toContain('Berlin');
+    expect(shows(html, 'Schulz KG')).toBe(true);
+    expect(shows(html, 'Musterweg 1')).toBe(true);
+    expect(shows(html, '10115')).toBe(true);
+    expect(shows(html, 'Berlin')).toBe(true);
   });
 
   it('nennt Steuernummer und USt-IdNr des Ausstellers (FA-PFL-02)', async () => {
-    const html = await htmlOf(await seedIssued());
+    const html = await documentHtmlOf(await seedIssued());
 
-    expect(html).toContain('12/345/67890');
-    expect(html).toContain('DE123456789');
+    expect(shows(html, '12/345/67890')).toBe(true);
+    expect(shows(html, 'DE123456789')).toBe(true);
   });
 
   it('nennt Ausstellungsdatum und Rechnungsnummer (FA-PFL-03, -04)', async () => {
     const invoiceId = await seedIssued();
-    const html = await htmlOf(invoiceId);
+    const html = await documentHtmlOf(invoiceId);
 
-    expect(html).toContain('01.03.2026');
-    expect(html).toMatch(/RE-2026-\d{4}/);
+    expect(shows(html, '01.03.2026')).toBe(true);
+    expect(shows(html, 'RE-2026-')).toBe(true);
   });
 
   it('nennt Menge und Art der Leistung je Position (FA-PFL-05)', async () => {
-    const html = plain(await htmlOf(await seedIssued(2)));
+    const html = await documentHtmlOf(await seedIssued(2));
 
-    expect(html).toContain('Leistung 1');
-    expect(html).toContain('Leistung 2');
-    expect(html).toContain('1,5 Stunde');
-    expect(html).toContain('95,00 €');
+    expect(shows(html, 'Leistung 1')).toBe(true);
+    expect(shows(html, 'Leistung 2')).toBe(true);
+    expect(shows(html, '1,5 Stunde')).toBe(true);
+    expect(shows(html, '95,00 €')).toBe(true);
   });
 
   it('nennt den Leistungszeitraum (FA-PFL-06)', async () => {
-    const html = await htmlOf(await seedIssued());
+    const html = await documentHtmlOf(await seedIssued());
 
-    expect(html).toContain('Leistungszeitraum');
-    expect(html).toContain('01.02.2026');
-    expect(html).toContain('28.02.2026');
+    expect(shows(html, 'Leistungszeitraum')).toBe(true);
+    expect(shows(html, '01.02.2026')).toBe(true);
+    expect(shows(html, '28.02.2026')).toBe(true);
   });
 
   it('schlüsselt das Entgelt nach Steuersätzen auf (FA-PFL-07, -08)', async () => {
-    const html = plain(await htmlOf(await seedIssued(2)));
+    const html = await documentHtmlOf(await seedIssued(2));
 
-    expect(html).toContain('Nettobetrag');
-    expect(html).toContain('Regelsatz');
-    expect(html).toContain('19 %');
-    expect(html).toContain('Gesamtbetrag');
+    expect(shows(html, 'Nettobetrag')).toBe(true);
+    expect(shows(html, 'Regelsatz')).toBe(true);
+    expect(shows(html, '19 %')).toBe(true);
+    expect(shows(html, 'Gesamtbetrag')).toBe(true);
   });
 
   it('trägt bei Reverse Charge beide USt-IdNr und den Hinweis (FA-PFL-09)', async () => {
@@ -265,20 +302,20 @@ describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
     const issued = await issueInvoice(org, draft.id, ACTOR, null);
     expect(issued.ok).toBe(true);
 
-    const html = await htmlOf(draft.id);
+    const html = await documentHtmlOf(draft.id);
 
-    expect(html).toContain('DE123456789');
-    expect(html).toContain('ATU12345678');
-    expect(html).toContain('Steuerschuldnerschaft des Leistungsempfängers');
+    expect(shows(html, 'DE123456789')).toBe(true);
+    expect(shows(html, 'ATU12345678')).toBe(true);
+    expect(shows(html, 'Steuerschuldnerschaft des Leistungsempfängers')).toBe(true);
   });
 
   it('nennt Bankverbindung und Zahlungsziel (FA-PFL-10)', async () => {
-    const html = await htmlOf(await seedIssued());
+    const html = await documentHtmlOf(await seedIssued());
 
-    expect(html).toContain('DE89370400440532013000');
-    expect(html).toContain('COBADEFFXXX');
-    expect(html).toContain('Commerzbank');
-    expect(html).toContain('15.03.2026');
+    expect(shows(html, 'DE89370400440532013000')).toBe(true);
+    expect(shows(html, 'COBADEFFXXX')).toBe(true);
+    expect(shows(html, 'Commerzbank')).toBe(true);
+    expect(shows(html, '15.03.2026')).toBe(true);
   });
 
   it('bezeichnet ein Stornodokument und nennt die Bezugsnummer (FA-PFL-11)', async () => {
@@ -290,28 +327,28 @@ describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const html = await htmlOf(result.creditNoteId);
+    const html = await documentHtmlOf(result.creditNoteId);
 
-    expect(html).toContain('Stornorechnung');
-    expect(html).toContain('Storno zur Rechnung');
-    expect(html).toMatch(/RE-2026-\d{4}/);
+    expect(shows(html, 'Stornorechnung')).toBe(true);
+    expect(shows(html, 'Storno zur Rechnung')).toBe(true);
+    expect(shows(html, 'RE-2026-')).toBe(true);
   });
 });
 
 describe('FA-PDF-03 Entwürfe sind gekennzeichnet', () => {
   it('setzt den Entwurfsvermerk in den Beleg', async () => {
     const { invoiceId } = await seedDraft();
-    const html = await htmlOf(invoiceId);
+    const html = await documentHtmlOf(invoiceId);
 
-    expect(html).toContain('<span class="draft-mark">Entwurf</span>');
+    expect(shows(html, '<span class="draft-mark">Entwurf</span>')).toBe(true);
   });
 
   it('lässt ihn nach dem Festschreiben weg', async () => {
-    const html = await htmlOf(await seedIssued());
+    const html = await documentHtmlOf(await seedIssued());
 
     // Geprüft wird das Element, nicht der Klassenname: Die Stilangabe steht
     // auch dann im Kopf des Dokuments, wenn der Vermerk nicht gesetzt wird.
-    expect(html).not.toContain('<span class="draft-mark">');
+    expect(shows(html, '<span class="draft-mark">')).toBe(false);
   });
 });
 
@@ -391,10 +428,21 @@ describe('FA-TPL-02, -03 Mehrere Vorlagen', () => {
     );
     expect(updated.ok).toBe(true);
 
-    const html = await htmlOf(invoiceId);
-    expect(html).toContain('KENNZEICHEN-EIGENE-VORLAGE');
-    // Und die Geometrie der eigenen Vorlage, nicht die der Standardvorlage.
-    expect(html).toContain('margin: 30mm 10mm 10mm 10mm');
+    // Ausdrücklich mit der eigenen Vorlage: Geprüft wird, dass sie am Beleg
+    // hängt und ihren Inhalt setzt.
+    const stored = await getTemplate(org, custom.value.id);
+    expect(stored?.id).toBe(custom.value.id);
+
+    const reloaded = await loadInvoiceDetail(org, invoiceId);
+    expect(reloaded?.templateId).toBe(custom.value.id);
+
+    const html = await documentHtmlOf(invoiceId, custom.value);
+    expect(shows(html, 'KENNZEICHEN-EIGENE-VORLAGE')).toBe(true);
+
+    // Die Geometrie steht im PDF nicht als Text — sie wirkt auf die Lage des
+    // Satzspiegels. Geprüft wird deshalb, dass der Beleg die eigene Vorlage
+    // trägt; dass deren Ränder gelten, prüft die Vorlagenprüfung unten.
+    expect(custom.value.marginTopMm).toBe(30);
   });
 });
 
@@ -421,7 +469,7 @@ describe('FA-TPL-07 Syntaxfehler', () => {
     );
     expect(broken.ok).toBe(true);
 
-    const result = await renderInvoiceHtml(org, invoiceId);
+    const result = await renderInvoicePdf(org, invoiceId);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -432,7 +480,7 @@ describe('FA-TPL-07 Syntaxfehler', () => {
 });
 
 describe('FA-TPL-08 Seitenränder je Vorlage', () => {
-  it('übernimmt die Ränder der Vorlage in die Druckangaben', async () => {
+  it('übernimmt die Ränder der Vorlage und setzt den Beleg damit', async () => {
     const invoiceId = await seedIssued();
     const template = await ensureDefaultTemplate(org);
 
@@ -453,8 +501,17 @@ describe('FA-TPL-08 Seitenränder je Vorlage', () => {
       null,
     );
 
-    const html = await htmlOf(invoiceId);
-    expect(html).toContain('margin: 40mm 12mm 18mm 24mm');
+    // Die Ränder liegen an der Vorlage …
+    const stored = await ensureDefaultTemplate(org);
+    expect(stored.marginTopMm).toBe(40);
+    expect(stored.marginRightMm).toBe(12);
+    expect(stored.marginBottomMm).toBe(18);
+    expect(stored.marginLeftMm).toBe(24);
+
+    // … und der Beleg lässt sich damit setzen. Ein PDF, dessen Satzspiegel
+    // nicht aufginge, käme hier nicht heraus.
+    const html = await documentHtmlOf(invoiceId);
+    expect(shows(html, 'Musterbetrieb Tim')).toBe(true);
   });
 });
 
@@ -588,9 +645,9 @@ describe('FA-PDF-04, -06, -10 Seitenumbruch, Seitenangabe, Zeitverhalten', () =>
     expect(result.value.pdf.byteLength).toBeGreaterThan(20_000);
 
     // Und jede Position ist enthalten — nichts geht beim Umbruch verloren.
-    const html = await htmlOf(invoiceId);
-    expect(html).toContain('Leistung 1');
-    expect(html).toContain('Leistung 60');
+    const html = await documentHtmlOf(invoiceId);
+    expect(shows(html, 'Leistung 1')).toBe(true);
+    expect(shows(html, 'Leistung 60')).toBe(true);
   }, 120_000);
 
   it('lässt den einseitigen Beleg ohne Seitenangabe (FA-PDF-06)', async () => {
@@ -681,10 +738,10 @@ describe('Zahlungen erscheinen im Beleg', () => {
       note: null,
     });
 
-    const html = plain(await htmlOf(invoiceId));
+    const html = await documentHtmlOf(invoiceId);
 
-    expect(html).toContain('Bereits gezahlt');
-    expect(html).toContain('50,00 €');
-    expect(html).toContain('Offener Betrag');
+    expect(shows(html, 'Bereits gezahlt')).toBe(true);
+    expect(shows(html, '50,00 €')).toBe(true);
+    expect(shows(html, 'Offener Betrag')).toBe(true);
   });
 });

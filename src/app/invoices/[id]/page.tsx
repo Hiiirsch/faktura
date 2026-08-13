@@ -24,8 +24,8 @@ import {
   customerPath,
   INVOICES_PATH,
   invoicePath,
+  invoicePdfEmbedPath,
   invoicePdfPath,
-  invoicePreviewPath,
 } from '@/routes';
 import { ConfirmButton } from '@/ui/components/confirm-button';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
@@ -140,16 +140,23 @@ export default async function InvoiceDetailPage({
 
         {/*
           Das Blatt: die einzige erhabene Fläche der Anwendung, eckig und weiß
-          (Frontend-Entwurf §1, FA-UI-02). Dasselbe Dokument, das der Download
-          als PDF liefert (FA-PDF-02).
+          (Frontend-Entwurf §1, FA-UI-02).
+
+          Eingebettet wird **das PDF selbst**, nicht eine HTML-Nachbildung. Die
+          hatte einen Fehler, der sich nicht beheben ließ: `@page`-Ränder gelten
+          nur beim Drucken, am Bildschirm lief der Inhalt randlos über die volle
+          Breite. Was hier steht, ist dieselbe Datei, die der Download liefert
+          (FA-PDF-02).
+
+          Kein `sandbox`: Der eingebaute Betrachter des Browsers ist eine eigene
+          gekapselte Anwendung und startet darunter nicht.
         */}
         <section className="flex flex-col gap-3">
           <h2 className="text-section font-semibold text-ink">{messages.templates.preview}</h2>
           <div className="bg-sheet shadow-sheet">
             <iframe
-              src={invoicePreviewPath(invoice.id)}
+              src={invoicePdfEmbedPath(invoice.id)}
               title={messages.templates.previewFrame}
-              sandbox=""
               className="h-sheet-height w-full border-0"
             />
           </div>

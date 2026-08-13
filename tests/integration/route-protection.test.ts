@@ -349,16 +349,22 @@ describe('NFA-SEC-08 Sperre und Protokollierung', () => {
 });
 
 describe('Sicherheitsprofil der Antwort (NFA-SEC-17)', () => {
-  it('legt auf Routen mit Fremdinhalt das Dokumentprofil', async () => {
+  it('legt auf Routen mit Fremdmarkup das Dokumentprofil', async () => {
     // Ohne Sitzung antwortet bereits der Proxy — die Kopfzeilen setzt er
     // trotzdem, und am Pfad hängt das Profil.
-    const response = await fetch(url('/api/invoices/probe-kennung/preview'), {
-      redirect: 'manual',
-    });
+    const response = await fetch(url('/api/assets/probe-kennung'), { redirect: 'manual' });
 
     expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
     expect(response.headers.get('content-security-policy')).toContain('sandbox');
+  });
+
+  it('legt auf erzeugten Belegen das PDF-Profil', async () => {
+    const response = await fetch(url('/api/invoices/probe-kennung/pdf'), { redirect: 'manual' });
+
+    expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
+    expect(response.headers.get('content-security-policy')).not.toContain('sandbox');
   });
 
   it('lässt die Oberfläche selbst nicht einbetten', async () => {

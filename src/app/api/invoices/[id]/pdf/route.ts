@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
  * PDF davon wäre irreführend. Die Vorlage kennzeichnet ihn sichtbar.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const session = await getOptionalSession();
@@ -25,6 +25,13 @@ export async function GET(
 
   const { id } = await context.params;
   const result = await renderInvoiceForDownload(session.organization, id);
+
+  // `?inline=1` bettet dieselbe Datei ein, statt sie herunterzuladen
+  // (FA-PDF-02). Der Download bleibt die Voreinstellung: Wer die Adresse
+  // aufruft, will den Beleg haben, nicht ansehen.
+  const disposition = new URL(request.url).searchParams.get('inline') === '1'
+    ? 'inline;'
+    : 'attachment;';
 
   if (!result.ok) {
     if (result.error.kind === 'NOT_FOUND') {
@@ -41,7 +48,7 @@ export async function GET(
       'Content-Type': 'application/pdf',
       // Der Dateiname stammt aus dem konfigurierten Muster und ist bereits
       // gefiltert (FA-PDF-09); die Anführungszeichen kann er nicht verlassen.
-      'Content-Disposition': `attachment; filename="${result.value.fileName}"`,
+      'Content-Disposition': `${disposition} filename="${result.value.fileName}"`,
       'Content-Length': String(result.value.pdf.length),
       // Ein Entwurf ändert sich mit jeder Bearbeitung.
       'Cache-Control': 'no-store',

@@ -59,14 +59,13 @@ export function extractPdfText(pdf: Uint8Array): string {
 }
 
 /**
- * Ob ein Satz im Dokument steht.
+ * Der gesetzte Text eines PDF.
  *
  * PDF kennt zwei Schreibweisen für Textliterale: in Klammern `(Text)` und
  * hexadezimal `<54657874>`. pdf-lib verwendet die zweite, Chromium die erste —
- * gesucht wird deshalb in beiden. Der Text wird zusammengehängt, weil ein Satz
- * über mehrere Anzeigebefehle verteilt sein kann.
+ * gelesen werden deshalb beide.
  */
-export function pdfContainsText(pdf: Uint8Array, needle: string): boolean {
+export function pdfShownText(pdf: Uint8Array): string {
   const streams = extractPdfText(pdf);
 
   const literals = [...streams.matchAll(/\(((?:\\.|[^\\)])*)\)/g)].map((match) =>
@@ -82,5 +81,23 @@ export function pdfContainsText(pdf: Uint8Array, needle: string): boolean {
     return characters.join('');
   });
 
-  return [...literals, ...hex].join('').includes(needle);
+  return [...literals, ...hex].join('\n');
+}
+
+/**
+ * Ob ein Satz im Dokument steht.
+ *
+ * Verglichen wird **ohne Leerraum** — auf beiden Seiten. Der Grund liegt im
+ * Format: Ein Satz landet nicht als ein Stück im PDF, sondern als Folge von
+ * Anzeigebefehlen, die der Setzer nach Belieben schneidet. Zwischen zwei
+ * Tabellenzellen steht dann kein Leerzeichen, wo im Beleg eines zu sehen ist.
+ * Ein Vergleich Zeichen für Zeichen würde daran scheitern, ohne dass am Beleg
+ * etwas falsch wäre.
+ *
+ * Innerhalb eines Wortes schneidet Chromium bei lateinischer Schrift nicht —
+ * darauf beruht die Prüfung.
+ */
+export function pdfContainsText(pdf: Uint8Array, needle: string): boolean {
+  const withoutSpace = (value: string): string => value.replace(/\s/gu, '');
+  return withoutSpace(pdfShownText(pdf)).includes(withoutSpace(needle));
 }

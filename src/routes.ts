@@ -45,9 +45,15 @@ export function invoicePdfPath(id: string): string {
   return `/api/invoices/${id}/pdf`;
 }
 
-/** HTML-Vorschau desselben Dokuments (FA-PDF-02, -03). */
-export function invoicePreviewPath(id: string): string {
-  return `/api/invoices/${id}/preview`;
+/**
+ * Dasselbe PDF zum Einbetten statt zum Herunterladen (FA-PDF-02).
+ *
+ * `inline=1` steuert die `Content-Disposition`; die Angaben hinter dem
+ * Rautezeichen liest der eingebaute Betrachter des Browsers und blendet damit
+ * seine Werkzeugleiste aus. Sie erreichen den Server nie.
+ */
+export function invoicePdfEmbedPath(id: string): string {
+  return `${invoicePdfPath(id)}?inline=1#toolbar=0&navpanes=0&view=FitH`;
 }
 
 /** Vorschau einer noch nicht gespeicherten Vorlage (FA-TPL-04). */
@@ -63,7 +69,7 @@ export type RouteKind = 'page' | 'api';
  * Kopfzeilen **nach** dem Routenhandler und überschreibt dabei, was dieser
  * gesetzt hat — deshalb steht die Entscheidung hier und nicht in der Route.
  */
-export type RouteSecurityProfile = 'app' | 'document';
+export type RouteSecurityProfile = 'app' | 'document' | 'pdf';
 
 export type RouteAccess =
   /** Ohne Anmeldung erreichbar. Jeder Eintrag braucht eine Begründung. */
@@ -126,15 +132,14 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'api',
     access: 'authenticated',
     probePath: '/api/invoices/probe-kennung/pdf',
+    // Wird als Vorschau eingebettet; ohne dieses Profil greift
+    // `X-Frame-Options: DENY` und der Rahmen bleibt weiß.
+    securityProfile: 'pdf',
   },
   {
-    path: '/api/invoices/[id]/preview',
-    kind: 'api',
-    access: 'authenticated',
-    probePath: '/api/invoices/probe-kennung/preview',
-    securityProfile: 'document',
-  },
-  {
+    // Antwortet mit PDF, bei einem Vorlagenfehler mit einer HTML-Meldung. Das
+    // Dokumentprofil deckt beide Fälle ab: Es erlaubt das Einbetten und hält
+    // die Fehlermeldung skriptfrei.
     path: TEMPLATE_PREVIEW_PATH,
     kind: 'api',
     access: 'authenticated',

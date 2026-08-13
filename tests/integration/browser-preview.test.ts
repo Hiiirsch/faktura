@@ -12,6 +12,11 @@
  * den Rahmen trotzdem nicht, und man sah eine weiße Fläche. Kein Test, der
  * Antworten prüft, hätte das gefunden; nur einer, der einbettet.
  *
+ * Seit M5.6 steht im Rahmen das PDF selbst. Damit hängt noch eine Zusage am
+ * Zusammenspiel: Der eingebaute Betrachter des Browsers ist eine eigene
+ * gekapselte Anwendung und startet nicht unter jeder Richtlinie. Ob er es tut,
+ * wird hier festgestellt, nicht angenommen.
+ *
  * Angemeldet wird über das echte Formular. Der Grund ist nicht Gründlichkeit,
  * sondern Notwendigkeit: Der Server arbeitet auf einer anderen Datenbankdatei
  * als der Testprozess (siehe `setup/server.ts`). Eine hier angelegte Sitzung
@@ -77,18 +82,37 @@ async function openFirstInvoice(): Promise<OpenedInvoice> {
   };
 }
 
+/**
+ * Die Adresse, die im Vorschaurahmen steht.
+ *
+ * Gelesen wird das Attribut, nicht `page.frames()`: Ein PDF übergibt der
+ * Browser seinem eingebauten Betrachter, und der erscheint nicht als
+ * gewöhnlicher Rahmen in der Liste. Sichtbar bleiben das Element und seine
+ * Adresse — und ob der Browser sie annimmt, zeigt die Konsole: Eine blockierte
+ * Einbettung meldet einen Verstoß gegen die Richtlinie.
+ */
+async function previewSource(page: Page): Promise<string> {
+  const source = await page.locator('iframe').first().getAttribute('src');
+  return source ?? '';
+}
+
 describe('Belegvorschau im Browser', () => {
-  it('lädt den Rahmen und zeigt den Beleg darin', async () => {
+  it('lädt das PDF in den Rahmen', async () => {
     const { page, close } = await openFirstInvoice();
 
-    const frame = page.frames().find((candidate) => candidate.url().includes('/preview'));
-    expect(frame, 'Der Vorschaurahmen muss geladen sein').toBeDefined();
+    const source = await previewSource(page);
+    expect(source, 'Die Belegseite muss einen Vorschaurahmen tragen').not.toBe('');
+    expect(source).toContain('/pdf');
+    expect(source).toContain('inline=1');
 
-    const text = frame === undefined ? '' : (await frame.locator('body').innerText()).trim();
+    const response = await page.request.get(new URL(source, TEST_BASE_URL).toString());
 
-    expect(text).toContain('Musterbetrieb Tim');
-    expect(text).toContain('Schulz KG');
-    expect(text).toContain('Beratung');
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('application/pdf');
+    expect(response.headers()['content-disposition']).toContain('inline');
+
+    const body = await response.body();
+    expect(body.subarray(0, 5).toString()).toBe('%PDF-');
 
     await close();
   }, 90_000);
@@ -102,20 +126,17 @@ describe('Belegvorschau im Browser', () => {
     await close();
   }, 90_000);
 
-  it('setzt auf der Vorschau das Dokumentprofil', async () => {
+  it('setzt auf der Vorschau das PDF-Profil', async () => {
     const { page, close } = await openFirstInvoice();
 
-    const frame = page.frames().find((candidate) => candidate.url().includes('/preview'));
-    expect(frame).toBeDefined();
+    const source = await previewSource(page);
+    const response = await page.request.get(new URL(source, TEST_BASE_URL).toString());
+    const policy = response.headers()['content-security-policy'] ?? '';
 
-    if (frame !== undefined) {
-      const response = await page.request.get(frame.url());
-
-      expect(response.status()).toBe(200);
-      expect(response.headers()['x-frame-options']).toBe('SAMEORIGIN');
-      expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'self'");
-      expect(response.headers()['content-security-policy']).toContain('sandbox');
-    }
+    expect(response.headers()['x-frame-options']).toBe('SAMEORIGIN');
+    expect(policy).toContain("frame-ancestors 'self'");
+    // **Kein** `sandbox`: Darunter startet der Betrachter des Browsers nicht.
+    expect(policy).not.toContain('sandbox');
 
     await close();
   }, 90_000);
@@ -128,6 +149,8 @@ describe('Belegvorschau im Browser', () => {
 
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toBe('application/pdf');
+    // Ohne `?inline=1` bleibt es ein Download.
+    expect(response.headers()['content-disposition']).toContain('attachment');
     expect(response.headers()['content-disposition']).toContain('.pdf"');
 
     const body = await response.body();

@@ -213,7 +213,14 @@ importfrei — jede Abhängigkeit von `node:crypto` landet sonst im Browser-Bün
 
 Der Weg vom Beleg zur Datei ist an einer Stelle beschrieben
 (`src/application/documents/render-invoice.ts`), damit Vorschau und Download
-nicht auseinanderlaufen: dieselbe Vorlage, dieselbe Schrift, dieselbe Geometrie.
+nicht auseinanderlaufen. Seit M5.6 gehen sie denselben Weg **bis zum Ende**:
+Die Vorschau zeigt das PDF selbst, eingebettet über `?inline=1`. Eine
+HTML-Nachbildung daneben konnte nie stimmen — `@page`-Ränder gelten nur beim
+Drucken.
+
+Dafür braucht die PDF-Route das Sicherheitsprofil `pdf` (`src/routes.ts`): kein
+`sandbox`, sonst startet der eingebaute Betrachter des Browsers nicht, und
+`frame-ancestors 'self'`, sonst greift `X-Frame-Options: DENY`.
 
 Für einen **festgeschriebenen** Beleg entsteht das PDF genau einmal und liegt
 danach als `InvoiceArtifact` mit SHA-256 vor. Deshalb verändert eine spätere

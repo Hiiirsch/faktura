@@ -146,8 +146,12 @@ export type TemplateEditorProps = {
  * wenn die Vorlage noch gar nicht gespeichert werden kann.
  *
  * Aktualisiert wird **nach einer Eingabepause**, nicht bei jedem Tastendruck:
- * Jeder Durchgang setzt das ganze Dokument neu, und bei laufender Eingabe wäre
- * das eine Anfrage je Zeichen.
+ * Jeder Durchgang setzt das ganze Dokument neu und erzeugt daraus ein PDF; bei
+ * laufender Eingabe wäre das eine Anfrage je Zeichen.
+ *
+ * Im Rahmen steht seit M5.6 das PDF selbst. Ein `sandbox`-Attribut gibt es
+ * deshalb nicht mehr — der eingebaute Betrachter des Browsers startet darunter
+ * nicht.
  */
 export function TemplateEditorForm({
   csrfToken,
@@ -168,7 +172,10 @@ export function TemplateEditorForm({
       return;
     }
 
-    const timer = setTimeout(() => previewForm.current?.requestSubmit(), 600);
+    // 800 ms statt 600: Jede Aktualisierung setzt den Beleg neu **und** lässt
+    // Chromium ein PDF daraus erzeugen. Bei laufender Eingabe wäre häufigeres
+    // Anstoßen verworfene Arbeit.
+    const timer = setTimeout(() => previewForm.current?.requestSubmit(), 800);
     return () => {
       clearTimeout(timer);
     };
@@ -346,7 +353,6 @@ export function TemplateEditorForm({
               <iframe
                 name="template-preview"
                 title={messages.templates.previewFrame}
-                sandbox=""
                 className="h-sheet-height w-full border-0"
               />
             </div>

@@ -20,6 +20,12 @@ export const dynamic = 'force-dynamic';
  * Schreibende Route im Sinne der Herkunftsprüfung: Sie nimmt Formulardaten
  * entgegen und setzt fremden Inhalt. `assertRequestIntegrity` prüft deshalb
  * Herkunft und CSRF-Token wie bei jeder Server Action.
+ *
+ * **Zwei Antworttypen.** Im Regelfall `application/pdf` — dasselbe Dokument, das
+ * der Download liefert. Bei einem Vorlagenfehler dagegen `text/html`: Ein
+ * Syntaxfehler lässt sich nicht als PDF darstellen, und die Meldung mit
+ * Zeilenangabe ist genau der Zweck der Vorschau (FA-TPL-07). Der Rahmen zeigt,
+ * was kommt; der Browser unterscheidet am Content-Type.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   const session = await getOptionalSession();
@@ -66,7 +72,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     return htmlResponse(errorPage(messages.templates.previewFailed, null));
   }
 
-  return htmlResponse(result.value);
+  return new NextResponse(new Uint8Array(result.value), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'inline',
+      'Content-Length': String(result.value.length),
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
 }
 
 function readText(formData: FormData, key: string): string {

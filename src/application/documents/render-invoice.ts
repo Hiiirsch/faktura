@@ -3,9 +3,10 @@
  * (FA-PDF-01 bis -11; FA-NUM-10; FA-TPL-05, -09; NFA-ARCH-06).
  *
  * Der Ablauf ist an einer Stelle beschrieben, weil Vorschau und Download
- * denselben Weg gehen müssen: Dieselbe Vorlage, dieselbe Schrift, dieselbe
- * Geometrie. Zwei Wege wären zwei Ergebnisse, und die Vorschau verlöre genau
- * die Eigenschaft, wegen der es sie gibt.
+ * denselben Weg gehen müssen. Seit M5.6 gehen sie sogar denselben Weg **bis
+ * zum Ende**: Die Vorschau zeigt das PDF selbst. Ein HTML-Abzug daneben hatte
+ * einen Fehler, der sich nicht beheben ließ — `@page`-Ränder gelten nur beim
+ * Drucken, am Bildschirm lief der Inhalt randlos über die volle Breite.
  *
  * Für einen festgeschriebenen Beleg entsteht das PDF **einmal** und wird als
  * Artefakt abgelegt. Jeder weitere Abruf liefert dieselbe Datei — deshalb
@@ -198,37 +199,12 @@ async function prepare(
 }
 
 /**
- * Das Beleg-HTML — Grundlage der Vorschau (FA-PDF-02, -03).
- *
- * Dieselbe Vorlage, dieselbe eingebettete Schrift und dieselbe Geometrie wie
- * beim PDF. Die Vorschau zeigt damit nicht etwas Ähnliches, sondern dasselbe
- * Dokument in einem anderen Ausgabemedium.
- */
-export async function renderInvoiceHtml(
-  context: OrganizationContext,
-  invoiceId: string,
-): Promise<Result<string, RenderError>> {
-  const prepared = await prepare(context, invoiceId);
-  if (!prepared.ok) {
-    return prepared;
-  }
-
-  const source = await templateSourceOf(prepared.value.template);
-  const rendered = await defaultPipeline.templateEngine.render(prepared.value.document, source);
-
-  if (!rendered.ok) {
-    return err({ kind: 'TEMPLATE_FAILED', error: rendered.error });
-  }
-  return ok(rendered.html);
-}
-
-/**
  * Setzt einen Beleg in eine **noch nicht gespeicherte** Vorlage (FA-TPL-04).
  *
  * Für den Vorlagen-Editor: Wer eine Vorlage bearbeitet, will das Ergebnis
  * sehen, bevor er sie speichert. Der Weg ist derselbe wie sonst — dieselbe
- * Schrift, dieselbe Geometrie —, nur die Quelle kommt aus dem Formular statt
- * aus der Datenbank.
+ * Schrift, dieselbe Geometrie, dasselbe PDF —, nur die Quelle kommt aus dem
+ * Formular statt aus der Datenbank.
  */
 export async function renderWithSources(
   context: OrganizationContext,
@@ -236,7 +212,7 @@ export async function renderWithSources(
   htmlSource: string,
   cssSource: string,
   geometry: PageGeometry,
-): Promise<Result<string, RenderError>> {
+): Promise<Result<Uint8Array, RenderError>> {
   const built = await buildInvoiceDocument(context, invoiceId);
   if (!built.ok) {
     return err(
@@ -254,7 +230,18 @@ export async function renderWithSources(
   if (!rendered.ok) {
     return err({ kind: 'TEMPLATE_FAILED', error: rendered.error });
   }
-  return ok(rendered.html);
+
+  const result = await defaultPipeline.pdfRenderer.render(rendered.html, renderOptions(geometry));
+
+  if (!result.ok) {
+    return err(
+      result.error.kind === 'TIMEOUT'
+        ? { kind: 'TIMEOUT' }
+        : { kind: 'RENDER_FAILED', message: result.error.message },
+    );
+  }
+
+  return ok(await applyPostProcessors(result.pdf, defaultPipeline.postProcessors));
 }
 
 /** Erzeugt ein PDF, ohne es abzulegen — für Entwürfe und Vorschauen. */
