@@ -92,6 +92,28 @@ describe('FA-UI-01 Alle Werte stammen aus den Tokens', () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * Schriftgrößen außerhalb des Tokensatzes.
+   *
+   * `--text-*: initial` löscht die Standardskala von Tailwind, also erzeugt
+   * `text-3xl` keine Regel mehr — die Überschrift erschien in der geerbten
+   * Größe. Das ist der unangenehme Fall: kein Fehler, keine falsche Farbe, nur
+   * eine Seite, die etwas anders aussieht als gedacht. Drei Überschriften
+   * standen so seit M5.5b im Quelltext.
+   */
+  it('verwendet keine Schriftgröße außerhalb des Tokensatzes', async () => {
+    const offenders: string[] = [];
+    const scale = /\btext-(?:xs|sm|base|lg|xl|[2-9]xl)\b/g;
+
+    for (const { file, source } of await componentFiles()) {
+      for (const match of withoutComments(source).matchAll(scale)) {
+        offenders.push(`${file}: ${match[0]}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
   it('kennt keine `dark:`-Variante — das Schema tauscht Tokens, nicht Klassen', async () => {
     const offenders: string[] = [];
 
@@ -105,13 +127,32 @@ describe('FA-UI-01 Alle Werte stammen aus den Tokens', () => {
   });
 });
 
-describe('FA-UI-02 Nur das Blatt ist erhaben', () => {
-  it('verwendet keine andere Erhebung als `shadow-sheet`', async () => {
+/**
+ * Drei Erhebungsstufen, nicht mehr (§1, §2.3).
+ *
+ * Die erste Fassung des Entwurfs erlaubte neben dem Blatt gar keine Erhebung.
+ * Diese Regel ließ keinen Platz für Flächen, die *über* dem Inhalt liegen —
+ * Dialog, Toast, Auswahlleiste. Seit M5.8 gibt es dafür eine mittlere Stufe.
+ *
+ * Was der Test weiterhin verhindert: eine vierte Stufe, ein frei gewählter
+ * Schatten und der Rückfall in die Kartenwut. `shadow-raised` ist eine
+ * Ausnahme mit Begründungspflicht — der Test zählt sie, damit ihre Ausbreitung
+ * im Diff sichtbar wird.
+ */
+describe('FA-UI-02 Drei Erhebungsstufen', () => {
+  const RAISED_SURFACES = [
+    'src/ui/components/dialog.tsx',
+    'src/ui/components/toast.tsx',
+    'src/app/invoices/selection-bar.tsx',
+    'src/ui/components/metric.tsx',
+  ];
+
+  it('verwendet keine andere Erhebung als `shadow-sheet` und `shadow-raised`', async () => {
     const offenders: string[] = [];
 
     for (const { file, source } of await componentFiles()) {
       for (const match of withoutComments(source).matchAll(/\bshadow-[a-z0-9-]+/g)) {
-        if (match[0] !== 'shadow-sheet') {
+        if (match[0] !== 'shadow-sheet' && match[0] !== 'shadow-raised') {
           offenders.push(`${file}: ${match[0]}`);
         }
       }
@@ -120,12 +161,40 @@ describe('FA-UI-02 Nur das Blatt ist erhaben', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('verwendet keinen anderen Radius als `rounded-control`', async () => {
+  it('hebt nur die Flächen, die über dem Inhalt liegen', async () => {
     const offenders: string[] = [];
 
     for (const { file, source } of await componentFiles()) {
+      if (withoutComments(source).includes('shadow-raised') && !RAISED_SURFACES.includes(file)) {
+        offenders.push(file);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('trägt `shadow-sheet` nur dort, wo wirklich ein Beleg steht', async () => {
+    // Beide Stellen zeigen dieselbe Sache: das gesetzte Dokument. Die eine im
+    // Beleg, die andere in der Vorschau der Vorlage, die ihn setzt.
+    const sheets = ['src/app/invoices/[id]/page.tsx', 'src/app/settings/templates/template-forms.tsx'];
+    const offenders: string[] = [];
+
+    for (const { file, source } of await componentFiles()) {
+      if (withoutComments(source).includes('shadow-sheet') && !sheets.includes(file)) {
+        offenders.push(file);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('verwendet keinen anderen Radius als die beiden aus dem Tokensatz', async () => {
+    const offenders: string[] = [];
+    const allowed = ['rounded-control', 'rounded-surface', 'rounded-none'];
+
+    for (const { file, source } of await componentFiles()) {
       for (const match of withoutComments(source).matchAll(/\brounded(-[a-z0-9-]+)?\b/g)) {
-        if (match[0] !== 'rounded-control' && match[0] !== 'rounded-none') {
+        if (!allowed.includes(match[0])) {
           offenders.push(`${file}: ${match[0]}`);
         }
       }
@@ -134,11 +203,22 @@ describe('FA-UI-02 Nur das Blatt ist erhaben', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('definiert genau eine Erhebungsstufe im Tokensatz', () => {
+  it('definiert genau drei Erhebungsstufen im Tokensatz', () => {
     const css = readFileSync(path.join(projectRoot, 'src/app/globals.css'), 'utf8');
     const shadows = [...css.matchAll(/^\s*--shadow-([a-z0-9-]+):/gm)].map((match) => match[1]);
 
-    expect(shadows).toEqual(['sheet']);
+    // Die dritte Stufe ist „keine" und steht nicht im Tokensatz. Jeder Name
+    // darf mehrfach vorkommen — das dunkle Schema überschreibt beide.
+    expect([...new Set(shadows)].sort()).toEqual(['raised', 'sheet']);
+  });
+
+  it('überschreibt beide Erhebungen im dunklen Schema', () => {
+    const css = readFileSync(path.join(projectRoot, 'src/app/globals.css'), 'utf8');
+    const dark = css.slice(css.indexOf('prefers-color-scheme: dark'));
+
+    // Ein Schatten aus dunklem Grün auf dunklem Grund ist keiner.
+    expect(dark).toContain('--shadow-raised');
+    expect(dark).toContain('--shadow-sheet');
   });
 });
 
@@ -252,15 +332,19 @@ describe('Dateizugriffe überstehen das Bündeln', () => {
   });
 });
 
-describe('FA-UI-08 Bewegung nur bei Zustandswechsel und beim Festschreiben', () => {
-  it('verwendet ausschließlich die drei festgelegten Dauern', async () => {
+describe('FA-UI-08 Bewegung nur aus dem Katalog des Entwurfs', () => {
+  it('verwendet ausschließlich die festgelegten Dauern', async () => {
     const offenders: string[] = [];
 
     for (const { file, source } of await componentFiles()) {
       for (const match of withoutComments(source).matchAll(/\bduration-\S*/g)) {
+        // Der Katalog aus §2.4. Der Ladebalken steht nicht darin: Er läuft
+        // fortlaufend und trägt seine Dauer in `globals.css`, nicht als
+        // Utility am Element.
         const allowed = [
           'duration-(--duration-state)',
           'duration-(--duration-dialog)',
+          'duration-(--duration-toast)',
           'duration-(--duration-stamp)',
         ];
         const value = match[0].replace(/["'`}].*$/, '');
@@ -279,5 +363,26 @@ describe('FA-UI-08 Bewegung nur bei Zustandswechsel und beim Festschreiben', () 
     expect(css).toContain('prefers-reduced-motion: reduce');
     expect(css).toContain('transition-duration: 0ms !important');
     expect(css).toContain('animation-duration: 0ms !important');
+  });
+
+  it('nennt jede Dauer als Token, keine als Zahl', () => {
+    const css = readFileSync(path.join(projectRoot, 'src/app/globals.css'), 'utf8');
+    const durations = [...css.matchAll(/^\s*--duration-([a-z]+):/gm)].map((match) => match[1]);
+
+    expect(durations.sort()).toEqual(['dialog', 'progress', 'stamp', 'state', 'toast']);
+  });
+
+  /**
+   * Keyframes sind Bewegung, die kein `duration-`-Utility trägt.
+   *
+   * Ohne diese Prüfung wäre der Katalog aus §2.4 an einer Stelle offen: Eine
+   * Animation ließe sich in `globals.css` erfinden, ohne dass eine der übrigen
+   * Prüfungen anschlüge.
+   */
+  it('kennt nur die beiden benannten Keyframes', () => {
+    const css = readFileSync(path.join(projectRoot, 'src/app/globals.css'), 'utf8');
+    const frames = [...css.matchAll(/@keyframes\s+([a-z-]+)/g)].map((match) => match[1]);
+
+    expect(frames.sort()).toEqual(['faktura-progress', 'faktura-stamp']);
   });
 });

@@ -90,15 +90,29 @@
 
   /* ── Raster, Radius, Erhebung (§2.3) ──────────────────────────────────── */
   --radius-control: 3px;
+  /* Gehobene Flächen: Dialog, Toast, Auswahlleiste, Kennzahlenfläche. */
+  --radius-surface: 8px;
 
-  /* Genau zwei Stufen: keine — und das Blatt. Dialoge teilen die zweite. */
+  /*
+   * Drei Stufen (§1, §2.3): flach — gehoben — das Blatt.
+   *
+   * Die mittlere ist eine Ausnahme mit Begründungspflicht, keine allgemeine
+   * Erlaubnis: Sie gilt für Flächen, die *über* dem Inhalt liegen. Eine Liste
+   * in eine Karte zu setzen bleibt ein Fehler — sie liegt nicht über dem
+   * Inhalt, sie ist der Inhalt.
+   */
+  --shadow-raised:
+    0 1px 2px rgb(28 31 28 / 0.05), 0 4px 12px -4px rgb(28 31 28 / 0.12);
   --shadow-sheet:
     0 1px 2px rgb(28 31 28 / 0.06), 0 12px 32px -8px rgb(28 31 28 / 0.18);
 
   /* ── Bewegung (§2.4) ──────────────────────────────────────────────────── */
   --duration-state: 120ms;
   --duration-dialog: 160ms;
+  --duration-toast: 200ms;
   --duration-stamp: 320ms;
+  /* Der Ladebalken läuft, solange gearbeitet wird — eine Umlaufdauer. */
+  --duration-progress: 1100ms;
 
   /* Feste Maße des Rahmens (§3, §7). Die Zonenhöhen sind festgelegt, damit ein
      späterer Organisationswechsler das Layout nicht verschiebt (FA-UI-15). */
@@ -110,6 +124,9 @@
   --spacing-sheet-height: 297mm;
   /* `--container-*` erzeugt die `max-w-*`-Utilities, `--spacing-*` die Maße. */
   --container-content: 1200px;
+  /* Dialogbreite (§5). Breiter gesetzt liest sich ein Erklärungsabsatz nicht
+     mehr in einem Blick, und genau dafür ist er da. */
+  --container-dialog: 480px;
 }
 
 /*
@@ -144,6 +161,18 @@
 
     --color-danger: #e89a9a;
     --color-danger-wash: #3a2020;
+
+    /*
+     * Erhebung im dunklen Schema.
+     *
+     * Ein Schatten aus dunklem Grün auf dunklem Grund ist keiner. Beide Stufen
+     * werden deshalb auf reines Schwarz mit höherer Deckkraft umgestellt — die
+     * Rangfolge zwischen ihnen bleibt dieselbe.
+     */
+    --shadow-raised:
+      0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px -4px rgb(0 0 0 / 0.55);
+    --shadow-sheet:
+      0 1px 2px rgb(0 0 0 / 0.45), 0 12px 32px -8px rgb(0 0 0 / 0.7);
   }
 }
 
@@ -188,8 +217,80 @@ table {
 }
 
 /*
- * Bewegung ist auf Zustandswechsel und den Stempel beim Festschreiben
- * beschränkt (FA-UI-08). Wer sie abbestellt, bekommt gar keine (§2.4).
+ * Der Dialog erscheint (§2.4, FA-UI-17).
+ *
+ * Als Übergang statt als Keyframe: Ein `<dialog>` wechselt beim `showModal()`
+ * von `display: none` auf `block`, und ein Übergang darüber braucht
+ * `allow-discrete` plus einen Startzustand. Nachgebaut mit Klassen wäre das
+ * ein Zustand mehr in React — für 160 Millisekunden.
+ */
+dialog {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--duration-dialog) ease-out,
+    transform var(--duration-dialog) ease-out,
+    overlay var(--duration-dialog) allow-discrete,
+    display var(--duration-dialog) allow-discrete;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: none;
+}
+
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/*
+ * Der Ladebalken (§4.4, FA-UI-08).
+ *
+ * Unbestimmt: Die Anwendung weiß beim Setzen eines PDF nicht, wie weit sie
+ * ist, und ein Balken, der einen erfundenen Fortschritt zeigt, wäre eine
+ * Auskunft, die nicht stimmt. Der Streifen läuft deshalb durch und sagt
+ * genau das eine, was zutrifft — es wird gearbeitet.
+ */
+@keyframes faktura-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.progress-sweep {
+  animation: faktura-progress var(--duration-progress) ease-in-out infinite;
+}
+
+/*
+ * Der Stempel beim Festschreiben (§2.4, FA-UI-07).
+ *
+ * Der einzige Anlass, bei dem Bewegung etwas feiert statt zu erklären: Der
+ * Beleg ist ab hier ein Dokument mit Nummer und nicht mehr rücknehmbar.
+ */
+@keyframes faktura-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.06) rotate(-1.5deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.stamp-in {
+  animation: faktura-stamp var(--duration-stamp) ease-out both;
+}
+
+/*
+ * Bewegung ist auf den Katalog aus §2.4 beschränkt (FA-UI-08). Wer sie
+ * abbestellt, bekommt gar keine — einschließlich Stempel und Ladebalken.
  */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -199,5 +300,10 @@ table {
     animation-iteration-count: 1 !important;
     transition-duration: 0ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Der Balken steht dann still und bleibt als Fläche sichtbar (§2.4). */
+  .progress-sweep {
+    transform: none !important;
   }
 }

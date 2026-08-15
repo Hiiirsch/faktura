@@ -85,7 +85,7 @@ export default async function CustomerDetailPage({
             >
               {messages.common.back}
             </Link>
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="text-title font-semibold text-ink">
               {customer.companyName ?? customer.contactName ?? customer.customerNumber}
             </h1>
             <p className="text-ui text-ink-muted">

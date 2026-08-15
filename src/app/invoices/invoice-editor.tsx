@@ -31,6 +31,7 @@ import { addDays, parsePlainDate } from '@/domain/time/plain-date';
 import { TAX_SCHEMES, type TaxScheme, taxCategoryForScheme } from '@/domain/tax/tax-scheme';
 import { messages, taxCategoryLabels, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import { DateField } from '@/ui/components/date-field';
 import {
   Alert,
   SECTION_CLASS,
@@ -506,6 +507,29 @@ export function InvoiceEditor({
       ) : null}
       {saveState.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
 
+      {/*
+        Der eine inszenierte Moment (§2.4, FA-UI-07).
+
+        Die vergebene Nummer wird eingestempelt — Skalierung, leichte Rotation,
+        Deckkraft. Sie steht hier und nicht im Blatt, weil das Blatt ein
+        eingebettetes PDF ist: In den Betrachter des Browsers hinein lässt sich
+        nichts animieren. Sie erscheint dafür genau dort, wo der Blick beim
+        Drücken war.
+
+        `prefers-reduced-motion` schaltet die Bewegung ab; die Nummer erscheint
+        dann schlicht. Beides regelt `globals.css`, nicht dieser Zweig.
+      */}
+      {issueState.status === 'issued' ? (
+        <p className="stamp-in flex items-baseline gap-3 border-t border-rule pt-6">
+          <span className="text-label font-semibold uppercase text-ink-muted">
+            {messages.invoices.issuedAs}
+          </span>
+          <span className="font-mono text-title font-medium text-ink">
+            {issueState.invoiceNumber}
+          </span>
+        </p>
+      ) : null}
+
       <FormSection title={messages.invoices.viewHeading}>
         <BuyerFieldset
           initial={initial.buyer}
@@ -539,36 +563,26 @@ export function InvoiceEditor({
         </label>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-ui font-medium">{messages.invoices.issueDate}</span>
-            <input
-              name="issueDate"
-              type="date"
-              value={issueDate}
-              onChange={(event) => {
-                setIssueDate(event.target.value);
-                applyDueDate(event.target.value, customerId);
-                touch();
-              }}
-              className={INPUT_CLASS}
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-ui font-medium">{messages.invoices.dueDate}</span>
-            <input
-              name="dueDate"
-              type="date"
-              value={dueDate}
-              onChange={(event) => {
-                setDueDate(event.target.value);
-                touch();
-              }}
-              className={INPUT_CLASS}
-            />
-            <span className="text-ui text-ink-muted">
-              {messages.invoices.dueDateHint}
-            </span>
-          </label>
+          <DateField
+            name="issueDate"
+            label={messages.invoices.issueDate}
+            value={issueDate}
+            onChange={(next) => {
+              setIssueDate(next);
+              applyDueDate(next, customerId);
+              touch();
+            }}
+          />
+          <DateField
+            name="dueDate"
+            label={messages.invoices.dueDate}
+            value={dueDate}
+            hint={messages.invoices.dueDateHint}
+            onChange={(next) => {
+              setDueDate(next);
+              touch();
+            }}
+          />
           <TextField
             name="purchaseOrderRef"
             label={messages.invoices.purchaseOrderRef}
@@ -577,27 +591,17 @@ export function InvoiceEditor({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-ui font-medium">{messages.invoices.serviceDateFrom}</span>
-            <input
-              name="serviceDateFrom"
-              type="date"
-              defaultValue={initial.serviceDateFrom}
-              className={INPUT_CLASS}
-            />
-            <span className="text-ui text-ink-muted">
-              {messages.invoices.serviceDateHint}
-            </span>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-ui font-medium">{messages.invoices.serviceDateTo}</span>
-            <input
-              name="serviceDateTo"
-              type="date"
-              defaultValue={initial.serviceDateTo}
-              className={INPUT_CLASS}
-            />
-          </label>
+          <DateField
+            name="serviceDateFrom"
+            label={messages.invoices.serviceDateFrom}
+            defaultValue={initial.serviceDateFrom}
+            hint={messages.invoices.serviceDateHint}
+          />
+          <DateField
+            name="serviceDateTo"
+            label={messages.invoices.serviceDateTo}
+            defaultValue={initial.serviceDateTo}
+          />
         </div>
 
         <label className="flex flex-col gap-1.5">

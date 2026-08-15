@@ -69,6 +69,13 @@ export const messages = {
       'Es gibt keine Selbstregistrierung. Das erste Konto wird auf dem Server angelegt.',
   },
   dashboard: {
+    metricOutstanding: 'Offen gesamt',
+    metricOverdue: 'Davon überfällig',
+    metricRevenueMonth: 'Umsatz laufender Monat',
+    metricRevenueYear: 'Umsatz {year}',
+    metricNet: 'netto',
+    metricInvoiceOne: '1 Rechnung',
+    metricInvoices: '{count} Rechnungen',
     heading: 'Übersicht',
     signedInAs: 'Angemeldet als',
     securitySettings: 'Sicherheit',
@@ -94,6 +101,10 @@ export const messages = {
   common: {
     save: 'Speichern',
     cancel: 'Abbrechen',
+    close: 'Schließen',
+    datePlaceholder: 'TT.MM.JJJJ',
+    datePick: '{field} im Kalender wählen',
+    working: 'Wird ausgeführt',
     back: 'Zurück',
     saved: 'Die Änderungen wurden gespeichert.',
     optional: 'optional',
@@ -355,13 +366,34 @@ export const messages = {
     sortGross: 'Betrag',
     sortDueDate: 'Fälligkeit',
 
+    // Schnellaktionen und Mehrfachauswahl in der Liste (FA-UI-19, -20).
+    rowActions: 'Aktionen',
+    selectRow: 'Rechnung auswählen',
+    selectionAny: 'Ausgewählte Rechnungen',
+    selectionCount: '{count} Rechnungen gewählt',
+    selectionCountOne: '1 Rechnung gewählt',
+    bulkMarkPaid: 'Als bezahlt markieren',
+    bulkDeleteDrafts: 'Entwürfe löschen',
+    actionMarkPaid: 'Als bezahlt markieren',
+    actionDownload: 'PDF herunterladen',
+    actionDuplicate: 'Duplizieren',
+    actionCancel: 'Stornieren',
+
+    noticePaid: 'Rechnung als bezahlt markiert.',
+    noticePaidMany: '{count} Rechnungen als bezahlt markiert.',
+    noticeCancelled: 'Rechnung storniert. Die Stornorechnung trägt eine eigene Nummer.',
+    noticeDuplicated: 'Rechnung dupliziert.',
+    noticeDraftsDeleted: '{count} Entwürfe gelöscht.',
+
     saveDraft: 'Als Entwurf speichern',
     issue: 'Festschreiben',
+    issuedAs: 'Festgeschrieben als',
     issueConfirmTitle: 'Rechnung festschreiben?',
     issueConfirm:
       'Beim Festschreiben erhält die Rechnung ihre endgültige Nummer. Danach sind Positionen, Beträge, Daten und Kundenbezug nicht mehr änderbar — eine fehlerhafte Rechnung kann nur noch storniert werden. Das ist gesetzlich so vorgeschrieben.',
     duplicate: 'Duplizieren',
     deleteDraft: 'Entwurf löschen',
+    deleteConfirmTitle: 'Entwurf löschen?',
     deleteConfirm:
       'Der Entwurf wird endgültig entfernt. Da er noch keine Nummer trägt, entsteht dadurch keine Lücke im Nummernkreis.',
     cancelInvoice: 'Stornieren',
@@ -379,8 +411,10 @@ export const messages = {
     paymentNote: 'Notiz',
     paymentAdd: 'Zahlung erfassen',
     paymentRemove: 'Zahlung zurücknehmen',
+    paymentRemoveTitle: 'Zahlung zurücknehmen?',
     paymentRemoveConfirm: 'Die Zahlung wird entfernt und der Status neu abgeleitet.',
     markPaid: 'Als vollständig bezahlt markieren',
+    markPaidTitle: 'Als bezahlt markieren?',
     markPaidHint: 'Erfasst eine Zahlung über den offenen Restbetrag.',
     nothingOutstanding: 'Es ist nichts mehr offen.',
 
@@ -438,6 +472,7 @@ export const messages = {
     duplicate: 'Duplizieren',
     duplicateSuffix: 'Kopie',
     remove: 'Vorlage löschen',
+    removeConfirmTitle: 'Vorlage entfernen?',
     removeConfirm:
       'Die Vorlage wird gelöscht. Bereits erzeugte PDFs bleiben unverändert — sie liegen als Datei vor.',
     removeDefaultRejected: 'Die Standardvorlage lässt sich nicht löschen. Zuerst eine andere zum Standard machen.',

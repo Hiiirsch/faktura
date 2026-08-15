@@ -81,9 +81,9 @@ jeweils neuesten Fassung, beide durch Fehlschläge belegt:
   Nutzen den Aufwand im Container rechtfertigt.
 
 Laufzeit: Node 24.13.0 (`.nvmrc`), Next 16.3.0, React 19.2.8, Tailwind 4.3.3,
-Vitest 4.1.10, Zod 4.4.3.
+Vitest 4.1.10, Zod 4.4.3, lucide-react 1.31.0.
 
-## Gestaltung (seit M5.5b)
+## Gestaltung (seit M5.5b, überarbeitet in M5.8)
 
 `src/app/globals.css` ist die **einzige** Stelle mit Farbwerten, Schriftgrößen,
 Radien und Erhebungen. Im Komponentencode stehen ausschließlich die daraus
@@ -96,13 +96,39 @@ die es nicht gibt. `tests/architecture/design-tokens.test.ts` fängt zusätzlich
 was der Compiler nicht sieht: Literalwerte in Attributen, `outline: none` ohne
 Ersatz, Verweise ins Netz.
 
+Dasselbe Löschen hat allerdings eine stille Seite: `text-3xl` erzeugt keine
+Regel mehr und fällt deshalb **nicht auf** — die Überschrift erscheint einfach
+in der geerbten Größe. Drei Seiten trugen so seit M5.5b eine Größe, die es
+nicht gab. Der Architekturtest prüft die Schriftskala jetzt eigens.
+
 **Es gibt keine `dark:`-Variante im Komponentencode.** Das dunkle Schema
 überschreibt Tokenwerte unter `prefers-color-scheme: dark`; kein Bauteil kennt den
 Unterschied. Ausgenommen ist `--sheet`: Das Blatt bleibt auch nachts weiß, und
 `--sheet-ink` trägt dafür die feste dunkle Schrift.
 
-Genau **zwei** Erhebungsstufen: keine — und das Blatt (`shadow-sheet`). Getrennt
-wird sonst durch `1px solid var(--rule)` und Weißraum, nicht durch Karten.
+**Drei** Erhebungsstufen (seit M5.8): keine — `shadow-raised` — das Blatt
+(`shadow-sheet`). Die mittlere gilt ausschließlich für Flächen, die *über* dem
+Inhalt liegen: Dialog, Toast, Auswahlleiste, Kennzahlenfläche. Eine Liste in
+eine Karte zu setzen bleibt ein Fehler — sie liegt nicht über dem Inhalt, sie
+ist der Inhalt. Der Architekturtest führt dafür eine Namensliste, damit die
+Ausbreitung der Ausnahme im Diff sichtbar wird. Getrennt wird sonst weiterhin
+durch `1px solid var(--rule)` und Weißraum.
+
+Bewegung folgt dem Katalog aus §2.4 des Entwurfs; jede Dauer ist ein Token
+(`--duration-state`, `-dialog`, `-toast`, `-stamp`, `-progress`). Es gibt genau
+zwei Keyframes, beide in `globals.css`: den Ladebalken und den Stempel beim
+Festschreiben. `prefers-reduced-motion` schaltet alles ab.
+
+Symbole kommen aus **einem** Satz (`lucide-react`, gepinnt) mit der Strichstärke
+aus `ICON_STROKE`. Ein Symbol ohne Beschriftung gibt es nicht: In der Navigation
+steht der Text daneben, bei Zeilenaktionen im `sr-only`-Element — ein
+Screenreader liest kein Piktogramm. Eingefärbt wird nie außer über
+`currentColor`.
+
+Bestätigungen laufen über `ConfirmDialog` (natives `<dialog>` mit
+`showModal()`), nicht über `window.confirm`: Das Browserfenster lässt sich nicht
+gestalten und erklärt die Folge nicht. Fokusfalle, Escape und Hintergrundsperre
+kommen vom Browser statt aus nachgebautem JavaScript.
 
 Schriften kommen aus `@fontsource/fira-sans` und `@fontsource/fira-mono` (nur der
 Latin-Ausschnitt, nur die Schnitte aus §2.2). Kein Font-CDN (FA-UI-04,
@@ -293,6 +319,32 @@ den Kundenmandanten über einen Vergleich, der bei `customerId IS NULL` nach
 SQLite-Semantik NULL ergibt und damit *durchließe*. Die Bedingung lautet jetzt
 ausdrücklich `NEW."customerId" IS NOT NULL AND …`.
 
+## Listenaktionen (seit M5.8)
+
+Zeilenaktionen und Mehrfachauswahl liegen in **einem** Formular um die ganze
+Tabelle — verschachtelte Formulare erlaubt HTML nicht. Daraus folgen zwei
+Dinge, die man beide erst im Browser merkt:
+
+- Die Belegkennung wird an die Aktion **gebunden** (`action.bind(null, id)`),
+  nicht über `name`/`value` des Knopfes übertragen. React belegt `name` eines
+  absendenden Knopfes selbst, um die Aktionskennung für den Betrieb ohne
+  JavaScript zu übertragen (`$ACTION_ID_…`), und überschreibt dabei einen
+  eigenen Namen. Das Feld kam serverseitig nie an, und die Aktion brach still
+  ab — kein Fehler, keine Meldung, nur nichts.
+- Die Auswahlleiste wird über `group-has-[input:checked]` in CSS eingeblendet,
+  nicht über React-Zustand. So funktioniert die Auswahl ohne JavaScript; nur
+  die **Anzahl** der gewählten Belege zählt ein Effekt nach, und ohne
+  JavaScript bleibt es bei der allgemeinen Beschriftung.
+
+Rückmeldung nach einer Schnellaktion kommt aus der Adresse
+(`?erledigt=<schlüssel>`), nicht aus einem Zustandsspeicher: Die Aktionen laufen
+in einem Formular ohne Rückkanal, ein POST endet ohnehin besser mit einer
+Umleitung, und die Meldung soll ein Neuladen **nicht** überleben — sie gilt
+einer Handlung, nicht einem Zustand.
+
+Sammelaktionen sind bewusst nur zwei: bezahlt markieren und Entwürfe löschen.
+Stornieren bleibt einzeln — es erzeugt je Beleg eine nummerierte Gutschrift.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -307,6 +359,7 @@ ausdrücklich `NEW."customerId" IS NOT NULL AND …`.
 | M5.5b | Gestaltung: Tokensatz, Schriften, Rahmen, Bestandsscreens auf Tokens | umgesetzt |
 | M5.6 | Vorschau zeigt das erzeugte PDF statt einer HTML-Nachbildung | umgesetzt |
 | M5.7 | Empfänger ohne Kundendatensatz: Felder am Beleg oder freier Block | umgesetzt |
+| M5.8 | Überarbeitete Oberfläche: Entwurf, Dialog/Toast, Zeilenaktionen, Zweispaltigkeit | umgesetzt |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
 

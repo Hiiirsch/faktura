@@ -5,8 +5,14 @@ import type { CurrencyCode } from '@/domain/codes/currency-code';
 import { cents } from '@/domain/money/money';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
-import { ConfirmButton } from '@/ui/components/confirm-button';
-import { SECTION_CLASS, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { DateField } from '@/ui/components/date-field';
+import { ConfirmDialog } from '@/ui/components/dialog';
+import {
+  SECTION_CLASS,
+  INPUT_CLASS,
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from '@/ui/components/form';
 import { formatAmount, formatMoney } from '@/ui/format';
 
 import { addPaymentAction, markPaidAction, removePaymentAction } from '../actions';
@@ -82,9 +88,17 @@ export function PaymentSection({
                       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
                       <input type="hidden" name="invoiceId" value={invoiceId} />
                       <input type="hidden" name="paymentId" value={payment.id} />
-                      <ConfirmButton message={messages.invoices.paymentRemoveConfirm}>
-                        {messages.invoices.paymentRemove}
-                      </ConfirmButton>
+                      <ConfirmDialog
+                        title={messages.invoices.paymentRemoveTitle}
+                        message={messages.invoices.paymentRemoveConfirm}
+                        confirmLabel={messages.invoices.paymentRemove}
+                        tone="danger"
+                        trigger={
+                          <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                            {messages.invoices.paymentRemove}
+                          </button>
+                        }
+                      />
                     </form>
                   </td>
                 </tr>
@@ -114,16 +128,12 @@ export function PaymentSection({
                 className={`${INPUT_CLASS} w-32 text-right tabular-nums`}
               />
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-ui font-medium">{messages.invoices.paymentDate}</span>
-              <input
-                name="paidAt"
-                type="date"
-                required
-                defaultValue={today}
-                className={INPUT_CLASS}
-              />
-            </label>
+            <DateField
+              name="paidAt"
+              label={messages.invoices.paymentDate}
+              defaultValue={today}
+              required
+            />
             <label className="flex flex-col gap-1.5">
               <span className="text-ui font-medium">{messages.invoices.paymentMethod}</span>
               <input name="method" className={INPUT_CLASS} />
@@ -142,9 +152,16 @@ export function PaymentSection({
             <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
             <input type="hidden" name="invoiceId" value={invoiceId} />
             <input type="hidden" name="paidAt" value={today} />
-            <ConfirmButton message={messages.invoices.markPaidHint}>
-              {messages.invoices.markPaid}
-            </ConfirmButton>
+            <ConfirmDialog
+              title={messages.invoices.markPaidTitle}
+              message={messages.invoices.markPaidHint}
+              confirmLabel={messages.invoices.markPaid}
+              trigger={
+                <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                  {messages.invoices.markPaid}
+                </button>
+              }
+            />
             <span className="text-ui text-ink-muted">
               {messages.invoices.markPaidHint}
             </span>

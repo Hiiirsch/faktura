@@ -8,7 +8,7 @@ import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { TEMPLATE_SETTINGS_PATH, templatePath } from '@/routes';
-import { ConfirmButton } from '@/ui/components/confirm-button';
+import { ConfirmDialog } from '@/ui/components/dialog';
 import { FOCUS_RING, QUIET_BUTTON_CLASS } from '@/ui/components/form';
 import { EmptyState, PageHeader } from '@/ui/components/page';
 import { DataTable, type Column } from '@/ui/components/table';
@@ -78,12 +78,17 @@ export default async function TemplateSettingsPage(): Promise<ReactNode> {
             <form action={deleteTemplateAction}>
               <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
               <input type="hidden" name="templateId" value={template.id} />
-              <ConfirmButton
+              <ConfirmDialog
+                title={messages.templates.removeConfirmTitle}
                 message={messages.templates.removeConfirm}
-                className={QUIET_BUTTON_CLASS}
-              >
-                {messages.templates.remove}
-              </ConfirmButton>
+                confirmLabel={messages.templates.remove}
+                tone="danger"
+                trigger={
+                  <button type="submit" className={QUIET_BUTTON_CLASS}>
+                    {messages.templates.remove}
+                  </button>
+                }
+              />
             </form>
           )}
         </span>

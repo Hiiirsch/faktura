@@ -120,4 +120,49 @@ if (!issued.ok) {
   throw new Error('Der Beleg für den Browsertest ließ sich nicht festschreiben.');
 }
 
+/*
+ * Ein zweiter festgeschriebener Beleg.
+ *
+ * Die Browsertests teilen sich **einen** Server und damit einen Bestand; sie
+ * setzen ihn nicht zwischen den Fällen zurück. Mit nur einem offenen Beleg
+ * verbrauchte ihn der erste schreibende Test, und der nächste fände keinen
+ * mehr — der Fehlschlag hinge dann an der Reihenfolge, nicht an der Sache.
+ */
+const second = await createDraftInvoice(
+  organization,
+  {
+    buyer: customerBuyer(customer.id),
+    taxScheme: 'STANDARD',
+    currency: 'EUR',
+    issueDate: '2026-03-02',
+    serviceDateFrom: '2026-02-01',
+    serviceDateTo: null,
+    dueDate: '2026-03-16',
+    introText: null,
+    outroText: null,
+    purchaseOrderRef: null,
+    templateId: null,
+    lines: [
+      {
+        position: 1,
+        name: 'Workshop',
+        description: null,
+        quantityScaled: 10_000,
+        unitCode: 'HUR',
+        unitPriceCents: 12_000,
+        taxRateBasisPoints: 1_900,
+        taxCategory: 'S',
+        discountBasisPoints: 0,
+      },
+    ],
+  },
+  ACTOR,
+  null,
+);
+
+const secondIssued = await issueInvoice(organization, second.id, ACTOR, null);
+if (!secondIssued.ok) {
+  throw new Error('Der zweite Beleg für den Browsertest ließ sich nicht festschreiben.');
+}
+
 await disconnectDatabase();

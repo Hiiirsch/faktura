@@ -21,6 +21,7 @@ import {
   markAsFullyPaid,
   removePayment,
 } from '@/application/invoices/payments';
+import { getAppTimeZone } from '@/application/system/display-settings';
 import { isTaxCategoryCode } from '@/domain/codes/tax-category';
 import { isBuyerMode } from '@/domain/invoice/buyer';
 import { isUnitCode } from '@/domain/codes/unit-code';
@@ -28,7 +29,7 @@ import type { CompletenessViolation } from '@/domain/invoice/completeness';
 import { parseCents } from '@/domain/money/money';
 import { parseQuantity } from '@/domain/quantity/quantity';
 import { isTaxScheme } from '@/domain/tax/tax-scheme';
-import { parsePlainDate } from '@/domain/time/plain-date';
+import { parsePlainDate, todayIn } from '@/domain/time/plain-date';
 import { messages } from '@/i18n/de';
 import { INVOICES_PATH, invoicePath } from '@/routes';
 import { parseGermanDecimal } from '@/ui/format';
@@ -525,4 +526,191 @@ export async function removePaymentAction(formData: FormData): Promise<void> {
 
   revalidatePath(invoicePath(invoiceId.data));
   revalidatePath(INVOICES_PATH);
+}
+
+/**
+ * Schnellaktionen aus der Rechnungsliste (FA-UI-19, FA-UI-20).
+ *
+ * Bezahlt markieren, stornieren, duplizieren und Entwürfe löschen waren bisher
+ * nur über die Detailseite erreichbar — drei Klicks und ein Seitenwechsel für
+ * eine Handlung, die man reihenweise ausführt.
+ *
+ * **Warum die Belegkennung gebunden wird statt im Formular zu stehen.** Alle
+ * Zeilenaktionen liegen in *einem* Formular — verschachtelte Formulare erlaubt
+ * HTML nicht. Der naheliegende Weg wäre, den absendenden Knopf über
+ * `name`/`value` sagen zu lassen, welche Zeile gemeint ist. Er funktioniert
+ * nicht: React belegt `name` des Knopfes selbst, um die Aktionskennung für den
+ * Betrieb ohne JavaScript zu übertragen (`$ACTION_ID_…`), und überschreibt
+ * dabei den eigenen Namen. Das Feld kam serverseitig nie an; die Aktion brach
+ * still ab. Gebunden wird die Kennung deshalb an die Funktion — Next
+ * überträgt sie signiert als eigenes Argument.
+ *
+ * **Warum sie umleiten statt einen Zustand zurückzugeben.** Alle vier laufen
+ * in einem Formular, das ohne JavaScript abgesendet wird; es gibt keinen
+ * Rückkanal für eine Meldung. Die Umleitung auf dieselbe Seite mit
+ * `?erledigt=<schlüssel>` trägt sie stattdessen in der Adresse — sie überlebt
+ * kein Neuladen, was richtig ist (sie gilt einer Handlung, nicht einem
+ * Zustand), und ein POST endet ohnehin besser mit einer Umleitung als mit
+ * einer Antwort, die sich erneut absenden lässt.
+ */
+export type ListNotice =
+  | 'paid'
+  | 'paidMany'
+  | 'cancelled'
+  | 'duplicated'
+  | 'draftsDeleted';
+
+function listPathWith(notice: ListNotice, count?: number): string {
+  const params = new URLSearchParams({ erledigt: notice });
+  if (count !== undefined) {
+    params.set('anzahl', String(count));
+  }
+  return `${INVOICES_PATH}?${params.toString()}`;
+}
+
+/** Die gewählten Belege einer Mehrfachauswahl. */
+function selectedIds(formData: FormData): readonly string[] {
+  return formData
+    .getAll('invoiceIds')
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0 && value.length <= 64);
+}
+
+export async function quickMarkPaidAction(
+  invoiceId: string,
+  formData: FormData,
+): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+
+  const id = idSchema.safeParse(invoiceId);
+  if (!id.success) {
+    return;
+  }
+
+  // Bezahlt wurde heute — für ein abweichendes Datum gibt es das Formular auf
+  // der Belegseite. Die Schnellaktion ist für den Regelfall da, nicht für den
+  // Nachtrag.
+  const result = await markAsFullyPaid(
+    session.organization,
+    id.data,
+    todayIn(getAppTimeZone(), new Date()),
+    null,
+  );
+
+  revalidatePath(INVOICES_PATH);
+  revalidatePath(invoicePath(id.data));
+
+  if (result.ok) {
+    redirect(listPathWith('paid'));
+  }
+  redirect(INVOICES_PATH);
+}
+
+export async function quickCancelAction(invoiceId: string, formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  const context = await readRequestContext();
+
+  const id = idSchema.safeParse(invoiceId);
+  if (!id.success) {
+    return;
+  }
+
+  const result = await cancelInvoice(
+    session.organization,
+    id.data,
+    null,
+    session.userId,
+    context.ipAddress,
+  );
+
+  revalidatePath(INVOICES_PATH);
+  revalidatePath(invoicePath(id.data));
+
+  if (result.ok) {
+    redirect(listPathWith('cancelled'));
+  }
+  redirect(INVOICES_PATH);
+}
+
+export async function quickDuplicateAction(
+  invoiceId: string,
+  formData: FormData,
+): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  const context = await readRequestContext();
+
+  const id = idSchema.safeParse(invoiceId);
+  if (!id.success) {
+    return;
+  }
+
+  const result = await duplicateInvoice(
+    session.organization,
+    id.data,
+    session.userId,
+    context.ipAddress,
+  );
+  revalidatePath(INVOICES_PATH);
+
+  // Anders als die übrigen: Ein Duplikat will bearbeitet werden, also führt
+  // der Weg dorthin und nicht zurück in die Liste.
+  if (result.ok) {
+    redirect(invoicePath(result.id));
+  }
+  redirect(INVOICES_PATH);
+}
+
+/**
+ * Sammelaktion: mehrere Belege als vollständig bezahlt markieren.
+ *
+ * Belege, auf die das nicht zutrifft (Entwürfe, bereits bezahlte, stornierte),
+ * werden übergangen statt die ganze Aktion scheitern zu lassen — gezählt wird,
+ * was tatsächlich geschehen ist, und genau diese Zahl nennt die Meldung.
+ */
+export async function bulkMarkPaidAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+
+  const ids = selectedIds(formData);
+  const paidAt = todayIn(getAppTimeZone(), new Date());
+  let changed = 0;
+
+  for (const id of ids) {
+    const result = await markAsFullyPaid(session.organization, id, paidAt, null);
+    if (result.ok) {
+      changed += 1;
+      revalidatePath(invoicePath(id));
+    }
+  }
+
+  revalidatePath(INVOICES_PATH);
+  redirect(listPathWith('paidMany', changed));
+}
+
+export async function bulkDeleteDraftsAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  const context = await readRequestContext();
+
+  const ids = selectedIds(formData);
+  let changed = 0;
+
+  for (const id of ids) {
+    const result = await deleteDraftInvoice(
+      session.organization,
+      id,
+      session.userId,
+      context.ipAddress,
+    );
+    if (result.ok) {
+      changed += 1;
+    }
+  }
+
+  revalidatePath(INVOICES_PATH);
+  redirect(listPathWith('draftsDeleted', changed));
 }

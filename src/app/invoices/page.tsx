@@ -1,3 +1,4 @@
+import { BanknoteArrowUp, Copy, Download, Ban } from 'lucide-react';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -17,19 +18,32 @@ import { cents } from '@/domain/money/money';
 import { can } from '@/domain/policy/can';
 import { daysBetween, plainDate } from '@/domain/time/plain-date';
 import { messages } from '@/i18n/de';
-import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { INVOICES_PATH, invoicePath, NEW_INVOICE_PATH } from '@/routes';
+import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
+import { INVOICES_PATH, invoicePath, invoicePdfPath, NEW_INVOICE_PATH } from '@/routes';
 import {
   FOCUS_RING,
   INPUT_CLASS,
   PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from '@/ui/components/form';
+import { DateField } from '@/ui/components/date-field';
+import { ConfirmDialog } from '@/ui/components/dialog';
+import { IconButton, IconLink } from '@/ui/components/icon';
 import { EmptyState, PageHeader } from '@/ui/components/page';
+import { PendingBar } from '@/ui/components/progress-bar';
+import { Toast } from '@/ui/components/toast';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { DataTable, type Column } from '@/ui/components/table';
 
 import { AppShell } from '../app-shell';
+
+import {
+  type ListNotice,
+  quickCancelAction,
+  quickDuplicateAction,
+  quickMarkPaidAction,
+} from './actions';
+import { SelectionBar } from './selection-bar';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +120,32 @@ function StatusTabs({ current }: { readonly current: string }): ReactNode {
   );
 }
 
+/**
+ * Die Meldung nach einer Schnellaktion (FA-UI-18).
+ *
+ * Sie kommt aus der Adresse, nicht aus einem Zustandsspeicher — die Begründung
+ * steht im Kopf von `src/ui/components/toast.tsx`. Ein unbekannter Schlüssel
+ * ergibt keine Meldung statt einer erfundenen.
+ */
+function noticeFor(key: string | undefined, count: string | undefined): string | null {
+  const amount = count ?? '0';
+
+  switch (key as ListNotice) {
+    case 'paid':
+      return messages.invoices.noticePaid;
+    case 'paidMany':
+      return messages.invoices.noticePaidMany.replace('{count}', amount);
+    case 'cancelled':
+      return messages.invoices.noticeCancelled;
+    case 'duplicated':
+      return messages.invoices.noticeDuplicated;
+    case 'draftsDeleted':
+      return messages.invoices.noticeDraftsDeleted.replace('{count}', amount);
+    default:
+      return null;
+  }
+}
+
 export default async function InvoicesPage({
   searchParams,
 }: {
@@ -122,6 +162,11 @@ export default async function InvoicesPage({
     listCustomers(session.organization),
   ]);
 
+  const notice = noticeFor(
+    typeof params.erledigt === 'string' ? params.erledigt : undefined,
+    typeof params.anzahl === 'string' ? params.anzahl : undefined,
+  );
+
   const currentStatus = typeof params.status === 'string' ? params.status : '';
   const currentSort = filter.sort ?? 'issueDate';
   const currentDirection = filter.direction ?? 'desc';
@@ -136,6 +181,69 @@ export default async function InvoicesPage({
       return null;
     }
     return daysBetween(plainDate(invoice.dueDate), reference);
+  }
+
+  /**
+   * Die Aktionen einer Zeile (FA-UI-19).
+   *
+   * Welche erscheinen, entscheidet der Zustand des Belegs zusammen mit `can()`
+   * (FA-UI-14): Ein Entwurf hat nichts zu stornieren und nichts zu bezahlen,
+   * ein stornierter Beleg auch nicht. Sichtbar werden sie bei Hover und bei
+   * Tastaturfokus in der Zeile.
+   *
+   * Alle liegen im selben Formular — verschachtelte Formulare erlaubt HTML
+   * nicht. Welche Zeile gemeint ist, sagt `name`/`value` des Absenders, welche
+   * Handlung sein `formAction`.
+   */
+  function rowActions(invoice: InvoiceListEntry): ReactNode {
+    const isOpen = invoice.status === 'ISSUED' || invoice.status === 'PARTIALLY_PAID';
+    const isIssued = invoice.invoiceNumber !== null;
+
+    return (
+      <>
+        {isOpen && can('recordPayment', 'invoice') ? (
+          <IconButton
+            icon={BanknoteArrowUp}
+            label={messages.invoices.actionMarkPaid}
+            formAction={quickMarkPaidAction.bind(null, invoice.id)}
+          />
+        ) : null}
+
+        {isIssued ? (
+          <IconLink
+            icon={Download}
+            label={messages.invoices.actionDownload}
+            href={invoicePdfPath(invoice.id)}
+          />
+        ) : null}
+
+        {can('duplicate', 'invoice') ? (
+          <IconButton
+            icon={Copy}
+            label={messages.invoices.actionDuplicate}
+            formAction={quickDuplicateAction.bind(null, invoice.id)}
+          />
+        ) : null}
+
+        {isOpen && can('cancel', 'invoice') ? (
+          <ConfirmDialog
+            title={messages.invoices.cancelConfirmTitle}
+            message={messages.invoices.cancelConfirm}
+            confirmLabel={messages.invoices.cancelInvoice}
+            formAction={quickCancelAction.bind(null, invoice.id)}
+            tone="danger"
+            trigger={
+              <IconButton
+                icon={Ban}
+                label={messages.invoices.actionCancel}
+                tone="danger"
+                formAction={quickCancelAction.bind(null, invoice.id)}
+              />
+            }
+          />
+        ) : null}
+      </>
+    );
   }
 
   const columns: readonly Column<InvoiceListEntry>[] = [
@@ -255,19 +363,12 @@ export default async function InvoicesPage({
           </select>
         </label>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-label font-semibold uppercase text-ink-muted">
-            {messages.invoices.filterFrom}
-          </span>
-          <input type="date" name="from" defaultValue={filter.from ?? ''} className={INPUT_CLASS} />
-        </label>
-
-        <label className="flex flex-col gap-2">
-          <span className="text-label font-semibold uppercase text-ink-muted">
-            {messages.invoices.filterTo}
-          </span>
-          <input type="date" name="to" defaultValue={filter.to ?? ''} className={INPUT_CLASS} />
-        </label>
+        <DateField
+          name="from"
+          label={messages.invoices.filterFrom}
+          defaultValue={filter.from ?? ''}
+        />
+        <DateField name="to" label={messages.invoices.filterTo} defaultValue={filter.to ?? ''} />
 
         <label className="flex flex-col gap-2">
           <span className="text-label font-semibold uppercase text-ink-muted">
@@ -310,13 +411,35 @@ export default async function InvoicesPage({
           }
         />
       ) : (
-        <DataTable
-          columns={columns}
-          rows={invoices}
-          rowKey={(invoice) => invoice.id}
-          caption={messages.invoices.heading}
-        />
+        /*
+         * Ein Formular um die ganze Tabelle: Es trägt die Kästchen der
+         * Mehrfachauswahl und dient zugleich als Absender der Zeilenaktionen.
+         * `group` ist der Anker, an dem die Auswahlleiste in CSS erkennt, dass
+         * etwas gewählt ist (FA-UI-20).
+         */
+        <form className="group flex flex-col gap-4">
+          <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+          <PendingBar />
+          <SelectionBar />
+
+          <DataTable
+            columns={columns}
+            rows={invoices}
+            rowKey={(invoice) => invoice.id}
+            caption={messages.invoices.heading}
+            selection={{
+              name: 'invoiceIds',
+              label: messages.invoices.selectRow,
+              // Ein stornierter Beleg wird weder bezahlt noch gelöscht.
+              selectable: (invoice) => invoice.status !== 'CANCELLED',
+            }}
+            actions={rowActions}
+            actionsLabel={messages.invoices.rowActions}
+          />
+        </form>
       )}
+
+      {notice === null ? null : <Toast message={notice} />}
     </AppShell>
   );
 }

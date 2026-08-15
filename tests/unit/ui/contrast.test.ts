@@ -68,6 +68,9 @@ const TEXT_PAIRS: readonly (readonly [string, string])[] = [
   ['ink', 'accent-wash'],
   ['ink', 'ocker-wash'],
   ['ink', 'moss-wash'],
+  // Die rote Fläche entsteht seit M5.8 beim Überfahren einer zerstörenden
+  // Zeilenaktion — vorher gab es sie nur im Dialogknopf.
+  ['ink', 'danger-wash'],
   ['ink-muted', 'surface'],
   ['ink-muted', 'surface-sunken'],
   ['sheet-ink', 'sheet'],
@@ -94,6 +97,7 @@ const CONTROL_PAIRS: readonly (readonly [string, string])[] = [
   ['ink-faint', 'surface'],
   ['ink-faint', 'surface-sunken'],
   ['danger', 'surface'],
+  ['danger', 'danger-wash'],
   ['surface', 'accent'],
   ['surface', 'danger'],
 ];

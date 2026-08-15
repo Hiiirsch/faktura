@@ -27,7 +27,7 @@ import {
   invoicePdfEmbedPath,
   invoicePdfPath,
 } from '@/routes';
-import { ConfirmButton } from '@/ui/components/confirm-button';
+import { ConfirmDialog } from '@/ui/components/dialog';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { formatMoney, formatPercent, formatQuantity, formatUnit } from '@/ui/format';
 
@@ -81,7 +81,7 @@ export default async function InvoiceDetailPage({
             >
               {messages.common.back}
             </Link>
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="text-title font-semibold text-ink">
               {invoice.documentType === 'CREDIT_NOTE'
                 ? `${messages.invoices.creditNote} ${title}`
                 : title}
@@ -119,26 +119,48 @@ export default async function InvoiceDetailPage({
               <form action={deleteDraftAction}>
                 <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
                 <input type="hidden" name="invoiceId" value={invoice.id} />
-                <ConfirmButton message={messages.invoices.deleteConfirm}>
-                  {messages.invoices.deleteDraft}
-                </ConfirmButton>
+                <ConfirmDialog
+                  title={messages.invoices.deleteConfirmTitle}
+                  message={messages.invoices.deleteConfirm}
+                  confirmLabel={messages.invoices.deleteDraft}
+                  tone="danger"
+                  trigger={
+                    <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                      {messages.invoices.deleteDraft}
+                    </button>
+                  }
+                />
               </form>
             ) : null}
           </div>
         </header>
 
-        {isDraft ? (
-          <DraftEditor
-            invoiceId={invoice.id}
-            csrfToken={csrfToken}
-            invoice={invoice}
-            organization={session.organization}
-          />
-        ) : (
-          <IssuedView invoice={invoice} currency={currency} csrfToken={csrfToken} />
-        )}
-
         {/*
+          Zweispaltig (§4.3): links das Formular, rechts das Blatt.
+
+          Das Blatt bleibt beim Scrollen stehen — man arbeitet an der linken
+          Spalte und sieht rechts, was dabei entsteht. Untereinander gestellt
+          hatte die Vorschau denselben Nutzen wie ein Ausdruck im Nebenzimmer.
+
+          Unter 1024 px klappt die Anordnung auf eine Spalte, das Blatt nach
+          unten: Auf einem schmalen Gerät nebeneinander wären beide zu schmal
+          für ihren Zweck (§3).
+        */}
+        <div className="grid gap-8 lg:grid-cols-[minmax(30rem,1fr)_minmax(0,1fr)] lg:items-start">
+          <div className="flex min-w-0 flex-col gap-6">
+            {isDraft ? (
+              <DraftEditor
+                invoiceId={invoice.id}
+                csrfToken={csrfToken}
+                invoice={invoice}
+                organization={session.organization}
+              />
+            ) : (
+              <IssuedView invoice={invoice} currency={currency} csrfToken={csrfToken} />
+            )}
+          </div>
+
+          {/*
           Das Blatt: die einzige erhabene Fläche der Anwendung, eckig und weiß
           (Frontend-Entwurf §1, FA-UI-02).
 
@@ -151,16 +173,17 @@ export default async function InvoiceDetailPage({
           Kein `sandbox`: Der eingebaute Betrachter des Browsers ist eine eigene
           gekapselte Anwendung und startet darunter nicht.
         */}
-        <section className="flex flex-col gap-3">
-          <h2 className="text-section font-semibold text-ink">{messages.templates.preview}</h2>
-          <div className="bg-sheet shadow-sheet">
-            <iframe
-              src={invoicePdfEmbedPath(invoice.id)}
-              title={messages.templates.previewFrame}
-              className="h-sheet-height w-full border-0"
-            />
-          </div>
-        </section>
+          <section className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6">
+            <h2 className="text-section font-semibold text-ink">{messages.templates.preview}</h2>
+            <div className="bg-sheet shadow-sheet">
+              <iframe
+                src={invoicePdfEmbedPath(invoice.id)}
+                title={messages.templates.previewFrame}
+                className="h-sheet-height w-full border-0"
+              />
+            </div>
+          </section>
+        </div>
 
         {isDraft || invoice.documentType === 'CREDIT_NOTE' ? null : (
           <PaymentSection
@@ -201,9 +224,17 @@ export default async function InvoiceDetailPage({
                 </span>
               </label>
               <div>
-                <ConfirmButton message={messages.invoices.cancelConfirm}>
-                  {messages.invoices.cancelInvoice}
-                </ConfirmButton>
+                <ConfirmDialog
+                  title={messages.invoices.cancelConfirmTitle}
+                  message={messages.invoices.cancelConfirm}
+                  confirmLabel={messages.invoices.cancelInvoice}
+                  tone="danger"
+                  trigger={
+                    <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                      {messages.invoices.cancelInvoice}
+                    </button>
+                  }
+                />
               </div>
             </form>
           </section>

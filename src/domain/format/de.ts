@@ -112,6 +112,34 @@ export function formatPlainDateDe(value: PlainDate | string | null): string {
 }
 
 /**
+ * „01.03.2026" → „2026-03-01" (FA-UI-13).
+ *
+ * Die Gegenrichtung zu `formatPlainDateDe`, für die Direkteingabe im
+ * Datumsfeld. Nachsichtig bei der Form, streng beim Ergebnis: Ein- statt
+ * zweistellige Tage und Monate sind erlaubt, ebenso `-` oder `/` als
+ * Trennzeichen und eine zweistellige Jahreszahl (`26` → `2026`). Was dabei
+ * herauskommt, wird anschließend von `parsePlainDate` geprüft — der 31.02.
+ * scheitert dort, nicht hier.
+ *
+ * Gibt `null` zurück, wenn sich aus der Eingabe kein Datum lesen lässt. Ein
+ * Rateversuch wäre schlimmer als keine Antwort: Wer „1.2" tippt, ist mitten im
+ * Schreiben und will nicht den 1. Februar zugewiesen bekommen.
+ */
+export function parsePlainDateDe(input: string): string | null {
+  const match = /^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2}|\d{4})$/u.exec(input.trim());
+  if (match === null) {
+    return null;
+  }
+
+  const [, day = '', month = '', year = ''] = match;
+  // Zweistellig heißt dieses Jahrhundert. Rechnungen werden nicht rückdatiert
+  // ins Jahr 1926, und für 2126 gibt es die vierstellige Eingabe.
+  const fullYear = year.length === 2 ? `20${year}` : year;
+
+  return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+/**
  * Übersetzt eine deutsche Zahleingabe in die kanonische Form:
  * Tausenderpunkte entfallen, das Komma wird zum Punkt. „1.234,50" → „1234.50".
  */

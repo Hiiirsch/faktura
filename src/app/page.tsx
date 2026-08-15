@@ -4,11 +4,16 @@ import type { ReactNode } from 'react';
 
 import { requireSession } from '@/application/auth/require-session';
 import { getCompanyProfile } from '@/application/company/company-profile';
+import { listInvoices, today } from '@/application/invoices/invoice-queries';
 import { checkSystemStatus } from '@/application/system/check-system-status';
+import { formatMoneyDe } from '@/domain/format/de';
+import { countsTowardReceivables, countsTowardRevenue } from '@/domain/invoice/revenue';
+import { cents, subtractCents, sumCents, ZERO_CENTS } from '@/domain/money/money';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { COMPANY_SETTINGS_PATH, DASHBOARD_PATH } from '@/routes';
 import { SECTION_CLASS, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { MetricRow, type Metric } from '@/ui/components/metric';
 import { PageHeader } from '@/ui/components/page';
 import { formatDateTime } from '@/ui/format';
 
@@ -19,17 +24,79 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage(): Promise<ReactNode> {
   // Erste Anweisung: die Sitzungsprüfung (Spec §11.2).
   const session = await requireSession();
-  const [status, company] = await Promise.all([
+  const [status, company, invoices] = await Promise.all([
     checkSystemStatus(),
     getCompanyProfile(session.organization),
+    listInvoices(session.organization),
   ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
+
+  /*
+   * Die vier Kennzahlen (§4.1).
+   *
+   * Gerechnet wird hier aus der Liste, die ohnehin geladen wird — die
+   * ausgewiesene Auswertungsfunktion `getDashboardMetrics()` samt Diagramm und
+   * Fristenlisten gehört zu M6 (FA-DASH-01 bis -11) und wird hier **nicht**
+   * vorweggenommen. Was hier entsteht, ist die Fläche: Ohne sie ließe sich die
+   * tragende These des Entwurfs — „die Zahl ist die Überschrift" — gar nicht
+   * beurteilen, weil sie nie zu sehen war.
+   *
+   * Was von der Auswertung schon gilt, gilt an der richtigen Stelle: Welcher
+   * Beleg zählt, entscheidet `src/domain/invoice/revenue.ts` und nicht diese
+   * Seite. Gutschriften bleiben damit außen vor.
+   */
+  const reference = today();
+  const receivables = invoices.filter(countsTowardReceivables);
+  const overdue = receivables.filter((invoice) => invoice.isOverdue);
+  const revenue = invoices.filter(countsTowardRevenue);
+
+  const outstandingOf = (entries: readonly (typeof invoices)[number][]) =>
+    sumCents(
+      entries.map((invoice) =>
+        subtractCents(cents(invoice.grossTotalCents), cents(invoice.paidTotalCents)),
+      ),
+    );
+
+  const netIn = (prefix: string) =>
+    sumCents(
+      revenue
+        .filter((invoice) => invoice.issueDate?.startsWith(prefix) === true)
+        .map((invoice) => cents(invoice.netTotalCents)),
+    );
+
+  const month = reference.slice(0, 7);
+  const year = reference.slice(0, 4);
+
+  const metrics: readonly Metric[] = [
+    {
+      label: messages.dashboard.metricOutstanding,
+      value: formatMoneyDe(receivables.length === 0 ? ZERO_CENTS : outstandingOf(receivables)),
+    },
+    {
+      label: messages.dashboard.metricOverdue,
+      value: formatMoneyDe(overdue.length === 0 ? ZERO_CENTS : outstandingOf(overdue)),
+      note:
+        overdue.length === 1
+          ? messages.dashboard.metricInvoiceOne
+          : messages.dashboard.metricInvoices.replace('{count}', String(overdue.length)),
+    },
+    {
+      label: messages.dashboard.metricRevenueMonth,
+      value: formatMoneyDe(netIn(month)),
+      note: messages.dashboard.metricNet,
+    },
+    {
+      label: messages.dashboard.metricRevenueYear.replace('{year}', year),
+      value: formatMoneyDe(netIn(year)),
+      note: messages.dashboard.metricNet,
+    },
+  ];
+
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={DASHBOARD_PATH}>
-      <PageHeader
-        title={messages.dashboard.heading}
-        description={messages.dashboard.placeholder}
-      />
+      <PageHeader title={messages.dashboard.heading} />
+
+      <MetricRow metrics={metrics} />
 
         {company === null ? (
           <section className={SECTION_CLASS}>

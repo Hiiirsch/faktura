@@ -51,7 +51,7 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{messages.app.name}</h1>
+        <h1 className="text-title font-semibold text-ink">{messages.app.name}</h1>
         <p className="text-ink-muted">{messages.login.intro}</p>
       </header>
 
