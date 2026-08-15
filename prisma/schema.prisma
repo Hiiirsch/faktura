@@ -200,8 +200,38 @@ model Invoice {
   invoiceNumber  String?
   status         String       @default("DRAFT")
 
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
+  /// Woher der Empfänger stammt (M5.7).
+  ///
+  /// `CUSTOMER` — aus den Stammdaten, `customerId` ist gesetzt.
+  /// `FIELDS`   — am Beleg erfasst, in denselben Feldern wie beim Kunden.
+  /// `FREE`     — ein Textblock, wie eingegeben.
+  ///
+  /// Ein Beleg ohne hinterlegten Kunden ist der Regelfall bei einmaligen
+  /// Empfängern: Wer einmal an jemanden schreibt, will dafür keinen Datensatz
+  /// in den Stammdaten anlegen.
+  buyerMode String @default("CUSTOMER")
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  /// Empfänger im Modus `FIELDS`. Spiegelt die Felder des Kunden, weil die
+  /// steuerliche Behandlung an Land und USt-IdNr hängt (FA-CALC-06, -07) und
+  /// die Pflichtangaben dieselben sind (FA-PFL-01).
+  buyerName         String?
+  buyerContactName  String?
+  buyerAddressLine1 String?
+  buyerAddressLine2 String?
+  buyerPostalCode   String?
+  buyerCity         String?
+  buyerCountryCode  String?
+  buyerEmail        String?
+  buyerPhone        String?
+  buyerVatId        String?
+
+  /// Empfänger im Modus `FREE`: der Anschriftenblock, Zeile für Zeile wie
+  /// eingegeben. Ein Name wird daraus beim Lesen abgeleitet (erste nichtleere
+  /// Zeile) — ihn zusätzlich zu speichern hieße, zwei Wahrheiten zu pflegen.
+  buyerFreeText String?
 
   /// Beim Festschreiben eingefrorene Käufer- und Verkäuferdaten (M4).
   snapshotBuyer  String?

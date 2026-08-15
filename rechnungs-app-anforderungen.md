@@ -59,7 +59,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | ID | Anforderung | Prio | Verif. |
 |---|---|---|---|
 | FA-RECH-01 | Eine Rechnung ist als Entwurf speicherbar, ohne dass eine Rechnungsnummer vergeben wird. | MUSS | T |
-| FA-RECH-02 | Bei Auswahl eines Kunden werden Adresse, Zahlungsziel und Steuerkategorie automatisch vorbefüllt. | MUSS | T |
+| FA-RECH-02 | Der Empfänger stammt wahlweise aus den Stammdaten, aus Feldern am Beleg oder aus einem freien Anschriftenblock. Sofern ein Kunde gewählt wird, werden Adresse, Zahlungsziel und Steuerkategorie automatisch vorbefüllt. | MUSS | T |
 | FA-RECH-03 | Positionen sind hinzufügbar, löschbar, duplizierbar und per Drag&Drop sortierbar. | MUSS | M |
 | FA-RECH-04 | Jede Position hat Bezeichnung, optionale Beschreibung, Menge, Einheit, Einzelpreis und Steuersatz. | MUSS | T |
 | FA-RECH-05 | Ein Positionsrabatt in Prozent ist erfassbar. | SOLL | T |
@@ -69,7 +69,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-RECH-09 | Frei formulierbare Einleitungs- und Schlusstexte sind je Rechnung erfassbar. | SOLL | T |
 | FA-RECH-10 | Eine bestehende Rechnung ist als neuer Entwurf duplizierbar; die Kopie erhält keine Nummer. | MUSS | T |
 | FA-RECH-11 | Entwürfe sind löschbar; festgeschriebene Rechnungen nicht. | MUSS | T |
-| FA-RECH-12 | Vor dem Festschreiben prüft das System auf Vollständigkeit (Kunde, mind. eine Position, Datumsfelder) und blockiert mit klarer Meldung. | MUSS | T |
+| FA-RECH-12 | Vor dem Festschreiben prüft das System auf Vollständigkeit (Empfänger mit Name und Anschrift, mind. eine Position, Datumsfelder) und blockiert mit klarer Meldung. | MUSS | T |
 | FA-RECH-13 | Beim Festschreiben werden Käufer- und Verkäuferdaten als unveränderlicher Snapshot in die Rechnung kopiert. | MUSS | T |
 | FA-RECH-14 | Eine Änderung der Kundenstammdaten verändert bereits festgeschriebene Rechnungen nicht. | MUSS | T |
 | FA-RECH-15 | Die Rechnungsliste ist nach Status, Kunde, Zeitraum und Volltext filterbar. | MUSS | M |
@@ -102,7 +102,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-NUM-05 | Der Zähler startet zu Jahresbeginn neu, sofern das Format eine Jahreskomponente enthält. | SOLL | T |
 | FA-NUM-06 | Der aktuelle Zählerstand ist in den Einstellungen einsehbar. | SOLL | M |
 | FA-NUM-07 | Ein einmaliger manueller Startwert ist setzbar, um eine Migration aus einem Altsystem lückenlos fortzuführen. | SOLL | T |
-| FA-NUM-08 | Nach dem Festschreiben sind Positionen, Beträge, Daten und Kundenbezug einer Rechnung über die UI nicht mehr änderbar. | MUSS | T |
+| FA-NUM-08 | Nach dem Festschreiben sind Positionen, Beträge, Daten und Empfängerbezug einer Rechnung über die UI nicht mehr änderbar. | MUSS | T |
 | FA-NUM-09 | Die Unveränderbarkeit wird zusätzlich in der Persistenzschicht durchgesetzt, nicht nur im UI. | MUSS | T |
 | FA-NUM-10 | Erzeugte PDFs werden mit SHA-256-Prüfsumme gespeichert und nie überschrieben. | MUSS | T |
 
@@ -158,7 +158,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 
 | ID | Anforderung | Prio | Verif. |
 |---|---|---|---|
-| FA-PFL-01 | Vollständiger Name und Anschrift des eigenen Unternehmens und des Kunden werden ausgegeben. | MUSS | T |
+| FA-PFL-01 | Vollständiger Name und Anschrift des eigenen Unternehmens und des Rechnungsempfängers werden ausgegeben. | MUSS | T |
 | FA-PFL-02 | Steuernummer oder USt-IdNr des eigenen Unternehmens wird ausgegeben. | MUSS | T |
 | FA-PFL-03 | Ausstellungsdatum wird ausgegeben. | MUSS | T |
 | FA-PFL-04 | Die fortlaufende Rechnungsnummer wird ausgegeben. | MUSS | T |

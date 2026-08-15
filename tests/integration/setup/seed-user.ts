@@ -21,6 +21,7 @@ import { createDraftInvoice } from '@/application/invoices/invoice-service';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { createUser, findUserByEmail } from '@/infrastructure/repositories/auth-repository';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
+import { customerBuyer } from '../../support/buyer';
 import {
   DEFAULT_ORGANIZATION_ID,
   organizationContextOf,
@@ -85,7 +86,7 @@ const customer = await createCustomer(
 const draft = await createDraftInvoice(
   organization,
   {
-    customerId: customer.id,
+    buyer: customerBuyer(customer.id),
     taxScheme: 'STANDARD',
     currency: 'EUR',
     issueDate: '2026-03-01',

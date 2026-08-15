@@ -8,7 +8,7 @@
 import { isTaxCategoryCode } from '@/domain/codes/tax-category';
 import type { CompletenessViolation } from '@/domain/invoice/completeness';
 import { validateForIssue } from '@/domain/invoice/completeness';
-import type { BuyerSnapshot, SellerSnapshot } from '@/domain/invoice/snapshot';
+import type { SellerSnapshot } from '@/domain/invoice/snapshot';
 import { cents } from '@/domain/money/money';
 import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
 import { isTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
@@ -22,6 +22,7 @@ import {
 import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
+import { buyerSnapshotOf, draftBuyerOf } from './invoice-buyer';
 import { allocateInvoiceNumber } from './invoice-numbering';
 
 export type IssueError =
@@ -70,8 +71,10 @@ export async function issueInvoice(
 
   const taxScheme: TaxScheme = isTaxScheme(invoice.taxScheme) ? invoice.taxScheme : 'STANDARD';
 
+  const buyer = buyerSnapshotOf(invoice, invoice.customer);
+
   const violations = validateForIssue({
-    customerId: invoice.customerId,
+    buyer: draftBuyerOf(invoice),
     issueDate: toDate(invoice.issueDate),
     serviceDateFrom: toDate(invoice.serviceDateFrom),
     serviceDateTo: toDate(invoice.serviceDateTo),
@@ -86,7 +89,7 @@ export async function issueInvoice(
     })),
     sellerHasTaxIdentifier: company.taxNumber !== null || company.vatId !== null,
     sellerVatId: company.vatId,
-    buyerVatId: invoice.customer.vatId,
+    buyerVatId: buyer.vatId,
   });
 
   if (violations.length > 0) {
@@ -124,21 +127,6 @@ export async function issueInvoice(
     website: company.website,
     footerText: company.footerText,
     isSmallBusiness: company.isSmallBusiness,
-  };
-
-  const buyer: BuyerSnapshot = {
-    name: invoice.customer.companyName ?? invoice.customer.contactName ?? '',
-    contactName: invoice.customer.contactName,
-    addressLine1: invoice.customer.addressLine1,
-    addressLine2: invoice.customer.addressLine2,
-    postalCode: invoice.customer.postalCode,
-    city: invoice.customer.city,
-    countryCode: invoice.customer.countryCode,
-    email: invoice.customer.email,
-    phone: invoice.customer.phone,
-    vatId: invoice.customer.vatId,
-    customerNumber: invoice.customer.customerNumber,
-    buyerReference: invoice.customer.buyerReference,
   };
 
   const result = await runInTransaction(async (handle) => {

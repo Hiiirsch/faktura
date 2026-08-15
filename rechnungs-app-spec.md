@@ -171,8 +171,24 @@ model Invoice {
   invoiceNumber  String?       @unique            // erst beim Festschreiben!
   status         InvoiceStatus @default(DRAFT)
 
-  customerId     String
-  customer       Customer      @relation(fields: [customerId], references: [id])
+  // Der Empfänger stammt aus einer von drei Quellen; `buyerMode` entscheidet
+  // welche (M5.7). Ohne Kundendatensatz stehen die Angaben am Beleg selbst —
+  // entweder in Feldern oder als freier Anschriftenblock.
+  buyerMode      String        @default("CUSTOMER")  // CUSTOMER | FIELDS | FREE
+  customerId     String?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+
+  buyerName          String?
+  buyerContactName   String?
+  buyerAddressLine1  String?
+  buyerAddressLine2  String?
+  buyerPostalCode    String?
+  buyerCity          String?
+  buyerCountryCode   String?
+  buyerEmail         String?
+  buyerPhone         String?
+  buyerVatId         String?
+  buyerFreeText      String?
 
   // Snapshot: eingefroren beim Festschreiben, danach unveränderlich
   snapshotBuyer   Json?
@@ -530,7 +546,10 @@ als Code gespeichert. Eine Mapping-Tabelle `unitCode → Label` liegt im Domain 
 
 Zweispaltig: links Formular, rechts PDF-Vorschau (debounced, ~500 ms).
 
-- Kunde per Combobox wählen → Adresse, Zahlungsziel, Steuerkategorie vorbefüllt
+- Empfänger in drei Modi: Kunde aus den Stammdaten (→ Adresse, Zahlungsziel,
+  Steuerkategorie vorbefüllt), Felder am Beleg, oder freier Anschriftenblock.
+  Name und Anschrift bleiben in allen drei Fällen Pflicht (FA-PFL-01); ohne
+  Kunden gilt das Zahlungsziel der Firmendaten
 - Positionen als Tabelle: Zeilen hinzufügen, duplizieren, per Drag&Drop sortieren
 - Katalog-Autocomplete im Feld „Bezeichnung"
 - Summenblock live berechnet

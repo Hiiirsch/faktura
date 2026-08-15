@@ -264,6 +264,35 @@ effektiver Menge; erreichbar sind die vier nur über das setuid-Hilfsprogramm
 `outputFileTracingIncludes` stehen — sonst scheitert der Renderer im Container
 schon beim Laden des Moduls.
 
+## Empfänger (seit M5.7)
+
+Ein Beleg trägt seinen Empfänger in einer von drei Quellen, entschieden durch
+`Invoice.buyerMode`: `CUSTOMER` (Verweis in die Stammdaten), `FIELDS` (dieselben
+Felder, am Beleg erfasst) oder `FREE` (ein Anschriftenblock, wie eingegeben).
+`customerId` ist dafür **optional** geworden.
+
+Was das nicht lockert: §14 UStG verlangt Name und Anschrift des Empfängers.
+`validateBuyer()` in `src/domain/invoice/buyer.ts` prüft das je Quelle — ein
+freier Block aus einer einzigen Zeile ist ein Name ohne Adresse und wird
+abgewiesen.
+
+Im Modus `FREE` wird **kein** Name gespeichert. Er entsteht beim Lesen aus der
+ersten nichtleeren Zeile (`buyerDisplayName()`); ihn zusätzlich abzulegen hieße,
+zwei Wahrheiten zu pflegen, und die zweite wäre die, die nach einer Korrektur
+nicht mehr stimmt.
+
+Die Umwandlung „gespeicherte Spalten → Partei" steht an genau einer Stelle
+(`src/application/invoices/invoice-buyer.ts`), weil sie an zweien gebraucht wird:
+beim Festschreiben für den Snapshot und beim Setzen eines Entwurfs. Zwei
+Umsetzungen liefen auseinander, und die Abweichung fiele erst auf, wenn ein
+festgeschriebener Beleg anders aussieht als seine Vorschau.
+
+Die Migration `20260815132123_free_recipient` baut `Invoice` neu auf. Dabei
+wurde eine stille Lücke geschlossen: `Invoice_organization_matches_*` prüfte
+den Kundenmandanten über einen Vergleich, der bei `customerId IS NULL` nach
+SQLite-Semantik NULL ergibt und damit *durchließe*. Die Bedingung lautet jetzt
+ausdrücklich `NEW."customerId" IS NOT NULL AND …`.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -276,6 +305,8 @@ schon beim Laden des Moduls.
 | M5 | Vorlagen & PDF: InvoiceDocument, Liquid, Playwright, Artefakte | umgesetzt |
 | M5.5a | Mandantenkontext: `organizationId`, Repository-Schicht mit Pflichtparameter | umgesetzt |
 | M5.5b | Gestaltung: Tokensatz, Schriften, Rahmen, Bestandsscreens auf Tokens | umgesetzt |
+| M5.6 | Vorschau zeigt das erzeugte PDF statt einer HTML-Nachbildung | umgesetzt |
+| M5.7 | Empfänger ohne Kundendatensatz: Felder am Beleg oder freier Block | umgesetzt |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
 

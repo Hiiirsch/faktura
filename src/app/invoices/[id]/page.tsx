@@ -35,7 +35,7 @@ import { AppShell } from '../../app-shell';
 import { cancelInvoiceAction, deleteDraftAction, duplicateInvoiceAction } from '../actions';
 import type { OrganizationContext } from '@/application/auth/session-service';
 
-import { loadEditorContext } from '../editor-data';
+import { editorBuyerOf, loadEditorContext } from '../editor-data';
 import { InvoiceEditor } from '../invoice-editor';
 import { PaymentSection } from './payment-section';
 
@@ -258,7 +258,7 @@ async function DraftEditor({
       <InvoiceEditor
         initial={{
           invoiceId,
-          customerId: invoice.customerId,
+          buyer: editorBuyerOf(invoice),
           templateId: invoice.templateId ?? '',
           taxScheme: isTaxScheme(invoice.taxScheme) ? invoice.taxScheme : 'STANDARD',
           currency: invoice.currency,
@@ -285,6 +285,7 @@ async function DraftEditor({
         catalog={context.catalog}
         templates={context.templates}
         defaultTaxRatePercent={context.defaultTaxRatePercent}
+        defaultPaymentTerms={context.defaultPaymentTerms}
         csrfToken={csrfToken}
       />
     </>
@@ -340,10 +341,23 @@ function IssuedView({
               <br />
               {buyer.postalCode} {buyer.city}
               <br />
-              {messages.customers.number}:{' '}
-              <Link href={customerPath(invoice.customerId)} className="underline underline-offset-4">
-                {buyer.customerNumber}
-              </Link>
+              {/*
+                Der Verweis in die Stammdaten steht nur, wenn es dort etwas
+                gibt: Ein Beleg an einen freien Empfänger hat keine
+                Kundennummer, und ein Verweis ins Leere ist schlimmer als
+                keiner (M5.7).
+              */}
+              {invoice.customerId === null || buyer.customerNumber === null ? null : (
+                <>
+                  {messages.customers.number}:{' '}
+                  <Link
+                    href={customerPath(invoice.customerId)}
+                    className="underline underline-offset-4"
+                  >
+                    {buyer.customerNumber}
+                  </Link>
+                </>
+              )}
               {buyer.vatId === null ? null : <><br />USt-IdNr: {buyer.vatId}</>}
             </address>
           )}

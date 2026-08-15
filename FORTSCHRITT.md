@@ -12,8 +12,10 @@ Verifikationsarten R und M.
 **keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
 Vorschlag und steht noch zur Freigabe aus.
 
-Stand: 2026-08-11 · 133 von 171 erledigt (97 abgenommen: M0–M4, 36 umgesetzt) ·
-**M5 umgesetzt, Abnahme offen**
+Stand: 2026-08-15 · 133 von 171 erledigt (93 abgenommen: M0–M4, 40 umgesetzt) ·
+**M5 umgesetzt, Abnahme offen** · **M5.6 (PDF-Vorschau) und M5.7 (Empfänger ohne
+Kunde) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
+FA-PFL-01) sind durch M5.7 im Wortlaut geändert und stehen erneut zur Abnahme.
 
 Hinzu kommen 21 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
 Teil der ursprünglichen 171 sind: 18 umgesetzt, 3 offen.
@@ -26,6 +28,25 @@ Pflichtangaben FA-PFL-01 bis -11 werden am Satz geprüft, den der Renderer
 erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
+
+**Geänderte Anforderungen (M5.7 — Empfänger ohne Kunde).** Ein Beleg verlangte
+bisher zwingend einen Kunden aus den Stammdaten; der Editor verweigerte ohne
+Kundendatensatz sogar den Dienst. Wer einmalig an eine Anschrift schreibt, will
+dafür keinen Stammdatensatz anlegen. Der Auftraggeber hat die Lockerung
+freigegeben; vier Wortlaute in `rechnungs-app-anforderungen.md` und zwei
+Abschnitte der Spec (§4 Datenmodell, §10.2 Editor) sind angepasst:
+
+| ID | vorher | jetzt |
+|---|---|---|
+| FA-RECH-02 | „Bei Auswahl eines Kunden …" | drei Quellen; Vorbelegung nur, sofern ein Kunde gewählt wird |
+| FA-RECH-12 | Vollständigkeit „(Kunde, …)" | „(Empfänger mit Name und Anschrift, …)" |
+| FA-PFL-01 | „… des Kunden" | „… des Rechnungsempfängers" |
+| FA-NUM-08 | „Kundenbezug … nicht änderbar" | „Empfängerbezug … nicht änderbar" |
+
+Was **nicht** gelockert wurde: §14 UStG verlangt Name und Anschrift des
+Empfängers, und das bleibt Festschreibbedingung — nur die Quelle ist frei. Ein
+freier Anschriftenblock aus einer einzigen Zeile ist ein Name ohne Adresse und
+wird abgewiesen. Nachweis: `tests/integration/free-recipient.test.ts`.
 
 **Geänderte Anforderung.** FA-PDF-06 verlangte die Seitenangabe auf *jeder*
 Seite. Auf einem einseitigen Beleg ist „Seite 1 von 1“ eine Auskunft ohne
@@ -84,7 +105,7 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | FA-RECH-01 | Entwurf ohne Nummernvergabe speicherbar | MUSS | T | M4 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Entwurf ohne Nummer; Editor unter /invoices/new |
-| FA-RECH-02 | Kundenauswahl befüllt Adresse/Ziel/Steuerkategorie vor | MUSS | T | M4 | abgenommen | Manuell: Kundenauswahl im Editor belegt Zahlungsziel und Steuerverfahren vor (`src/app/invoices/editor-data.ts`) |
+| FA-RECH-02 | Empfänger aus Stammdaten, Feldern oder freiem Block; Kundenauswahl befüllt vor | MUSS | T | M4 | umgesetzt | `tests/integration/free-recipient.test.ts` — alle drei Quellen tragen bis ins Dokument; Manuell: Kundenauswahl im Editor belegt Zahlungsziel und Steuerverfahren vor (`src/app/invoices/editor-data.ts`) |
 | FA-RECH-03 | Positionen hinzufügen, löschen, duplizieren, sortieren | MUSS | M | M4 | abgenommen | Manuell: Positionen hinzufügen, löschen, duplizieren; Sortieren per Drag & Drop und über Schaltflächen oben/unten (tastaturbedienbar) |
 | FA-RECH-04 | Positionsfelder vollständig | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Bezeichnung, Beschreibung, Menge, Einheit, Preis, Satz je Position |
 | FA-RECH-05 | Positionsrabatt in Prozent | SOLL | T | M4 | abgenommen | `tests/unit/domain/invoice-totals.test.ts`, `tests/integration/invoice-lifecycle.test.ts` — Positionsrabatt in Prozent, auch mit Nachkommastellen |
@@ -94,7 +115,7 @@ Szenario benannt.
 | FA-RECH-09 | Einleitungs- und Schlusstext je Rechnung | SOLL | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Einleitungs- und Schlusstext je Beleg |
 | FA-RECH-10 | Duplizieren als neuer Entwurf ohne Nummer | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Kopie ohne Nummer, ohne Snapshot, ohne Zahlungen |
 | FA-RECH-11 | Entwürfe löschbar, festgeschriebene nicht | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Entwurf löschbar, festgeschriebener Beleg nicht (auch nicht am Use Case vorbei) |
-| FA-RECH-12 | Vollständigkeitsprüfung vor Festschreiben blockiert | MUSS | T | M4 | abgenommen | `tests/unit/domain/invoice-completeness.test.ts`, `tests/integration/invoice-lifecycle.test.ts` — alle Verstöße gemeinsam gemeldet, Beleg bleibt Entwurf |
+| FA-RECH-12 | Vollständigkeitsprüfung vor Festschreiben blockiert | MUSS | T | M4 | umgesetzt | `tests/unit/domain/invoice-completeness.test.ts`, `tests/integration/invoice-lifecycle.test.ts`, `tests/integration/free-recipient.test.ts` — alle Verstöße gemeinsam gemeldet, Beleg bleibt Entwurf; Empfänger ohne Anschrift wird abgewiesen |
 | FA-RECH-13 | Käufer-/Verkäufer-Snapshot beim Festschreiben | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts`, `tests/unit/domain/invoice-snapshot.test.ts` — Käufer- und Verkäuferdaten beim Festschreiben eingefroren |
 | FA-RECH-14 | Stammdatenänderung ändert Altrechnungen nicht | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Kundenumzug lässt die Altrechnung unberührt (A6) |
 | FA-RECH-15 | Liste filterbar nach Status/Kunde/Zeitraum/Volltext | MUSS | M | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Filter nach Status, Kunde, Zeitraum und Volltext |
@@ -127,7 +148,7 @@ Szenario benannt.
 | FA-NUM-05 | Jahreswechsel startet Zähler neu | SOLL | T | M3 | abgenommen | `tests/unit/domain/invoice-number.test.ts`, `tests/integration/invoice-numbering.test.ts` — Jahreswechsel startet neu; Monatszähler nur mit Jahreskomponente |
 | FA-NUM-06 | Zählerstand in Einstellungen einsehbar | SOLL | M | M3 | abgenommen | Manuell: `/settings/numbering` zeigt Format, Beispielnummer und Zählerstand je Bereich |
 | FA-NUM-07 | Einmaliger manueller Startwert setzbar | SOLL | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Startwert setzbar, solange nichts vergeben ist; danach abgelehnt |
-| FA-NUM-08 | Festgeschriebene Rechnung über UI nicht änderbar | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — inhaltliche Änderung am festgeschriebenen Beleg abgewiesen |
+| FA-NUM-08 | Festgeschriebene Rechnung über UI nicht änderbar | MUSS | T | M4 | umgesetzt | `tests/integration/invoice-lifecycle.test.ts` — inhaltliche Änderung am festgeschriebenen Beleg abgewiesen; `tests/integration/free-recipient.test.ts` — auch Empfängermodus und Anschriftenblock sind eingefroren |
 | FA-NUM-09 | Unveränderbarkeit auch in der Persistenzschicht | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Datenbank-Trigger weisen auch den direkten Schreibzugriff ab, inklusive Rückweg auf Entwurf |
 | FA-NUM-10 | PDFs mit SHA-256 gespeichert, nie überschrieben | MUSS | T | M4 → M5 | umgesetzt | `tests/integration/document-output.test.ts` — Artefakt mit SHA-256, unveränderlich per Trigger `InvoiceArtifact_no_update` |
 
@@ -181,7 +202,7 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-PFL-01 | Name und Anschrift beider Parteien | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
+| FA-PFL-01 | Name und Anschrift beider Parteien | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`; `tests/integration/free-recipient.test.ts` — Pflicht gilt in allen drei Empfängerquellen |
 | FA-PFL-02 | Steuernummer oder USt-IdNr des Ausstellers | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
 | FA-PFL-03 | Ausstellungsdatum | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |
 | FA-PFL-04 | Fortlaufende Rechnungsnummer | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` |

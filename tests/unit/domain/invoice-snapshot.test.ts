@@ -52,6 +52,7 @@ const buyer: BuyerSnapshot = {
   vatId: null,
   customerNumber: 'K-0001',
   buyerReference: null,
+  addressBlock: null,
 };
 
 describe('Verkäufer-Snapshot', () => {

@@ -8,6 +8,7 @@
 import { listCatalogItems } from '@/application/catalog/catalog-service';
 import { getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { listSelectableCustomers } from '@/application/customers/customer-service';
+import { draftBuyerOf, type StoredBuyer } from '@/application/invoices/invoice-buyer';
 import { listTemplates } from '@/application/templates/template-service';
 import type { OrganizationContext } from '@/application/auth/session-service';
 import { getAppTimeZone } from '@/application/system/display-settings';
@@ -17,7 +18,55 @@ import { resolvePaymentTerms } from '@/domain/customer/payment-terms';
 import { determineTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
 import { addDays, todayIn } from '@/domain/time/plain-date';
 
+import type { EditorBuyerValues } from './buyer-fieldset';
 import type { CustomerOption } from './invoice-editor';
+
+/**
+ * Ein leerer Empfänger für die Neuanlage.
+ *
+ * Der Modus richtet sich danach, ob überhaupt Kunden erfasst sind: Wer noch
+ * keine hat, soll nicht auf eine leere Auswahlliste blicken, sondern direkt in
+ * die Felder schreiben können.
+ */
+export function emptyEditorBuyer(customerId: string | null): EditorBuyerValues {
+  return {
+    mode: customerId === null ? 'FIELDS' : 'CUSTOMER',
+    customerId: customerId ?? '',
+    name: '',
+    contactName: '',
+    addressLine1: '',
+    addressLine2: '',
+    postalCode: '',
+    city: '',
+    countryCode: '',
+    email: '',
+    phone: '',
+    vatId: '',
+    freeText: '',
+  };
+}
+
+/** Die gespeicherten Empfängerspalten in Formularwerte. */
+export function editorBuyerOf(stored: StoredBuyer): EditorBuyerValues {
+  const buyer = draftBuyerOf(stored);
+  const text = (value: string | null): string => value ?? '';
+
+  return {
+    mode: buyer.mode,
+    customerId: text(buyer.customerId),
+    name: text(buyer.fields.name),
+    contactName: text(buyer.fields.contactName),
+    addressLine1: text(buyer.fields.addressLine1),
+    addressLine2: text(buyer.fields.addressLine2),
+    postalCode: text(buyer.fields.postalCode),
+    city: text(buyer.fields.city),
+    countryCode: text(buyer.fields.countryCode),
+    email: text(buyer.fields.email),
+    phone: text(buyer.fields.phone),
+    vatId: text(buyer.fields.vatId),
+    freeText: text(buyer.freeText),
+  };
+}
 
 export type EditorContext = {
   readonly customers: readonly CustomerOption[];
@@ -31,6 +80,10 @@ export type EditorContext = {
   /** Vorschlag für den zuerst angebotenen Kunden. */
   readonly suggestedTaxScheme: TaxScheme;
   readonly suggestedDueDate: string;
+  /** Zahlungsziel der Firmendaten — gilt ohne Kunden (FA-RECH-08). */
+  readonly defaultPaymentTerms: number;
+  /** Empfängervorbelegung der Neuanlage. */
+  readonly initialBuyer: EditorBuyerValues;
 };
 
 export async function loadEditorContext(
@@ -78,5 +131,7 @@ export async function loadEditorContext(
       today,
       resolvePaymentTerms(first?.paymentTerms ?? null, company.defaultPaymentTerms),
     ),
+    defaultPaymentTerms: company.defaultPaymentTerms,
+    initialBuyer: emptyEditorBuyer(first?.id ?? null),
   };
 }

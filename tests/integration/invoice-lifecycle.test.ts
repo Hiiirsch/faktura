@@ -36,6 +36,8 @@ import type { InvoiceEvent } from '@/domain/invoice/events';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 
+import { customerBuyer } from '../support/buyer';
+
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 import { testOrganization } from './setup/organization';
 
@@ -60,7 +62,7 @@ const CUSTOMER: CustomerData = {
 
 function draft(customerId: string, overrides: Partial<DraftInvoiceData> = {}): DraftInvoiceData {
   return {
-    customerId,
+    buyer: customerBuyer(customerId),
     taxScheme: 'STANDARD',
     currency: 'EUR',
     issueDate: '2026-03-01',

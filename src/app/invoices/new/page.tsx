@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { requireSession } from '@/application/auth/require-session';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { COMPANY_SETTINGS_PATH, CUSTOMERS_PATH, INVOICES_PATH } from '@/routes';
+import { COMPANY_SETTINGS_PATH, INVOICES_PATH } from '@/routes';
 import { Alert, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
 
@@ -22,7 +22,6 @@ export default async function NewInvoicePage(): Promise<ReactNode> {
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
   const context = await loadEditorContext(session.organization);
 
-  const first = context.customers[0];
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={INVOICES_PATH}>
       <PageHeader
@@ -45,45 +44,38 @@ export default async function NewInvoicePage(): Promise<ReactNode> {
           </Alert>
         ) : null}
 
-        {first === undefined ? (
-          <Alert tone="error">
-            <span className="flex flex-wrap items-center gap-3">
-              {messages.invoices.noCustomers}
-              <Link href={CUSTOMERS_PATH} className={SECONDARY_BUTTON_CLASS}>
-                {messages.customers.create}
-              </Link>
-            </span>
-          </Alert>
-        ) : (
-          <>
-            <NoScriptNotice message={messages.common.noScript} />
-            <InvoiceEditor
-              initial={{
-                invoiceId: null,
-                customerId: first.id,
-                templateId: '',
-                taxScheme: context.suggestedTaxScheme,
-                currency: context.defaultCurrency,
-                issueDate: context.today,
-                serviceDateFrom: context.today,
-                serviceDateTo: '',
-                dueDate: context.suggestedDueDate,
-                introText: '',
-                outroText: '',
-                purchaseOrderRef: '',
-                // Die erste Position legt der Editor selbst an — `emptyLine`
-                // lebt in der Client-Komponente und ist vom Server nicht
-                // aufrufbar.
-                lines: [],
-              }}
-              customers={context.customers}
-              catalog={context.catalog}
-              templates={context.templates}
-              defaultTaxRatePercent={context.defaultTaxRatePercent}
-              csrfToken={csrfToken}
-            />
-          </>
-        )}
+        {/*
+          Ohne Kunden ist der Editor **nicht** gesperrt (M5.7): Der Empfänger
+          lässt sich am Beleg selbst erfassen. Die Stammdaten bleiben der
+          bequemere Weg, aber nicht mehr der einzige.
+        */}
+        <NoScriptNotice message={messages.common.noScript} />
+        <InvoiceEditor
+          initial={{
+            invoiceId: null,
+            buyer: context.initialBuyer,
+            templateId: '',
+            taxScheme: context.suggestedTaxScheme,
+            currency: context.defaultCurrency,
+            issueDate: context.today,
+            serviceDateFrom: context.today,
+            serviceDateTo: '',
+            dueDate: context.suggestedDueDate,
+            introText: '',
+            outroText: '',
+            purchaseOrderRef: '',
+            // Die erste Position legt der Editor selbst an — `emptyLine`
+            // lebt in der Client-Komponente und ist vom Server nicht
+            // aufrufbar.
+            lines: [],
+          }}
+          customers={context.customers}
+          catalog={context.catalog}
+          templates={context.templates}
+          defaultTaxRatePercent={context.defaultTaxRatePercent}
+          defaultPaymentTerms={context.defaultPaymentTerms}
+          csrfToken={csrfToken}
+        />
     </AppShell>
   );
 }

@@ -53,13 +53,25 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
     <div class="return-line">
       {{ seller.name }} · {{ seller.address.addressLine1 }} · {{ seller.address.postalCode }} {{ seller.address.city }}
     </div>
+    {%- comment -%}
+      Zwei Darstellungen: Ist ein freier Anschriftenblock erfasst, gilt er Zeile
+      für Zeile, wie eingegeben — sonst werden die Felder gesetzt. Die erste
+      Zeile ist in beiden Fällen der Name.
+    {%- endcomment -%}
     <address class="recipient">
+      {%- if buyer.addressBlock -%}
+      {%- for line in buyer.addressBlock -%}
+      {%- if forloop.first %}<div class="recipient-name">{{ line }}</div>
+      {%- else %}<div>{{ line }}</div>{% endif -%}
+      {%- endfor -%}
+      {%- else -%}
       <div class="recipient-name">{{ buyer.name }}</div>
       {%- if buyer.contactName %}<div>{{ buyer.contactName }}</div>{% endif -%}
       <div>{{ buyer.address.addressLine1 }}</div>
       {%- if buyer.address.addressLine2 %}<div>{{ buyer.address.addressLine2 }}</div>{% endif -%}
       <div>{{ buyer.address.postalCode }} {{ buyer.address.city }}</div>
       {%- if buyer.address.countryCode != 'DE' %}<div>{{ buyer.address.countryCode }}</div>{% endif -%}
+      {%- endif -%}
     </address>
   </section>
 
@@ -72,8 +84,14 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
       <dt>Datum</dt>
       <dd class="num">{{ invoice.issueDate | date }}</dd>
 
+      {%- comment -%}
+        Ohne Kundendatensatz gibt es keine Kundennummer — dann entfällt die
+        Zeile, statt eine leere zu setzen (M5.7).
+      {%- endcomment -%}
+      {%- if buyer.customerNumber %}
       <dt>Kundennummer</dt>
       <dd class="num">{{ buyer.customerNumber }}</dd>
+      {%- endif -%}
 
       {%- if buyer.buyerReference %}
       <dt>Leitweg-ID</dt>

@@ -13,6 +13,8 @@ import type { Cents } from '../money/money';
 import { comparePlainDates, type PlainDate } from '../time/plain-date';
 import type { TaxScheme } from '../tax/tax-scheme';
 
+import { type BuyerViolation, type DraftBuyer, validateBuyer } from './buyer';
+
 export type IssueCandidateLine = {
   readonly name: string;
   readonly quantityScaled: number;
@@ -22,7 +24,8 @@ export type IssueCandidateLine = {
 };
 
 export type IssueCandidate = {
-  readonly customerId: string | null;
+  /** Der Empfänger — aus den Stammdaten oder am Beleg erfasst (M5.7). */
+  readonly buyer: DraftBuyer;
   readonly issueDate: PlainDate | null;
   readonly serviceDateFrom: PlainDate | null;
   readonly serviceDateTo: PlainDate | null;
@@ -37,7 +40,7 @@ export type IssueCandidate = {
 };
 
 export type CompletenessViolation =
-  | { readonly kind: 'NO_CUSTOMER' }
+  | BuyerViolation
   | { readonly kind: 'NO_LINES' }
   | { readonly kind: 'LINE_WITHOUT_NAME'; readonly position: number }
   | { readonly kind: 'NO_ISSUE_DATE' }
@@ -52,9 +55,9 @@ export type CompletenessViolation =
 export function validateForIssue(candidate: IssueCandidate): readonly CompletenessViolation[] {
   const violations: CompletenessViolation[] = [];
 
-  if (candidate.customerId === null || candidate.customerId.length === 0) {
-    violations.push({ kind: 'NO_CUSTOMER' });
-  }
+  // §14 UStG verlangt Name und Anschrift des Empfängers — gleich, ob er aus
+  // den Stammdaten kommt oder am Beleg steht (FA-PFL-01).
+  violations.push(...validateBuyer(candidate.buyer));
 
   if (candidate.lines.length === 0) {
     violations.push({ kind: 'NO_LINES' });

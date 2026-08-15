@@ -58,7 +58,16 @@ export const TEMPLATE_VARIABLES: readonly TemplateVariable[] = [
   { group: 'buyer', expression: 'buyer.email', description: 'E-Mail-Adresse' },
   { group: 'buyer', expression: 'buyer.phone', description: 'Telefon' },
   { group: 'buyer', expression: 'buyer.vatId', description: 'USt-IdNr.' },
-  { group: 'buyer', expression: 'buyer.customerNumber', description: 'Kundennummer' },
+  {
+    group: 'buyer',
+    expression: 'buyer.addressBlock',
+    description: 'Freier Anschriftenblock als Liste von Zeilen — leer, wenn Felder erfasst sind',
+  },
+  {
+    group: 'buyer',
+    expression: 'buyer.customerNumber',
+    description: 'Kundennummer — leer bei einem Empfänger ohne Kundendatensatz',
+  },
   { group: 'buyer', expression: 'buyer.buyerReference', description: 'Leitweg-ID (BT-10)' },
 
   // ── Beleg ─────────────────────────────────────────────────────────────────

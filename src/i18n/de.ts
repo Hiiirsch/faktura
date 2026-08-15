@@ -282,6 +282,29 @@ export const messages = {
     purchaseOrderRef: 'Bestellnummer',
     template: 'Vorlage',
     templateDefault: 'Standardvorlage',
+
+    buyerLegend: 'Empfänger',
+    buyerNoSelection: '— kein Kunde gewählt —',
+    buyerModeCUSTOMER: 'Aus den Kundendaten',
+    buyerModeFIELDS: 'Direkt eingeben',
+    buyerModeFREE: 'Als Textblock',
+    buyerModeHint:
+      'Ein einmaliger Empfänger braucht keinen Kundendatensatz. Land und USt-IdNr bestimmen die steuerliche Behandlung — im Textblock wird sie von Hand gewählt.',
+    buyerName: 'Name',
+    buyerContactName: 'Ansprechpartner',
+    buyerAddressLine1: 'Straße und Hausnummer',
+    buyerAddressLine2: 'Adresszusatz',
+    buyerPostalCode: 'Postleitzahl',
+    buyerCity: 'Ort',
+    buyerCountryCode: 'Land',
+    buyerEmail: 'E-Mail-Adresse',
+    buyerPhone: 'Telefon',
+    buyerVatId: 'USt-IdNr.',
+    buyerFreeText: 'Anschrift',
+    buyerFreeTextHint:
+      'Eine Zeile je Zeile des Anschriftfelds. Die erste Zeile gilt als Name des Empfängers.',
+    buyerNoCustomers:
+      'Es sind noch keine Kunden erfasst. Der Empfänger lässt sich trotzdem direkt am Beleg angeben.',
     introText: 'Einleitungstext',
     outroText: 'Schlusstext',
 
@@ -373,7 +396,8 @@ export const messages = {
     noCustomers: 'Bitte zuerst einen Kunden anlegen.',
     notFound: 'Der Beleg wurde nicht gefunden.',
 
-    violationNO_CUSTOMER: 'Es ist kein Kunde ausgewählt.',
+    violationNO_BUYER: 'Es ist kein Empfänger angegeben.',
+    violationNO_BUYER_ADDRESS: 'Dem Empfänger fehlt die Anschrift.',
     violationNO_LINES: 'Der Beleg enthält keine Position.',
     violationLINE_WITHOUT_NAME: 'Position {position} hat keine Bezeichnung.',
     violationNO_ISSUE_DATE: 'Das Rechnungsdatum fehlt.',

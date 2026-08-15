@@ -70,6 +70,7 @@ const document: InvoiceDocument = {
       city: 'Berlin',
       countryCode: 'DE',
     },
+    addressBlock: null,
     email: null,
     phone: null,
     vatId: null,

@@ -14,7 +14,10 @@ import {
 } from '@/domain/invoice/snapshot';
 import type { DocumentType } from '@/domain/document/document-type';
 import { parsePlainDate, type PlainDate, todayIn } from '@/domain/time/plain-date';
+import { buyerDisplayName } from '@/domain/invoice/buyer';
 import { getEnv } from '@/infrastructure/config/env';
+
+import { draftBuyerOf } from './invoice-buyer';
 import {
   findInvoiceDetail,
   listInvoices as queryInvoices,
@@ -31,6 +34,12 @@ export type InvoiceListFilter = {
   readonly direction?: 'asc' | 'desc';
 };
 
+function customerNameOf(
+  customer: { readonly companyName: string | null; readonly contactName: string | null } | null,
+): string | null {
+  return customer === null ? null : (customer.companyName ?? customer.contactName);
+}
+
 export type InvoiceListEntry = {
   readonly id: string;
   readonly documentType: DocumentType;
@@ -38,7 +47,7 @@ export type InvoiceListEntry = {
   readonly status: InvoiceStatus;
   readonly isOverdue: boolean;
   readonly customerName: string;
-  readonly customerId: string;
+  readonly customerId: string | null;
   readonly issueDate: string | null;
   readonly dueDate: string | null;
   readonly netTotalCents: number;
@@ -102,9 +111,11 @@ export async function listInvoices(
       invoiceNumber: invoice.invoiceNumber,
       status,
       isOverdue: isOverdue(status, asDate(invoice.dueDate), reference),
-      customerName:
-        invoice.customer.companyName ?? invoice.customer.contactName ?? invoice.customer.id,
-      customerId: invoice.customer.id,
+      // Der Empfänger, gleich woher er stammt (M5.7). Ohne Stammdatensatz
+      // steht hier der Name vom Beleg; bleibt auch der leer, ein Gedankenstrich
+      // — die Liste soll nicht eine Kennung anzeigen, die niemandem hilft.
+      customerName: buyerDisplayName(draftBuyerOf(invoice), customerNameOf(invoice.customer)) ?? '',
+      customerId: invoice.customerId,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
       netTotalCents: invoice.netTotalCents,

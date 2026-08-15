@@ -59,11 +59,18 @@ export type DocumentBuyer = {
   readonly name: string;
   readonly contactName: string | null;
   readonly address: DocumentAddress;
+  /**
+   * Freier Anschriftenblock, Zeile für Zeile — gesetzt, wenn der Empfänger
+   * nicht in Felder passte (M5.7). Wo er steht, tritt er auf dem Beleg an die
+   * Stelle von `address`; die Vorlage entscheidet anhand seines Vorhandenseins.
+   */
+  readonly addressBlock: readonly string[] | null;
   readonly email: string | null;
   readonly phone: string | null;
   /** BT-48. */
   readonly vatId: string | null;
-  readonly customerNumber: string;
+  /** `null` bei einem Empfänger ohne Stammdatensatz. */
+  readonly customerNumber: string | null;
   /** BT-10, Leitweg-ID bei öffentlichen Auftraggebern. */
   readonly buyerReference: string | null;
 };

@@ -38,9 +38,20 @@ export type SellerSnapshot = PartySnapshot & {
 };
 
 export type BuyerSnapshot = PartySnapshot & {
-  readonly customerNumber: string;
+  /**
+   * Kundennummer — `null`, wenn der Beleg an einen Empfänger ohne Stammdatensatz
+   * ging (M5.7). Ältere Snapshots tragen hier immer eine Zeichenkette; der
+   * Typwächter unten lässt beides zu, damit sie gültig bleiben.
+   */
+  readonly customerNumber: string | null;
   /** BT-10, Leitweg-ID bei öffentlichen Auftraggebern. */
   readonly buyerReference: string | null;
+  /**
+   * Freier Anschriftenblock, Zeile für Zeile — nur bei Belegen aus dem Modus
+   * `FREE`. Wo er steht, tritt er auf dem Beleg an die Stelle der einzelnen
+   * Adressfelder.
+   */
+  readonly addressBlock: readonly string[] | null;
 };
 
 /** Der vollständige Snapshot, wie er als JSON in der Rechnung liegt. */
@@ -76,13 +87,24 @@ export function isBuyerSnapshot(value: unknown): value is BuyerSnapshot {
     return false;
   }
   const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.name === 'string' &&
+
+  // Ein Beleg an einen freien Empfänger trägt die Adresse im Block statt in
+  // Feldern; dann dürfen die Einzelfelder leer sein. Verlangt wird in beiden
+  // Fällen ein Name — ohne ihn wäre der Beleg an niemanden gerichtet.
+  const hasAddressBlock = Array.isArray(candidate.addressBlock);
+  const hasAddressFields =
     typeof candidate.addressLine1 === 'string' &&
     typeof candidate.postalCode === 'string' &&
-    typeof candidate.city === 'string' &&
+    typeof candidate.city === 'string';
+
+  return (
+    typeof candidate.name === 'string' &&
     typeof candidate.countryCode === 'string' &&
-    typeof candidate.customerNumber === 'string'
+    (hasAddressFields || hasAddressBlock) &&
+    // Ältere Snapshots führen immer eine Kundennummer, neue dürfen `null`
+    // tragen. Fehlt das Feld ganz, stammt der Eintrag aus keiner der beiden
+    // Fassungen und gilt als beschädigt.
+    (typeof candidate.customerNumber === 'string' || candidate.customerNumber === null)
   );
 }
 

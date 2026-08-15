@@ -31,6 +31,7 @@ import { cents } from '@/domain/money/money';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
 import { isTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
 import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
+import { documentBuyerOf } from '@/application/invoices/invoice-buyer';
 import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
 import { findInvoiceForDocument } from '@/infrastructure/repositories/invoice-repository';
 import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
@@ -132,22 +133,9 @@ export async function buildInvoiceDocument(
 
   const buyer: DocumentBuyer =
     buyerSnapshot === null
-      ? {
-          name: invoice.customer.companyName ?? invoice.customer.contactName ?? '',
-          contactName: invoice.customer.contactName,
-          address: {
-            addressLine1: invoice.customer.addressLine1,
-            addressLine2: invoice.customer.addressLine2,
-            postalCode: invoice.customer.postalCode,
-            city: invoice.customer.city,
-            countryCode: invoice.customer.countryCode,
-          },
-          email: invoice.customer.email,
-          phone: invoice.customer.phone,
-          vatId: invoice.customer.vatId,
-          customerNumber: invoice.customer.customerNumber,
-          buyerReference: invoice.customer.buyerReference,
-        }
+      ? // Entwurf: der Empfänger, wie er gerade am Beleg steht — aus den
+        // Stammdaten, aus den Feldern oder aus dem freien Block (M5.7).
+        documentBuyerOf(invoice, invoice.customer)
       : {
           name: buyerSnapshot.name,
           contactName: buyerSnapshot.contactName,
@@ -158,6 +146,7 @@ export async function buildInvoiceDocument(
             city: buyerSnapshot.city,
             countryCode: buyerSnapshot.countryCode,
           },
+          addressBlock: buyerSnapshot.addressBlock,
           email: buyerSnapshot.email,
           phone: buyerSnapshot.phone,
           vatId: buyerSnapshot.vatId,

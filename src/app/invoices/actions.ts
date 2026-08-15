@@ -22,6 +22,7 @@ import {
   removePayment,
 } from '@/application/invoices/payments';
 import { isTaxCategoryCode } from '@/domain/codes/tax-category';
+import { isBuyerMode } from '@/domain/invoice/buyer';
 import { isUnitCode } from '@/domain/codes/unit-code';
 import type { CompletenessViolation } from '@/domain/invoice/completeness';
 import { parseCents } from '@/domain/money/money';
@@ -62,8 +63,34 @@ const optionalDate = z
   .transform((value) => (value.length === 0 ? null : value))
   .refine((value) => value === null || parsePlainDate(value).ok, { message: 'DATE' });
 
+/** Ein leeres Feld bedeutet „nicht angegeben", nicht „leerer Text". */
+const optionalField = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((value) => (value.length === 0 ? null : value));
+
 const headerSchema = z.object({
-  customerId: z.string().trim().min(1).max(64),
+  // Der Empfänger: Modus plus die Felder aller drei Quellen. Welche davon
+  // gelten, entscheidet der Modus — geschickt werden sie alle, damit ein
+  // Wechsel im Formular die Eingaben der anderen Maske nicht verwirft.
+  buyerMode: z.string().trim().refine(isBuyerMode, { message: 'BUYER_MODE' }),
+  customerId: z.string().trim().max(64).transform((v) => (v.length === 0 ? null : v)),
+  buyerName: optionalField,
+  buyerContactName: optionalField,
+  buyerAddressLine1: optionalField,
+  buyerAddressLine2: optionalField,
+  buyerPostalCode: optionalField,
+  buyerCity: optionalField,
+  buyerCountryCode: optionalField,
+  buyerEmail: optionalField,
+  buyerPhone: optionalField,
+  buyerVatId: optionalField,
+  buyerFreeText: z
+    .string()
+    .trim()
+    .max(2000)
+    .transform((value) => (value.length === 0 ? null : value)),
   taxScheme: z.string().trim().refine(isTaxScheme, { message: 'SCHEME' }),
   currency: z.string().trim().length(3),
   issueDate: optionalDate,
@@ -142,7 +169,19 @@ function parseForm(
   formData: FormData,
 ): { ok: true; data: DraftInvoiceData } | { ok: false; state: InvoiceFormState } {
   const header = headerSchema.safeParse({
-    customerId: formData.get('customerId'),
+    buyerMode: formData.get('buyerMode') ?? 'CUSTOMER',
+    customerId: formData.get('customerId') ?? '',
+    buyerName: formData.get('buyerName') ?? '',
+    buyerContactName: formData.get('buyerContactName') ?? '',
+    buyerAddressLine1: formData.get('buyerAddressLine1') ?? '',
+    buyerAddressLine2: formData.get('buyerAddressLine2') ?? '',
+    buyerPostalCode: formData.get('buyerPostalCode') ?? '',
+    buyerCity: formData.get('buyerCity') ?? '',
+    buyerCountryCode: formData.get('buyerCountryCode') ?? '',
+    buyerEmail: formData.get('buyerEmail') ?? '',
+    buyerPhone: formData.get('buyerPhone') ?? '',
+    buyerVatId: formData.get('buyerVatId') ?? '',
+    buyerFreeText: formData.get('buyerFreeText') ?? '',
     taxScheme: formData.get('taxScheme'),
     currency: formData.get('currency'),
     issueDate: formData.get('issueDate'),
@@ -164,9 +203,46 @@ function parseForm(
     return { ok: false, state: { status: 'error', messages: [lines.message] } };
   }
 
+  const {
+    buyerMode,
+    customerId,
+    buyerName,
+    buyerContactName,
+    buyerAddressLine1,
+    buyerAddressLine2,
+    buyerPostalCode,
+    buyerCity,
+    buyerCountryCode,
+    buyerEmail,
+    buyerPhone,
+    buyerVatId,
+    buyerFreeText,
+    ...rest
+  } = header.data;
+
   return {
     ok: true,
-    data: { ...header.data, lines: lines.lines },
+    data: {
+      ...rest,
+      buyer: {
+        mode: buyerMode,
+        customerId,
+        fields: {
+          name: buyerName,
+          contactName: buyerContactName,
+          addressLine1: buyerAddressLine1,
+          addressLine2: buyerAddressLine2,
+          postalCode: buyerPostalCode,
+          city: buyerCity,
+          countryCode: buyerCountryCode,
+          email: buyerEmail,
+          phone: buyerPhone,
+          vatId: buyerVatId,
+        },
+        freeText: buyerFreeText,
+      },
+      lines: lines.lines,
+    },
   };
 }
 

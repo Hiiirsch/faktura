@@ -54,6 +54,7 @@ import { applyPostProcessors, defaultPipeline } from '@/infrastructure/rendering
 import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 import { verifyArtifact } from '@/infrastructure/storage/artifact-store';
 
+import { customerBuyer } from '../support/buyer';
 import { pdfContainsText } from '../support/pdf-text';
 
 import { resetDatabase } from './setup/database';
@@ -130,7 +131,7 @@ async function seedDraft(
   const draft = await createDraftInvoice(
     org,
     {
-      customerId: customer.id,
+      buyer: customerBuyer(customer.id),
       taxScheme: 'STANDARD',
       currency: 'EUR',
       issueDate: '2026-03-01',
@@ -282,7 +283,7 @@ describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
     const draft = await createDraftInvoice(
       org,
       {
-        customerId: customer.id,
+        buyer: customerBuyer(customer.id),
         taxScheme: 'REVERSE_CHARGE',
         currency: 'EUR',
         issueDate: '2026-03-01',
@@ -410,7 +411,7 @@ describe('FA-TPL-02, -03 Mehrere Vorlagen', () => {
       org,
       invoiceId,
       {
-        customerId,
+        buyer: customerBuyer(customerId),
         taxScheme: 'STANDARD',
         currency: 'EUR',
         issueDate: '2026-03-01',

@@ -11,12 +11,13 @@ import {
   isReadyToIssue,
   validateForIssue,
 } from '@/domain/invoice/completeness';
+import { type DraftBuyer, EMPTY_BUYER_FIELDS } from '@/domain/invoice/buyer';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 
 function candidate(overrides: Partial<IssueCandidate> = {}): IssueCandidate {
   return {
-    customerId: 'kunde-1',
+    buyer: { mode: 'CUSTOMER', customerId: 'kunde-1', fields: EMPTY_BUYER_FIELDS, freeText: null },
     issueDate: plainDate('2026-03-01'),
     serviceDateFrom: plainDate('2026-02-01'),
     serviceDateTo: plainDate('2026-02-28'),
@@ -50,9 +51,46 @@ describe('Vollständiger Beleg', () => {
 });
 
 describe('Fehlende Pflichtangaben', () => {
-  it('verlangt einen Kunden', () => {
-    expect(kinds(candidate({ customerId: null }))).toContain('NO_CUSTOMER');
-    expect(kinds(candidate({ customerId: '' }))).toContain('NO_CUSTOMER');
+  const buyer = (overrides: Partial<DraftBuyer>): DraftBuyer => ({
+    mode: 'CUSTOMER',
+    customerId: null,
+    fields: EMPTY_BUYER_FIELDS,
+    freeText: null,
+    ...overrides,
+  });
+
+  it('verlangt einen Empfänger aus den Stammdaten', () => {
+    expect(kinds(candidate({ buyer: buyer({ customerId: null }) }))).toContain('NO_BUYER');
+    expect(kinds(candidate({ buyer: buyer({ customerId: '' }) }))).toContain('NO_BUYER');
+  });
+
+  // M5.7: Der Empfänger darf auch am Beleg stehen — Name und Anschrift bleiben
+  // Pflicht (FA-PFL-01), nur die Quelle ist frei.
+  it('verlangt bei eigenen Feldern Namen und Anschrift', () => {
+    const fields = {
+      ...EMPTY_BUYER_FIELDS,
+      name: 'Beispiel GmbH',
+      addressLine1: 'Weg 1',
+      city: 'Berlin',
+    };
+
+    expect(kinds(candidate({ buyer: buyer({ mode: 'FIELDS', fields }) }))).toEqual([]);
+    expect(
+      kinds(candidate({ buyer: buyer({ mode: 'FIELDS', fields: EMPTY_BUYER_FIELDS }) })),
+    ).toContain('NO_BUYER');
+    expect(
+      kinds(candidate({ buyer: buyer({ mode: 'FIELDS', fields: { ...fields, city: null } }) })),
+    ).toContain('NO_BUYER_ADDRESS');
+  });
+
+  it('verlangt beim freien Block mehr als eine Zeile', () => {
+    const free = (freeText: string | null): DraftBuyer => buyer({ mode: 'FREE', freeText });
+
+    expect(kinds(candidate({ buyer: free('Beispiel GmbH\nWeg 1\n10115 Berlin') }))).toEqual([]);
+    expect(kinds(candidate({ buyer: free(null) }))).toContain('NO_BUYER');
+    expect(kinds(candidate({ buyer: free('   ') }))).toContain('NO_BUYER');
+    // Ein Name ohne Anschrift genügt §14 UStG nicht.
+    expect(kinds(candidate({ buyer: free('Beispiel GmbH') }))).toContain('NO_BUYER_ADDRESS');
   });
 
   it('verlangt mindestens eine Position', () => {
@@ -94,7 +132,12 @@ describe('Fehlende Pflichtangaben', () => {
 
   it('meldet alle Verstöße gemeinsam', () => {
     const violations = kinds(
-      candidate({ customerId: null, lines: [], issueDate: null, sellerHasTaxIdentifier: false }),
+      candidate({
+        buyer: buyer({ customerId: null }),
+        lines: [],
+        issueDate: null,
+        sellerHasTaxIdentifier: false,
+      }),
     );
     expect(violations.length).toBeGreaterThanOrEqual(4);
   });

@@ -23,6 +23,7 @@ import type { ReactNode } from 'react';
 import type { CatalogItem } from '@/application/catalog/catalog-service';
 import { TAX_CATEGORY_CODES, type TaxCategoryCode } from '@/domain/codes/tax-category';
 import { UNIT_CODES, type UnitCode } from '@/domain/codes/unit-code';
+import type { BuyerMode } from '@/domain/invoice/buyer';
 import { calculateInvoiceTotals, PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 import { cents, parseCents } from '@/domain/money/money';
 import { parseQuantity, quantityFromScaled } from '@/domain/quantity/quantity';
@@ -43,6 +44,7 @@ import {
 import { formatMoney, formatPercent, parseGermanDecimal } from '@/ui/format';
 
 import { type InvoiceFormState, issueInvoiceAction, saveDraftAction } from './actions';
+import { BuyerFieldset, type EditorBuyerValues } from './buyer-fieldset';
 
 export type EditableLine = {
   readonly key: string;
@@ -66,7 +68,7 @@ export type CustomerOption = {
 
 export type EditorInitialValues = {
   readonly invoiceId: string | null;
-  readonly customerId: string;
+  readonly buyer: EditorBuyerValues;
   readonly templateId: string;
   readonly taxScheme: TaxScheme;
   readonly currency: string;
@@ -345,6 +347,7 @@ export function InvoiceEditor({
   catalog,
   templates,
   defaultTaxRatePercent,
+  defaultPaymentTerms,
   csrfToken,
 }: {
   readonly initial: EditorInitialValues;
@@ -352,12 +355,15 @@ export function InvoiceEditor({
   readonly catalog: readonly CatalogItem[];
   readonly templates: readonly { readonly id: string; readonly label: string }[];
   readonly defaultTaxRatePercent: string;
+  /** Zahlungsziel der Firmendaten — gilt, wo kein Kunde eines vorgibt. */
+  readonly defaultPaymentTerms: number;
   readonly csrfToken: string;
 }): ReactNode {
   const [saveState, saveAction] = useActionState(saveDraftAction, INITIAL_STATE);
   const [issueState, issueAction] = useActionState(issueInvoiceAction, INITIAL_STATE);
 
-  const [customerId, setCustomerId] = useState(initial.customerId);
+  const [buyerMode, setBuyerMode] = useState<BuyerMode>(initial.buyer.mode);
+  const [customerId, setCustomerId] = useState(initial.buyer.customerId);
   const [taxScheme, setTaxScheme] = useState<TaxScheme>(initial.taxScheme);
   const [issueDate, setIssueDate] = useState(initial.issueDate);
   const [dueDate, setDueDate] = useState(initial.dueDate);
@@ -445,13 +451,20 @@ export function InvoiceEditor({
     touch();
   };
 
-  /** Fälligkeit aus Rechnungsdatum und Zahlungsziel vorbelegen (FA-RECH-08). */
+  /**
+   * Fälligkeit aus Rechnungsdatum und Zahlungsziel vorbelegen (FA-RECH-08).
+   *
+   * Ohne Kunden gibt es kein abweichendes Zahlungsziel — dann gilt das der
+   * Firmendaten. Sonst bliebe das Feld bei einem freien Empfänger leer, und
+   * das Festschreiben scheiterte an einer Angabe, die niemand angefordert hat.
+   */
   const applyDueDate = (nextIssueDate: string, nextCustomerId: string): void => {
     const parsed = parsePlainDate(nextIssueDate);
-    const customer = customers.find((entry) => entry.id === nextCustomerId);
-    if (parsed.ok && customer !== undefined) {
-      setDueDate(addDays(parsed.value, customer.paymentTerms));
+    if (!parsed.ok) {
+      return;
     }
+    const customer = customers.find((entry) => entry.id === nextCustomerId);
+    setDueDate(addDays(parsed.value, customer?.paymentTerms ?? defaultPaymentTerms));
   };
 
   const applyCatalogItem = (key: string, itemId: string): void => {
@@ -494,26 +507,21 @@ export function InvoiceEditor({
       {saveState.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
 
       <FormSection title={messages.invoices.viewHeading}>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium">{messages.invoices.customer} *</span>
-          <select
-            name="customerId"
-            required
-            value={customerId}
-            onChange={(event) => {
-              setCustomerId(event.target.value);
-              applyDueDate(issueDate, event.target.value);
-              touch();
-            }}
-            className={INPUT_CLASS}
-          >
-            {customers.map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <BuyerFieldset
+          initial={initial.buyer}
+          customers={customers}
+          mode={buyerMode}
+          customerId={customerId}
+          onModeChange={(next) => {
+            setBuyerMode(next);
+            touch();
+          }}
+          onCustomerChange={(next) => {
+            setCustomerId(next);
+            applyDueDate(issueDate, next);
+            touch();
+          }}
+        />
 
         <input type="hidden" name="currency" value={initial.currency} />
 

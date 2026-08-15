@@ -12,6 +12,7 @@ import { calculateInvoiceTotals, type InvoiceLineInput } from '@/domain/invoice/
 import { cents, sumCents } from '@/domain/money/money';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
 import type { TaxScheme } from '@/domain/tax/tax-scheme';
+import type { DraftBuyer } from '@/domain/invoice/buyer';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { runInTransaction } from '@/infrastructure/repositories/client';
 import {
@@ -39,7 +40,8 @@ export type InvoiceLineData = {
 };
 
 export type DraftInvoiceData = {
-  readonly customerId: string;
+  /** Der Empfänger — aus den Stammdaten, aus Feldern oder als Block (M5.7). */
+  readonly buyer: DraftBuyer;
   readonly taxScheme: TaxScheme;
   readonly currency: string;
   readonly issueDate: string | null;
@@ -94,7 +96,19 @@ export async function createDraftInvoice(
   const invoice = await createInvoice(
     context,
     {
-      customerId: data.customerId,
+      buyerMode: data.buyer.mode,
+      customerId: data.buyer.mode === 'CUSTOMER' ? data.buyer.customerId : null,
+      buyerName: data.buyer.fields.name,
+      buyerContactName: data.buyer.fields.contactName,
+      buyerAddressLine1: data.buyer.fields.addressLine1,
+      buyerAddressLine2: data.buyer.fields.addressLine2,
+      buyerPostalCode: data.buyer.fields.postalCode,
+      buyerCity: data.buyer.fields.city,
+      buyerCountryCode: data.buyer.fields.countryCode,
+      buyerEmail: data.buyer.fields.email,
+      buyerPhone: data.buyer.fields.phone,
+      buyerVatId: data.buyer.fields.vatId,
+      buyerFreeText: data.buyer.mode === 'FREE' ? data.buyer.freeText : null,
       documentType: 'INVOICE',
       status: 'DRAFT',
       taxScheme: data.taxScheme,
@@ -159,7 +173,19 @@ export async function updateDraftInvoice(
       context,
       invoiceId,
       {
-        customerId: data.customerId,
+        buyerMode: data.buyer.mode,
+        customerId: data.buyer.mode === 'CUSTOMER' ? data.buyer.customerId : null,
+        buyerName: data.buyer.fields.name,
+        buyerContactName: data.buyer.fields.contactName,
+        buyerAddressLine1: data.buyer.fields.addressLine1,
+        buyerAddressLine2: data.buyer.fields.addressLine2,
+        buyerPostalCode: data.buyer.fields.postalCode,
+        buyerCity: data.buyer.fields.city,
+        buyerCountryCode: data.buyer.fields.countryCode,
+        buyerEmail: data.buyer.fields.email,
+        buyerPhone: data.buyer.fields.phone,
+        buyerVatId: data.buyer.fields.vatId,
+        buyerFreeText: data.buyer.mode === 'FREE' ? data.buyer.freeText : null,
         taxScheme: data.taxScheme,
         currency: data.currency,
         issueDate: data.issueDate,
@@ -240,7 +266,20 @@ export async function duplicateInvoice(
   const copy = await createInvoice(
     context,
     {
+      // Der Empfänger wandert mit, gleich aus welcher Quelle er stammt.
+      buyerMode: source.buyerMode,
       customerId: source.customerId,
+      buyerName: source.buyerName,
+      buyerContactName: source.buyerContactName,
+      buyerAddressLine1: source.buyerAddressLine1,
+      buyerAddressLine2: source.buyerAddressLine2,
+      buyerPostalCode: source.buyerPostalCode,
+      buyerCity: source.buyerCity,
+      buyerCountryCode: source.buyerCountryCode,
+      buyerEmail: source.buyerEmail,
+      buyerPhone: source.buyerPhone,
+      buyerVatId: source.buyerVatId,
+      buyerFreeText: source.buyerFreeText,
       documentType: 'INVOICE',
       status: 'DRAFT',
       invoiceNumber: null,

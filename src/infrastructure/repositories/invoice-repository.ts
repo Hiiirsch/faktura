@@ -174,6 +174,10 @@ export async function listInvoices(
               { customer: { companyName: { contains: search } } },
               { customer: { contactName: { contains: search } } },
               { customer: { customerNumber: { contains: search } } },
+              // Empfänger ohne Stammdatensatz (M5.7) — ohne diese beiden
+              // Bedingungen wären sie über die Suche nicht erreichbar.
+              { buyerName: { contains: search } },
+              { buyerFreeText: { contains: search } },
               { lines: { some: { name: { contains: search } } } },
             ],
           }),

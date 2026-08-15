@@ -47,6 +47,8 @@ import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 import { organizationContextOf } from '@/infrastructure/repositories/organization-context';
 
+import { customerBuyer } from '../support/buyer';
+
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 import { testOrganization } from './setup/organization';
 
@@ -129,7 +131,7 @@ async function seed(organization: typeof testOrganization, marker: string) {
   const draft = await createDraftInvoice(
     organization,
     {
-      customerId: customer.id,
+      buyer: customerBuyer(customer.id),
       taxScheme: 'STANDARD',
       currency: 'EUR',
       issueDate: '2026-03-01',
@@ -248,7 +250,7 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
     const draftOfB = await createDraftInvoice(
       second,
       {
-        customerId: b.customerId,
+        buyer: customerBuyer(b.customerId),
         taxScheme: 'STANDARD',
         currency: 'EUR',
         issueDate: '2026-03-02',
@@ -275,7 +277,7 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
       testOrganization,
       draftOfB.id,
       {
-        customerId: b.customerId,
+        buyer: customerBuyer(b.customerId),
         taxScheme: 'STANDARD',
         currency: 'EUR',
         issueDate: '2026-03-02',
@@ -305,7 +307,7 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
     const draftOfB = await createDraftInvoice(
       second,
       {
-        customerId: b.customerId,
+        buyer: customerBuyer(b.customerId),
         taxScheme: 'STANDARD',
         currency: 'EUR',
         issueDate: '2026-03-03',

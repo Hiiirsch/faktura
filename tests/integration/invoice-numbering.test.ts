@@ -21,6 +21,8 @@ import { EMPTY_COMPANY_PROFILE, saveCompanyProfile } from '@/application/company
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 
+import { customerBuyer } from '../support/buyer';
+
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 import { testOrganization } from './setup/organization';
 
@@ -46,7 +48,7 @@ const CUSTOMER: CustomerData = {
 
 function draft(customerId: string, issueDate: string, overrides: Partial<DraftInvoiceData> = {}) {
   return {
-    customerId,
+    buyer: customerBuyer(customerId),
     taxScheme: 'STANDARD' as const,
     currency: 'EUR',
     issueDate,
