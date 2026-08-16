@@ -369,7 +369,20 @@ export async function issueInvoiceAction(
 
   revalidatePath(INVOICES_PATH);
   revalidatePath(invoicePath(invoiceId));
-  return { status: 'issued', invoiceNumber: result.invoiceNumber };
+
+  /*
+   * Umleiten statt einen Zustand zurückzugeben (seit M7).
+   *
+   * Vorher meldete die Aktion `{ status: 'issued' }`, und der Editor setzte
+   * daraufhin die Nummer mit dem Stempel (FA-UI-07). Nur: Mit demselben
+   * Durchlauf wird die Seite neu gesetzt, der Beleg ist kein Entwurf mehr,
+   * und der Editor verschwindet — samt Stempel. Sichtbar war er nie. Der
+   * E2E-Durchlauf hat das gefunden, das Auge nicht.
+   *
+   * Jetzt trägt die Adresse den Anlass, und der Stempel sitzt dort, wo die
+   * Nummer nach dem Festschreiben tatsächlich steht: im Kopf der Belegseite.
+   */
+  redirect(`${invoicePath(invoiceId)}?festgeschrieben=1`);
 }
 
 const idSchema = z.string().trim().min(1).max(64);

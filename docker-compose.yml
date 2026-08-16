@@ -16,9 +16,13 @@ services:
       NODE_ENV: production
       PORT: 3000
       STORAGE_DIR: /app/storage
+      BACKUP_DIR: /app/backups
     volumes:
       - ./data:/app/data
       - ./storage:/app/storage
+      # Sicherungen (NFA-BETR-03). Der Auftrag `npm run backup` schreibt
+      # hierher; die Zeitsteuerung liegt beim Server, nicht in der Anwendung.
+      - ./backups:/app/backups
     # Chromium rendert **ohne** `--no-sandbox` (Spec §11.3). Seine Sandbox legt
     # dafür Namespaces an und wechselt den Benutzer; unter dem
     # Standard-Seccomp-Filter von Docker geht das nur mit CAP_SYS_ADMIN.

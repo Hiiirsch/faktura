@@ -4,8 +4,12 @@ import type { ReactNode } from 'react';
 import { requireSession } from '@/application/auth/require-session';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { BACKUP_DOWNLOAD_PATH, BACKUP_SETTINGS_PATH } from '@/routes';
-import { PRIMARY_BUTTON_CLASS, SECTION_CLASS } from '@/ui/components/form';
+import { BACKUP_DOWNLOAD_PATH, BACKUP_SETTINGS_PATH, DATA_EXPORT_PATH } from '@/routes';
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+  SECTION_CLASS,
+} from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
 
 import { AppShell } from '../../app-shell';
@@ -40,6 +44,16 @@ export default async function BackupSettingsPage(): Promise<ReactNode> {
         <div>
           <a href={BACKUP_DOWNLOAD_PATH} className={PRIMARY_BUTTON_CLASS} download>
             {messages.backup.download}
+          </a>
+        </div>
+      </section>
+
+      <section className={SECTION_CLASS}>
+        <h2 className="text-section font-semibold text-ink">{messages.backup.exportHeading}</h2>
+        <p className="max-w-form text-ui text-ink-muted">{messages.backup.exportHint}</p>
+        <div>
+          <a href={DATA_EXPORT_PATH} className={SECONDARY_BUTTON_CLASS} download>
+            {messages.backup.exportDownload}
           </a>
         </div>
       </section>

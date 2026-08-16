@@ -46,13 +46,17 @@ export const metadata = { title: `${messages.invoices.viewHeading} · ${messages
 
 export default async function InvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
   const session = await requireSession();
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const { id } = await params;
+  // Gesetzt von der Festschreib-Aktion, die hierher umleitet.
+  const justIssued = (await searchParams).festgeschrieben === '1';
   const invoice = await loadInvoiceDetail(session.organization, id);
   if (invoice === null) {
     notFound();
@@ -80,6 +84,14 @@ export default async function InvoiceDetailPage({
               ? `${messages.invoices.creditNote} ${title}`
               : title
           }
+          /*
+            Der eine inszenierte Moment (§2.4, FA-UI-07): Die eben vergebene
+            Nummer wird eingestempelt. Der Anlass steht in der Adresse, weil
+            der Editor mit dem Festschreiben verschwindet — ein Zustand im
+            Editor wäre in demselben Durchlauf weg, in dem er entsteht.
+            `prefers-reduced-motion` schaltet die Bewegung in `globals.css` ab.
+          */
+          titleClassName={justIssued ? 'stamp-in' : ''}
           backHref={INVOICES_PATH}
           backLabel={messages.invoices.heading}
           meta={
@@ -205,7 +217,14 @@ export default async function InvoiceDetailPage({
         invoice.status === 'PAID' ? (
           <section className={SECTION_CLASS}>
             <h2 className="text-section font-medium">{messages.invoices.cancelConfirmTitle}</h2>
-            <p className="text-ui text-ink-muted">
+            {/*
+              Warum es kein Löschen gibt, steht an der Stelle, an der jemand
+              danach sucht (NFA-COMP-04).
+            */}
+            <p className="max-w-form text-ui text-ink-muted">
+              {messages.invoices.noDeleteExplanation}
+            </p>
+            <p className="max-w-form text-ui text-ink-muted">
               {messages.invoices.cancelConfirm}
             </p>
             <form action={cancelInvoiceAction} className="flex flex-col gap-3">

@@ -31,6 +31,7 @@ import { addDays, parsePlainDate } from '@/domain/time/plain-date';
 import { TAX_SCHEMES, type TaxScheme, taxCategoryForScheme } from '@/domain/tax/tax-scheme';
 import { messages, taxCategoryLabels, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import { ConfirmDialog } from '@/ui/components/dialog';
 import { DateField } from '@/ui/components/date-field';
 import {
   Alert,
@@ -507,29 +508,6 @@ export function InvoiceEditor({
       ) : null}
       {saveState.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
 
-      {/*
-        Der eine inszenierte Moment (§2.4, FA-UI-07).
-
-        Die vergebene Nummer wird eingestempelt — Skalierung, leichte Rotation,
-        Deckkraft. Sie steht hier und nicht im Blatt, weil das Blatt ein
-        eingebettetes PDF ist: In den Betrachter des Browsers hinein lässt sich
-        nichts animieren. Sie erscheint dafür genau dort, wo der Blick beim
-        Drücken war.
-
-        `prefers-reduced-motion` schaltet die Bewegung ab; die Nummer erscheint
-        dann schlicht. Beides regelt `globals.css`, nicht dieser Zweig.
-      */}
-      {issueState.status === 'issued' ? (
-        <p className="stamp-in flex items-baseline gap-3 border-t border-rule pt-6">
-          <span className="text-label font-semibold uppercase text-ink-muted">
-            {messages.invoices.issuedAs}
-          </span>
-          <span className="font-mono text-title font-medium text-ink">
-            {issueState.invoiceNumber}
-          </span>
-        </p>
-      ) : null}
-
       <FormSection title={messages.invoices.viewHeading}>
         <BuyerFieldset
           initial={initial.buyer}
@@ -776,21 +754,31 @@ export function InvoiceEditor({
         </button>
 
         {initial.invoiceId === null ? null : (
-          <button
-            type="submit"
+          /*
+            Festschreiben ist unumkehrbar (NFA-QUAL-12) und wird deshalb
+            bestätigt — im Dialog der Anwendung, nicht im Fenster des Browsers
+            (FA-UI-17). Diese Stelle war bis M7 die letzte mit
+            `window.confirm`: Sie trug die Rückfrage in einem `onClick` statt
+            in einem Bauteil und fiel beim Umstellen in M5.8 durch.
+          */
+          <ConfirmDialog
+            title={messages.invoices.issueConfirmTitle}
+            message={messages.invoices.issueConfirm}
+            confirmLabel={messages.invoices.issue}
             formAction={issueAction}
-            onClick={(event) => {
-              // NFA-QUAL-12: destruktive beziehungsweise unumkehrbare Aktion.
-              if (!window.confirm(messages.invoices.issueConfirm)) {
-                event.preventDefault();
-                return;
-              }
-              setDirty(false);
-            }}
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            {messages.invoices.issue}
-          </button>
+            trigger={
+              <button
+                type="submit"
+                formAction={issueAction}
+                onClick={() => {
+                  setDirty(false);
+                }}
+                className={SECONDARY_BUTTON_CLASS}
+              >
+                {messages.invoices.issue}
+              </button>
+            }
+          />
         )}
 
       </div>

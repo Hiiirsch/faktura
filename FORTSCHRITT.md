@@ -32,10 +32,26 @@ erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
 
-**M7 — Betrieb (in Arbeit).** Erledigt sind Protokollierung, Healthcheck und
-die Sicherung; offen bleiben Datenexport (NFA-COMP-03), Archivierungshinweis
-(-04), Offline-Nachweis (-05), Seed-Kommando (NFA-QUAL-06), der
-Gesamtpfad-E2E (NFA-QUAL-02) und das README (NFA-BETR-11).
+**M7 — Betrieb (umgesetzt, Abnahme offen).** Alle vierzehn Anforderungen sind
+belegt: Protokollierung, Healthcheck, Sicherung, Wiederherstellung,
+Datenexport, Archivierungshinweise, Offline-Nachweis, Seed-Kommando,
+Gesamtpfad-E2E und README.
+
+**Zwei Befunde, die erst der E2E-Durchlauf zutage gefördert hat** — beide an
+Stellen, die im Quelltext richtig aussahen:
+
+1. *Das Festschreiben fragte über `window.confirm`.* In M5.8 wurden fünf
+   Browserdialoge durch den Dialog der Anwendung ersetzt (FA-UI-17); der
+   sechste blieb stehen, weil er nicht in einem Bauteil steckte, sondern in
+   einem `onClick` — ausgerechnet an der folgenreichsten Handlung.
+   `tests/architecture/design-tokens.test.ts` verbietet `window.confirm`,
+   `alert` und `prompt` jetzt.
+2. *Der Stempel beim Festschreiben war nie zu sehen.* Er saß im Editor und
+   wurde gesetzt, wenn die Aktion `issued` meldete — nur verschwindet der
+   Editor mit demselben Durchlauf, weil der Beleg kein Entwurf mehr ist.
+   FA-UI-07 galt damit als umgesetzt, ohne es zu sein. Die Aktion leitet jetzt
+   auf den Beleg um (`?festgeschrieben=1`), und der Stempel sitzt im
+   Seitenkopf, wo die Nummer danach steht.
 
 **Eine geprüfte Ausnahme vom Roh-SQL-Verbot.** NFA-BETR-04 verlangt eine
 konsistente Datenbanksicherung, NFA-ARCH-10 verbietet Roh-SQL — für eine
@@ -402,9 +418,9 @@ Szenario benannt.
 |---|---|---|---|---|---|---|
 | NFA-COMP-01 | Änderungen an Rechnungen/Kunden/Firma protokolliert | MUSS | T | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts`, `tests/integration/master-data.test.ts` — Rechnungen, Kunden und Firmendaten mit Zeitpunkt, Aktion und Akteur |
 | NFA-COMP-02 | Audit-Log über die Anwendung nicht änder-/löschbar | MUSS | R | M4 | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — Prisma-Erweiterung und Datenbank-Trigger weisen Ändern und Löschen ab |
-| NFA-COMP-03 | Vollständiger Datenexport maschinenlesbar | MUSS | M | M7 | offen | — |
-| NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | offen | — |
-| NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | offen | — |
+| NFA-COMP-03 | Vollständiger Datenexport maschinenlesbar | MUSS | M | M7 | umgesetzt | `/settings/backup` → `/api/export`; `src/application/export/export-data.ts` — Kunden, Belege mit Positionen und Zahlungen, Vorlagen, Nummernkreise und das Protokoll als JSON. Zugangsdaten bewusst nicht enthalten |
+| NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | umgesetzt | Kundenseite (`archiveExplanation`), Katalogseite und Belegseite (`noDeleteExplanation`) — jeweils dort, wo jemand zu löschen versucht, nicht in einer Hilfeseite |
+| NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | umgesetzt | `tests/architecture/offline.test.ts` — keine fremde Adresse im Quelltext, `default-src 'none'` mit `connect-src 'self'`, keine Telemetriepakete; `tests/integration/rendering.test.ts` weist die Blockade im Renderer nach (NFA-SEC-12) |
 | NFA-COMP-06 | Keine externen Fonts, Skripte, Analysedienste | MUSS | R | M7 | umgesetzt | `tests/architecture/design-tokens.test.ts` — Schriften aus dem Paket, keine externe Adresse im Frontend |
 
 ## 13. Betrieb
@@ -421,7 +437,7 @@ Szenario benannt.
 | NFA-BETR-08 | Healthcheck prüft DB und Renderer | MUSS | T | M7 | umgesetzt | `tests/integration/health.test.ts` — beide Bestandteile, Renderer durch echten Browserstart; Anzeige unter `/settings/security`, Antwort ohne Details (NFA-SEC-18) |
 | NFA-BETR-09 | Strukturierte Logs auf stdout, Sicherheitsereignisse erkennbar | MUSS | R | M7 | umgesetzt | `src/infrastructure/logging/logger.ts`; `tests/unit/infrastructure/logging.test.ts` — eine Zeile je Ereignis als JSON, `category: 'security'` als Feld. `tests/architecture/design-tokens.test.ts` verbietet `console` in `src/` |
 | NFA-BETR-10 | Keine Passwörter, Token, Kundendatensätze in Logs | MUSS | R | M7 | umgesetzt | `tests/unit/infrastructure/logging.test.ts` — die Entfernung sitzt im Schreibweg, nicht in der Disziplin der Aufrufer; lange Zeichenketten werden gekürzt, tiefe Objekte abgeschnitten |
-| NFA-BETR-11 | README: Installation, Konfiguration, Backup, Restore, Update | MUSS | R | M7 | offen | — |
+| NFA-BETR-11 | README: Installation, Konfiguration, Backup, Restore, Update | MUSS | R | M7 | umgesetzt | `README.md` — Sicherung (Oberfläche, Auftrag, cron), Wiederherstellung in sechs Schritten mit Prüfung, Datenexport, Update mit vorheriger Sicherung, Logs mit `jq`-Beispielen |
 
 ## 14. Architektur & Erweiterbarkeit
 
@@ -443,11 +459,11 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | NFA-QUAL-01 | Domain-Testabdeckung ≥90 % | MUSS | T | M3 | abgenommen | `npm run test:coverage` — Domain-Schicht 100 % Statements, Functions und Lines bei einer Schwelle von 90 % |
-| NFA-QUAL-02 | E2E über den kritischen Gesamtpfad | MUSS | T | M7 | offen | — |
+| NFA-QUAL-02 | E2E über den kritischen Gesamtpfad | MUSS | T | M7 | umgesetzt | `tests/integration/e2e-invoice-lifecycle.test.ts` — Anmelden, Kunde anlegen, Rechnung erstellen, festschreiben, PDF laden, Zahlung erfassen, stornieren; ein Durchlauf in fester Reihenfolge |
 | NFA-QUAL-03 | Build bricht bei TS-/Lint-Fehlern, kein `any` in der Domain | MUSS | R | M0 | abgenommen | `npm run verify`; `eslint.config.mjs` (`no-explicit-any` als Fehler, `--max-warnings=0`); `next.config.ts` (`ignoreBuildErrors: false`) |
 | NFA-QUAL-04 | Listenansicht mit 1.000 Rechnungen unter 1 s | SOLL | T | M6 | umgesetzt | `tests/integration/dashboard-performance.test.ts` — gemessen 22 ms ungefiltert, 2 ms mit Volltextsuche |
 | NFA-QUAL-05 | Dashboard bei 1.000 Rechnungen unter 1 s | SOLL | T | M6 | umgesetzt | `tests/integration/dashboard-performance.test.ts` — gemessen 22 ms; der Test ist zugleich die Stelle, an der die Rechnung in der Anwendung statt in SQL auffiele, wenn der Bestand wächst |
-| NFA-QUAL-06 | Seed-Kommando mit realistischen Testdaten | MUSS | M | M7 | offen | — |
+| NFA-QUAL-06 | Seed-Kommando mit realistischen Testdaten | MUSS | M | M7 | umgesetzt | `scripts/seed.ts` (`npm run seed`) — 5 Kunden, 4 Leistungen, ~65 Belege über drei Jahre in allen Statuswerten; bricht bei `NODE_ENV=production` ab |
 | NFA-QUAL-07 † | UI vollständig deutsch, Texte zentral | MUSS | R | M0 † | abgenommen | `src/i18n/de.ts`; Label-Tabellen als `Record<Code, string>` — ein fehlendes Label ist ein Compilerfehler. Bei jedem Meilenstein erneut zu prüfen |
 | NFA-QUAL-08 † | Deutsche Formatierung für Beträge, Datum, Zahlen | MUSS | T | M0 † | abgenommen | `tests/unit/ui/format.test.ts` |
 | NFA-QUAL-09 † | Tastaturbedienbarkeit, Labels an Formularfeldern | SOLL | M | M6 † | offen | — |

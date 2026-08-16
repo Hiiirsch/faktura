@@ -247,6 +247,31 @@ export async function listInvoicesForMetrics(
 }
 
 /**
+ * Alle Belege eines Mandanten samt Positionen und Zahlungen (NFA-COMP-03).
+ *
+ * Für den Datenexport: Er soll das **vollständige** Bild abgeben, also auch
+ * die eingefrorenen Snapshots und die Protokollfelder. Was hier weggelassen
+ * würde, fehlte in einem Export, den jemand womöglich als einzige Kopie
+ * aufbewahrt.
+ */
+const forExport = {
+  lines: { orderBy: { position: 'asc' } },
+  payments: { orderBy: { paidAt: 'asc' } },
+} satisfies Prisma.InvoiceInclude;
+
+export type InvoiceForExport = Prisma.InvoiceGetPayload<{ include: typeof forExport }>;
+
+export async function listInvoicesForExport(
+  context: OrganizationContext,
+): Promise<readonly InvoiceForExport[]> {
+  return clientFor(undefined).invoice.findMany({
+    where: { organizationId: context.organizationId },
+    orderBy: [{ issueDate: 'asc' }, { createdAt: 'asc' }],
+    include: forExport,
+  });
+}
+
+/**
  * Das jüngste Ausstellungsdatum eines festgeschriebenen Belegs dieses Typs
  * — Grundlage der Rückdatierungsprüfung beim Festschreiben.
  */

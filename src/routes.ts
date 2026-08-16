@@ -19,6 +19,7 @@ export const DASHBOARD_PATH = '/';
 export const SECURITY_SETTINGS_PATH = '/settings/security';
 export const BACKUP_SETTINGS_PATH = '/settings/backup';
 export const BACKUP_DOWNLOAD_PATH = '/api/backup';
+export const DATA_EXPORT_PATH = '/api/export';
 export const COMPANY_SETTINGS_PATH = '/settings/company';
 export const CUSTOMERS_PATH = '/customers';
 export const NEW_CUSTOMER_PATH = '/customers/new';
@@ -131,6 +132,12 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'api',
     access: 'authenticated',
     // Herunterladen, nicht anzeigen: dasselbe Profil wie die übrigen Dateien.
+    securityProfile: 'document',
+  },
+  {
+    path: DATA_EXPORT_PATH,
+    kind: 'api',
+    access: 'authenticated',
     securityProfile: 'document',
   },
   { path: COMPANY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },

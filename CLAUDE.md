@@ -360,6 +360,11 @@ Renderer, nebenläufig. Der Renderer wird durch einen echten Browserstart
 geprüft, nicht durch das Vorhandensein einer Datei — ein Chromium, das wegen zu
 enger Capabilities nicht hochkommt, liegt trotzdem an seinem Pfad.
 
+**Der Datenexport** (`/api/export`) liefert Kunden, Belege, Vorlagen,
+Nummernkreise und das Protokoll als JSON — **ohne** Zugangsdaten. Ein Export
+wird weitergereicht; Passwörter, Sitzungen und TOTP-Geheimnisse gehören dort
+nicht hinein. Wer den ganzen Bestand braucht, nimmt die Sicherung.
+
 **Die Sicherung ist ein `.tar.gz`** aus Datenbankabzug und Dateispeicher. Beide
 gehören zusammen: Ein festgeschriebener Beleg verweist auf seine PDF-Datei samt
 Prüfsumme, und eine Sicherung ohne sie ist keine. Der tar-Schreiber ist
@@ -447,7 +452,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | umgesetzt |
 | M6.1 | Ausführung: Satzmaß, Seitenköpfe, einheitliche Listen | umgesetzt |
 | M6.2 | Anmeldung in zwei Schritten, zweiter Faktor nur wo nötig | umgesetzt |
-| M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
+| M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

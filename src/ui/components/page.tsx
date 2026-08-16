@@ -20,8 +20,11 @@ export function PageHeader({
   backHref,
   backLabel,
   meta,
+  titleClassName,
 }: {
   readonly title: string;
+  /** Zusatzklasse am Titel — für den Stempel beim Festschreiben (FA-UI-07). */
+  readonly titleClassName?: string;
   readonly description?: string;
   /** Höchstens zwei — sekundär zuerst, primär rechts außen. */
   readonly actions?: ReactNode;
@@ -49,7 +52,7 @@ export function PageHeader({
         </Link>
       )}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-title font-semibold text-ink">{title}</h1>
+        <h1 className={`text-title font-semibold text-ink ${titleClassName ?? ''}`}>{title}</h1>
         {actions === undefined ? null : (
           <div className="flex flex-wrap items-center gap-3">{actions}</div>
         )}

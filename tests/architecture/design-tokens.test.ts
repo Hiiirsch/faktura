@@ -366,6 +366,28 @@ describe('Dateizugriffe überstehen das Bündeln', () => {
  * Entfernung von Geheimnissen (NFA-BETR-10). Der Logger sitzt im Schreibweg;
  * diese Prüfung sorgt dafür, dass niemand daran vorbeischreibt.
  */
+/**
+ * Bestätigungen laufen über den Dialog der Anwendung (FA-UI-17).
+ *
+ * In M5.8 wurden fünf `window.confirm` ersetzt; das sechste blieb stehen, weil
+ * es nicht in einem Bauteil steckte, sondern in einem `onClick` — und
+ * ausgerechnet an der folgenreichsten Handlung, dem Festschreiben. Gefunden
+ * hat es der E2E-Durchlauf, nicht das Auge.
+ */
+describe('FA-UI-17 Keine Browserdialoge', () => {
+  it('verwendet `window.confirm`, `alert` und `prompt` nirgends', async () => {
+    const offenders: string[] = [];
+
+    for (const { file, source } of await componentFiles()) {
+      for (const match of withoutComments(source).matchAll(/\bwindow\.(?:confirm|alert|prompt)\s*\(/g)) {
+        offenders.push(`${file}: ${match[0]}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('NFA-BETR-09 Protokolliert wird über den Logger', () => {
   it('verwendet `console` nirgends in der Anwendungsschicht', async () => {
     const offenders: string[] = [];

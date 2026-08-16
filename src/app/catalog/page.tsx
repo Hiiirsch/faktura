@@ -105,6 +105,14 @@ export default async function CatalogPage({
             </Link>
           </div>
 
+          {/*
+            Warum nicht gelöscht wird, steht dort, wo jemand es versucht
+            (NFA-COMP-04) — nicht in einer Hilfeseite, die niemand aufschlägt.
+          */}
+          <p className="max-w-form text-small text-ink-muted">
+            {messages.catalog.archiveExplanation}
+          </p>
+
           {items.length === 0 ? (
             <p className="text-ui text-ink-muted">
               {messages.catalog.empty}

@@ -55,6 +55,11 @@ export const messages = {
       'Dienst starten: docker compose up -d',
       'Prüfen: Anmeldung, eine festgeschriebene Rechnung öffnen, ihr PDF laden',
     ],
+    exportHeading: 'Datenexport',
+    exportHint:
+      'Alle Kunden, Belege, Vorlagen, Nummernkreise und das Protokoll als JSON — lesbar und maschinenlesbar zugleich. Zugangsdaten sind nicht enthalten: Ein Export wird weitergereicht, und Passwörter oder Sitzungen gehören dort nicht hinein. Wer den ganzen Bestand braucht, nimmt die Sicherung.',
+    exportDownload: 'Daten exportieren',
+
     restoreNote:
       'Die Migrationen laufen beim Start automatisch. Eine Sicherung aus einer älteren Fassung wird dabei mitgezogen; der umgekehrte Weg ist nicht vorgesehen.',
   },
@@ -315,6 +320,8 @@ export const messages = {
     archive: 'Archivieren',
     unarchive: 'Wieder aktivieren',
     showArchived: 'Archivierte anzeigen',
+    archiveExplanation:
+      'Leistungen werden nicht gelöscht, sondern archiviert. Sie stecken in bereits geschriebenen Rechnungen; gelöscht wäre nicht mehr nachvollziehbar, was dort abgerechnet wurde. Archivierte Leistungen erscheinen nicht mehr in der Auswahl für neue Rechnungen.',
   },
   invoices: {
     title: 'Rechnungen',
@@ -459,6 +466,8 @@ export const messages = {
     cancelConfirmTitle: 'Rechnung stornieren?',
     cancelConfirm:
       'Es entsteht eine Stornorechnung mit eigener Nummer und Bezug auf diese Rechnung. Die Originalrechnung bleibt vollständig erhalten und wechselt auf „Storniert". Rückgängig machen lässt sich das nicht.',
+    noDeleteExplanation:
+      'Ein festgeschriebener Beleg lässt sich nicht löschen. §14b UStG verlangt zehn Jahre Aufbewahrung, und eine gelöschte Nummer risse eine Lücke in den Nummernkreis, die sich niemandem erklären lässt. Der Weg für eine fehlerhafte Rechnung ist die Stornorechnung: Sie trägt eine eigene Nummer, verweist auf das Original, und das Original bleibt vollständig erhalten.',
     cancelReason: 'Grund des Storno',
     cancelReasonHint: 'Erscheint als Einleitungstext auf der Stornorechnung.',
 

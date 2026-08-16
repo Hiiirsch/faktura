@@ -149,11 +149,19 @@ erscheinen zehn Wiederherstellungscodes — sie werden **nur einmal** angezeigt
 und ersetzen später das Einmalkennwort, falls das Telefon nicht verfügbar ist.
 In der Datenbank liegt nur ihr Hash.
 
-Das Anmeldeformular nimmt im Feld „Bestätigungscode" wahlweise ein
+Die Anmeldung läuft in **zwei Schritten**: `/login` nimmt E-Mail und Passwort,
+`/login/code` den Bestätigungscode — und die zweite Seite erscheint nur, wenn
+das Konto einen zweiten Faktor führt. Das Feld nimmt wahlweise ein
 sechsstelliges Einmalkennwort oder einen Wiederherstellungscode entgegen.
 
-Nach zehn Fehlversuchen sperrt sich der Zugang für 15 Minuten. Alle
-Anmeldeereignisse landen im Audit-Log.
+Zwischen beiden Schritten liegt ein Nachweis mit fünf Minuten Frist. Er ist
+keine Sitzung: Er erlaubt genau eine Handlung — den Code nachreichen — und
+öffnet keine geschützte Seite.
+
+Nach zehn Fehlversuchen sperrt sich der Zugang für 15 Minuten. Die Sperre zählt
+im zweiten Schritt weiter; ein richtiges Passwort allein setzt sie nicht
+zurück. Alle Anmeldeereignisse landen im Audit-Log **und** im Log des
+Containers.
 
 ### Zustand prüfen
 
@@ -163,33 +171,132 @@ docker compose ps                    # Container und Healthcheck
 docker compose logs -f app
 ```
 
-Der Healthcheck ist bewusst ohne Anmeldung erreichbar — Docker und Caddy können
-sich nicht authentifizieren. Er antwortet ausschließlich mit betriebsbereit
-ja/nein, ohne Versionsangaben, Pfade oder Fehlertexte.
+Der Healthcheck prüft **zwei** Bestandteile: die Datenbank und den
+PDF-Renderer. Der Renderer wird durch einen echten Browserstart geprüft, nicht
+durch das Vorhandensein einer Datei — ein Chromium, das wegen zu enger
+Capabilities nicht hochkommt, liegt trotzdem an seinem Pfad. Denselben Zustand
+zeigt die Oberfläche unter **Sicherheit**.
 
-## Sicherung und Wiederherstellung
+Er ist bewusst ohne Anmeldung erreichbar — Docker und Caddy können sich nicht
+authentifizieren. Er antwortet ausschließlich mit betriebsbereit ja/nein, ohne
+Versionsangaben, Pfade oder Fehlertexte.
 
-Noch nicht umgesetzt — Backup-Job, Wiederherstellungsprozedur und der Nachweis
-einer erfolgreichen Wiederherstellung sind Gegenstand von M7 (NFA-BETR-03 bis
--07). Bis dahin gilt: Ein ungetestetes Backup ist keins.
+### Logs
 
-Bis M7 vorläufig von Hand, bei gestoppter Anwendung:
+Ein Ereignis je Zeile, als JSON auf stdout:
 
 ```bash
-docker compose down
-tar czf faktura-$(date +%F).tar.gz data storage
-docker compose up -d
+docker compose logs -f app | jq -c 'select(.category == "security")'
+docker compose logs app | jq -c 'select(.level == "error")'
 ```
+
+Passwörter, Token, Hashes und Bankverbindungen erscheinen nie im Log — die
+Entfernung sitzt im Schreibweg, nicht in der Disziplin der Aufrufer.
+
+## Sicherung
+
+Eine Sicherung enthält **beides**: die Datenbank und den Dateispeicher mit den
+erzeugten PDFs, Logos und Uploads. Eine Datenbank ohne die Dateien ist keine
+wiederherstellbare Sicherung — ein festgeschriebener Beleg verweist auf seine
+Datei samt Prüfsumme.
+
+Die Datenbank wird über `VACUUM INTO` abgezogen, nicht kopiert: Eine Kopie
+mitten in einer Transaktion ergibt eine Datei, die aussieht wie eine Datenbank
+und beim Öffnen scheitert.
+
+**Von Hand, aus der Oberfläche:** Einstellungen → **Sicherung** → *Sicherung
+herunterladen*.
+
+**Als Auftrag, für die Zeitsteuerung des Servers:**
+
+```bash
+docker compose exec app npm run backup
+```
+
+Legt `faktura-<zeitpunkt>.tar.gz` in `BACKUP_DIR` ab (Vorgabe `./backups`) und
+entfernt Sicherungen, die älter sind als `BACKUP_KEEP_DAYS` (Vorgabe 30).
+
+Täglich um 3 Uhr, über die Zeitsteuerung des **Servers** — die Anwendung plant
+nichts von selbst:
+
+```cron
+0 3 * * * cd /srv/faktura && docker compose exec -T app npm run backup >> /var/log/faktura-backup.log 2>&1
+```
+
+Die Sicherung gehört anschließend an einen **anderen Ort**. Eine Sicherung auf
+derselben Festplatte überlebt genau die Fälle nicht, für die es sie gibt.
+
+## Wiederherstellung
+
+Bewusst von Hand: Sie überschreibt den gesamten Bestand und ist nicht
+rücknehmbar.
+
+```bash
+# 1. Dienst anhalten
+docker compose down
+
+# 2. Archiv auspacken
+mkdir -p /tmp/restore && tar -xzf faktura-2026-08-16T10-00-00Z.tar.gz -C /tmp/restore
+
+# 3. Datenbank zurückspielen
+cp /tmp/restore/faktura.db ./data/faktura.db
+
+# 4. Dateien zurückspielen
+rm -rf ./storage && cp -r /tmp/restore/storage ./storage
+
+# 5. Dienst starten — Migrationen laufen dabei automatisch
+docker compose up -d
+
+# 6. Prüfen
+curl http://localhost/api/health
+```
+
+Danach anmelden, eine festgeschriebene Rechnung öffnen und ihr PDF laden. Erst
+wenn das geht, ist die Sicherung bewiesen — **ein ungetestetes Backup ist
+keins.**
+
+Eine Sicherung aus einer älteren Fassung wird beim Start migriert. Der
+umgekehrte Weg — eine neuere Sicherung in eine ältere Fassung — ist nicht
+vorgesehen.
+
+## Datenexport
+
+Einstellungen → **Sicherung** → *Daten exportieren* liefert alle Kunden,
+Belege, Vorlagen, Nummernkreise und das Protokoll als JSON. Zugangsdaten sind
+**nicht** enthalten: Ein Export wird weitergereicht, und Passwörter oder
+Sitzungen gehören dort nicht hinein. Wer den ganzen Bestand braucht, nimmt die
+Sicherung.
 
 ## Aktualisierung
 
 ```bash
+# 1. Sicherung anlegen — vor jedem Update
+docker compose exec app npm run backup
+
+# 2. Neue Fassung holen und starten
 git pull
 docker compose up -d --build
+
+# 3. Prüfen
+curl http://localhost/api/health
+docker compose logs -f app
 ```
 
-Migrationen werden beim Start des neuen Containers angewandt. Vor einem Update
-eine Sicherung anlegen.
+Migrationen werden beim Start des neuen Containers angewandt. Schlägt eine
+Migration fehl, startet der Container nicht — die alte Sicherung ist dann der
+Weg zurück.
+
+## Testdaten
+
+Für Entwicklung und Abnahme, **nie gegen eine Produktionsdatenbank** (das
+Kommando bricht bei `NODE_ENV=production` ab):
+
+```bash
+npm run seed
+```
+
+Erzeugt Kunden, einen Leistungskatalog und Rechnungen über drei Jahre in allen
+Statuswerten — Entwurf, offen, teilbezahlt, bezahlt, storniert.
 
 ## Projektstruktur
 
