@@ -251,6 +251,7 @@ export default async function InvoicesPage({
       key: 'number',
       header: messages.invoices.number,
       numeric: true,
+      fit: true,
       cell: (invoice) => (
         <span className="flex items-center justify-end gap-2">
           {invoice.documentType === 'CREDIT_NOTE' ? (
@@ -329,15 +330,21 @@ export default async function InvoicesPage({
       <StatusTabs current={currentStatus} />
 
       {/* Filter über GET: Die Auswahl bleibt teilbar und im Verlauf erhalten. */}
+      {/*
+        Die Filterzeile trägt dieselben Beschriftungen wie jedes andere
+        Formular. Vorher standen hier Versalien in Kleingröße neben den
+        normalen Feldbeschriftungen des Datumsfelds — nebeneinander sah das
+        aus wie zwei Formulare, die versehentlich in einer Zeile gelandet sind.
+      */}
       <form
         method="get"
         action={INVOICES_PATH}
-        className="flex flex-wrap items-end gap-3 border-t border-rule pt-6"
+        className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-rule pt-6"
       >
         <input type="hidden" name="status" value={currentStatus} />
 
-        <label className="flex min-w-48 flex-1 flex-col gap-2">
-          <span className="text-label font-semibold uppercase text-ink-muted">
+        <label className="flex min-w-48 flex-1 flex-col gap-1.5">
+          <span className="text-ui font-medium text-ink">
             {messages.common.search}
           </span>
           <input
@@ -349,8 +356,8 @@ export default async function InvoicesPage({
           />
         </label>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-label font-semibold uppercase text-ink-muted">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-ui font-medium text-ink">
             {messages.invoices.filterCustomer}
           </span>
           <select name="customerId" defaultValue={filter.customerId ?? ''} className={INPUT_CLASS}>
@@ -370,8 +377,8 @@ export default async function InvoicesPage({
         />
         <DateField name="to" label={messages.invoices.filterTo} defaultValue={filter.to ?? ''} />
 
-        <label className="flex flex-col gap-2">
-          <span className="text-label font-semibold uppercase text-ink-muted">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-ui font-medium text-ink">
             {messages.invoices.sortBy}
           </span>
           <select name="sort" defaultValue={currentSort} className={INPUT_CLASS}>

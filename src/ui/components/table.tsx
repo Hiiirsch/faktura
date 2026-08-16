@@ -41,13 +41,25 @@ export type Column<TRow> = {
    * einer späteren Ausbaustufe sichtbar werden (§7).
    */
   readonly hidden?: boolean;
+  /**
+   * Die Spalte nimmt nur die Breite ihres Inhalts ein.
+   *
+   * Für Kennungen wie Rechnungs- und Kundennummer: Sie sind rechtsbündig
+   * gesetzt (FA-UI-03), und ohne diese Begrenzung teilt die Tabelle ihnen ein
+   * Viertel der Breite zu — die Nummer rutscht dann weit von der Zeile weg,
+   * zu der sie gehört, und links davon steht ein Feld aus nichts.
+   */
+  readonly fit?: boolean;
   readonly cell: (row: TRow) => ReactNode;
 };
 
 function cellClass(column: Column<unknown>): string {
-  return column.numeric === true
-    ? 'py-3 pr-4 text-right font-mono text-data'
-    : 'py-3 pr-4 text-ui';
+  const width = column.fit === true ? ' w-px whitespace-nowrap' : '';
+  return (
+    column.numeric === true
+      ? 'py-3 pr-4 text-right font-mono text-data'
+      : 'py-3 pr-4 text-ui'
+  ) + width;
 }
 
 export function DataTable<TRow>({
@@ -93,7 +105,8 @@ export function DataTable<TRow>({
                 scope="col"
                 className={
                   'px-0 py-2 text-label font-semibold uppercase text-ink-muted ' +
-                  (column.numeric === true ? 'pr-4 text-right' : 'pr-4')
+                  (column.numeric === true ? 'pr-4 text-right' : 'pr-4') +
+                  (column.fit === true ? ' w-px whitespace-nowrap' : '')
                 }
               >
                 {column.header}

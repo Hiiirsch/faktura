@@ -8,8 +8,15 @@ import { cents } from '@/domain/money/money';
 import { messages, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { CATALOG_PATH } from '@/routes';
-import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import {
+  FOCUS_RING,
+  NoScriptNotice,
+  QUIET_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+  SECTION_CLASS,
+} from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
+import { type Column, DataTable } from '@/ui/components/table';
 import { formatMoney, formatPercent, formatUnit } from '@/ui/format';
 
 import { AppShell } from '../app-shell';
@@ -40,6 +47,45 @@ export default async function CatalogPage({
     listCatalogItems(session.organization, includeArchived),
     editId === null ? Promise.resolve(null) : getCatalogItem(session.organization, editId),
   ]);
+  const columns: readonly Column<(typeof items)[number]>[] = [
+    {
+      key: 'name',
+      header: messages.catalog.name,
+      cell: (item) => (
+        <span className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`${CATALOG_PATH}?edit=${item.id}${includeArchived ? '&archived=1' : ''}`}
+            className={`text-accent ${FOCUS_RING}`}
+          >
+            {item.name}
+          </Link>
+          {item.isArchived ? (
+            <span className="rounded-control bg-surface-sunken px-2 py-0.5 text-small text-ink-muted">
+              {messages.customers.archivedBadge}
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      key: 'unitPrice',
+      header: messages.catalog.unitPrice,
+      numeric: true,
+      cell: (item) => formatMoney(cents(item.unitPriceCents)),
+    },
+    {
+      key: 'unit',
+      header: messages.catalog.unitCode,
+      cell: (item) => (isKnownUnit(item.unitCode) ? formatUnit(item.unitCode) : item.unitCode),
+    },
+    {
+      key: 'taxRate',
+      header: messages.catalog.taxRate,
+      numeric: true,
+      cell: (item) => formatPercent(item.taxRateBasisPoints),
+    },
+  ];
+
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={CATALOG_PATH}>
       <PageHeader title={messages.catalog.heading} description={messages.catalog.intro} />
@@ -64,71 +110,28 @@ export default async function CatalogPage({
               {messages.catalog.empty}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-ui">
-                <thead>
-                  <tr className="border-b border-rule text-left">
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      {messages.catalog.name}
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      {messages.catalog.unitPrice}
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      {messages.catalog.unitCode}
-                    </th>
-                    <th scope="col" className="py-2 pr-4 text-right font-medium">
-                      {messages.catalog.taxRate}
-                    </th>
-                    <th scope="col" className="py-2 font-medium">
-                      <span className="sr-only">{messages.catalog.archive}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} className="border-b border-rule">
-                      <td className="py-2 pr-4">
-                        <Link
-                          href={`${CATALOG_PATH}?edit=${item.id}${includeArchived ? '&archived=1' : ''}`}
-                          className="underline underline-offset-4"
-                        >
-                          {item.name}
-                        </Link>
-                        {item.isArchived ? (
-                          <span className="ml-2 rounded-control bg-surface-sunken px-2 py-0.5 text-small">
-                            {messages.customers.archivedBadge}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-4 text-right tabular-nums">
-                        {formatMoney(cents(item.unitPriceCents))}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {isKnownUnit(item.unitCode) ? formatUnit(item.unitCode) : item.unitCode}
-                      </td>
-                      <td className="py-2 pr-4 text-right tabular-nums">
-                        {formatPercent(item.taxRateBasisPoints)}
-                      </td>
-                      <td className="py-2 text-right">
-                        <form action={setCatalogItemArchivedAction}>
-                          <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                          <input type="hidden" name="id" value={item.id} />
-                          <input
-                            type="hidden"
-                            name="isArchived"
-                            value={item.isArchived ? 'false' : 'true'}
-                          />
-                          <button type="submit" className={SECONDARY_BUTTON_CLASS}>
-                            {item.isArchived ? messages.catalog.unarchive : messages.catalog.archive}
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            /* Dieselbe Tabelle wie in den übrigen Listen (seit M6.1). */
+            <DataTable
+              columns={columns}
+              rows={items}
+              rowKey={(item) => item.id}
+              caption={messages.catalog.heading}
+              actionsLabel={messages.catalog.archive}
+              actions={(item) => (
+                <form action={setCatalogItemArchivedAction}>
+                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                  <input type="hidden" name="id" value={item.id} />
+                  <input
+                    type="hidden"
+                    name="isArchived"
+                    value={item.isArchived ? 'false' : 'true'}
+                  />
+                  <button type="submit" className={QUIET_BUTTON_CLASS}>
+                    {item.isArchived ? messages.catalog.unarchive : messages.catalog.archive}
+                  </button>
+                </form>
+              )}
+            />
           )}
         </section>
     </AppShell>

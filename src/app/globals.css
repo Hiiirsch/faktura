@@ -122,11 +122,33 @@
      sondern das Papierformat, auf dem der Beleg landet. */
   --spacing-sheet-width: 210mm;
   --spacing-sheet-height: 297mm;
+  /*
+   * Das Blatt in der Vorschau (seit M6.1).
+   *
+   * In voller A4-Höhe war es ein 1123 px hoher Block, der die Belegseite auf
+   * das Doppelte streckte und beim Scrollen mitwanderte, statt stehen zu
+   * bleiben. Der eingebaute Betrachter des Browsers blättert innerhalb des
+   * Rahmens — er braucht ein Fenster, keine ausgerollte Bahn.
+   */
+  --spacing-sheet-view: 78vh;
   /* `--container-*` erzeugt die `max-w-*`-Utilities, `--spacing-*` die Maße. */
   --container-content: 1200px;
   /* Dialogbreite (§5). Breiter gesetzt liest sich ein Erklärungsabsatz nicht
      mehr in einem Blick, und genau dafür ist er da. */
   --container-dialog: 480px;
+  /*
+   * Satzmaß der Eingabe (§5, seit M6.1).
+   *
+   * Ein Eingabefeld ist keine Fläche, die man füllt, sondern eine, die man
+   * liest: Über etwa 480 px hinaus findet das Auge den Anfang der eigenen
+   * Eingabe nicht mehr, und ein Auswahlfeld über die volle Inhaltsbreite sieht
+   * aus, als sei die Seite unfertig. Genau das war der Fall — die
+   * Breitenskala von Tailwind ist gelöscht (`--container-*: initial`), und
+   * `max-w-md` erzeugte deshalb überhaupt keine Regel.
+   */
+  --container-form: 480px;
+  /* Die Anmeldung: ein Formular ohne Umgebung, das nichts zu ordnen hat. */
+  --container-login: 360px;
 }
 
 /*
@@ -214,6 +236,20 @@ body {
 .font-mono,
 table {
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+/*
+ * Die Kennzahl (§4.1, Änderung gegenüber §2.2 seit M6.1).
+ *
+ * Vier Beträge nebeneinander bilden keine Spalte; von Monospace bliebe hier
+ * allein die feste Dickte, und die liest sich in 40 px wie eine
+ * Terminalausgabe. Gebraucht wird nur das, was `tabular-nums` auch in der
+ * Grotesk leistet — plus etwas engere Laufweite, weil Ziffern in dieser Größe
+ * von sich aus weit stehen.
+ */
+.metric-figure {
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
 }
 
 /*

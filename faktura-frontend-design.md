@@ -96,7 +96,7 @@ treffen.
 
 | Rolle | Größe / Zeilenhöhe | Schnitt |
 |---|---|---|
-| `--type-metric` | 40 / 1.0 | Fira Mono 500, Tabellenziffern |
+| `--type-metric` | 40 / 1.0 | Fira **Sans** 600, Tabellenziffern, `letter-spacing: -.02em` |
 | `--type-title` | 24 / 1.25 | Fira Sans 600 |
 | `--type-section` | 16 / 1.3 | Fira Sans 600 |
 | `--type-body` | 15 / 1.55 | Fira Sans 400 |
@@ -104,6 +104,13 @@ treffen.
 | `--type-data` | 14 / 1.4 | Fira Mono 400, Tabellenziffern |
 | `--type-small` | 13 / 1.45 | Fira Sans 400 |
 | `--type-label` | 11 / 1.2 | Fira Sans 600, Versalien, `letter-spacing: .07em` |
+
+**Warum die Kennzahl in der Grotesk steht** (Änderung seit M6.1): Der Grund für
+Monospace ist Vergleichbarkeit in einer *Spalte* — Dezimaltrennzeichen sollen
+untereinander liegen. Die vier Kennzahlen der Übersicht stehen nebeneinander und
+bilden keine Spalte; dort wirkt allein die Nebenwirkung, die feste Dickte, und
+`312,38 €` liest sich in 40 px wie eine Terminalausgabe. Was gebraucht wird,
+leisten `tabular-nums` auch in Fira Sans. In Tabellen bleibt es bei Fira Mono.
 
 Global gesetzt: `font-variant-numeric: tabular-nums lining-nums` auf allen
 Zahlenkontexten. Beträge werden **rechtsbündig** gesetzt, sodass Dezimaltrennzeichen in
@@ -285,9 +292,12 @@ RE-Entwurf                    [Vorschau als PDF]  [Festschreiben]
         Formular, min 480 px            Blatt, klebrig, eckig, Schatten
 ```
 
-Das Blatt skaliert proportional und bleibt beim Scrollen stehen. Bei mehrseitigen
-Rechnungen erscheinen die Seiten untereinander mit 16 px Abstand — als Stapel, nicht als
-Reiter.
+Das Blatt bleibt beim Scrollen stehen und ist **ein Fenster, keine ausgerollte Bahn**
+(Änderung seit M6.1): Es ist rund 78 % der Fensterhöhe hoch, und geblättert wird darin.
+In voller A4-Höhe war es ein über 1100 px hoher Block, der die Belegseite auf das
+Doppelte streckte und beim Scrollen mitwanderte, statt stehen zu bleiben. Bei
+mehrseitigen Rechnungen blättert der eingebaute Betrachter des Browsers innerhalb des
+Rahmens.
 
 Der Summenblock im Formular spiegelt exakt die Beschriftungen auf dem Blatt. Zwei
 Vokabulare für dieselbe Zahl wären eine unnötige Übersetzungsleistung.
@@ -316,7 +326,7 @@ der Button deaktiviert und behält seine Beschriftung.
 | Button sekundär | transparent, 1 px `--rule`, `--ink` |
 | Button still | nur Text in `--accent`, für tertiäre Aktionen |
 | Button destruktiv | `--danger`, ausschließlich in Bestätigungsdialogen |
-| Eingabefeld | `--surface-sunken`, 1 px `--rule`, 36 px, Fokusring 2 px `--accent` mit 2 px Abstand |
+| Eingabefeld | `--surface-sunken`, 1 px `--rule`, 36 px, **höchstens 480 px breit**, Fokusring 2 px `--accent` mit 2 px Abstand |
 | Betragsfeld | rechtsbündig, Fira Mono, Währung als festes Suffix außerhalb des Feldes |
 | Combobox | Tastaturbedienbar, Filterung ab dem ersten Zeichen |
 | Datumsfeld | Direkteingabe `TT.MM.JJJJ` **und** Kalenderauswahl; Eingabe hat Vorrang |
@@ -334,6 +344,16 @@ lässt sich nicht gestalten, nennt den Namen der Anwendung im Titel und erklärt
 nicht — §8 verlangt aber genau diese Erklärung. Verwendet wird das native `<dialog>`
 samt `showModal()`: Fokusfalle, Escape-Taste und Hintergrundsperre kommen vom Browser,
 nicht aus nachgebautem JavaScript.
+
+**Satzmaß der Eingabe** (seit M6.1): Ein Eingabefeld ist keine Fläche, die man füllt,
+sondern eine, die man liest. Über etwa 480 px hinaus findet das Auge den Anfang der
+eigenen Eingabe nicht mehr, und ein Auswahlfeld über die volle Inhaltsbreite lässt eine
+Seite unfertig wirken. Die Grenze steht **an der Eingabe**, nicht am Formular: Felder in
+einem Raster sollen ihre Spalte ausfüllen, ein einzelnes Feld aber nicht die ganze
+Breite.
+
+**Die Anmeldung** ist eine Spalte von 360 px, mittig, **flach** — keine Karte. Sie hat
+nichts zu ordnen und liegt über nichts; die Regel aus §1 gilt auch für sie.
 
 **Keine Komponentenbibliothek.** Die frühere Festlegung auf shadcn/ui ist gestrichen.
 Sie wurde nie umgesetzt — die Bauteile in `src/ui/components/` sind handgeschrieben und

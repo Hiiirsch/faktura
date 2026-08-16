@@ -24,14 +24,23 @@ export const FOCUS_RING =
 
 const CONTROL_BASE = `h-9 rounded-control text-ui transition-colors duration-(--duration-state) ${FOCUS_RING}`;
 
+/**
+ * Eingabefeld mit Satzmaß (§5).
+ *
+ * `max-w-form` steht **an der Eingabe**, nicht am Formular: Felder in einem
+ * Raster sollen die Spalte ausfüllen, ein einzelnes Feld aber nicht die ganze
+ * Inhaltsbreite. Vorher war ein Auswahlfeld für den Kunden 1140 px breit —
+ * nichts daran war falsch geschrieben, es fehlte schlicht eine Grenze.
+ */
 export const INPUT_CLASS =
-  `${CONTROL_BASE} w-full border border-rule bg-surface-sunken px-3 text-ink ` +
+  `${CONTROL_BASE} w-full max-w-form border border-rule bg-surface-sunken px-3 text-ink ` +
   'placeholder:text-ink-faint disabled:text-ink-faint';
 
 /** Mehrzeilige Eingabe: dieselbe Optik, aber ohne feste Höhe. */
 export const TEXTAREA_CLASS =
   `rounded-control text-ui transition-colors duration-(--duration-state) ${FOCUS_RING} ` +
-  'w-full border border-rule bg-surface-sunken px-3 py-2 text-ink placeholder:text-ink-faint';
+  'w-full max-w-form border border-rule bg-surface-sunken px-3 py-2 text-ink ' +
+  'placeholder:text-ink-faint';
 
 export const PRIMARY_BUTTON_CLASS =
   `${CONTROL_BASE} inline-flex items-center justify-center bg-accent px-4 font-medium ` +

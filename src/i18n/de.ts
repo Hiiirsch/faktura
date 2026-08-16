@@ -338,6 +338,8 @@ export const messages = {
     outroText: 'Schlusstext',
 
     linesHeading: 'Positionen',
+    totalsHeading: 'Summen',
+    textsHeading: 'Texte auf dem Beleg',
     linePosition: 'Pos.',
     lineName: 'Bezeichnung',
     lineDescription: 'Beschreibung',
@@ -438,8 +440,8 @@ export const messages = {
 
     cancelledBy: 'Storniert durch',
     cancels: 'Storniert die Rechnung',
-    sellerHeading: 'Aussteller zum Zeitpunkt der Ausstellung',
-    buyerHeading: 'Empfänger zum Zeitpunkt der Ausstellung',
+    sellerHeading: 'Aussteller',
+    buyerHeading: 'Empfänger',
     frozenHint:
       'Dieser Beleg ist festgeschrieben. Die Angaben zeigen den Stand vom Tag der Ausstellung und ändern sich nicht mehr mit den Stammdaten.',
 

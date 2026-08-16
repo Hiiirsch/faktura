@@ -643,7 +643,7 @@ export function InvoiceEditor({
         </div>
 
         {catalog.length > 0 ? (
-          <label className="flex flex-col gap-1 text-ui sm:max-w-sm">
+          <label className="flex max-w-form flex-col gap-1 text-ui">
             <span className="font-medium">{messages.invoices.lineFromCatalog}</span>
             <select
               className={INPUT_CLASS}
@@ -711,7 +711,7 @@ export function InvoiceEditor({
         )}
       </section>
 
-      <FormSection title={messages.invoices.gross}>
+      <FormSection title={messages.invoices.totalsHeading}>
         <dl className="flex flex-col gap-2 text-ui">
           <div className="flex justify-between gap-4">
             <dt>{messages.invoices.net}</dt>
@@ -748,7 +748,7 @@ export function InvoiceEditor({
         </dl>
       </FormSection>
 
-      <FormSection title={messages.invoices.introText}>
+      <FormSection title={messages.invoices.textsHeading}>
         <TextAreaField
           name="introText"
           label={messages.invoices.introText}

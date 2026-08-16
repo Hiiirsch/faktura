@@ -114,6 +114,32 @@ describe('FA-UI-01 Alle Werte stammen aus den Tokens', () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * Klassen, die auf eine gelöschte Skala zeigen.
+   *
+   * `--container-*: initial` löscht die Breitenskala, `--radius-*` und
+   * `--shadow-*` ihre jeweilige. Eine Klasse wie `max-w-md` erzeugt danach
+   * **keine Regel** — sie ist kein Fehler, sie tut nur nichts. Die
+   * Anmeldeseite stand deshalb über die volle Fensterbreite, ohne dass im
+   * Quelltext etwas falsch aussah.
+   *
+   * Diese Prüfung ist der Preis dafür, die Standardskalen gelöscht zu haben:
+   * Was der Compiler nicht mehr meldet, muss der Test melden.
+   */
+  it('verweist auf keine gelöschte Größenskala', async () => {
+    const offenders: string[] = [];
+    const deleted =
+      /\b(?:max-w|min-w|w|h|max-h|min-h)-(?:3xs|2xs|xs|sm|md|lg|xl|[2-7]xl|prose|screen-[a-z]+)\b/g;
+
+    for (const { file, source } of await componentFiles()) {
+      for (const match of withoutComments(source).matchAll(deleted)) {
+        offenders.push(`${file}: ${match[0]}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
   it('kennt keine `dark:`-Variante — das Schema tauscht Tokens, nicht Klassen', async () => {
     const offenders: string[] = [];
 

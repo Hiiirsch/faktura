@@ -31,6 +31,32 @@ erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
 
+**M6.1 — Ausführung nachgezogen (umgesetzt, Abnahme offen).** Der Auftraggeber
+hat gemeldet, die Anmeldeseite und die Oberfläche insgesamt gefielen ihm nicht.
+Die Erkundung lief diesmal am Bild statt am Quelltext: Alle Screens wurden im
+echten Chromium aufgenommen und angesehen. Ein Teil der Beanstandung war
+**kaputt**, nicht Geschmack:
+
+| Befund | Ursache |
+|---|---|
+| Das Anmeldeformular war 1400 px breit | `max-w-md` erzeugt keine Regel — `--container-*: initial` löscht die Breitenskala, definiert waren nur `content` und `dialog`. Dasselbe traf `sm:max-w-sm` im Editor und `sm:max-w-lg` auf der Belegseite |
+| „Zurück" klebte an der Fensterkante | Die Belegseite hatte einen eigenen Kopf statt `PageHeader`, und `<main>` trägt keinen oberen Innenabstand |
+| Auswahlfelder 1140 px breit | Kein Satzmaß an der Eingabe |
+| Leere Monate im Diagramm als 1-px-Striche | Ein Mindestbalken von 1 %, den man für eine Achse hält |
+| Zwei Beschriftungsstile in einer Filterzeile | `text-label uppercase` neben `text-ui font-medium` |
+| Kunden- und Katalogliste sahen anders aus als die Rechnungsliste | Zwei handgeschriebene Tabellen neben `DataTable` |
+
+Das ist derselbe Fehlertyp wie `text-3xl` in M5.8 und wiegt schwerer als
+gedacht: Eine gelöschte Skala macht eine Klasse nicht ungültig, sondern
+wirkungslos. `tests/architecture/design-tokens.test.ts` prüft jetzt auch
+Breiten- und Höhenklassen gegen die gelöschten Skalen.
+
+Drei Festlegungen des Entwurfs sind dabei geändert und dort vermerkt: die
+Kennzahl steht in Fira Sans statt Fira Mono (§2.2), das Blatt der Vorschau ist
+ein Fenster von 78 % Fensterhöhe statt voller A4-Höhe (§4.3), und Eingabefelder
+sind auf 480 px begrenzt (§5). Die Anmeldung bleibt flach ohne Karte — die
+Regel aus §1 gilt auch für sie.
+
 **M6 — Übersicht (umgesetzt, Abnahme offen).** Alle elf FA-DASH-IDs und die
 beiden Leistungszusagen NFA-QUAL-04/-05 sind belegt. Drei Entscheidungen, die
 im Diff nicht von selbst sprechen:

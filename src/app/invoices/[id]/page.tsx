@@ -29,6 +29,7 @@ import {
 } from '@/routes';
 import { ConfirmDialog } from '@/ui/components/dialog';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { PageHeader } from '@/ui/components/page';
 import { formatMoney, formatPercent, formatQuantity, formatUnit } from '@/ui/format';
 
 import { AppShell } from '../../app-shell';
@@ -73,19 +74,15 @@ export default async function InvoiceDetailPage({
   const title = invoice.invoiceNumber ?? messages.invoices.noNumber;
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={INVOICES_PATH}>
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <Link
-              href={INVOICES_PATH}
-              className="text-ui text-ink-muted underline underline-offset-4"
-            >
-              {messages.common.back}
-            </Link>
-            <h1 className="text-title font-semibold text-ink">
-              {invoice.documentType === 'CREDIT_NOTE'
-                ? `${messages.invoices.creditNote} ${title}`
-                : title}
-            </h1>
+        <PageHeader
+          title={
+            invoice.documentType === 'CREDIT_NOTE'
+              ? `${messages.invoices.creditNote} ${title}`
+              : title
+          }
+          backHref={INVOICES_PATH}
+          backLabel={messages.invoices.heading}
+          meta={
             <InvoiceStatusField
               status={invoice.status}
               isOverdue={invoice.isOverdue}
@@ -94,9 +91,9 @@ export default async function InvoiceDetailPage({
               grossTotalCents={cents(invoice.grossTotalCents)}
               currency={invoice.currency as CurrencyCode}
             />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
+          }
+          actions={
+            <>
             {/* Download des Belegs (FA-PDF-01); ein Entwurf wird dabei sichtbar
                 als solcher gekennzeichnet (FA-PDF-03). */}
             <a
@@ -132,8 +129,9 @@ export default async function InvoiceDetailPage({
                 />
               </form>
             ) : null}
-          </div>
-        </header>
+            </>
+          }
+        />
 
         {/*
           Zweispaltig (§4.3): links das Formular, rechts das Blatt.
@@ -179,7 +177,7 @@ export default async function InvoiceDetailPage({
               <iframe
                 src={invoicePdfEmbedPath(invoice.id)}
                 title={messages.templates.previewFrame}
-                className="h-sheet-height w-full border-0"
+                className="h-sheet-view w-full border-0"
               />
             </div>
           </section>
@@ -213,7 +211,7 @@ export default async function InvoiceDetailPage({
             <form action={cancelInvoiceAction} className="flex flex-col gap-3">
               <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
               <input type="hidden" name="invoiceId" value={invoice.id} />
-              <label className="flex flex-col gap-1.5 sm:max-w-lg">
+              <label className="flex max-w-form flex-col gap-1.5">
                 <span className="text-ui font-medium">{messages.invoices.cancelReason}</span>
                 <input
                   name="reason"

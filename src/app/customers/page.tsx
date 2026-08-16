@@ -8,8 +8,14 @@ import { listCustomers } from '@/application/customers/customer-service';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { customerPath, CUSTOMERS_PATH, NEW_CUSTOMER_PATH } from '@/routes';
-import { INPUT_CLASS, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import {
+  FOCUS_RING,
+  INPUT_CLASS,
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
+import { type Column, DataTable } from '@/ui/components/table';
 
 import { AppShell } from '../app-shell';
 
@@ -30,6 +36,40 @@ export default async function CustomersPage({
   const includeArchived = params.archived === '1';
 
   const customers = await listCustomers(session.organization, { search, includeArchived });
+  const columns: readonly Column<(typeof customers)[number]>[] = [
+    {
+      key: 'number',
+      header: messages.customers.number,
+      numeric: true,
+      fit: true,
+      cell: (customer) => (
+        <Link href={customerPath(customer.id)} className={`text-accent ${FOCUS_RING}`}>
+          {customer.customerNumber}
+        </Link>
+      ),
+    },
+    {
+      key: 'company',
+      header: messages.customers.companyName,
+      cell: (customer) => (
+        <span className="flex flex-wrap items-center gap-2">
+          {customer.companyName ?? customer.contactName ?? messages.common.none}
+          {customer.isArchived ? (
+            <span className="rounded-control bg-surface-sunken px-2 py-0.5 text-small text-ink-muted">
+              {messages.customers.archivedBadge}
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
+    { key: 'city', header: messages.customers.city, cell: (customer) => customer.city },
+    {
+      key: 'country',
+      header: messages.customers.countryCode,
+      cell: (customer) => customer.countryCode,
+    },
+  ];
+
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={CUSTOMERS_PATH}>
       <PageHeader
@@ -81,53 +121,20 @@ export default async function CustomersPage({
             {search === '' ? messages.customers.empty : messages.customers.emptyFiltered}
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-ui">
-              <thead>
-                <tr className="border-b border-rule text-left">
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    {messages.customers.number}
-                  </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    {messages.customers.companyName}
-                  </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    {messages.customers.city}
-                  </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    {messages.customers.countryCode}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="border-b border-rule"
-                  >
-                    <td className="py-2 pr-4 tabular-nums">
-                      <Link
-                        href={customerPath(customer.id)}
-                        className="underline underline-offset-4"
-                      >
-                        {customer.customerNumber}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">
-                      {customer.companyName ?? customer.contactName ?? messages.common.none}
-                      {customer.isArchived ? (
-                        <span className="ml-2 rounded-control bg-surface-sunken px-2 py-0.5 text-small">
-                          {messages.customers.archivedBadge}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4">{customer.city}</td>
-                    <td className="py-2 pr-4">{customer.countryCode}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          /*
+            Dieselbe Tabelle wie in der Rechnungsliste (seit M6.1).
+            Vorher stand hier eine zweite, handgeschriebene: andere
+            Kopfzeilenschrift, andere Zeilenhöhe, unterstrichene Verweise statt
+            farbiger. Zwei Listen, die dasselbe tun und verschieden aussehen,
+            sind der sichtbarste Teil dessen, was eine Oberfläche unfertig
+            wirken lässt.
+          */
+          <DataTable
+            columns={columns}
+            rows={customers}
+            rowKey={(customer) => customer.id}
+            caption={messages.customers.heading}
+          />
         )}
     </AppShell>
   );

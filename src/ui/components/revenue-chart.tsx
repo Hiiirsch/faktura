@@ -56,7 +56,11 @@ export function RevenueChart({
         umgerechnet werden muss, und die Beschriftung darunter bleibt echte
         Schrift in Tokengröße.
       */}
-      <div className="flex h-32 items-end gap-1" role="img" aria-label={messages.dashboard.chart}>
+      <div
+        className="flex h-32 items-end gap-1 border-b border-rule"
+        role="img"
+        aria-label={messages.dashboard.chart}
+      >
         {bars.map((bar) => {
           const share = Math.round((bar.netCents / maximum) * 100);
 
@@ -68,16 +72,24 @@ export function RevenueChart({
               title={`${monthLabel(bar.month)}: ${formatMoneyDe(bar.netCents)}`}
               className="flex h-full flex-1 items-end"
             >
-              <span
-                className={
-                  'w-full transition-colors duration-(--duration-state) ' +
-                  (bar.month === currentMonth ? 'bg-accent' : 'bg-ink')
-                }
-                // Die einzige Stelle mit einem gerechneten Maß: Die Höhe ist
-                // ein Messwert, kein Gestaltungswert, und kann deshalb nicht
-                // aus dem Tokensatz kommen.
-                style={{ height: `${String(Math.max(share, 1))}%` }}
-              />
+              {/*
+                Ein Monat ohne Umsatz bekommt **keinen** Balken. Vorher stand
+                dort ein Mindestbalken von einem Prozent — ein Strich, den man
+                für eine Achse hält und der behauptet, es sei etwas gewesen.
+                Die Grundlinie unter der Reihe leistet, was er leisten sollte.
+              */}
+              {share === 0 ? null : (
+                <span
+                  className={
+                    'w-full transition-colors duration-(--duration-state) ' +
+                    (bar.month === currentMonth ? 'bg-accent' : 'bg-ink-muted')
+                  }
+                  // Die einzige Stelle mit einem gerechneten Maß: Die Höhe ist
+                  // ein Messwert, kein Gestaltungswert, und kann deshalb nicht
+                  // aus dem Tokensatz kommen.
+                  style={{ height: `${String(Math.max(share, 2))}%` }}
+                />
+              )}
             </span>
           );
         })}

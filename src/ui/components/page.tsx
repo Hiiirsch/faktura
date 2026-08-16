@@ -6,26 +6,55 @@
  * die alles hineinwandert, was irgendwo gebraucht wird, verliert genau die
  * Eigenschaft, wegen der sie oben steht.
  */
+import { ChevronLeft } from 'lucide-react';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
+
+import { FOCUS_RING } from './form';
+import { ICON_STROKE } from './icon';
 
 export function PageHeader({
   title,
   description,
   actions,
+  backHref,
+  backLabel,
+  meta,
 }: {
   readonly title: string;
   readonly description?: string;
   /** Höchstens zwei — sekundär zuerst, primär rechts außen. */
   readonly actions?: ReactNode;
+  /**
+   * Rückweg auf die übergeordnete Liste.
+   *
+   * Er gehört in den Seitenkopf und nicht als erste Zeile in den Inhalt: Dort
+   * stand er auf der Belegseite bisher, klebte an der Fensterkante und
+   * verschob alles darunter um eine Zeile.
+   */
+  readonly backHref?: string;
+  readonly backLabel?: string;
+  /** Eine Zeile unter dem Titel — auf der Belegseite das Statusfeld. */
+  readonly meta?: ReactNode;
 }): ReactNode {
   return (
-    <header className="sticky top-0 z-10 -mx-8 border-b border-rule bg-surface px-8 py-4">
+    <header className="sticky top-0 z-10 -mx-8 border-b border-rule bg-surface px-8 pt-6 pb-4">
+      {backHref === undefined ? null : (
+        <Link
+          href={backHref}
+          className={`mb-2 -ml-1 inline-flex items-center gap-1 rounded-control text-small text-ink-muted hover:text-ink ${FOCUS_RING}`}
+        >
+          <ChevronLeft aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
+          {backLabel ?? ''}
+        </Link>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-title font-semibold text-ink">{title}</h1>
         {actions === undefined ? null : (
-          <div className="flex items-center gap-3">{actions}</div>
+          <div className="flex flex-wrap items-center gap-3">{actions}</div>
         )}
       </div>
+      {meta === undefined ? null : <div className="pt-3">{meta}</div>}
       {description === undefined ? null : (
         <p className="pt-2 text-small text-ink-muted">{description}</p>
       )}

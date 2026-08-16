@@ -353,7 +353,7 @@ export function TemplateEditorForm({
               <iframe
                 name="template-preview"
                 title={messages.templates.previewFrame}
-                className="h-sheet-height w-full border-0"
+                className="h-sheet-view w-full border-0"
               />
             </div>
           </>
