@@ -30,6 +30,9 @@ import {
 const EMAIL = 'pruefung@example.org';
 /** Eigenes Konto für den Sperrtest — es wird dabei für 15 Minuten gesperrt. */
 const LOCKOUT_EMAIL = 'sperre@example.org';
+/** Eigenes Konto mit zweitem Faktor für den zweistufigen Anmeldeweg (M6.2). */
+const TOTP_EMAIL = 'zweifaktor@example.org';
+const TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 const PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
 const passwordHash = await hashPassword(PASSWORD);
@@ -38,6 +41,16 @@ for (const email of [EMAIL, LOCKOUT_EMAIL]) {
   if ((await findUserByEmail(email)) === null) {
     await createUser({ email, passwordHash, organizationId: DEFAULT_ORGANIZATION_ID });
   }
+}
+
+if ((await findUserByEmail(TOTP_EMAIL)) === null) {
+  await createUser({
+    email: TOTP_EMAIL,
+    passwordHash,
+    organizationId: DEFAULT_ORGANIZATION_ID,
+    totpSecret: TOTP_SECRET,
+    totpEnabled: true,
+  });
 }
 
 // Ein festgeschriebener Beleg für den Browsertest.

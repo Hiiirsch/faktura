@@ -530,7 +530,8 @@ als Code gespeichert. Eine Mapping-Tabelle `unitCode → Label` liegt im Domain 
 
 | Route | Inhalt |
 |---|---|
-| `/login` | Passwort + TOTP |
+| `/login` | E-Mail + Passwort |
+| `/login/code` | Bestätigungscode — **nur**, wenn das Konto einen zweiten Faktor führt |
 | `/` | Dashboard |
 | `/invoices` | Liste, Filter nach Status/Kunde/Zeitraum, Volltextsuche, Sortierung |
 | `/invoices/new`, `/invoices/[id]` | Editor mit Live-Vorschau |

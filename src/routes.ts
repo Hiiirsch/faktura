@@ -13,6 +13,8 @@
  */
 
 export const LOGIN_PATH = '/login';
+/** Zweiter Anmeldeschritt — erscheint nur, wenn das Konto einen zweiten Faktor führt. */
+export const LOGIN_CODE_PATH = '/login/code';
 export const DASHBOARD_PATH = '/';
 export const SECURITY_SETTINGS_PATH = '/settings/security';
 export const COMPANY_SETTINGS_PATH = '/settings/company';
@@ -85,6 +87,16 @@ export type RouteDefinition = {
   /** Begründung, warum die Route ohne Anmeldung erreichbar ist. */
   readonly publicReason?: string;
   /**
+   * Öffentlich, aber nicht offen.
+   *
+   * Die Route braucht **keine Sitzung** und trotzdem einen Nachweis: Der
+   * zweite Anmeldeschritt liegt vor der Sitzung und verlangt den kurzlebigen
+   * Nachweis aus dem ersten. Ohne ihn zeigt er nichts, sondern leitet an den
+   * Anfang zurück. Der Zugriffsschutztest prüft für solche Routen genau das —
+   * eine `200`-Antwort ohne Nachweis wäre der Fehler.
+   */
+  readonly requiresPendingLogin?: boolean;
+  /**
    * Konkreter Pfad für den Zugriffsschutz-Test. Nur bei dynamischen Routen
    * nötig — `/customers/[id]` lässt sich nicht wörtlich aufrufen.
    */
@@ -99,6 +111,16 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'page',
     access: 'public',
     publicReason: 'Die Anmeldeseite muss ohne Sitzung erreichbar sein.',
+  },
+  {
+    path: LOGIN_CODE_PATH,
+    kind: 'page',
+    access: 'public',
+    requiresPendingLogin: true,
+    publicReason:
+      'Der zweite Anmeldeschritt liegt vor der Sitzung. Geschützt ist er nicht ' +
+      'durch eine Sitzung, sondern durch den kurzlebigen Nachweis aus dem ersten ' +
+      'Schritt: Ohne ihn zeigt die Seite nichts und leitet zurück.',
   },
   { path: SECURITY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   { path: COMPANY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },

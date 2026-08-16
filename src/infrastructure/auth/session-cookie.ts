@@ -9,11 +9,21 @@ import { getEnv } from '@/infrastructure/config/env';
 
 export const SESSION_COOKIE_NAME = 'faktura_session';
 
+/**
+ * Der Nachweis zwischen Passwort und zweitem Faktor (M6.2).
+ *
+ * Eigener Name und eigener Pfad: Er wird ausschließlich an `/login` gesendet
+ * und liegt damit bei keiner anderen Anfrage bei. Ein Nachweis, der auf jeder
+ * Seite mitreist, wäre ein Geheimnis, das ohne Not durch die ganze Anwendung
+ * wandert.
+ */
+export const PENDING_LOGIN_COOKIE_NAME = 'faktura_pending';
+
 export type CookieOptions = {
   readonly httpOnly: true;
   readonly secure: boolean;
   readonly sameSite: 'lax';
-  readonly path: '/';
+  readonly path: '/' | '/login';
   readonly expires?: Date;
   readonly maxAge?: number;
 };
@@ -34,6 +44,26 @@ export function sessionCookieOptions(expiresAt: Date, appUrl?: string): CookieOp
     sameSite: 'lax',
     path: '/',
     expires: expiresAt,
+  };
+}
+
+export function pendingLoginCookieOptions(expiresAt: Date, appUrl?: string): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isSecureContext(appUrl),
+    sameSite: 'lax',
+    path: '/login',
+    expires: expiresAt,
+  };
+}
+
+export function clearedPendingLoginCookieOptions(appUrl?: string): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isSecureContext(appUrl),
+    sameSite: 'lax',
+    path: '/login',
+    maxAge: 0,
   };
 }
 

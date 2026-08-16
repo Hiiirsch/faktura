@@ -345,6 +345,37 @@ einer Handlung, nicht einem Zustand.
 Sammelaktionen sind bewusst nur zwei: bezahlt markieren und Entwürfe löschen.
 Stornieren bleibt einzeln — es erzeugt je Beleg eine nummerierte Gutschrift.
 
+## Anmeldung (seit M6.2)
+
+Sie läuft in **zwei** Schritten: `/login` nimmt E-Mail und Passwort,
+`/login/code` den zweiten Faktor — und die zweite Seite erscheint nur, wenn das
+Konto einen führt.
+
+Zwischen beiden steht ein Zustand, den es vorher nicht gab: „Passwort stimmte,
+Code fehlt noch." Er liegt in einer **eigenen Tabelle** (`PendingLogin`), nicht
+als Sitzung mit Merkmal. Der Grund ist die Fehlerklasse, die sonst entstünde:
+Läge er als `Session` mit einem Feld „zweiter Faktor fehlt", hinge die gesamte
+Zweifaktorauthentifizierung daran, dass **jede** Sitzungsabfrage dieses Feld
+mitprüft — eine vergessene Stelle genügte. Als eigener Typ an eigenem Ort kann
+ihn keine Sitzungsabfrage finden.
+
+Er läuft nach fünf Minuten ab, liegt nur als SHA-256-Hash, reist als Cookie mit
+`path=/login` (also bei keiner anderen Anfrage mit), und ein neuer verwirft
+ältere desselben Kontos. Die Sperre nach zehn Fehlversuchen zählt im zweiten
+Schritt weiter; ein richtiges Passwort allein setzt den Zähler **nicht** zurück
+— sonst wäre der Code beliebig oft ratbar.
+
+**Was die Aufteilung kostet:** Die einstufige Fassung konnte falsches Passwort
+und falschen Code ununterscheidbar beantworten. Wer den zweiten Schritt sieht,
+weiß jetzt, dass das Passwort stimmte. Das ist jedem zweistufigen Verfahren
+eigen. Der **erste** Schritt bleibt ununterscheidbar: unbekanntes Konto und
+falsches Passwort ergeben dieselbe Antwort und denselben Rechenaufwand.
+
+`/login/code` ist in `src/routes.ts` öffentlich, trägt aber
+`requiresPendingLogin: true`. Der Zugriffsschutztest prüft für solche Routen
+nicht auf `200`, sondern auf die Umleitung an den Anfang — eine `200` ohne
+Nachweis wäre dort der Fehler.
+
 ## Auswertung (seit M6)
 
 Alle Kennzahlen der Übersicht stammen aus **einer** Funktion
@@ -386,6 +417,8 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M5.7 | Empfänger ohne Kundendatensatz: Felder am Beleg oder freier Block | umgesetzt |
 | M5.8 | Überarbeitete Oberfläche: Entwurf, Dialog/Toast, Zeilenaktionen, Zweispaltigkeit | umgesetzt |
 | M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | umgesetzt |
+| M6.1 | Ausführung: Satzmaß, Seitenköpfe, einheitliche Listen | umgesetzt |
+| M6.2 | Anmeldung in zwei Schritten, zweiter Faktor nur wo nötig | umgesetzt |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -22,6 +22,14 @@ export const TEST_BASE_URL = `http://127.0.0.1:${String(TEST_PORT)}`;
 export const TEST_USER_EMAIL = 'pruefung@example.org';
 /** Eigenes Konto für den Sperrtest, damit er die übrigen Prüfungen nicht stört. */
 export const TEST_LOCKOUT_EMAIL = 'sperre@example.org';
+/**
+ * Konto mit zweitem Faktor — für den zweistufigen Anmeldeweg (M6.2).
+ *
+ * Das Geheimnis steht fest im Quelltext, damit der Browsertest daraus einen
+ * gültigen Code erzeugen kann. Es gilt ausschließlich für die Testdatenbank.
+ */
+export const TEST_TOTP_EMAIL = 'zweifaktor@example.org';
+export const TEST_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
 export const TEST_USER_PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
 const TEST_DB_FILE = path.join(projectRoot, 'data', 'integration-test.db');

@@ -14,7 +14,8 @@ Vorschlag und steht noch zur Freigabe aus.
 
 Stand: 2026-08-15 · 133 von 171 erledigt (93 abgenommen: M0–M4, 40 umgesetzt) ·
 **M5 umgesetzt, Abnahme offen** · **M5.6 (PDF-Vorschau), M5.7 (Empfänger ohne
-Kunde), M5.8 (überarbeitete Oberfläche) und M6 (Übersicht) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
+Kunde), M5.8 (überarbeitete Oberfläche), M6 (Übersicht), M6.1 (Ausführung) und
+M6.2 (zweistufige Anmeldung) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
 FA-PFL-01) sind durch M5.7 im Wortlaut geändert und stehen erneut zur Abnahme.
 
 Hinzu kommen 25 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
@@ -30,6 +31,41 @@ Pflichtangaben FA-PFL-01 bis -11 werden am Satz geprüft, den der Renderer
 erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
+
+**M6.2 — Anmeldung in zwei Schritten (umgesetzt, Abnahme offen).** Der zweite
+Faktor wird auf einer eigenen Seite (`/login/code`) abgefragt, und nur bei
+Konten, die einen führen. Anlass: Ein Feld für einen Code, den die meisten
+Konten nicht haben, steht bei jeder Anmeldung im Weg.
+
+**Geänderte Festlegung.** Spec §10.1 nannte für `/login` „Passwort + TOTP" auf
+**einer** Seite; `login.ts` begründete das ausdrücklich damit, dass so kein
+abzusichernder Zwischenzustand entsteht. Beides ist angepasst — die Spec nennt
+jetzt beide Routen.
+
+**Was die Aufteilung kostet, ausdrücklich benannt.** Die einstufige Fassung
+konnte falsches Passwort und falschen Code *ununterscheidbar* beantworten. Das
+geht nicht mehr: Wer den zweiten Schritt zu sehen bekommt, weiß, dass das
+Passwort stimmte. Diese Auskunft ist jedem zweistufigen Verfahren eigen und der
+Preis dafür, den Code nur dort zu verlangen, wo es ihn gibt. Unverändert
+ununterscheidbar bleibt der **erste** Schritt: unbekanntes Konto und falsches
+Passwort ergeben dieselbe Antwort und denselben Rechenaufwand (im Test belegt).
+
+**Wie der Zwischenzustand klein gehalten wird:**
+
+| Zusage | Umsetzung |
+|---|---|
+| Er ist keine Sitzung | eigene Tabelle `PendingLogin`; im Test wird der Nachweis der Sitzungsauflösung vorgelegt und muss unbekannt sein |
+| Er verleiht kein Recht | erlaubt genau eine Handlung: den Code nachreichen |
+| Er läuft schnell ab | fünf Minuten, danach entfernt |
+| Er liegt nur als Hash | SHA-256 wie beim Sitzungstoken (NFA-SEC-06) |
+| Er reist nicht mit | Cookie mit `path=/login`, `HttpOnly`, `SameSite=Lax` |
+| Er ist nicht doppelt | ein neuer Nachweis verwirft ältere desselben Kontos |
+| Die Sperre gilt weiter | jeder falsche Code zählt als Fehlversuch (NFA-SEC-08); ein richtiges Passwort allein setzt den Zähler **nicht** zurück |
+| Abschalten wirkt sofort | wird 2FA zwischen den Schritten deaktiviert, gilt der Nachweis nicht mehr |
+
+Nachweis: `tests/integration/two-step-login.test.ts` (15 Prüfungen),
+`tests/integration/browser-two-step-login.test.ts` (6 Prüfungen — Cookiepfad,
+Umleitungskette und die Codeseite ohne Nachweis).
 
 **M6.1 — Ausführung nachgezogen (umgesetzt, Abnahme offen).** Der Auftraggeber
 hat gemeldet, die Anmeldeseite und die Oberfläche insgesamt gefielen ihm nicht.
@@ -317,10 +353,10 @@ Szenario benannt.
 | NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | abgenommen | `scripts/create-user.ts`; keine Registrierungsroute in `src/routes.ts`; Container: `node dist/create-user.mjs` |
 | NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts` — prüft `m=65536,t=3,p=1` im erzeugten Hash |
 | NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | abgenommen | `tests/unit/domain/auth-policies.test.ts`, `tests/unit/infrastructure/security.test.ts`; Liste in `resources/compromised-passwords.txt` (100.000 Einträge, offline) |
-| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | abgenommen | Manuell: TOTP unter /settings/security eingerichtet, QR-Code gescannt, Codes einmalig angezeigt · `tests/unit/domain/auth-policies.test.ts` |
+| NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | umgesetzt | Manuell: TOTP unter /settings/security eingerichtet, QR-Code gescannt, Codes einmalig angezeigt · `tests/unit/domain/auth-policies.test.ts`; seit M6.2 zweistufig: `tests/integration/two-step-login.test.ts`, `tests/integration/browser-two-step-login.test.ts` |
 | NFA-SEC-06 | Session-Token ≥256 Bit, nur Hash in der DB | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts` — 256 Bit, nur SHA-256-Hash in der Datenbank |
 | NFA-SEC-07 | Cookie HttpOnly/Secure/SameSite=Lax, Rotation bei Login | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` (Attribute + Rotation), `tests/unit/infrastructure/security.test.ts` (Secure) |
-| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — Sperre nach 10 Versuchen, Audit-Einträge |
+| NFA-SEC-08 | Sperre 15 min nach 10 Fehlversuchen, protokolliert | MUSS | T | M1 | umgesetzt | `tests/integration/route-protection.test.ts` — Sperre nach 10 Versuchen, Audit-Einträge; `tests/integration/two-step-login.test.ts` — die Sperre zählt seit M6.2 auch im zweiten Schritt weiter |
 | NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | abgenommen | Manuell: Sitzungsübersicht unter /settings/security, einzeln und gesammelt beendbar |
 | NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — ohne Token, fremde Herkunft, falsches Token |
 | NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | abgenommen | Zod-Schemata in `src/app/login/actions.ts`, `src/app/settings/security/actions.ts`, `src/infrastructure/config/env.ts` |

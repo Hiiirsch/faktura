@@ -52,15 +52,24 @@ export const messages = {
   login: {
     title: 'Anmeldung',
     heading: 'Anmelden',
-    intro: 'Anmeldung mit E-Mail-Adresse, Passwort und zweitem Faktor.',
+    intro: 'Anmeldung mit E-Mail-Adresse und Passwort.',
     email: 'E-Mail-Adresse',
     password: 'Passwort',
-    secondFactor: 'Bestätigungscode',
-    secondFactorHint:
-      'Sechsstelliger Code aus Ihrer Authenticator-App. Alternativ ein Wiederherstellungscode.',
-    secondFactorOptional: 'Nur nötig, wenn die Zweifaktorauthentifizierung aktiv ist.',
-    submit: 'Anmelden',
-    invalidCredentials: 'E-Mail-Adresse, Passwort oder Bestätigungscode ist nicht korrekt.',
+    submit: 'Weiter',
+
+    // Zweiter Schritt — erscheint nur bei Konten mit zweitem Faktor (M6.2).
+    codeTitle: 'Bestätigungscode',
+    codeIntro:
+      'Dieses Konto ist mit einem zweiten Faktor geschützt. Der sechsstellige Code steht in der Authenticator-App; ein Wiederherstellungscode geht ebenso.',
+    codeLabel: 'Bestätigungscode',
+    codeSubmit: 'Anmelden',
+    codeInvalid: 'Der Bestätigungscode stimmt nicht.',
+    codeMissing: 'Bitte den Bestätigungscode angeben.',
+    codeExpired:
+      'Der Anmeldevorgang ist abgelaufen oder wurde abgebrochen. Bitte erneut anmelden.',
+    otherAccount: 'Mit einem anderen Konto anmelden',
+
+    invalidCredentials: 'E-Mail-Adresse oder Passwort ist nicht korrekt.',
     locked:
       'Der Zugang ist wegen zu vieler Fehlversuche vorübergehend gesperrt. Bitte in {minutes} Minuten erneut versuchen.',
     missingFields: 'Bitte E-Mail-Adresse und Passwort angeben.',

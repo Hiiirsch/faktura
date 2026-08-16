@@ -13,7 +13,7 @@
 import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 
-import { authenticatedRoutes, probePathFor, publicRoutes, routes } from '@/routes';
+import { authenticatedRoutes, LOGIN_PATH, probePathFor, publicRoutes, routes } from '@/routes';
 import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 
@@ -142,13 +142,33 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
     },
   );
 
-  it.each(publicRoutes().map((route) => probePathFor(route)))(
-    'liefert die öffentliche Route %s aus',
-    async (pathname) => {
-      const response = await fetch(url(pathname), { redirect: 'manual' });
-      expect(response.status).toBe(200);
-    },
-  );
+  it.each(
+    publicRoutes()
+      .filter((route) => route.requiresPendingLogin !== true)
+      .map((route) => probePathFor(route)),
+  )('liefert die öffentliche Route %s aus', async (pathname) => {
+    const response = await fetch(url(pathname), { redirect: 'manual' });
+    expect(response.status).toBe(200);
+  });
+
+  /**
+   * Öffentlich, aber nicht offen.
+   *
+   * Der zweite Anmeldeschritt braucht keine Sitzung — er liegt davor — und
+   * trotzdem einen Nachweis. Eine `200`-Antwort ohne ihn wäre hier der Fehler,
+   * nicht der Normalfall: Sie hieße, dass sich die Seite mit dem Codefeld
+   * jedem zeigt, der die Adresse kennt.
+   */
+  it.each(
+    publicRoutes()
+      .filter((route) => route.requiresPendingLogin === true)
+      .map((route) => probePathFor(route)),
+  )('weist die Route %s ohne Nachweis an den Anfang zurück', async (pathname) => {
+    const response = await fetch(url(pathname), { redirect: 'manual' });
+
+    expect([302, 303, 307]).toContain(response.status);
+    expect(response.headers.get('location')).toContain(LOGIN_PATH);
+  });
 
   it('gibt auf einem unbekannten Pfad keine Inhalte preis', async () => {
     const response = await fetch(url('/gibt-es-nicht'), { redirect: 'manual' });

@@ -12,11 +12,11 @@
  * Wiederherstellungscodes hängen am Konto, nicht an der Organisation; sie
  * tragen die Spalte deshalb nicht.
  */
-import type { Prisma, RecoveryCode, Session, User } from '@prisma/client';
+import type { PendingLogin, Prisma, RecoveryCode, Session, User } from '@prisma/client';
 
 import { clientFor, type TransactionHandle } from './client';
 
-export type { RecoveryCode, Session, User };
+export type { PendingLogin, RecoveryCode, Session, User };
 
 export type SessionWithUser = Prisma.SessionGetPayload<{
   include: { user: { select: { id: true; email: true; organizationId: true } } };
@@ -95,6 +95,52 @@ export async function revokeSessionForUser(userId: string, sessionId: string): P
     where: { id: sessionId, userId },
   });
   return result.count > 0;
+}
+
+// ─── Wiederherstellungscodes ────────────────────────────────────────────────
+
+// ─── Zwischenzustand der Anmeldung ──────────────────────────────────────────
+
+/**
+ * Der Nachweis zwischen Passwort und zweitem Faktor (M6.2).
+ *
+ * Er hängt am Konto und fällt damit unter dieselbe dokumentierte Ausnahme wie
+ * Sitzungen: Zu diesem Zeitpunkt ist der Mandant zwar bekannt, aber der Zugriff
+ * erfolgt über den Tokenhash, nicht über die Organisation.
+ */
+export async function createPendingLogin(
+  data: Prisma.PendingLoginUncheckedCreateInput,
+): Promise<void> {
+  await clientFor(undefined).pendingLogin.create({ data });
+}
+
+export async function findPendingLoginByHash(tokenHash: string): Promise<PendingLogin | null> {
+  return clientFor(undefined).pendingLogin.findUnique({ where: { tokenHash } });
+}
+
+export async function deletePendingLogin(id: string): Promise<void> {
+  await clientFor(undefined).pendingLogin.delete({ where: { id } }).catch(() => undefined);
+}
+
+/**
+ * Räumt ältere Nachweise desselben Kontos ab.
+ *
+ * Aufgerufen beim Anlegen eines neuen: Wer sich zweimal hintereinander
+ * anmeldet, soll nicht zwei gültige Nachweise hinterlassen — der erste wäre
+ * ein offenes Zeitfenster, von dem niemand mehr weiß.
+ */
+export async function deletePendingLoginsForUser(userId: string): Promise<void> {
+  await clientFor(undefined).pendingLogin.deleteMany({ where: { userId } });
+}
+
+/**
+ * Entfernt abgelaufene Nachweise.
+ *
+ * Wie bei den Sitzungen räumt sich die Tabelle im laufenden Betrieb selbst
+ * auf, statt auf einen geplanten Auftrag zu warten.
+ */
+export async function deleteExpiredPendingLogins(now: Date): Promise<void> {
+  await clientFor(undefined).pendingLogin.deleteMany({ where: { expiresAt: { lte: now } } });
 }
 
 // ─── Wiederherstellungscodes ────────────────────────────────────────────────

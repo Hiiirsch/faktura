@@ -430,6 +430,7 @@ model User {
 
   sessions      Session[]
   recoveryCodes RecoveryCode[]
+  pendingLogins PendingLogin[]
 
   @@index([organizationId])
 }
@@ -470,6 +471,33 @@ model RecoveryCode {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+/// Der Zwischenzustand zwischen Passwort und zweitem Faktor (seit M6.2).
+///
+/// Wird die Anmeldung auf zwei Seiten geteilt, muss der erste Schritt dem
+/// zweiten beweisen können, dass das Passwort stimmte — ohne dabei schon
+/// Zugang zu gewähren. Genau das ist diese Zeile: ein Nachweis mit kurzer
+/// Frist und ohne jedes Recht.
+///
+/// **Bewusst eine eigene Tabelle, keine Sitzung mit Merkmal.** Läge der
+/// Zwischenzustand als `Session` mit einem Feld „zweiter Faktor fehlt noch",
+/// hinge die gesamte Zweifaktorauthentifizierung daran, dass jede Abfrage auf
+/// Sitzungen dieses Feld mitprüft. Eine vergessene Stelle genügte, und der
+/// zweite Faktor wäre umgangen. Als eigener Typ an eigenem Ort kann er von
+/// keiner Sitzungsabfrage gefunden werden.
+model PendingLogin {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Wie beim Sitzungstoken liegt hier nur der SHA-256-Hash (NFA-SEC-06).
+  tokenHash String   @unique
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ─── Betrieb ────────────────────────────────────────────────────────────────

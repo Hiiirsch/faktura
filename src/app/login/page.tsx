@@ -96,24 +96,6 @@ export default async function LoginPage({
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label htmlFor="secondFactor" className="text-ui font-medium">
-            {messages.login.secondFactor}
-          </label>
-          <input
-            id="secondFactor"
-            name="secondFactor"
-            type="text"
-            inputMode="text"
-            autoComplete="one-time-code"
-            aria-describedby="secondFactorHint"
-            className={INPUT_CLASS}
-          />
-          <p id="secondFactorHint" className="text-ui text-ink-muted">
-            {messages.login.secondFactorOptional}
-          </p>
-        </div>
-
         <button
           type="submit"
           className={PRIMARY_BUTTON_CLASS}
