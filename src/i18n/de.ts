@@ -69,6 +69,24 @@ export const messages = {
       'Es gibt keine Selbstregistrierung. Das erste Konto wird auf dem Server angelegt.',
   },
   dashboard: {
+    chart: 'Umsatz je Monat, letzte 12 Monate',
+    chartEmpty: 'In den letzten zwölf Monaten wurde noch kein Beleg festgeschrieben.',
+    chartHeading: 'Umsatz je Monat',
+    chartPeriod: 'letzte 12 Monate',
+    overdueHeading: 'Überfällig',
+    overdueEmpty: 'Nichts überfällig.',
+    dueSoonHeading: 'Fällig in den nächsten 14 Tagen',
+    dueSoonEmpty: 'In den nächsten vierzehn Tagen wird nichts fällig.',
+    recentHeading: 'Zuletzt bearbeitet',
+    topCustomersHeading: 'Umsatzstärkste Kunden',
+    topCustomersPeriod: 'laufendes Jahr',
+    topCustomersEmpty: 'In diesem Jahr wurde noch kein Beleg festgeschrieben.',
+    overdueSince: 'seit {days} Tagen',
+    dueIn: 'in {days} Tagen',
+    dueToday: 'heute fällig',
+    invoiceCount: '{count} Rechnungen',
+    invoiceCountOne: '1 Rechnung',
+    empty: 'Noch keine Rechnungen. Die erste Rechnung entsteht in etwa zwei Minuten.',
     metricOutstanding: 'Offen gesamt',
     metricOverdue: 'Davon überfällig',
     metricRevenueMonth: 'Umsatz laufender Monat',
@@ -612,3 +630,25 @@ export const messages = {
 } as const;
 
 export type Messages = typeof messages;
+
+/**
+ * Monatskürzel für die Achse des Umsatzdiagramms (FA-DASH-05).
+ *
+ * Fest hinterlegt statt über `Intl.DateTimeFormat` erzeugt: Die Oberfläche ist
+ * deutsch, unabhängig davon, wie der Rechner eingestellt ist, auf dem der
+ * Server läuft. Genau daran ist schon das Datumsfeld gescheitert (FA-UI-13).
+ */
+export const monthAbbreviations: readonly string[] = [
+  'Jan',
+  'Feb',
+  'Mär',
+  'Apr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Dez',
+];

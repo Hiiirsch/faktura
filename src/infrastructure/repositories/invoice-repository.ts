@@ -188,6 +188,65 @@ export async function listInvoices(
 }
 
 /**
+ * Die Belege der Organisation in der Projektion, die die Übersicht braucht
+ * (FA-DASH-09, NFA-QUAL-05).
+ *
+ * **Eine Abfrage für die ganze Seite.** Kacheln, Diagramm, beide
+ * Fristenlisten, die zuletzt bearbeiteten Belege und die Top-Kunden entstehen
+ * aus demselben Ergebnis. Acht Abfragen mit je eigenem `WHERE` wären der
+ * sichere Weg zu acht Auslegungen der Frage „was zählt als Umsatz" — genau
+ * das, was FA-DASH-09 verhindern soll.
+ *
+ * **Schmal ausgewählt.** Snapshots und Fließtexte bleiben draußen; sie sind
+ * das Schwergewicht der Tabelle und für keine Kennzahl nötig. Was bleibt, sind
+ * die denormalisierten Summen des Belegkopfes (Spec §4) und die Felder, aus
+ * denen der Name des Empfängers entsteht.
+ *
+ * Ohne Statusfilter: Welcher Beleg zählt, entscheidet die Domäne
+ * (`invoice/revenue.ts`), nicht diese Abfrage. Ein `WHERE status IN (…)` hier
+ * wäre dieselbe Regel ein zweites Mal, in einer anderen Sprache.
+ */
+const forMetrics = {
+  id: true,
+  invoiceNumber: true,
+  documentType: true,
+  status: true,
+  issueDate: true,
+  dueDate: true,
+  netTotalCents: true,
+  grossTotalCents: true,
+  paidTotalCents: true,
+  currency: true,
+  updatedAt: true,
+  buyerMode: true,
+  customerId: true,
+  buyerName: true,
+  buyerContactName: true,
+  buyerAddressLine1: true,
+  buyerAddressLine2: true,
+  buyerPostalCode: true,
+  buyerCity: true,
+  buyerCountryCode: true,
+  buyerEmail: true,
+  buyerPhone: true,
+  buyerVatId: true,
+  buyerFreeText: true,
+  customer: { select: { companyName: true, contactName: true } },
+} satisfies Prisma.InvoiceSelect;
+
+export type InvoiceMetricsRow = Prisma.InvoiceGetPayload<{ select: typeof forMetrics }>;
+
+export async function listInvoicesForMetrics(
+  context: OrganizationContext,
+): Promise<readonly InvoiceMetricsRow[]> {
+  return clientFor(undefined).invoice.findMany({
+    where: { organizationId: context.organizationId },
+    orderBy: { updatedAt: 'desc' },
+    select: forMetrics,
+  });
+}
+
+/**
  * Das jüngste Ausstellungsdatum eines festgeschriebenen Belegs dieses Typs
  * — Grundlage der Rückdatierungsprüfung beim Festschreiben.
  */

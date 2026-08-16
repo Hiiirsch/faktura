@@ -14,7 +14,7 @@ Vorschlag und steht noch zur Freigabe aus.
 
 Stand: 2026-08-15 · 133 von 171 erledigt (93 abgenommen: M0–M4, 40 umgesetzt) ·
 **M5 umgesetzt, Abnahme offen** · **M5.6 (PDF-Vorschau), M5.7 (Empfänger ohne
-Kunde) und M5.8 (überarbeitete Oberfläche) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
+Kunde), M5.8 (überarbeitete Oberfläche) und M6 (Übersicht) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
 FA-PFL-01) sind durch M5.7 im Wortlaut geändert und stehen erneut zur Abnahme.
 
 Hinzu kommen 25 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
@@ -30,6 +30,27 @@ Pflichtangaben FA-PFL-01 bis -11 werden am Satz geprüft, den der Renderer
 erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
+
+**M6 — Übersicht (umgesetzt, Abnahme offen).** Alle elf FA-DASH-IDs und die
+beiden Leistungszusagen NFA-QUAL-04/-05 sind belegt. Drei Entscheidungen, die
+im Diff nicht von selbst sprechen:
+
+*Gerechnet wird in der Anwendung, nicht in SQL.* `getDashboardMetrics()` liest
+**eine** schmale Projektion aller Belege und rechnet darüber. Der naheliegende
+Weg — je Kennzahl eine `SUM`-Abfrage — hätte die Frage „was zählt als Umsatz"
+in jedem `WHERE` erneut beantwortet und damit genau das erzeugt, was FA-DASH-09
+verhindern soll. Der Preis ist eine Größenabhängigkeit, und die ist gemessen
+statt behauptet: 22 ms bei 1.000 Belegen, Grenze 1.000 ms.
+
+*Der Bezugstag kommt von außen.* `now` ist ein Parameter. Überfälligkeit,
+laufender Monat und die Zwölfmonatsreihe hängen am selben Tag; läse jede
+Kennzahl ihre eigene Uhr, könnte eine um Mitternacht geladene Übersicht
+denselben Beleg als überfällig **und** als heute fällig ausweisen.
+
+*Der Healthcheck ist von der Übersicht verschwunden.* Er stand dort, wo der
+Entwurf (§4.1) Kennzahlen, Diagramm und Fristenlisten vorsieht, und gehört zu
+keiner FA-DASH-ID. Die Zusage NFA-BETR-08 verlangt einen **Endpunkt**; den gibt
+es unter `/api/health`, und er bleibt unberührt. Verloren geht nichts.
 
 **Überarbeiteter Gestaltungsentwurf (M5.8).** Der Auftraggeber hat gemeldet,
 die Oberfläche wirke austauschbar. Bei der Erkundung zeigte sich, dass die
@@ -250,17 +271,17 @@ Szenario benannt.
 
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
-| FA-DASH-01 | Offener Gesamtbetrag | MUSS | T | M6 | offen | — |
-| FA-DASH-02 | Überfälliger Betrag und Anzahl | MUSS | T | M6 | offen | — |
-| FA-DASH-03 | Umsatz laufender Monat und laufendes Jahr | MUSS | T | M6 | offen | — |
-| FA-DASH-04 | Stornos und Entwürfe fließen nicht in den Umsatz | MUSS | T | M6 | umgesetzt | `tests/unit/domain/invoice-status.test.ts` — `countsTowardRevenue`; Storno lässt den Umsatz exakt auf den Ausgangswert zurückfallen |
-| FA-DASH-05 | Diagramm Umsatz je Monat über 12 Monate | MUSS | M | M6 | offen | — |
-| FA-DASH-06 | Liste überfälliger Rechnungen nach Dauer sortiert | MUSS | M | M6 | offen | — |
-| FA-DASH-07 | Liste der in 14 Tagen fälligen Rechnungen | SOLL | M | M6 | offen | — |
-| FA-DASH-08 | Zuletzt bearbeitete Rechnungen mit Status | SOLL | M | M6 | offen | — |
-| FA-DASH-09 | Alle Kennzahlen aus einer zentralen Funktion | MUSS | R | M6 | offen | — |
-| FA-DASH-10 | Umsätze auf Nettobasis, im UI beschriftet | MUSS | M | M6 | offen | — |
-| FA-DASH-11 | Umsatzstärkste Kunden des laufenden Jahres | KANN | M | M6 | offen | — |
+| FA-DASH-01 | Offener Gesamtbetrag | MUSS | T | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — Brutto minus Gezahltes über alle offenen Belege; Teilzahlungen mindern den Betrag |
+| FA-DASH-02 | Überfälliger Betrag und Anzahl | MUSS | T | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — der überfällige Betrag ist ein Teil des offenen, kein zweiter Topf; am Fälligkeitstag noch nicht überfällig |
+| FA-DASH-03 | Umsatz laufender Monat und laufendes Jahr | MUSS | T | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` |
+| FA-DASH-04 | Stornos und Entwürfe fließen nicht in den Umsatz | MUSS | T | M6 | umgesetzt | `tests/unit/domain/invoice-status.test.ts` — `countsTowardRevenue`; `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — Entwurf, Storno und Gutschrift lassen jede Kennzahl auf null |
+| FA-DASH-05 | Diagramm Umsatz je Monat über 12 Monate | MUSS | M | M6 | umgesetzt | `src/ui/components/revenue-chart.tsx`; `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — rollierendes Fenster, Monate ohne Umsatz mit Null statt Lücke, Übertrag über die Jahresgrenze geprüft |
+| FA-DASH-06 | Liste überfälliger Rechnungen nach Dauer sortiert | MUSS | M | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — längste Dauer zuerst, Tage am Eintrag benannt |
+| FA-DASH-07 | Liste der in 14 Tagen fälligen Rechnungen | SOLL | M | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — heute fällige zählen mit, ein Tag jenseits der Frist nicht |
+| FA-DASH-08 | Zuletzt bearbeitete Rechnungen mit Status | SOLL | M | M6 | umgesetzt | `tests/integration/dashboard.test.ts` — höchstens zehn, nach Bearbeitung absteigend; Statusfeld aus `src/ui/components/status-field.tsx` |
+| FA-DASH-09 | Alle Kennzahlen aus einer zentralen Funktion | MUSS | R | M6 | umgesetzt | `src/application/dashboard/dashboard-metrics.ts` — eine Funktion, ein Zeitpunkt, **eine** Abfrage; die Seite rechnet nichts, sie ordnet an. Review: `src/app/page.tsx` enthält keine Summenbildung |
+| FA-DASH-10 | Umsätze auf Nettobasis, im UI beschriftet | MUSS | M | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts` — `netRevenueIn` summiert Nettobeträge; Kachel trägt „netto", Diagramm und Top-Kunden tragen ihre Bezugsgröße am Abschnitt |
+| FA-DASH-11 | Umsatzstärkste Kunden des laufenden Jahres | KANN | M | M6 | umgesetzt | `tests/unit/domain/dashboard-metrics.test.ts`, `tests/integration/dashboard.test.ts` — gruppiert über den Anzeigenamen, damit Empfänger ohne Kundendatensatz (M5.7) nicht aus der Auswertung fallen |
 
 ## 11. Sicherheit
 
@@ -338,8 +359,8 @@ Szenario benannt.
 | NFA-QUAL-01 | Domain-Testabdeckung ≥90 % | MUSS | T | M3 | abgenommen | `npm run test:coverage` — Domain-Schicht 100 % Statements, Functions und Lines bei einer Schwelle von 90 % |
 | NFA-QUAL-02 | E2E über den kritischen Gesamtpfad | MUSS | T | M7 | offen | — |
 | NFA-QUAL-03 | Build bricht bei TS-/Lint-Fehlern, kein `any` in der Domain | MUSS | R | M0 | abgenommen | `npm run verify`; `eslint.config.mjs` (`no-explicit-any` als Fehler, `--max-warnings=0`); `next.config.ts` (`ignoreBuildErrors: false`) |
-| NFA-QUAL-04 | Listenansicht mit 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
-| NFA-QUAL-05 | Dashboard bei 1.000 Rechnungen unter 1 s | SOLL | T | M6 | offen | — |
+| NFA-QUAL-04 | Listenansicht mit 1.000 Rechnungen unter 1 s | SOLL | T | M6 | umgesetzt | `tests/integration/dashboard-performance.test.ts` — gemessen 22 ms ungefiltert, 2 ms mit Volltextsuche |
+| NFA-QUAL-05 | Dashboard bei 1.000 Rechnungen unter 1 s | SOLL | T | M6 | umgesetzt | `tests/integration/dashboard-performance.test.ts` — gemessen 22 ms; der Test ist zugleich die Stelle, an der die Rechnung in der Anwendung statt in SQL auffiele, wenn der Bestand wächst |
 | NFA-QUAL-06 | Seed-Kommando mit realistischen Testdaten | MUSS | M | M7 | offen | — |
 | NFA-QUAL-07 † | UI vollständig deutsch, Texte zentral | MUSS | R | M0 † | abgenommen | `src/i18n/de.ts`; Label-Tabellen als `Record<Code, string>` — ein fehlendes Label ist ein Compilerfehler. Bei jedem Meilenstein erneut zu prüfen |
 | NFA-QUAL-08 † | Deutsche Formatierung für Beträge, Datum, Zahlen | MUSS | T | M0 † | abgenommen | `tests/unit/ui/format.test.ts` |

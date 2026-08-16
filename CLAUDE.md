@@ -345,6 +345,31 @@ einer Handlung, nicht einem Zustand.
 Sammelaktionen sind bewusst nur zwei: bezahlt markieren und Entwürfe löschen.
 Stornieren bleibt einzeln — es erzeugt je Beleg eine nummerierte Gutschrift.
 
+## Auswertung (seit M6)
+
+Alle Kennzahlen der Übersicht stammen aus **einer** Funktion
+(`src/application/dashboard/dashboard-metrics.ts`, FA-DASH-09) — Kacheln,
+Diagramm, beide Fristenlisten, die zuletzt bearbeiteten Belege und die
+Top-Kunden. Die Seite selbst rechnet nichts; sie formatiert und ordnet an.
+
+Gerechnet wird **in der Anwendung, nicht in SQL**: `listInvoicesForMetrics()`
+liest eine schmale Projektion aller Belege (ohne Snapshots und Fließtexte),
+die reine Rechnung steht in `src/domain/dashboard/metrics.ts`. Je Kennzahl
+eine `SUM`-Abfrage hätte die Frage „was zählt als Umsatz" in jedem `WHERE`
+erneut beantwortet — dieselbe Regel ein zweites Mal, in einer anderen Sprache.
+Der Preis ist eine Größenabhängigkeit; sie ist gemessen, nicht behauptet
+(`tests/integration/dashboard-performance.test.ts`, 22 ms bei 1.000 Belegen).
+
+Drei Regeln werden dabei **benutzt, nicht wiederholt**: Umsatzrelevanz aus
+`invoice/revenue.ts`, Überfälligkeit und offener Betrag aus
+`invoice/status.ts`. FA-DASH-04 ist deshalb keine eigene Prüfung, sondern eine
+Folge — Entwürfe und Stornos fallen schon durch `countsTowardRevenue()` heraus.
+
+Der Bezugstag ist ein **Parameter**, kein `new Date()` im Rumpf: Überfälligkeit,
+laufender Monat und die Zwölfmonatsreihe hängen am selben Tag. Läse jede
+Kennzahl ihre eigene Uhr, könnte eine um Mitternacht geladene Übersicht
+denselben Beleg als überfällig und als heute fällig ausweisen.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -360,7 +385,7 @@ Stornieren bleibt einzeln — es erzeugt je Beleg eine nummerierte Gutschrift.
 | M5.6 | Vorschau zeigt das erzeugte PDF statt einer HTML-Nachbildung | umgesetzt |
 | M5.7 | Empfänger ohne Kundendatensatz: Felder am Beleg oder freier Block | umgesetzt |
 | M5.8 | Überarbeitete Oberfläche: Entwurf, Dialog/Toast, Zeilenaktionen, Zweispaltigkeit | umgesetzt |
-| M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | offen |
+| M6 | Dashboard: `getDashboardMetrics()`, Kacheln, Chart, Listen | umgesetzt |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | offen |
 
 <!-- BEGIN:nextjs-agent-rules -->
