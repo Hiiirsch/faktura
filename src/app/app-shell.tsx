@@ -1,5 +1,6 @@
 import {
   Building2,
+  DatabaseBackup,
   FileText,
   Hash,
   LayoutDashboard,
@@ -17,6 +18,7 @@ import { getCompanyProfile } from '@/application/company/company-profile';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
+  BACKUP_SETTINGS_PATH,
   CATALOG_PATH,
   COMPANY_SETTINGS_PATH,
   CUSTOMERS_PATH,
@@ -64,6 +66,7 @@ const SETTINGS = [
   { href: NUMBERING_SETTINGS_PATH, label: messages.nav.numbering, icon: Hash },
   { href: TEMPLATE_SETTINGS_PATH, label: messages.templates.title, icon: LayoutTemplate },
   { href: SECURITY_SETTINGS_PATH, label: messages.nav.security, icon: ShieldCheck },
+  { href: BACKUP_SETTINGS_PATH, label: messages.nav.backup, icon: DatabaseBackup },
 ] as const;
 
 function NavLink({

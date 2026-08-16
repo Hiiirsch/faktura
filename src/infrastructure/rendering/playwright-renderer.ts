@@ -20,6 +20,7 @@
  */
 import { type Browser, chromium, type Page } from 'playwright';
 
+import { logger } from '@/infrastructure/logging/logger';
 import { getEnv } from '@/infrastructure/config/env';
 import type {
   PdfRenderer,
@@ -46,6 +47,28 @@ async function getBrowser(): Promise<Browser> {
     return getBrowser();
   }
   return browser;
+}
+
+/**
+ * Ob der Renderer verfügbar ist (NFA-BETR-08).
+ *
+ * Geprüft wird durch **Starten**, nicht durch das Vorhandensein einer Datei:
+ * Ein Chromium, das wegen fehlender Bibliotheken oder zu enger Capabilities
+ * nicht hochkommt, liegt trotzdem an seinem Pfad. Genau dieser Fall — die
+ * Sandbox scheitert im Container — ist der, den der Healthcheck finden soll.
+ *
+ * Der Browser bleibt danach offen: Der Prozess hält ohnehin genau einen, und
+ * ihn für die Prüfung zu schließen hieße, den nächsten Beleg langsamer zu
+ * machen als nötig.
+ */
+export async function isRendererAvailable(): Promise<boolean> {
+  try {
+    const browser = await getBrowser();
+    return browser.isConnected();
+  } catch (error) {
+    logger.error('health.renderer_down', { error });
+    return false;
+  }
 }
 
 /** Schließt den Browser — für den geordneten Abbau in Tests und beim Beenden. */
@@ -129,10 +152,12 @@ export const playwrightPdfRenderer: PdfRenderer = {
       if (blocked.length > 0) {
         // Kein Fehler — der Beleg ist gültig, die Referenz wurde nur nicht
         // geladen. Für die Nachvollziehbarkeit gehört es ins Log.
-        console.warn(
-          `[renderer] ${String(blocked.length)} ausgehende Anfrage(n) blockiert: ` +
-            blocked.slice(0, 5).join(', '),
-        );
+        // Sicherheitsrelevant: Eine Vorlage, die nach außen greifen will, ist
+        // ein Befund, kein Betriebsdetail (NFA-SEC-12).
+        logger.security('renderer.outbound_blocked', {
+          count: blocked.length,
+          examples: blocked.slice(0, 5),
+        });
       }
 
       return { ok: true, pdf: new Uint8Array(pdf) };
@@ -146,7 +171,7 @@ export const playwrightPdfRenderer: PdfRenderer = {
         return { ok: false, error: { kind: 'TIMEOUT', timeoutMs: options.timeoutMs } };
       }
 
-      console.error('[renderer] PDF-Erzeugung fehlgeschlagen:', error);
+      logger.error('renderer.pdf_failed', { error });
       return { ok: false, error: { kind: 'RENDER_FAILED', message } };
     }
   },

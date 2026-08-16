@@ -49,6 +49,7 @@ import {
 } from '@/infrastructure/templates/default-template';
 
 import { buildInvoiceDocument } from './build-invoice-document';
+import { logger } from '@/infrastructure/logging/logger';
 
 /** Spec §8.4: Eine Vorlage darf den Renderer nicht beliebig lange binden. */
 const RENDER_TIMEOUT_MS = 15_000;
@@ -331,7 +332,7 @@ export async function getOrCreateInvoicePdf(
       // Die Datei fehlt oder ist unlesbar. Das Artefakt ist unveränderlich und
       // lässt sich nicht ersetzen — der Beleg wird deshalb neu gesetzt und
       // ohne Ablage ausgeliefert, damit der Abruf nicht ins Leere läuft.
-      console.error('[render] Abgelegtes Artefakt nicht lesbar:', error);
+      logger.error('artifact.read_failed', { error });
       return renderInvoicePdf(context, invoiceId);
     }
   }

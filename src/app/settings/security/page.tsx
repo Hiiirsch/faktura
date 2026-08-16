@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import { requireSession } from '@/application/auth/require-session';
 import { getSecurityOverview } from '@/application/auth/security-overview';
 import { beginTotpSetup } from '@/application/auth/totp-setup';
+import { checkSystemStatus } from '@/application/system/check-system-status';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
@@ -30,7 +31,10 @@ export default async function SecuritySettingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
   const session = await requireSession();
-  const overview = await getSecurityOverview(session.userId, session.sessionId);
+  const [overview, status] = await Promise.all([
+    getSecurityOverview(session.userId, session.sessionId),
+    checkSystemStatus(),
+  ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
   const timeZone = getAppTimeZone();
 
@@ -48,6 +52,61 @@ export default async function SecuritySettingsPage({
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={SECURITY_SETTINGS_PATH}>
       <PageHeader title={messages.security.heading} />
+
+      {/*
+        Betriebszustand (NFA-BETR-08).
+        Er steht hier und nicht auf der Übersicht: Die Übersicht beantwortet
+        „wie läuft das Geschäft", diese Seite „läuft der Dienst". Dieselbe
+        Auskunft liefert `/api/health` an Container und Reverse Proxy.
+      */}
+      <section className="flex flex-col gap-4 border-t border-rule pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-section font-semibold text-ink">{messages.status.heading}</h2>
+          <span
+            className={
+              'rounded-control px-3 py-1 text-ui font-medium text-ink ' +
+              (status.healthy ? 'bg-moss-wash' : 'bg-ocker-wash')
+            }
+          >
+            {status.healthy ? messages.status.healthy : messages.status.unhealthy}
+          </span>
+        </div>
+        <p className="text-small text-ink-muted">{messages.status.intro}</p>
+
+        <dl className="flex flex-col gap-3">
+          {[
+            {
+              label: messages.status.componentDatabase,
+              hint: messages.status.componentDatabaseDescription,
+              state: status.components.database,
+            },
+            {
+              label: messages.status.componentRenderer,
+              hint: messages.status.componentRendererDescription,
+              state: status.components.renderer,
+            },
+          ].map((component) => (
+            <div
+              key={component.label}
+              className="flex flex-wrap items-baseline justify-between gap-4 border-b border-rule pb-3 last:border-b-0"
+            >
+              <dt className="flex flex-col">
+                <span className="text-ui font-medium text-ink">{component.label}</span>
+                <span className="text-small text-ink-muted">{component.hint}</span>
+              </dt>
+              <dd className="text-ui text-ink">
+                {component.state === 'UP' ? messages.status.stateUp : messages.status.stateDown}
+              </dd>
+            </div>
+          ))}
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <dt className="text-ui text-ink-muted">{messages.status.checkedAt}</dt>
+            <dd className="font-mono text-data text-ink">
+              {formatDateTime(status.checkedAt, status.timeZone)}
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <section className="flex flex-col gap-4 border-t border-rule pt-6">
         <div className="flex items-center justify-between gap-4">

@@ -32,15 +32,44 @@ export const messages = {
     name: 'Faktura',
     description: 'Rechnungsstellung für das eigene Einzelunternehmen',
   },
+  backup: {
+    title: 'Sicherung',
+    heading: 'Sicherung und Wiederherstellung',
+    intro:
+      'Eine Sicherung enthält die Datenbank und alle abgelegten Dateien — Belegarchive, Logo, hochgeladene Bilder. Beides gehört zusammen: Ein festgeschriebener Beleg verweist auf seine PDF-Datei samt Prüfsumme.',
+    createHeading: 'Jetzt sichern',
+    createHint:
+      'Erzeugt eine Sicherung zum aktuellen Stand und lädt sie herunter. Die Datenbank wird dabei konsistent abgezogen, nicht im laufenden Betrieb kopiert.',
+    download: 'Sicherung herunterladen',
+    scheduleHeading: 'Täglicher Lauf',
+    scheduleHint:
+      'Der Betriebsauftrag „npm run backup" legt dieselbe Datei im Sicherungsverzeichnis ab. Er gehört in die Zeitsteuerung des Servers — die Anwendung plant nichts von selbst.',
+    restoreHeading: 'Wiederherstellung',
+    restoreIntro:
+      'Die Wiederherstellung läuft bewusst von Hand: Sie überschreibt den gesamten Bestand, und dafür soll niemand versehentlich einen Knopf finden.',
+    restoreSteps: [
+      'Dienst anhalten: docker compose down',
+      'Archiv entpacken: tar -xzf faktura-….tar.gz -C /tmp/restore',
+      'Datenbank zurückspielen: cp /tmp/restore/faktura.db ./data/faktura.db',
+      'Dateien zurückspielen: rm -rf ./storage && cp -r /tmp/restore/storage ./storage',
+      'Dienst starten: docker compose up -d',
+      'Prüfen: Anmeldung, eine festgeschriebene Rechnung öffnen, ihr PDF laden',
+    ],
+    restoreNote:
+      'Die Migrationen laufen beim Start automatisch. Eine Sicherung aus einer älteren Fassung wird dabei mitgezogen; der umgekehrte Weg ist nicht vorgesehen.',
+  },
+
   status: {
     heading: 'Systemzustand',
     intro:
-      'Diese Übersicht zeigt, ob die Anwendung betriebsbereit ist. Fachliche Funktionen folgen mit den nächsten Ausbaustufen.',
+      'Zwei Bestandteile können unabhängig voneinander ausfallen: die Datenbank und der PDF-Renderer. Derselbe Zustand steht unter /api/health für Container und Reverse Proxy bereit.',
     healthy: 'Betriebsbereit',
     unhealthy: 'Nicht betriebsbereit',
     checkedAt: 'Geprüft am',
     componentDatabase: 'Datenbank',
     componentDatabaseDescription: 'Verbindung und Lesezugriff',
+    componentRenderer: 'PDF-Renderer',
+    componentRendererDescription: 'Chromium startet und ist verbunden',
     stateUp: 'Erreichbar',
     stateDown: 'Nicht erreichbar',
   },
@@ -118,6 +147,7 @@ export const messages = {
     company: 'Firmendaten',
     numbering: 'Nummernkreis',
     security: 'Sicherheit',
+    backup: 'Sicherung',
     settings: 'Einstellungen',
     logout: 'Abmelden',
     label: 'Hauptnavigation',

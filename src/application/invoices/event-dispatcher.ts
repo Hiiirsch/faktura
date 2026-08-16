@@ -12,6 +12,7 @@
 import type { InvoiceEvent, InvoiceEventHandler } from '@/domain/invoice/events';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import { logger } from '@/infrastructure/logging/logger';
 
 /** In dieser Anwendung ist der Ausführungskontext eines Ereignisses der Mandant. */
 export type InvoiceEventListener = InvoiceEventHandler<OrganizationContext>;
@@ -40,7 +41,7 @@ export async function dispatchInvoiceEvent(
     try {
       await handler(event, context);
     } catch (error) {
-      console.error(`[events] Handler für ${event.type} fehlgeschlagen:`, error);
+      logger.error('event.handler_failed', { eventType: event.type, error });
     }
   }
 }

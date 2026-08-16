@@ -345,6 +345,34 @@ einer Handlung, nicht einem Zustand.
 Sammelaktionen sind bewusst nur zwei: bezahlt markieren und Entwürfe löschen.
 Stornieren bleibt einzeln — es erzeugt je Beleg eine nummerierte Gutschrift.
 
+## Betrieb (seit M7)
+
+**Protokolliert wird strukturiert**, über `src/infrastructure/logging/logger.ts`:
+eine Zeile je Ereignis als JSON auf stdout. `console.*` ist in `src/` verboten
+und wird vom Architekturtest gefangen — nicht aus Formalismus, sondern weil ein
+schnell hingeschriebenes `console.error('…', user)` beides umgeht, was das Log
+leisten soll: die maschinenlesbare Form und die Entfernung von Geheimnissen.
+Die Entfernung sitzt im Schreibweg (`redact()`), nicht in der Disziplin der
+Aufrufer. Sicherheitsrelevante Ereignisse tragen `category: 'security'`.
+
+**Der Healthcheck prüft zwei Bestandteile** (NFA-BETR-08): Datenbank und
+Renderer, nebenläufig. Der Renderer wird durch einen echten Browserstart
+geprüft, nicht durch das Vorhandensein einer Datei — ein Chromium, das wegen zu
+enger Capabilities nicht hochkommt, liegt trotzdem an seinem Pfad.
+
+**Die Sicherung ist ein `.tar.gz`** aus Datenbankabzug und Dateispeicher. Beide
+gehören zusammen: Ein festgeschriebener Beleg verweist auf seine PDF-Datei samt
+Prüfsumme, und eine Sicherung ohne sie ist keine. Der tar-Schreiber ist
+handgeschrieben (`infrastructure/backup/tar.ts`) — eine Sicherung muss man Jahre
+später mit üblichen Werkzeugen lesen können, und ein Paket dafür wäre eine
+weitere Stelle, an der sie scheitern kann.
+
+Ausgelöst wird sie per Knopf (`/settings/backup` → `/api/backup`) oder als
+Betriebsauftrag (`npm run backup`). **Die Anwendung plant nichts von selbst:**
+Ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn sieht.
+Die Wiederherstellung läuft von Hand — sie überschreibt den gesamten Bestand,
+und dafür soll niemand versehentlich einen Knopf finden.
+
 ## Anmeldung (seit M6.2)
 
 Sie läuft in **zwei** Schritten: `/login` nimmt E-Mail und Passwort,

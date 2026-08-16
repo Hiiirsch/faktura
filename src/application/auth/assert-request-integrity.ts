@@ -16,6 +16,7 @@ import { cookies, headers } from 'next/headers';
 import { getEnv } from '@/infrastructure/config/env';
 import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME, isSameOrigin } from '@/infrastructure/security/csrf';
 import { isValidCsrfPair } from '@/infrastructure/security/csrf-verify';
+import { logger } from '@/infrastructure/logging/logger';
 
 export class RequestIntegrityError extends Error {
   constructor(reason: string) {
@@ -46,16 +47,19 @@ export async function assertRequestIntegrity(formData: FormData): Promise<void> 
   const origin = headerList.get('origin');
 
   if (!isSameOrigin(origin, appUrl)) {
-    console.error(`[csrf] ${describeOriginMismatch(origin, appUrl)}`);
+    logger.security('csrf.origin_rejected', {
+      reason: describeOriginMismatch(origin, appUrl),
+    }, 'error');
     throw new RequestIntegrityError('Herkunft stimmt nicht überein');
   }
 
   const cookieValue = (await cookies()).get(CSRF_COOKIE_NAME)?.value;
   if (!isValidCsrfPair(cookieValue, formData.get(CSRF_FIELD_NAME))) {
-    console.error(
-      '[csrf] CSRF-Token fehlt oder passt nicht zum Cookie. Häufigste Ursache: Die Seite lag ' +
-        'lange offen, oder das Cookie wurde zwischenzeitlich gelöscht. Seite neu laden.',
-    );
+    logger.security('csrf.token_rejected', {
+      hint:
+        'Häufigste Ursache: Die Seite lag lange offen, oder das Cookie wurde zwischenzeitlich ' +
+        'gelöscht.',
+    }, 'error');
     throw new RequestIntegrityError('CSRF-Token fehlt oder stimmt nicht überein');
   }
 }

@@ -1,9 +1,18 @@
 /**
  * NFA-ARCH-10 — Der Datenbankzugriff erfolgt ausschließlich über den ORM;
- * es existieren keine ungeprüften Roh-SQL-Aufrufe.
+ * es existieren keine **ungeprüften** Roh-SQL-Aufrufe.
  *
- * Zwei Prüfungen: Die Lint-Regel muss bei einem Roh-SQL-Aufruf anschlagen, und
- * der reale Quellcode darf keinen enthalten.
+ * Drei Prüfungen: Die Lint-Regel muss bei einem Roh-SQL-Aufruf anschlagen, der
+ * Quellcode darf außerhalb der einen erlaubten Datei keinen enthalten — und
+ * diese eine Datei muss die eine bleiben.
+ *
+ * **Warum es überhaupt eine gibt.** Seit M7 erzeugt die Anwendung selbst
+ * Sicherungen (NFA-BETR-05). Eine konsistente Sicherung verlangt
+ * `VACUUM INTO`; Prisma kennt dafür keine Entsprechung, und die Alternative —
+ * die Datei im laufenden Betrieb kopieren — verbietet NFA-BETR-04
+ * ausdrücklich. Das Wort „ungeprüft" in NFA-ARCH-10 lässt genau diesen Fall
+ * zu: einen Aufruf, dessen Argument nie aus einer Anfrage stammt und der an
+ * einer Stelle liegt, die man im Diff sieht.
  */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -44,18 +53,41 @@ describe('NFA-ARCH-10 Datenbankzugriff nur über den ORM', () => {
     expect(messages[0]?.message).toContain('kein Roh-SQL');
   });
 
-  it('enthält im Quellcode keinen Roh-SQL-Aufruf', async () => {
+  /**
+   * Die eine erlaubte Stelle. Als Liste und nicht als Kommentar, damit ein
+   * zweiter Aufruf den Test bricht statt nur eine Regel zu verletzen, an die
+   * sich niemand erinnert.
+   */
+  const ALLOWED = ['src/infrastructure/db/backup.ts'];
+
+  it('enthält im Quellcode keinen Roh-SQL-Aufruf außerhalb der Sicherung', async () => {
     const files = await collectSourceFiles(sourceRoot);
     expect(files.length).toBeGreaterThan(0);
 
     const offenders: string[] = [];
     for (const file of files) {
+      const relative = path.relative(projectRoot, file);
+      if (ALLOWED.includes(relative)) {
+        continue;
+      }
       const contents = await readFile(file, 'utf8');
       if (RAW_SQL_PATTERN.test(contents)) {
-        offenders.push(path.relative(projectRoot, file));
+        offenders.push(relative);
       }
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  it('beschränkt die Ausnahme auf genau einen Aufruf', async () => {
+    const contents = await readFile(path.join(projectRoot, ALLOWED[0] ?? ''), 'utf8');
+    // Ohne Kommentare gezählt: Die Datei erklärt die Ausnahme ausführlich und
+    // nennt den Aufruf dabei beim Namen.
+    const code = contents.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const calls = code.match(/\$(?:queryRaw|executeRaw|queryRawUnsafe|executeRawUnsafe|queryRawTyped)\b/g);
+
+    // Genau einer, und genau `VACUUM INTO`.
+    expect(calls).toHaveLength(1);
+    expect(contents).toContain('VACUUM INTO');
   });
 });

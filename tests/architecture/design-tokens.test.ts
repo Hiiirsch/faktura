@@ -358,6 +358,35 @@ describe('Dateizugriffe überstehen das Bündeln', () => {
   });
 });
 
+/**
+ * Protokolliert wird strukturiert, nicht per `console` (NFA-BETR-09).
+ *
+ * Ein `console.error('…', user)` ist in einer Sekunde geschrieben und umgeht
+ * beides, was das Log leisten soll: die maschinenlesbare Form **und** die
+ * Entfernung von Geheimnissen (NFA-BETR-10). Der Logger sitzt im Schreibweg;
+ * diese Prüfung sorgt dafür, dass niemand daran vorbeischreibt.
+ */
+describe('NFA-BETR-09 Protokolliert wird über den Logger', () => {
+  it('verwendet `console` nirgends in der Anwendungsschicht', async () => {
+    const offenders: string[] = [];
+
+    for (const file of await collect('src', ['.ts', '.tsx'])) {
+      // Der Logger selbst schreibt am Ende über `console.log` — er ist die
+      // eine Stelle, an der das richtig ist.
+      if (file.endsWith('logging/logger.ts')) {
+        continue;
+      }
+
+      const source = withoutComments(readFileSync(path.join(projectRoot, file), 'utf8'));
+      for (const match of source.matchAll(/\bconsole\.(?:log|info|warn|error|debug)\s*\(/g)) {
+        offenders.push(`${file}: ${match[0]}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('FA-UI-08 Bewegung nur aus dem Katalog des Entwurfs', () => {
   it('verwendet ausschließlich die festgelegten Dauern', async () => {
     const offenders: string[] = [];

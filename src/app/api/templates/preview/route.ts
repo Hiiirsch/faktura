@@ -6,6 +6,7 @@ import { renderWithSources } from '@/application/documents/render-invoice';
 import { DEFAULT_PAGE_GEOMETRY, type PageGeometry } from '@/domain/rendering/contracts';
 import { MAX_TEMPLATE_BYTES } from '@/domain/rendering/template-upload';
 import { messages } from '@/i18n/de';
+import { logger } from '@/infrastructure/logging/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,7 +69,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return htmlResponse(errorPage(messages.templates.previewNoInvoice, null));
     }
 
-    console.error('[preview] Vorlagenvorschau fehlgeschlagen:', result.error);
+    logger.error('template.preview_failed', { reason: result.error });
     return htmlResponse(errorPage(messages.templates.previewFailed, null));
   }
 

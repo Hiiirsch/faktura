@@ -13,6 +13,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { buildSecurityHeaders } from '@/infrastructure/security/security-headers';
+import { logger } from '@/infrastructure/logging/logger';
 import { LOGIN_PATH, pathRequiresAuthentication, securityProfileFor } from '@/routes';
 
 function generateNonce(): string {
@@ -87,11 +88,13 @@ function warnOnOriginMismatch(requestOrigin: string | null, pathname: string): v
   }
 
   originMismatchReported = true;
-  console.warn(
-    `[konfiguration] Die Anwendung wird unter ${requestOrigin} aufgerufen, APP_URL steht aber ` +
-      `auf ${configured}. Solange beide auseinanderlaufen, wird jede schreibende Aktion ` +
-      'abgelehnt — auch die Anmeldung. Bitte APP_URL anpassen und den Dienst neu starten.',
-  );
+  logger.warn('config.origin_mismatch', {
+    requestOrigin,
+    configured,
+    hint:
+      'Solange beide auseinanderlaufen, wird jede schreibende Aktion abgelehnt — auch die ' +
+      'Anmeldung. Bitte APP_URL anpassen und den Dienst neu starten.',
+  });
 }
 
 export function proxy(request: NextRequest): NextResponse {

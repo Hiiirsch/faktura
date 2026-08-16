@@ -145,10 +145,16 @@ const appRestrictions = [
 /**
  * Die einzige Schicht, die den Prisma-Client sehen darf — und die Datei, die
  * ihn erzeugt.
+ *
+ * Seit M7 gehört die Sicherung dazu: Sie setzt den Datenbankabzug und den
+ * Dateispeicher zu einem Archiv zusammen und muss dafür `infrastructure/db`
+ * erreichen. Sie liest keine Fachdaten — sie kopiert die Datei als Ganzes —,
+ * weshalb der Organisationskontext hier nichts zu erzwingen hat.
  */
 const persistenceFiles = [
   'src/infrastructure/db/**/*.ts',
   'src/infrastructure/repositories/**/*.ts',
+  'src/infrastructure/backup/**/*.ts',
 ];
 
 /** Dateien einer Schicht — jeweils inklusive der zugehörigen Test-Fixture. */
@@ -238,6 +244,22 @@ export default tseslint.config(
         },
       ],
     },
+  },
+
+  /**
+   * Die **eine** Ausnahme vom Roh-SQL-Verbot (NFA-ARCH-10 nennt „ungeprüfte"
+   * Aufrufe; dieser ist geprüft).
+   *
+   * `VACUUM INTO` hat in Prisma keine Entsprechung, und die Alternative wäre,
+   * die Datei im laufenden Betrieb zu kopieren — genau das verbietet
+   * NFA-BETR-04, weil eine Kopie mitten in einer Transaktion beim Öffnen
+   * scheitert. Die Ausnahme gilt für **eine** Datei; der Pfad darin stammt nie
+   * aus einer Anfrage. `tests/architecture/layering.test.ts` hält fest, dass
+   * es bei dieser einen bleibt.
+   */
+  {
+    files: ['src/infrastructure/db/backup.ts'],
+    rules: { 'no-restricted-syntax': 'off' },
   },
 
   // ── Schichtengrenzen ──────────────────────────────────────────────────────

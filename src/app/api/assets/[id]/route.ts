@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getAsset, readAssetContent } from '@/application/assets/asset-service';
 import { getOptionalSession } from '@/application/auth/require-session';
+import { logger } from '@/infrastructure/logging/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export async function GET(
   try {
     content = await readAssetContent(asset);
   } catch (error) {
-    console.error('[assets] Datei nicht lesbar:', error);
+    logger.error('asset.read_failed', { error });
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 

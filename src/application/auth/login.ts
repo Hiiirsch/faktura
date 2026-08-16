@@ -40,6 +40,7 @@ import {
 import { isWellFormedTotpCode } from '@/domain/auth/totp-policy';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
+import { logger } from '@/infrastructure/logging/logger';
 import { hashPassword, verifyPassword } from '@/infrastructure/auth/password-hasher';
 import { generateSessionToken, hashToken } from '@/infrastructure/auth/tokens';
 import { verifyTotpCode } from '@/infrastructure/auth/totp';
@@ -172,6 +173,15 @@ async function registerFailure(
     details: { failedLogins: next.failedLogins },
   });
 
+  // Zusätzlich ins Log: Das Protokoll dient dem Nachweis gegenüber dem
+  // Auftraggeber, das Log dem Betrieb (NFA-BETR-09). Wer eine Häufung von
+  // Fehlversuchen bemerken will, sieht nicht in die Datenbank.
+  logger.security('auth.login_failed', {
+    userId,
+    ipAddress: context.ipAddress,
+    failedLogins: next.failedLogins,
+  });
+
   if (next.lockedUntil !== null) {
     await recordAuditEntry(organization, {
       entityType: 'User',
@@ -181,6 +191,12 @@ async function registerFailure(
       ipAddress: context.ipAddress,
       details: { lockedUntil: next.lockedUntil.toISOString() },
     });
+
+    logger.security(
+      'auth.account_locked',
+      { userId, ipAddress: context.ipAddress, lockedUntil: next.lockedUntil },
+      'error',
+    );
   }
 }
 
@@ -234,6 +250,8 @@ async function completeLogin(
     actorId: userId,
     ipAddress: context.ipAddress,
   });
+
+  logger.security('auth.login_succeeded', { userId, ipAddress: context.ipAddress }, 'info');
 
   return session;
 }

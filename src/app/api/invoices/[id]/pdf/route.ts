@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getOptionalSession } from '@/application/auth/require-session';
 import { renderInvoiceForDownload } from '@/application/documents/render-invoice';
+import { logger } from '@/infrastructure/logging/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export async function GET(
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
     // Die Ursache gehört ins Serverlog, nicht in die Antwort (NFA-SEC-18).
-    console.error('[pdf] Erzeugung fehlgeschlagen:', result.error);
+    logger.error('pdf.render_failed', { reason: result.error });
     return NextResponse.json({ error: result.error.kind }, { status: 500 });
   }
 

@@ -32,6 +32,30 @@ erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
 
+**M7 — Betrieb (in Arbeit).** Erledigt sind Protokollierung, Healthcheck und
+die Sicherung; offen bleiben Datenexport (NFA-COMP-03), Archivierungshinweis
+(-04), Offline-Nachweis (-05), Seed-Kommando (NFA-QUAL-06), der
+Gesamtpfad-E2E (NFA-QUAL-02) und das README (NFA-BETR-11).
+
+**Eine geprüfte Ausnahme vom Roh-SQL-Verbot.** NFA-BETR-04 verlangt eine
+konsistente Datenbanksicherung, NFA-ARCH-10 verbietet Roh-SQL — für eine
+Sicherung aus der Oberfläche heraus (NFA-BETR-05) ziehen beide gegeneinander.
+`VACUUM INTO` hat in Prisma keine Entsprechung, und die Alternative, die Datei
+im laufenden Betrieb zu kopieren, verbietet NFA-BETR-04 ausdrücklich.
+NFA-ARCH-10 spricht von „**ungeprüften**" Aufrufen; die Ausnahme ist deshalb
+eng gefasst und wird bewacht:
+
+- Sie liegt in **einer** Datei (`src/infrastructure/db/backup.ts`), nicht in
+  der Anwendungsschicht.
+- Das Argument stammt nie aus einer Anfrage, sondern aus der Konfiguration
+  plus einem Zufallsnamen.
+- `tests/architecture/no-raw-sql.test.ts` prüft, dass es bei genau **einem**
+  Aufruf bleibt und dass er `VACUUM INTO` lautet.
+
+Bis M7 lief das ausschließlich im Betriebsskript, also außerhalb des
+Anwendungscodes — mit der Sicherung per Knopf geht das nicht mehr. Die
+Lockerung ist in `CLAUDE.md` und `eslint.config.mjs` festgehalten.
+
 **M6.2 — Anmeldung in zwei Schritten (umgesetzt, Abnahme offen).** Der zweite
 Faktor wird auf einer eigenen Seite (`/login/code`) abgefragt, und nur bei
 Konten, die einen führen. Anlass: Ein Feld für einen Code, den die meisten
@@ -389,14 +413,14 @@ Szenario benannt.
 |---|---|---|---|---|---|---|
 | NFA-BETR-01 | Start über `docker compose up` inkl. Migration | MUSS | M | M0 | abgenommen | Manuell: `docker compose up -d --build` auf leerem Datenstand — Migration `20260810105328_init_audit_log` angewandt, Container `healthy`, `GET /api/health` → 200 |
 | NFA-BETR-02 | Konfiguration nur über ENV, vollständige `.env.example` | MUSS | R | M0 | abgenommen | `.env.example`, `src/infrastructure/config/env.ts` (Zod-Schema, Abbruch beim Start) |
-| NFA-BETR-03 | Täglicher Backup-Job für DB und Dateispeicher | MUSS | M | M7 | offen | — |
-| NFA-BETR-04 | Konsistente DB-Sicherung, kein einfaches Kopieren | MUSS | R | M7 | offen | — |
-| NFA-BETR-05 | Backup manuell auslösbar und herunterladbar | SOLL | M | M7 | offen | — |
-| NFA-BETR-06 | Wiederherstellung dokumentiert und einmal durchgeführt | MUSS | M | M7 | offen | — |
-| NFA-BETR-07 | Nach Restore alle Daten und PDFs vollständig | MUSS | M | M7 | offen | — |
-| NFA-BETR-08 | Healthcheck prüft DB und Renderer | MUSS | T | M7 | offen | — |
-| NFA-BETR-09 | Strukturierte Logs auf stdout, Sicherheitsereignisse erkennbar | MUSS | R | M7 | offen | — |
-| NFA-BETR-10 | Keine Passwörter, Token, Kundendatensätze in Logs | MUSS | R | M7 | offen | — |
+| NFA-BETR-03 | Täglicher Backup-Job für DB und Dateispeicher | MUSS | M | M7 | umgesetzt | `scripts/backup.ts` (`npm run backup`) — legt das Archiv in `BACKUP_DIR` ab und räumt nach `BACKUP_KEEP_DAYS` auf; `tests/integration/backup.test.ts`. Die Zeitsteuerung gehört bewusst dem Server, nicht der Anwendung |
+| NFA-BETR-04 | Konsistente DB-Sicherung, kein einfaches Kopieren | MUSS | R | M7 | umgesetzt | `src/infrastructure/db/backup.ts` — `VACUUM INTO`; `tests/integration/backup.test.ts` sichert nebenläufig zu laufenden Abfragen und öffnet den Abzug danach |
+| NFA-BETR-05 | Backup manuell auslösbar und herunterladbar | SOLL | M | M7 | umgesetzt | `/settings/backup` mit Download über `/api/backup`; `tests/integration/backup.test.ts` |
+| NFA-BETR-06 | Wiederherstellung dokumentiert und einmal durchgeführt | MUSS | M | M7 | umgesetzt | Schritte auf `/settings/backup`; `tests/integration/backup.test.ts` packt das Archiv mit dem `tar` des Systems aus und öffnet die Datenbank daraus. Manuell im Container steht noch aus |
+| NFA-BETR-07 | Nach Restore alle Daten und PDFs vollständig | MUSS | M | M7 | umgesetzt | `tests/integration/backup.test.ts` — Beleg, Nummer und Status stimmen, das PDF ist Byte für Byte dasselbe und der Artefakt-Hash unverändert |
+| NFA-BETR-08 | Healthcheck prüft DB und Renderer | MUSS | T | M7 | umgesetzt | `tests/integration/health.test.ts` — beide Bestandteile, Renderer durch echten Browserstart; Anzeige unter `/settings/security`, Antwort ohne Details (NFA-SEC-18) |
+| NFA-BETR-09 | Strukturierte Logs auf stdout, Sicherheitsereignisse erkennbar | MUSS | R | M7 | umgesetzt | `src/infrastructure/logging/logger.ts`; `tests/unit/infrastructure/logging.test.ts` — eine Zeile je Ereignis als JSON, `category: 'security'` als Feld. `tests/architecture/design-tokens.test.ts` verbietet `console` in `src/` |
+| NFA-BETR-10 | Keine Passwörter, Token, Kundendatensätze in Logs | MUSS | R | M7 | umgesetzt | `tests/unit/infrastructure/logging.test.ts` — die Entfernung sitzt im Schreibweg, nicht in der Disziplin der Aufrufer; lange Zeichenketten werden gekürzt, tiefe Objekte abgeschnitten |
 | NFA-BETR-11 | README: Installation, Konfiguration, Backup, Restore, Update | MUSS | R | M7 | offen | — |
 
 ## 14. Architektur & Erweiterbarkeit

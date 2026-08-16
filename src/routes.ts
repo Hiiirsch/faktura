@@ -17,6 +17,8 @@ export const LOGIN_PATH = '/login';
 export const LOGIN_CODE_PATH = '/login/code';
 export const DASHBOARD_PATH = '/';
 export const SECURITY_SETTINGS_PATH = '/settings/security';
+export const BACKUP_SETTINGS_PATH = '/settings/backup';
+export const BACKUP_DOWNLOAD_PATH = '/api/backup';
 export const COMPANY_SETTINGS_PATH = '/settings/company';
 export const CUSTOMERS_PATH = '/customers';
 export const NEW_CUSTOMER_PATH = '/customers/new';
@@ -123,6 +125,14 @@ export const routes: readonly RouteDefinition[] = [
       'Schritt: Ohne ihn zeigt die Seite nichts und leitet zurück.',
   },
   { path: SECURITY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  { path: BACKUP_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  {
+    path: BACKUP_DOWNLOAD_PATH,
+    kind: 'api',
+    access: 'authenticated',
+    // Herunterladen, nicht anzeigen: dasselbe Profil wie die übrigen Dateien.
+    securityProfile: 'document',
+  },
   { path: COMPANY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   { path: CUSTOMERS_PATH, kind: 'page', access: 'authenticated' },
   { path: NEW_CUSTOMER_PATH, kind: 'page', access: 'authenticated' },
