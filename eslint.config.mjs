@@ -262,6 +262,20 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': 'off' },
   },
 
+  /**
+   * Die zweite Ausnahme: der Test, der den Triggerbestand prüft.
+   *
+   * `sqlite_master` steht in keinem Prisma-Schema — es gibt keinen Weg über den
+   * ORM, die Frage „welche Trigger gibt es" zu stellen. Und ohne diese Frage
+   * ginge der Verlust eines Triggers bei einem Tabellenneuaufbau still durch,
+   * was NFA-ARCH-10 gerade nicht bezweckt. Ein Test, der ausschließlich liest
+   * und keine Anwendungsdaten berührt, ist der geeignete Ort dafür.
+   */
+  {
+    files: ['tests/integration/database-triggers.test.ts'],
+    rules: { 'no-restricted-syntax': 'off' },
+  },
+
   // ── Schichtengrenzen ──────────────────────────────────────────────────────
   restrictionConfig(layerFiles.domain, domainRestrictions),
   restrictionConfig(layerFiles.ui, uiRestrictions),
