@@ -19,11 +19,21 @@ export const SESSION_COOKIE_NAME = 'faktura_session';
  */
 export const PENDING_LOGIN_COOKIE_NAME = 'faktura_pending';
 
+/**
+ * Die Sitzung der zentralen Verwaltung (M8, FA-ADM-01).
+ *
+ * Eigener Name **und eigener Pfad**: Das Admintoken wird ausschließlich an
+ * `/admin` gesendet und liegt bei keiner Anfrage an `/invoices` bei. Wer den
+ * Browser eines Administrators dazu bringt, eine Mandantenseite zu laden,
+ * bekommt damit kein Admintoken mitgeliefert — und umgekehrt gilt dasselbe.
+ */
+export const ADMIN_SESSION_COOKIE_NAME = 'faktura_admin_session';
+
 export type CookieOptions = {
   readonly httpOnly: true;
   readonly secure: boolean;
   readonly sameSite: 'lax';
-  readonly path: '/' | '/login';
+  readonly path: '/' | '/login' | '/admin';
   readonly expires?: Date;
   readonly maxAge?: number;
 };
@@ -63,6 +73,26 @@ export function clearedPendingLoginCookieOptions(appUrl?: string): CookieOptions
     secure: isSecureContext(appUrl),
     sameSite: 'lax',
     path: '/login',
+    maxAge: 0,
+  };
+}
+
+export function adminSessionCookieOptions(expiresAt: Date, appUrl?: string): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isSecureContext(appUrl),
+    sameSite: 'lax',
+    path: '/admin',
+    expires: expiresAt,
+  };
+}
+
+export function clearedAdminSessionCookieOptions(appUrl?: string): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isSecureContext(appUrl),
+    sameSite: 'lax',
+    path: '/admin',
     maxAge: 0,
   };
 }

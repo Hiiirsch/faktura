@@ -473,6 +473,62 @@ model RecoveryCode {
   @@index([userId])
 }
 
+/// Ein Betreiberkonto für die zentrale Verwaltung (M8).
+///
+/// **Bewusst eine eigene Tabelle, kein Merkmal an `User`.** Der Auftraggeber
+/// hat entschieden: Die Verwaltung sieht keine Geschäftsdaten. Das ist entweder
+/// eine Zusage oder eine Eigenschaft des Typsystems — und als Zusage wäre sie
+/// nur so viel wert wie die Sorgfalt an jeder einzelnen Abfrage.
+///
+/// Als eigene Tabelle wird sie zur Eigenschaft: Eine Adminsitzung führt keinen
+/// `OrganizationContext`, und da jede Funktion in `infrastructure/repositories`
+/// einen als ersten Pflichtparameter verlangt, ist eine Abfrage von
+/// Geschäftsdaten aus dem Adminbereich ein **Übersetzungsfehler**.
+///
+/// Drei weitere Gründe gegen ein Merkmal an `User`: Ein `User` braucht eine
+/// `organizationId` und stünde damit in der Mitgliederliste und im Datenexport
+/// eines Mandanten; `User.email` ist global eindeutig, die Adminadresse
+/// verbrauchte also einen Platz im Adressraum der Mandanten; und beide teilten
+/// sich ein Sitzungscookie, sodass ein versehentlicher Aufruf von `/invoices`
+/// eine gültige Antwort mit fremden Belegen ergäbe.
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  /// Für Adminkonten verpflichtend (FA-ADM-08): Wer Unternehmen sperren kann,
+  /// sichert sich mit mehr als einem Passwort.
+  totpSecret   String?
+  totpEnabled  Boolean   @default(false)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  disabledAt   DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions      AdminSession[]
+  pendingLogins PendingLogin[]
+}
+
+/// Sitzung eines Betreiberkontos — getrennt von `Session`, mit eigenem Cookie
+/// und eigenem Pfad (`/admin`). Das Admintoken liegt damit bei keiner Anfrage
+/// an `/invoices` bei.
+model AdminSession {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  userAgent   String?
+  ipAddress   String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
 /// Der Zwischenzustand zwischen Passwort und zweitem Faktor (seit M6.2).
 ///
 /// Wird die Anmeldung auf zwei Seiten geteilt, muss der erste Schritt dem
@@ -487,16 +543,22 @@ model RecoveryCode {
 /// zweite Faktor wäre umgangen. Als eigener Typ an eigenem Ort kann er von
 /// keiner Sitzungsabfrage gefunden werden.
 model PendingLogin {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  /// Genau eines von beiden ist gesetzt: Der zweite Schritt gilt für ein
+  /// Mandanten- **oder** ein Betreiberkonto. Ein `CHECK` in der Migration hält
+  /// das fest.
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
   /// Wie beim Sitzungstoken liegt hier nur der SHA-256-Hash (NFA-SEC-06).
-  tokenHash String   @unique
-  ipAddress String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  tokenHash   String     @unique
+  ipAddress   String?
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
 
   @@index([userId])
+  @@index([adminUserId])
   @@index([expiresAt])
 }
 

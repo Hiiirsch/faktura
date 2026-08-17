@@ -13,6 +13,9 @@
  */
 
 export const LOGIN_PATH = '/login';
+export const ADMIN_PATH = '/admin';
+export const ADMIN_LOGIN_PATH = '/admin/login';
+export const ADMIN_LOGIN_CODE_PATH = '/admin/login/code';
 /** Zweiter Anmeldeschritt — erscheint nur, wenn das Konto einen zweiten Faktor führt. */
 export const LOGIN_CODE_PATH = '/login/code';
 export const DASHBOARD_PATH = '/';
@@ -79,8 +82,17 @@ export type RouteSecurityProfile = 'app' | 'document' | 'pdf';
 export type RouteAccess =
   /** Ohne Anmeldung erreichbar. Jeder Eintrag braucht eine Begründung. */
   | 'public'
-  /** Erfordert eine gültige Sitzung. */
-  | 'authenticated';
+  /** Erfordert eine gültige Sitzung eines Mandantenkontos. */
+  | 'authenticated'
+  /**
+   * Erfordert eine Sitzung der zentralen Verwaltung (M8).
+   *
+   * **Eine gültige Mandantensitzung genügt hier nicht** — das ist der Kern der
+   * Trennung und der Fall, den ein späterer Umbau am ehesten still kaputtmacht.
+   * Der Zugriffsschutztest prüft deshalb jede solche Route mit drei Anfragen:
+   * ohne Cookie, mit Mandantencookie, mit Admincookie.
+   */
+  | 'platformAdmin';
 
 export type RouteDefinition = {
   /** Pfadmuster wie im Dateisystem, dynamische Segmente in eckigen Klammern. */
@@ -125,6 +137,24 @@ export const routes: readonly RouteDefinition[] = [
       'durch eine Sitzung, sondern durch den kurzlebigen Nachweis aus dem ersten ' +
       'Schritt: Ohne ihn zeigt die Seite nichts und leitet zurück.',
   },
+  // ── Zentrale Verwaltung (M8) ──────────────────────────────────────────────
+  { path: ADMIN_PATH, kind: 'page', access: 'platformAdmin' },
+  {
+    path: ADMIN_LOGIN_PATH,
+    kind: 'page',
+    access: 'public',
+    publicReason: 'Die Anmeldung der Verwaltung muss ohne Sitzung erreichbar sein.',
+  },
+  {
+    path: ADMIN_LOGIN_CODE_PATH,
+    kind: 'page',
+    access: 'public',
+    requiresPendingLogin: true,
+    publicReason:
+      'Der zweite Anmeldeschritt der Verwaltung liegt vor der Sitzung. Geschützt ist ' +
+      'er durch den kurzlebigen Nachweis aus dem ersten Schritt.',
+  },
+
   { path: SECURITY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   { path: BACKUP_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   {
@@ -232,18 +262,27 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Ob ein Pfad eine Sitzung erfordert. Unbekannte Pfade gelten als geschützt —
- * das sichere Verhalten, wenn jemand eine Route anlegt und den Eintrag hier
- * vergisst.
- */
 /** Das Sicherheitsprofil eines Pfades; unbekannte Pfade gelten als `app`. */
 export function securityProfileFor(pathname: string): RouteSecurityProfile {
   const match = routes.find((route) => toPathMatcher(route.path).test(pathname));
   return match?.securityProfile ?? 'app';
 }
 
-export function pathRequiresAuthentication(pathname: string): boolean {
-  const match = routes.find((route) => toPathMatcher(route.path).test(pathname));
-  return match?.access !== 'public';
+/** Routen, die eine Sitzung der zentralen Verwaltung verlangen. */
+export function platformAdminRoutes(): readonly RouteDefinition[] {
+  return routes.filter((route) => route.access === 'platformAdmin');
 }
+
+/**
+ * Welcher Nachweis für diesen Pfad nötig ist.
+ *
+ * Ein unbekannter Pfad gilt als geschützt — dieselbe Fail-safe-Regel wie
+ * bisher, nur mit drei möglichen Antworten statt zwei. Löst
+ * `pathRequiresAuthentication` ab, das die Adminrouten nicht unterscheiden
+ * konnte.
+ */
+export function requiredCredentialFor(pathname: string): RouteAccess {
+  const match = routes.find((route) => toPathMatcher(route.path).test(pathname));
+  return match?.access ?? 'authenticated';
+}
+

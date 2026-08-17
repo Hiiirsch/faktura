@@ -13,7 +13,15 @@
 import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 
-import { authenticatedRoutes, LOGIN_PATH, probePathFor, publicRoutes, routes } from '@/routes';
+import {
+  ADMIN_LOGIN_PATH,
+  authenticatedRoutes,
+  LOGIN_PATH,
+  platformAdminRoutes,
+  probePathFor,
+  publicRoutes,
+  routes,
+} from '@/routes';
 import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 
@@ -169,6 +177,48 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
     expect([302, 303, 307]).toContain(response.status);
     expect(response.headers.get('location')).toContain(LOGIN_PATH);
   });
+
+  /**
+   * Adminrouten: drei Anfragen, und die mittlere ist die neue (M8).
+   *
+   * Ohne Cookie abgewiesen zu werden, ist der einfache Fall. Der Fall, der
+   * einen späteren Umbau überlebt haben muss, ist der andere: **eine gültige
+   * Mandantensitzung darf hier nichts öffnen.** Genau das würde eine
+   * zusammengelegte Sitzungsprüfung stillschweigend kaputtmachen, und der
+   * Zugriffsschutztest bliebe grün, solange er nur ohne Cookie prüft.
+   */
+  it.each(platformAdminRoutes().map((route) => probePathFor(route)))(
+    'weist die Adminroute %s ohne Nachweis ab',
+    async (pathname) => {
+      const response = await fetch(url(pathname), { redirect: 'manual' });
+
+      expect([302, 303, 307, 401]).toContain(response.status);
+      if (response.status !== 401) {
+        expect(response.headers.get('location')).toContain(ADMIN_LOGIN_PATH);
+      }
+    },
+  );
+
+  it.each(platformAdminRoutes().map((route) => probePathFor(route)))(
+    'öffnet die Adminroute %s auch mit gültiger Mandantensitzung nicht',
+    async (pathname) => {
+      const { sessionCookie } = await attemptLogin(TEST_USER_EMAIL, TEST_USER_PASSWORD);
+      expect(sessionCookie, 'Der Test braucht eine gültige Mandantensitzung').toBeDefined();
+
+      const response = await fetch(url(pathname), {
+        redirect: 'manual',
+        headers: { cookie: sessionCookie as string },
+      });
+
+      expect([302, 303, 307, 401]).toContain(response.status);
+      if (response.status !== 401) {
+        expect(response.headers.get('location')).toContain(ADMIN_LOGIN_PATH);
+      }
+
+      const body = await response.text();
+      expect(body).not.toContain(TEST_USER_EMAIL);
+    },
+  );
 
   it('gibt auf einem unbekannten Pfad keine Inhalte preis', async () => {
     const response = await fetch(url('/gibt-es-nicht'), { redirect: 'manual' });

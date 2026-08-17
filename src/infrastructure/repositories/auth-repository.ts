@@ -133,6 +133,11 @@ export async function deletePendingLoginsForUser(userId: string): Promise<void> 
   await clientFor(undefined).pendingLogin.deleteMany({ where: { userId } });
 }
 
+/** Dasselbe für ein Betreiberkonto (M8). */
+export async function deletePendingLoginsForAdmin(adminUserId: string): Promise<void> {
+  await clientFor(undefined).pendingLogin.deleteMany({ where: { adminUserId } });
+}
+
 /**
  * Entfernt abgelaufene Nachweise.
  *

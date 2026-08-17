@@ -341,7 +341,10 @@ export async function completeSecondFactor(
     return err({ kind: 'NO_PENDING_LOGIN' });
   }
 
-  const user = await findUserById(pending.userId);
+  // Seit M8 kann ein Nachweis auch zu einem Betreiberkonto gehören. Dieser
+  // Weg gilt ausschließlich Mandantenkonten — ein Nachweis ohne `userId`
+  // gehört dem Adminbereich und wird hier wie ein unbekannter behandelt.
+  const user = pending.userId === null ? null : await findUserById(pending.userId);
   if (user === null) {
     await deletePendingLogin(pending.id);
     return err({ kind: 'NO_PENDING_LOGIN' });

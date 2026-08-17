@@ -10,11 +10,19 @@
  */
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
+import {
+  ADMIN_SESSION_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+} from '@/infrastructure/auth/session-cookie';
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { buildSecurityHeaders } from '@/infrastructure/security/security-headers';
 import { logger } from '@/infrastructure/logging/logger';
-import { LOGIN_PATH, pathRequiresAuthentication, securityProfileFor } from '@/routes';
+import {
+  ADMIN_LOGIN_PATH,
+  LOGIN_PATH,
+  requiredCredentialFor,
+  securityProfileFor,
+} from '@/routes';
 
 function generateNonce(): string {
   // Web Crypto statt node:crypto — der Proxy läuft in der Edge-Laufzeit.
@@ -114,15 +122,34 @@ export function proxy(request: NextRequest): NextResponse {
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set(CSRF_HEADER_NAME, csrfToken);
 
-  const hasSessionCookie = (request.cookies.get(SESSION_COOKIE_NAME)?.value ?? '').length > 0;
+  /*
+   * Welcher Nachweis fehlt (M8)?
+   *
+   * Die beiden Cookies sind getrennt und tragen verschiedene Pfade. Der Proxy
+   * prüft hier nur ihr **Vorhandensein** — die Gültigkeit prüft die Seite mit
+   * `requireSession()` bzw. `requireAdminSessionOrThrow()`. Der Proxy läuft in
+   * der Edge-Laufzeit ohne Datenbankzugriff; er ist die frühe Abweisung, nicht
+   * die Prüfung.
+   *
+   * Wichtig: Eine Mandantensitzung öffnet **keine** Adminroute. Wer mit
+   * gültigem Mandantencookie `/admin` aufruft, landet auf der Adminanmeldung.
+   */
+  const credential = requiredCredentialFor(pathname);
+  const cookieForCredential =
+    credential === 'platformAdmin' ? ADMIN_SESSION_COOKIE_NAME : SESSION_COOKIE_NAME;
+  const hasRequiredCookie =
+    (request.cookies.get(cookieForCredential)?.value ?? '').length > 0;
 
   let response: NextResponse;
 
-  if (pathRequiresAuthentication(pathname) && !hasSessionCookie) {
+  if (credential !== 'public' && !hasRequiredCookie) {
     if (isApiPath(pathname)) {
       response = NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     } else {
-      const target = new URL(LOGIN_PATH, request.url);
+      const target = new URL(
+        credential === 'platformAdmin' ? ADMIN_LOGIN_PATH : LOGIN_PATH,
+        request.url,
+      );
       response = NextResponse.redirect(target, { status: 303 });
     }
   } else {

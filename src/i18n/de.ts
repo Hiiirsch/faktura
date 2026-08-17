@@ -32,6 +32,24 @@ export const messages = {
     name: 'Faktura',
     description: 'Rechnungsstellung für das eigene Einzelunternehmen',
   },
+  admin: {
+    title: 'Verwaltung',
+    heading: 'Verwaltung',
+    loginTitle: 'Verwaltung — Anmeldung',
+    loginIntro: 'Zugang zur zentralen Verwaltung. Konten der Unternehmen melden sich unter der gewohnten Adresse an.',
+    codeTitle: 'Bestätigungscode',
+    codeIntro:
+      'Betreiberkonten führen den zweiten Faktor verpflichtend. Der sechsstellige Code steht in der Authenticator-App.',
+    organizationsHeading: 'Unternehmen',
+    organizationCount: '{count} Unternehmen',
+    organizationCountOne: '1 Unternehmen',
+    organizationsEmpty:
+      'Noch kein Unternehmen angelegt. Das erste Unternehmen entsteht samt Einladung für sein Inhaberkonto.',
+    scopeNote:
+      'Die Verwaltung sieht Unternehmen und Konten — keine Rechnung, keinen Kunden, keinen Betrag. Das ist keine Einstellung, sondern eine Eigenschaft des Aufbaus: Eine Adminsitzung führt keinen Mandantenkontext, und jede Abfrage von Geschäftsdaten verlangt einen.',
+    logout: 'Abmelden',
+  },
+
   backup: {
     title: 'Sicherung',
     heading: 'Sicherung und Wiederherstellung',

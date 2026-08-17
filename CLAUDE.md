@@ -378,6 +378,43 @@ Ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn sieht.
 Die Wiederherstellung läuft von Hand — sie überschreibt den gesamten Bestand,
 und dafür soll niemand versehentlich einen Knopf finden.
 
+## Zwei Identitäten (seit M8)
+
+Es gibt **zwei** getrennte Kontenarten mit getrennten Tabellen, Sitzungen und
+Cookies:
+
+| | Mandantenkonto | Betreiberkonto |
+|---|---|---|
+| Tabelle | `User`, `Session` | `AdminUser`, `AdminSession` |
+| Cookie | `faktura_session`, Pfad `/` | `faktura_admin_session`, Pfad `/admin` |
+| Kontext | `OrganizationContext` | `PlatformContext` |
+| Zweiter Faktor | wahlweise | **verpflichtend** |
+
+**Warum getrennt und nicht ein Merkmal an `User`.** Die Zusage „die Verwaltung
+sieht keine Geschäftsdaten" ist so eine Eigenschaft des Typsystems statt einer
+Absicht: Eine Adminsitzung führt keinen `OrganizationContext`, und jede Funktion
+in `infrastructure/repositories/**` verlangt einen als ersten Pflichtparameter —
+`listInvoices(adminSession…)` ist ein Übersetzungsfehler. Ein `User` bräuchte
+außerdem eine `organizationId` und stünde damit in der Mitgliederliste und im
+Datenexport eines Mandanten, und beide teilten sich ein Cookie.
+
+Es gibt **keine** Funktion, die aus einem `PlatformContext` einen
+`OrganizationContext` macht. Diese Nichtexistenz ist die Zusage „keine Übernahme
+fremder Sitzungen" (FA-ADM-04) und wird von
+`tests/architecture/platform-repository.test.ts` festgehalten — zusammen mit der
+Erlaubnisliste der Prisma-Delegates: Auf Geschäftstabellen darf
+`platform-repository.ts` **nur zählen**.
+
+`src/routes.ts` kennt dafür eine dritte Zugriffsart `platformAdmin`. Der
+Zugriffsschutztest prüft solche Routen mit **drei** Anfragen: ohne Cookie, mit
+gültigem **Mandanten**cookie, mit Admincookie. Die mittlere ist die, die ein
+späterer Umbau still kaputtmacht.
+
+Das erste Betreiberkonto entsteht über `npm run admin:create` — nicht in einer
+Migration, denn ein Passwort in einer Migration steht im Repository. Der zweite
+Faktor entsteht dabei mit dem Konto; das Geheimnis erscheint genau einmal.
+Wiederherstellungscodes gibt es für die Verwaltung nicht.
+
 ## Anmeldung (seit M6.2)
 
 Sie läuft in **zwei** Schritten: `/login` nimmt E-Mail und Passwort,
