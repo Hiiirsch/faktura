@@ -4,12 +4,8 @@ import type { ReactNode } from 'react';
 import { requireSession } from '@/application/auth/require-session';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { BACKUP_DOWNLOAD_PATH, BACKUP_SETTINGS_PATH, DATA_EXPORT_PATH } from '@/routes';
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-  SECTION_CLASS,
-} from '@/ui/components/form';
+import { DATA_EXPORT_PATH, EXPORT_SETTINGS_PATH } from '@/routes';
+import { PRIMARY_BUTTON_CLASS, SECTION_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
 
 import { AppShell } from '../../app-shell';
@@ -19,40 +15,34 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: `${messages.backup.title} · ${messages.app.name}` };
 
 /**
- * Sicherung und Wiederherstellung (Spec §10.1, NFA-BETR-05, -06).
+ * Datenexport des eigenen Unternehmens (NFA-COMP-03).
  *
- * **Sichern per Knopf, Wiederherstellen von Hand.** Das ist keine Auslassung:
- * Eine Wiederherstellung überschreibt den gesamten Bestand und ist nicht
- * rücknehmbar. Ein Knopf dafür in einer Oberfläche, die man täglich benutzt,
- * ist eine Falle — die Schritte stehen deshalb hier, und ausgeführt werden sie
- * auf der Kommandozeile, wo man sie liest, bevor man sie tippt.
+ * **Was hier seit M8 nicht mehr steht: die Sicherung.** Sie umfasst die
+ * Datenbankdatei als Ganzes, also alle Unternehmen, und ist damit eine
+ * Handlung des Betreibers — sie liegt in der zentralen Verwaltung
+ * (NFA-SEC-23). Übrig bleibt der Export, der genau die Daten dieses
+ * Unternehmens liefert.
+ *
+ * Die Schritte der Wiederherstellung bleiben zur Kenntnis stehen: Wer den
+ * Export in der Hand hält, soll wissen, wie der Weg zurück aussieht und wer
+ * ihn geht.
  *
  * Der Download ist ein Verweis, keine Server Action: Der Browser soll die
  * Datei mit seinen eigenen Mitteln entgegennehmen.
  */
-export default async function BackupSettingsPage(): Promise<ReactNode> {
+export default async function ExportSettingsPage(): Promise<ReactNode> {
   const session = await requireSession();
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   return (
-    <AppShell session={session} csrfToken={csrfToken} currentPath={BACKUP_SETTINGS_PATH}>
+    <AppShell session={session} csrfToken={csrfToken} currentPath={EXPORT_SETTINGS_PATH}>
       <PageHeader title={messages.backup.heading} description={messages.backup.intro} />
-
-      <section className={SECTION_CLASS}>
-        <h2 className="text-section font-semibold text-ink">{messages.backup.createHeading}</h2>
-        <p className="max-w-form text-ui text-ink-muted">{messages.backup.createHint}</p>
-        <div>
-          <a href={BACKUP_DOWNLOAD_PATH} className={PRIMARY_BUTTON_CLASS} download>
-            {messages.backup.download}
-          </a>
-        </div>
-      </section>
 
       <section className={SECTION_CLASS}>
         <h2 className="text-section font-semibold text-ink">{messages.backup.exportHeading}</h2>
         <p className="max-w-form text-ui text-ink-muted">{messages.backup.exportHint}</p>
         <div>
-          <a href={DATA_EXPORT_PATH} className={SECONDARY_BUTTON_CLASS} download>
+          <a href={DATA_EXPORT_PATH} className={PRIMARY_BUTTON_CLASS} download>
             {messages.backup.exportDownload}
           </a>
         </div>

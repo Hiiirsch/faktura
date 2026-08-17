@@ -51,20 +51,16 @@ export const messages = {
   },
 
   backup: {
-    title: 'Sicherung',
-    heading: 'Sicherung und Wiederherstellung',
+    title: 'Datenexport',
+    heading: 'Datenexport',
     intro:
-      'Eine Sicherung enthält die Datenbank und alle abgelegten Dateien — Belegarchive, Logo, hochgeladene Bilder. Beides gehört zusammen: Ein festgeschriebener Beleg verweist auf seine PDF-Datei samt Prüfsumme.',
-    createHeading: 'Jetzt sichern',
-    createHint:
-      'Erzeugt eine Sicherung zum aktuellen Stand und lädt sie herunter. Die Datenbank wird dabei konsistent abgezogen, nicht im laufenden Betrieb kopiert.',
-    download: 'Sicherung herunterladen',
-    scheduleHeading: 'Täglicher Lauf',
+      'Alle Daten dieses Unternehmens in maschinenlesbarer Form. Die Sicherung der gesamten Installation ist davon getrennt — sie umfasst alle Unternehmen und liegt beim Betreiber.',
+    scheduleHeading: 'Sicherung der Installation',
     scheduleHint:
-      'Der Betriebsauftrag „npm run backup" legt dieselbe Datei im Sicherungsverzeichnis ab. Er gehört in die Zeitsteuerung des Servers — die Anwendung plant nichts von selbst.',
+      'Datenbank und Dateispeicher werden vom Betreiber gesichert, nicht aus dieser Oberfläche: Eine Sicherung umfasst alle Unternehmen. Der Betriebsauftrag „npm run backup" und die Verwaltung sind die dafür vorgesehenen Wege.',
     restoreHeading: 'Wiederherstellung',
     restoreIntro:
-      'Die Wiederherstellung läuft bewusst von Hand: Sie überschreibt den gesamten Bestand, und dafür soll niemand versehentlich einen Knopf finden.',
+      'Die Wiederherstellung führt der Betreiber von Hand aus: Sie überschreibt den Bestand **aller** Unternehmen, und dafür soll niemand versehentlich einen Knopf finden. Die Schritte stehen hier zur Kenntnis.',
     restoreSteps: [
       'Dienst anhalten: docker compose down',
       'Archiv entpacken: tar -xzf faktura-….tar.gz -C /tmp/restore',
@@ -170,7 +166,7 @@ export const messages = {
     company: 'Firmendaten',
     numbering: 'Nummernkreis',
     security: 'Sicherheit',
-    backup: 'Sicherung',
+    backup: 'Datenexport',
     settings: 'Einstellungen',
     logout: 'Abmelden',
     label: 'Hauptnavigation',

@@ -204,8 +204,9 @@ Die Datenbank wird über `VACUUM INTO` abgezogen, nicht kopiert: Eine Kopie
 mitten in einer Transaktion ergibt eine Datei, die aussieht wie eine Datenbank
 und beim Öffnen scheitert.
 
-**Von Hand, aus der Oberfläche:** Einstellungen → **Sicherung** → *Sicherung
-herunterladen*.
+**Von Hand, aus der Verwaltung:** `/admin` → *Sicherung herunterladen*. Seit M8
+liegt sie dort und **nicht** in der Oberfläche eines Unternehmens: Eine
+Sicherung umfasst die Datenbankdatei als Ganzes, also alle Unternehmen.
 
 **Als Auftrag, für die Zeitsteuerung des Servers:**
 
@@ -261,7 +262,7 @@ vorgesehen.
 
 ## Datenexport
 
-Einstellungen → **Sicherung** → *Daten exportieren* liefert alle Kunden,
+Einstellungen → **Datenexport** liefert alle Kunden,
 Belege, Vorlagen, Nummernkreise und das Protokoll als JSON. Zugangsdaten sind
 **nicht** enthalten: Ein Export wird weitergereicht, und Passwörter oder
 Sitzungen gehören dort nicht hinein. Wer den ganzen Bestand braucht, nimmt die

@@ -20,8 +20,9 @@ export const ADMIN_LOGIN_CODE_PATH = '/admin/login/code';
 export const LOGIN_CODE_PATH = '/login/code';
 export const DASHBOARD_PATH = '/';
 export const SECURITY_SETTINGS_PATH = '/settings/security';
-export const BACKUP_SETTINGS_PATH = '/settings/backup';
-export const BACKUP_DOWNLOAD_PATH = '/api/backup';
+export const EXPORT_SETTINGS_PATH = '/settings/export';
+/** Die Sicherung liegt im Adminbereich (M8, NFA-SEC-23). */
+export const BACKUP_DOWNLOAD_PATH = '/admin/api/backup';
 export const DATA_EXPORT_PATH = '/api/export';
 export const COMPANY_SETTINGS_PATH = '/settings/company';
 export const CUSTOMERS_PATH = '/customers';
@@ -156,11 +157,11 @@ export const routes: readonly RouteDefinition[] = [
   },
 
   { path: SECURITY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
-  { path: BACKUP_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  { path: EXPORT_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   {
     path: BACKUP_DOWNLOAD_PATH,
     kind: 'api',
-    access: 'authenticated',
+    access: 'platformAdmin',
     // Herunterladen, nicht anzeigen: dasselbe Profil wie die übrigen Dateien.
     securityProfile: 'document',
   },

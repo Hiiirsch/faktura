@@ -11,6 +11,11 @@
  * einen zu schreiben hieße, das Archiv gegen dieselbe Annahme zu prüfen, aus
  * der es entstanden ist. Was zählt, ist, dass es die üblichen Werkzeuge lesen
  * können; genau das braucht man im Ernstfall.
+ *
+ * Seit M8 verlangt `createBackup` einen `PlatformContext` (NFA-SEC-23). Dass
+ * eine Mandantensitzung ihn nicht herstellen kann, ist eine Aussage über den
+ * Typ — sie steht im Übersetzer, nicht hier. Was hier steht, ist die Wirkung:
+ * Die Route liegt im Adminbereich, und der alte Pfad ist weg.
  */
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -35,15 +40,26 @@ import {
 } from '@/infrastructure/backup/backup-archive';
 import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 
+import { platformContextOf } from '@/infrastructure/repositories/platform-context';
+
 import { fieldsBuyer } from '../support/buyer';
 
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 import { testOrganization as org } from './setup/organization';
+import { TEST_BASE_URL } from './setup/server';
 
 const run = promisify(execFile);
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
 const ACTOR = 'pruef-akteur';
+/**
+ * Der Betreiberkontext für die Sicherung.
+ *
+ * Im Test unmittelbar erzeugt: Der Weg über eine echte Adminanmeldung ist in
+ * `admin-session.test.ts` geprüft, und ihn hier zu wiederholen prüfte nichts
+ * über die Sicherung.
+ */
+const PLATFORM = platformContextOf('admin-pruefung');
 
 const COMPANY = {
   ...EMPTY_COMPANY_PROFILE,
@@ -136,7 +152,7 @@ describe('NFA-BETR-03/-04 Die Sicherung entsteht konsistent', () => {
   it('enthält Datenbank und Dateispeicher in einem Archiv', async () => {
     await seedIssuedInvoice();
 
-    const backup = await createBackup(ACTOR, new Date('2026-08-16T10:00:00Z'));
+    const backup = await createBackup(PLATFORM, new Date('2026-08-16T10:00:00Z'));
     const directory = await extract(backup.bytes);
 
     try {
@@ -169,7 +185,7 @@ describe('NFA-BETR-03/-04 Die Sicherung entsteht konsistent', () => {
     // ergäbe hier mit einiger Wahrscheinlichkeit einen unbrauchbaren Stand —
     // `VACUUM INTO` nicht (NFA-BETR-04).
     const [backup] = await Promise.all([
-      createBackup(ACTOR),
+      createBackup(PLATFORM),
       prisma.invoice.count(),
       prisma.invoice.findMany({ take: 5 }),
     ]);
@@ -187,6 +203,29 @@ describe('NFA-BETR-03/-04 Die Sicherung entsteht konsistent', () => {
   }, 180_000);
 });
 
+describe('NFA-SEC-23 Die Sicherung ist dem Betreiber vorbehalten', () => {
+  it('liegt nicht mehr unter dem alten Pfad', async () => {
+    // Bis M7 lag hier die gesamte Datenbank, erreichbar für jedes angemeldete
+    // Konto.
+    const response = await fetch(`${TEST_BASE_URL}/api/backup`, { redirect: 'manual' });
+
+    // `401`, nicht `404`: Der Pfad steht nicht mehr im Routenverzeichnis, und
+    // ein unbekannter Pfad gilt dort als geschützt (`requiredCredentialFor`).
+    // Der Proxy weist ihn deshalb ab, bevor Next überhaupt nachsieht, ob es
+    // eine Datei gibt — die Fail-safe-Regel ist hier das strengere Verhalten.
+    expect([401, 404]).toContain(response.status);
+    expect(response.headers.get('content-type')).not.toBe('application/gzip');
+  }, 60_000);
+
+  it('weist den neuen Pfad ohne Adminsitzung ab', async () => {
+    const response = await fetch(`${TEST_BASE_URL}/admin/api/backup`, { redirect: 'manual' });
+
+    // Der Proxy fängt es ab, bevor irgendetwas erzeugt wird.
+    expect([302, 303, 307, 401]).toContain(response.status);
+    expect(response.headers.get('content-type')).not.toBe('application/gzip');
+  }, 60_000);
+});
+
 describe('NFA-BETR-06/-07 Aus der Sicherung entsteht wieder ein Bestand', () => {
   it('führt nach dem Auspacken dieselben Belege und dieselben PDFs', async () => {
     const { invoiceId, invoiceNumber } = await seedIssuedInvoice();
@@ -198,7 +237,7 @@ describe('NFA-BETR-06/-07 Aus der Sicherung entsteht wieder ein Bestand', () => 
       path.join(path.resolve(process.env.STORAGE_DIR ?? './storage'), original.filePath),
     );
 
-    const backup = await createBackup(ACTOR);
+    const backup = await createBackup(PLATFORM);
     const directory = await extract(backup.bytes);
 
     try {
