@@ -238,6 +238,8 @@ async function completeLogin(
   await updateUser(userId, {
     failedLogins: cleared.failedLogins,
     lockedUntil: cleared.lockedUntil,
+    // Für die Kennzahl „letzte Anmeldung" in der Verwaltung (FA-ADM-03).
+    lastLoginAt: now,
   });
 
   // Jede Anmeldung erzeugt ein frisches Token (NFA-SEC-07).
@@ -270,7 +272,17 @@ export async function login(
   const email = input.email.trim().toLowerCase();
   const user = await findUserByEmail(email);
 
-  if (user === null) {
+  /*
+   * Gesperrtes Konto und stillgelegtes Unternehmen werden hier behandelt wie
+   * ein unbekanntes Konto (M8, FA-ORG-03, FA-MEMB-06) — dieselbe Antwort,
+   * derselbe Rechenaufwand. Eine eigene Meldung („Ihr Zugang ist gesperrt")
+   * wäre für den Betroffenen freundlicher und für einen Fremden eine Auskunft
+   * darüber, dass es diese Adresse gibt.
+   */
+  const isBlocked =
+    user !== null && (user.disabledAt !== null || user.organization.suspendedAt !== null);
+
+  if (user === null || isBlocked) {
     // Gleicher Rechenaufwand wie bei einem existierenden Konto.
     await verifyPassword(await getDecoyHash(), input.password);
     return err({ kind: 'INVALID_CREDENTIALS' });

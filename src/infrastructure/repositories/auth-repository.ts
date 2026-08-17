@@ -18,14 +18,56 @@ import { clientFor, type TransactionHandle } from './client';
 
 export type { PendingLogin, RecoveryCode, Session, User };
 
-export type SessionWithUser = Prisma.SessionGetPayload<{
-  include: { user: { select: { id: true; email: true; organizationId: true } } };
-}>;
+/**
+ * Die Sitzung mit allem, was die Auflösung braucht (M8).
+ *
+ * Seit M8 kommen drei Dinge dazu, und alle drei sind Abweisungsgründe:
+ * `disabledAt` am Konto, `suspendedAt` an der Organisation und die
+ * Berechtigungen der Rolle. Sie werden **in derselben Abfrage** geladen — würde
+ * die Sitzung erst aufgelöst und die Sperre danach geprüft, gäbe es ein Fenster,
+ * in dem ein gesperrtes Konto arbeitet.
+ */
+const forSession = {
+  user: {
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      organizationId: true,
+      disabledAt: true,
+      organization: { select: { suspendedAt: true } },
+      role: {
+        select: {
+          id: true,
+          name: true,
+          permissions: { select: { permissionKey: true } },
+        },
+      },
+    },
+  },
+} satisfies Prisma.SessionInclude;
+
+export type SessionWithUser = Prisma.SessionGetPayload<{ include: typeof forSession }>;
 
 // ─── Konten ─────────────────────────────────────────────────────────────────
 
-export async function findUserByEmail(email: string): Promise<User | null> {
-  return clientFor(undefined).user.findUnique({ where: { email } });
+/**
+ * Das Konto samt Sperrzustand seines Unternehmens (M8).
+ *
+ * Die Stilllegung wird mitgeladen, weil die Anmeldung sie prüfen muss und eine
+ * zweite Abfrage ein Fenster dazwischen ließe.
+ */
+export type UserWithOrganizationState = Prisma.UserGetPayload<{
+  include: { organization: { select: { suspendedAt: true } } };
+}>;
+
+export async function findUserByEmail(
+  email: string,
+): Promise<UserWithOrganizationState | null> {
+  return clientFor(undefined).user.findUnique({
+    where: { email },
+    include: { organization: { select: { suspendedAt: true } } },
+  });
 }
 
 export async function findUserById(id: string): Promise<User | null> {
@@ -53,7 +95,7 @@ export async function createSessionRow(data: Prisma.SessionUncheckedCreateInput)
 export async function findSessionByTokenHash(tokenHash: string): Promise<SessionWithUser | null> {
   return clientFor(undefined).session.findUnique({
     where: { tokenHash },
-    include: { user: { select: { id: true, email: true, organizationId: true } } },
+    include: forSession,
   });
 }
 

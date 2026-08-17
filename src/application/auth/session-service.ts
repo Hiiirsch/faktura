@@ -11,6 +11,7 @@ import {
   isSessionExpired,
   shouldTouchSession,
 } from '@/domain/auth/session-policy';
+import { type Actor, actorOf } from '@/domain/policy/can';
 import { generateSessionToken, hashToken } from '@/infrastructure/auth/tokens';
 import {
   createSessionRow,
@@ -33,7 +34,7 @@ import {
  * Erneut ausgeführt, weil `src/app` nicht unmittelbar aus der
  * Infrastrukturschicht importieren darf (Schichtregel, NFA-ARCH-01).
  */
-export type { OrganizationContext };
+export type { Actor, OrganizationContext };
 
 export type RequestContext = {
   readonly userAgent: string | null;
@@ -44,9 +45,22 @@ export type ActiveSession = {
   readonly sessionId: string;
   readonly userId: string;
   readonly email: string;
+  /** Erfasster Name, falls vorhanden — sonst trägt die Adresse die Anzeige. */
+  readonly name: string | null;
   readonly expiresAt: Date;
   /** Der Mandant, dessen Daten diese Sitzung sehen darf. */
   readonly organization: OrganizationContext;
+  /**
+   * Die Berechtigungen dieses Kontos (M8, FA-ROLE-05).
+   *
+   * Bei **jeder** Anfrage frisch gelesen, nicht im Cookie und nicht
+   * zwischengespeichert (NFA-SEC-25): Ein entzogenes Recht wirkt beim nächsten
+   * Klick, nicht beim nächsten Anmelden. Der Preis ist ein Join auf zwei
+   * winzige Tabellen.
+   */
+  readonly actor: Actor;
+  /** Name der Rolle — für die Anzeige im Kontomenü. */
+  readonly roleName: string | null;
 };
 
 export type SessionSummary = {
@@ -86,9 +100,20 @@ export async function createSession(
 }
 
 /**
- * Löst ein Sitzungstoken auf. Eine abgelaufene Sitzung wird dabei gleich
- * entfernt, statt nur abgelehnt zu werden — so räumt sich die Tabelle im
- * laufenden Betrieb selbst auf, ohne geplanten Auftrag.
+ * Löst ein Sitzungstoken auf.
+ *
+ * **Drei Gründe, eine Sitzung zu verwerfen**, und alle drei führen dazu, dass
+ * sie gleich entfernt wird statt nur abgelehnt zu werden — so räumt sich die
+ * Tabelle im Betrieb selbst auf:
+ *
+ * 1. Sie ist abgelaufen.
+ * 2. Das Konto ist gesperrt (M8). Nicht erst mit dem Ablauf: Wer gesperrt
+ *    wird, ist beim nächsten Klick draußen — sonst arbeitete ein
+ *    ausgeschiedener Mitarbeiter noch Stunden weiter.
+ * 3. Das Unternehmen ist stillgelegt (M8, FA-ORG-03).
+ *
+ * Alle drei stehen in **einer** Abfrage (`forSession` in `auth-repository.ts`).
+ * Würde die Sperre nachträglich geprüft, gäbe es ein Fenster dazwischen.
  */
 export async function resolveSession(
   token: string,
@@ -100,7 +125,10 @@ export async function resolveSession(
     return null;
   }
 
-  if (isSessionExpired(session.expiresAt, now)) {
+  const isBlocked =
+    session.user.disabledAt !== null || session.user.organization.suspendedAt !== null;
+
+  if (isSessionExpired(session.expiresAt, now) || isBlocked) {
     await deleteSession(session.id);
     return null;
   }
@@ -113,8 +141,13 @@ export async function resolveSession(
     sessionId: session.id,
     userId: session.user.id,
     email: session.user.email,
+    name: session.user.name,
     expiresAt: session.expiresAt,
     organization: organizationContextOf(session.user.organizationId),
+    // Grundrechte plus die Schlüssel der Rolle; unbekannte fallen weg
+    // (FA-ROLE-06).
+    actor: actorOf(session.user.role?.permissions.map((entry) => entry.permissionKey) ?? []),
+    roleName: session.user.role?.name ?? null,
   };
 }
 

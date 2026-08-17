@@ -76,7 +76,7 @@ export default async function CustomersPage({
         title={messages.customers.heading}
         description={messages.customers.intro}
         actions={
-          can('create', 'customer') ? (
+          can(session.actor, 'create', 'customer') ? (
             <Link href={NEW_CUSTOMER_PATH} className={PRIMARY_BUTTON_CLASS}>
               {messages.customers.create}
             </Link>

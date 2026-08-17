@@ -31,8 +31,13 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
+  /// Stillgelegt durch den Betreiber (M8, FA-ORG-03). Beendet alle Sitzungen
+  /// und weist die Anmeldung ab — ohne Daten zu löschen.
+  suspendedAt DateTime?
+
   companyProfile  CompanyProfile?
   users           User[]
+  roles           Role[]
   templates       Template[]
   artifacts       InvoiceArtifact[]
   customers       Customer[]
@@ -425,6 +430,17 @@ model User {
   totpEnabled    Boolean      @default(false)
   failedLogins   Int          @default(0)
   lockedUntil    DateTime?
+  /// Erfasster Name für Mitgliederliste und Urheberangabe (M8). Bis dahin
+  /// leiteten sich Initialen aus der Adresse ab.
+  name           String?
+  /// Gesperrt statt gelöscht (M8): Der Beleg behält seinen Urheber, und die
+  /// Nachvollziehbarkeit geht vor Wiederverwendbarkeit der Adresse.
+  disabledAt     DateTime?
+  lastLoginAt    DateTime?
+  /// Optional, weil sie beim Anlegen über die Migration erst gesetzt wird und
+  /// weil `onDelete: Restrict` eine benutzte Rolle vor dem Löschen schützt.
+  roleId         String?
+  role           Role?        @relation(fields: [roleId], references: [id], onDelete: Restrict)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -433,6 +449,7 @@ model User {
   pendingLogins PendingLogin[]
 
   @@index([organizationId])
+  @@index([roleId])
 }
 
 /// Angemeldete Sitzung. In der Datenbank liegt ausschließlich der SHA-256-Hash
@@ -471,6 +488,53 @@ model RecoveryCode {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+/// Eine Rolle innerhalb eines Unternehmens (M8, FA-ROLE-01).
+///
+/// **Jedes Unternehmen legt seine eigenen an.** Es gibt kein festes Rollenset —
+/// ein Betrieb mit Buchhaltungskraft braucht andere Zuschnitte als einer, in
+/// dem zwei Gesellschafter alles machen. Was fest ist, ist der Katalog der
+/// Berechtigungen (`src/domain/policy/can.ts`); wie man sie bündelt, entscheidet
+/// das Unternehmen.
+model Role {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+/// Ein erteiltes Recht (M8).
+///
+/// **Verknüpfungstabelle statt Menge in einer Spalte.** SQLite kennt keinen
+/// Array- und keinen Aufzählungstyp; eine Textspalte macht Tippfehler unsichtbar
+/// und Duplikate möglich. Entscheidend ist aber die Aussperrsicherung
+/// (FA-ROLE-04): Als Trigger kann sie hier Zeilen **zählen**, statt in einer
+/// Zeichenkette suchen zu müssen.
+///
+/// `organizationId` wird mitgeführt wie bei `InvoiceLine` — Vorbereitung auf
+/// Row Level Security unter PostgreSQL (Spec §13), gleichgehalten durch Trigger.
+model RolePermission {
+  id             String @id @default(cuid())
+  organizationId String
+  roleId         String
+  role           Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  /// Ein Schlüssel aus `ALL_PERMISSION_KEYS`. Kein Fremdschlüssel: Ein
+  /// unbekannter Schlüssel gewährt nichts (FA-ROLE-06), also verschiebt er
+  /// keine Grenze — anders als eine falsche `organizationId`.
+  permissionKey  String
+
+  @@unique([roleId, permissionKey])
+  @@index([organizationId])
 }
 
 /// Ein Betreiberkonto für die zentrale Verwaltung (M8).
@@ -575,6 +639,12 @@ model AuditLog {
   entityId       String
   action         String
   actorId        String?
+  /// Wer gehandelt hat: ein Mitglied des Unternehmens (`USER`) oder der
+  /// Betreiber (`ADMIN`) — M8, FA-ADM-07. Ohne diese Angabe ließe sich eine
+  /// Handlung der Verwaltung nicht von einer des Unternehmens unterscheiden,
+  /// und `actorId` allein trägt die Auskunft nicht: Die Kennungen stammen aus
+  /// zwei verschiedenen Tabellen.
+  actorKind      String       @default("USER")
   diffJson       String?
   ipAddress      String?
   createdAt      DateTime     @default(now())

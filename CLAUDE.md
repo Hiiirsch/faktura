@@ -378,6 +378,42 @@ Ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn sieht.
 Die Wiederherstellung läuft von Hand — sie überschreibt den gesamten Bestand,
 und dafür soll niemand versehentlich einen Knopf finden.
 
+## Rollen (seit M8)
+
+Jedes Unternehmen legt **eigene** Rollen an; fest ist nur der Katalog der
+Berechtigungen. Und der ist **abgeleitet**, nicht danebengestellt: Ein Schlüssel
+ist ein Eintrag aus der Tabelle `PERMITTED` in `src/domain/policy/can.ts`, in der
+Form `gegenstand.handlung`, typseitig aus derselben Tabelle erzeugt. Wer eine
+Berechtigung hinzufügt, ergänzt eine Zeile — Datenbank, Rollenformular und
+Oberfläche kennen sie dann.
+
+**Ein unbekannter Schlüssel gewährt nichts.** Nur deshalb braucht
+`RolePermission` keine Fremdschlüsselprüfung auf den Katalog: Ein Tippfehler
+erweitert keine Rechte. Das unterscheidet ihn grundlegend von `organizationId`,
+wo ein falscher Wert eine Grenze verschiebt und deshalb Trigger rechtfertigt.
+
+Berechtigungen werden bei **jeder** Anfrage frisch gelesen (`forSession` in
+`auth-repository.ts`), nichts liegt im Cookie. Ein entzogenes Recht wirkt beim
+nächsten Klick. In derselben Abfrage stehen die beiden Abweisungsgründe
+`User.disabledAt` und `Organization.suspendedAt` — würde die Sperre nachträglich
+geprüft, gäbe es ein Fenster dazwischen.
+
+**Die Aussperrsicherung** (FA-ROLE-04): Je Unternehmen hält immer mindestens ein
+nicht gesperrtes Konto `organization.administer`. Drei Trigger garantieren das,
+und zwei Einschränkungen daran wurden durch Fehlschläge gelernt:
+
+- `AFTER UPDATE OF "roleId", "disabledAt", …` statt `AFTER UPDATE`. Der erste
+  Entwurf feuerte bei jeder Kontoänderung — auch beim Zurücksetzen des
+  Fehlversuchszählers, wodurch die Anmeldung abbrach.
+- Der Trigger greift nur, wenn die Änderung den verbotenen Zustand
+  **herstellt**. Ohne die Prüfung, ob die betroffene Zeile selbst eine aktive
+  Rechteverwaltung war, ließe sich in einem Unternehmen ohne Rechteverwaltung
+  überhaupt kein Konto mehr sperren.
+
+Kein Trigger auf INSERT (das erste Konto einer neuen Organisation entstünde
+sonst nie) und keiner auf `Role` DELETE (`ON DELETE RESTRICT` schützt benutzte
+Rollen; eine Rolle, die niemand trägt, nimmt niemandem ein Recht).
+
 ## Zwei Identitäten (seit M8)
 
 Es gibt **zwei** getrennte Kontenarten mit getrennten Tabellen, Sitzungen und

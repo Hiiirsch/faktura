@@ -65,7 +65,7 @@ export default async function TemplateSettingsPage(): Promise<ReactNode> {
       header: '',
       cell: (template) => (
         <span className="flex flex-wrap justify-end gap-2">
-          {template.isDefault || !can('update', 'companyProfile') ? null : (
+          {template.isDefault || !can(session.actor, 'update', 'template') ? null : (
             <form action={makeDefaultAction}>
               <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
               <input type="hidden" name="templateId" value={template.id} />

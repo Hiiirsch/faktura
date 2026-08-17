@@ -201,7 +201,7 @@ export default async function InvoicesPage({
 
     return (
       <>
-        {isOpen && can('recordPayment', 'invoice') ? (
+        {isOpen && can(session.actor, 'recordPayment', 'invoice') ? (
           <IconButton
             icon={BanknoteArrowUp}
             label={messages.invoices.actionMarkPaid}
@@ -217,7 +217,7 @@ export default async function InvoicesPage({
           />
         ) : null}
 
-        {can('duplicate', 'invoice') ? (
+        {can(session.actor, 'duplicate', 'invoice') ? (
           <IconButton
             icon={Copy}
             label={messages.invoices.actionDuplicate}
@@ -225,7 +225,7 @@ export default async function InvoicesPage({
           />
         ) : null}
 
-        {isOpen && can('cancel', 'invoice') ? (
+        {isOpen && can(session.actor, 'cancel', 'invoice') ? (
           <ConfirmDialog
             title={messages.invoices.cancelConfirmTitle}
             message={messages.invoices.cancelConfirm}
@@ -319,7 +319,7 @@ export default async function InvoicesPage({
       <PageHeader
         title={messages.invoices.heading}
         actions={
-          can('create', 'invoice') ? (
+          can(session.actor, 'create', 'invoice') ? (
             <Link href={NEW_INVOICE_PATH} className={PRIMARY_BUTTON_CLASS}>
               {messages.invoices.create}
             </Link>

@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 /**
- * Die Trigger, die es geben muss — Stand M7.
+ * Die Trigger, die es geben muss — Stand M8, B3a.
  *
  * Gruppiert nach ihrem Zweck, damit beim Lesen auffällt, wenn eine ganze
  * Gruppe fehlt statt eines einzelnen Eintrags.
@@ -56,6 +56,18 @@ const EXPECTED_TRIGGERS = [
   'Invoice_organization_matches_update',
   'Payment_organization_matches_insert',
   'Payment_organization_matches_update',
+  // Mandantengrenze der Rollen (M8) — ein Konto trägt keine fremde Rolle
+  'RolePermission_organization_matches_insert',
+  'RolePermission_organization_matches_update',
+  'User_role_matches_organization_insert',
+  'User_role_matches_organization_update',
+  // Aussperrsicherung (M8, FA-ROLE-04) — drei Wege in den verbotenen Zustand.
+  // Der vierte, das Löschen einer Rolle, braucht keinen: `User.roleId` trägt
+  // `ON DELETE RESTRICT`, und eine Rolle, die niemand trägt, kann niemandem ein
+  // Recht nehmen.
+  'Organization_keeps_administrator_on_user_update',
+  'Organization_keeps_administrator_on_user_delete',
+  'Organization_keeps_administrator_on_permission_delete',
 ] as const;
 
 /**
@@ -98,6 +110,22 @@ describe('Der Bestand an Triggern', () => {
   });
 
   /**
+   * Das Protokoll bleibt unveränderlich — auch nach einem Tabellenneuaufbau.
+   *
+   * Die Migration `roles_and_permissions` baut `AuditLog` neu auf, weil die
+   * Spalte `actorKind` hinzukommt, und `DROP TABLE` nimmt dabei beide Trigger
+   * mit. Genau dieser Fall ist eingetreten, und genau dieser Test hat ihn
+   * gemeldet.
+   */
+  it('behält die Trigger des Protokolls über Neuaufbauten hinweg', async () => {
+    await resetDatabase();
+    const actual = new Set(await namesOf('trigger'));
+
+    expect(actual.has('AuditLog_no_update')).toBe(true);
+    expect(actual.has('AuditLog_no_delete')).toBe(true);
+  });
+
+  /**
    * Die Mandantengrenze im Einzelnen.
    *
    * Ein eigener Fall, weil diese Gruppe bei einem Neuaufbau von `Invoice` als
@@ -109,12 +137,24 @@ describe('Der Bestand an Triggern', () => {
     await resetDatabase();
     const actual = new Set(await namesOf('trigger'));
 
-    for (const table of ['Invoice', 'InvoiceLine', 'Payment', 'CompanyProfile']) {
+    for (const table of [
+      'Invoice',
+      'InvoiceLine',
+      'Payment',
+      'CompanyProfile',
+      'RolePermission',
+    ]) {
       expect(actual.has(`${table}_organization_matches_insert`), `${table}: INSERT`).toBe(true);
     }
 
     // `InvoiceArtifact` kennt kein UPDATE — es ist ohnehin unveränderlich.
-    for (const table of ['Invoice', 'InvoiceLine', 'Payment', 'CompanyProfile']) {
+    for (const table of [
+      'Invoice',
+      'InvoiceLine',
+      'Payment',
+      'CompanyProfile',
+      'RolePermission',
+    ]) {
       expect(actual.has(`${table}_organization_matches_update`), `${table}: UPDATE`).toBe(true);
     }
   });
