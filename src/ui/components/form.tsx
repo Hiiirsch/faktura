@@ -36,6 +36,22 @@ export const INPUT_CLASS =
   `${CONTROL_BASE} w-full max-w-form border border-rule bg-surface-sunken px-3 text-ink ` +
   'placeholder:text-ink-faint disabled:text-ink-faint';
 
+/**
+ * Auswahlfeld **in einer Tabellenzelle** (M8).
+ *
+ * Dieselbe Optik wie `INPUT_CLASS`, aber ohne `w-full max-w-form`. Die
+ * Formularbreite gilt für ein Feld unter seiner Beschriftung; in einer Zelle
+ * füllte sie die Spalte und schob den Knopf daneben in die nächste Zeile — die
+ * Zelle sah dann aus wie zwei.
+ *
+ * Als eigene Konstante und nicht als angehängtes `w-auto`: Beide Utilities
+ * setzen dieselbe Eigenschaft, und welche gewinnt, entscheidet die Reihenfolge
+ * im erzeugten Stylesheet, nicht die im Attribut. Das Anhängen wirkte deshalb
+ * nicht — sichtbar allein im Browser.
+ */
+export const INLINE_SELECT_CLASS =
+  `${CONTROL_BASE} border border-rule bg-surface-sunken px-3 text-ink`;
+
 /** Mehrzeilige Eingabe: dieselbe Optik, aber ohne feste Höhe. */
 export const TEXTAREA_CLASS =
   `rounded-control text-ui transition-colors duration-(--duration-state) ${FOCUS_RING} ` +

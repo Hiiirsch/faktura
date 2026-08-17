@@ -264,6 +264,63 @@ describe('FA-ROLE-03 Die Ablehnung greift auch ohne Oberfläche', () => {
   });
 
   /**
+   * Die Verwaltungsseiten (M8, B4).
+   *
+   * Zwei Prüfungen in einer, und die zweite ist die, die kein anderer Test
+   * abdeckt: Dass ein Konto **ohne** `organization.administer` 404 bekommt, und
+   * dass die Seiten mit dem Recht überhaupt **rendern**. Der Zugriffsschutztest
+   * ruft jede Route ohne Sitzung auf und sieht damit nie, was die Seite
+   * darstellt; ein Fehler beim Rendern erschiene dort als Weiterleitung.
+   */
+  it('gibt Mitglieder und Rollen nur der Rechteverwaltung', async () => {
+    const restricted = await signIn(TEST_RESTRICTED_EMAIL);
+    const owner = await signIn(TEST_USER_EMAIL);
+
+    for (const pathname of ['/settings/members', '/settings/roles']) {
+      const denied = await fetch(url(pathname), {
+        headers: { cookie: restricted },
+        redirect: 'manual',
+      });
+      expect(denied.status, `${pathname} ohne Recht`).toBe(404);
+
+      const allowed = await fetch(url(pathname), {
+        headers: { cookie: owner },
+        redirect: 'manual',
+      });
+      expect(allowed.status, `${pathname} mit Recht`).toBe(200);
+
+      // Die Seite hat wirklich Inhalt gerendert und nicht nur einen leeren
+      // Rahmen: Ein Fehler in der Server-Komponente käme als 500 zurück, ein
+      // Fehler in den Daten als Seite ohne die eigene Überschrift.
+      const html = await allowed.text();
+      expect(html, pathname).toContain(
+        pathname.endsWith('members') ? 'Mitglieder' : 'Berechtigungen',
+      );
+    }
+  });
+
+  /**
+   * Die Seitenleiste zeigt keinen Weg, der mit 404 endet (M8).
+   *
+   * `requirePermission` antwortet ohne Recht mit „nicht gefunden". Ein Menüpunkt
+   * dorthin wäre schlechter als keiner — deshalb hängt jeder Eintrag an dem
+   * Recht, das seine Seite verlangt.
+   */
+  it('führt die Seitenleiste nur erreichbare Bereiche', async () => {
+    const restricted = await signIn(TEST_RESTRICTED_EMAIL);
+    const html = await (await fetch(url('/invoices'), { headers: { cookie: restricted } })).text();
+
+    // Vorhanden: Belege lesen darf dieses Konto.
+    expect(html).toContain('/invoices');
+    // Nicht vorhanden: alles andere.
+    expect(html).not.toContain('/settings/members');
+    expect(html).not.toContain('/settings/roles');
+    expect(html).not.toContain('/settings/company');
+    expect(html).not.toContain('/customers');
+    expect(html).not.toContain('/catalog');
+  });
+
+  /**
    * Der Knopf fehlt — aber das ist die Zugabe, nicht der Schutz.
    *
    * Geprüft am ausgelieferten HTML: Ein Konto mit `invoice.read` sieht in der

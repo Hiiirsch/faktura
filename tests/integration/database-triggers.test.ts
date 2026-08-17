@@ -61,6 +61,9 @@ const EXPECTED_TRIGGERS = [
   'RolePermission_organization_matches_update',
   'User_role_matches_organization_insert',
   'User_role_matches_organization_update',
+  // Mandantengrenze der Einladung (M8) — eine Einladung bringt keine fremde Rolle
+  'Invitation_role_matches_organization_insert',
+  'Invitation_role_matches_organization_update',
   // Aussperrsicherung (M8, FA-ROLE-04) — drei Wege in den verbotenen Zustand.
   // Der vierte, das Löschen einer Rolle, braucht keinen: `User.roleId` trägt
   // `ON DELETE RESTRICT`, und eine Rolle, die niemand trägt, kann niemandem ein
@@ -78,7 +81,15 @@ const EXPECTED_TRIGGERS = [
  * (FA-TPL-02). Partielle Indizes kennt Prisma nicht; er lebt nur in der
  * Migration und geht bei einem Neuaufbau mit den Triggern verloren.
  */
-const EXPECTED_PARTIAL_INDEXES = ['Template_one_default_per_organization'] as const;
+/**
+ * `Invitation_one_open_per_email` ist der zweite (M8, FA-MEMB-07): genau eine
+ * offene Einladung je Adresse, global und nicht je Unternehmen — eine Adresse
+ * gehört zu genau einem Unternehmen.
+ */
+const EXPECTED_PARTIAL_INDEXES = [
+  'Template_one_default_per_organization',
+  'Invitation_one_open_per_email',
+] as const;
 
 type SqliteObject = { readonly name: string };
 
@@ -145,6 +156,13 @@ describe('Der Bestand an Triggern', () => {
       'RolePermission',
     ]) {
       expect(actual.has(`${table}_organization_matches_insert`), `${table}: INSERT`).toBe(true);
+    }
+
+    // `User` und `Invitation` prüfen nicht ihre eigene Spalte, sondern die
+    // Zugehörigkeit ihrer **Rolle** — daher der abweichende Name.
+    for (const table of ['User', 'Invitation']) {
+      expect(actual.has(`${table}_role_matches_organization_insert`), `${table}: INSERT`).toBe(true);
+      expect(actual.has(`${table}_role_matches_organization_update`), `${table}: UPDATE`).toBe(true);
     }
 
     // `InvoiceArtifact` kennt kein UPDATE — es ist ohnehin unveränderlich.

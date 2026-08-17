@@ -32,6 +32,30 @@ export const NUMBERING_SETTINGS_PATH = '/settings/numbering';
 export const INVOICES_PATH = '/invoices';
 export const NEW_INVOICE_PATH = '/invoices/new';
 export const TEMPLATE_SETTINGS_PATH = '/settings/templates';
+/** Mitglieder und Rollen des eigenen Unternehmens (M8). */
+export const MEMBERS_SETTINGS_PATH = '/settings/members';
+export const ROLES_SETTINGS_PATH = '/settings/roles';
+
+/**
+ * Die beiden Einlöseseiten (M8).
+ *
+ * Englisch wie jede andere Route dieser Anwendung, obwohl die Oberfläche
+ * deutsch ist: Ein Pfad ist ein Bezeichner (CLAUDE.md).
+ *
+ * Das Segment ist der **Token selbst**, keine Kennung. Eine Kennung neben einem
+ * Token wäre eine zweite Angabe ohne zweiten Nutzen — der Token ist schon
+ * eindeutig, und die Zeile in der Datenbank findet man über seinen Hash.
+ */
+export const INVITATION_PATH = '/invitations';
+export const PASSWORD_RESET_PATH = '/password-reset';
+
+export function invitationPath(token: string): string {
+  return `${INVITATION_PATH}/${encodeURIComponent(token)}`;
+}
+
+export function passwordResetPath(token: string): string {
+  return `${PASSWORD_RESET_PATH}/${encodeURIComponent(token)}`;
+}
 
 export function invoicePath(id: string): string {
   return `${INVOICES_PATH}/${id}`;
@@ -113,6 +137,20 @@ export type RouteDefinition = {
    */
   readonly requiresPendingLogin?: boolean;
   /**
+   * Öffentlich, und der Nachweis steht in der Adresse (M8).
+   *
+   * Einladung und Passwortzurücksetzung liegen vor der Sitzung — es gibt noch
+   * kein Konto oder keinen Zugang zu ihm. Geschützt sind sie durch einen Token
+   * mit 256 Bit Entropie, dessen Hash in der Datenbank liegt.
+   *
+   * Anders als beim zweiten Anmeldeschritt leitet die Seite **nicht** zurück,
+   * sondern antwortet mit `200` und einer neutralen Ablehnung: Eine Umleitung
+   * auf die Anmeldung wäre für den Empfänger eines abgelaufenen Links nicht zu
+   * unterscheiden von „falsche Adresse". Der Zugriffsschutztest prüft deshalb
+   * beides — Status `200` **und** dass nichts über das Unternehmen darin steht.
+   */
+  readonly requiresRedemptionToken?: boolean;
+  /**
    * Konkreter Pfad für den Zugriffsschutz-Test. Nur bei dynamischen Routen
    * nötig — `/customers/[id]` lässt sich nicht wörtlich aufrufen.
    */
@@ -156,7 +194,31 @@ export const routes: readonly RouteDefinition[] = [
       'er durch den kurzlebigen Nachweis aus dem ersten Schritt.',
   },
 
+  {
+    path: '/invitations/[token]',
+    kind: 'page',
+    access: 'public',
+    requiresRedemptionToken: true,
+    probePath: '/invitations/unbekannter-token',
+    publicReason:
+      'Wer eine Einladung annimmt, hat noch kein Konto. Geschützt ist die Seite nicht ' +
+      'durch eine Sitzung, sondern durch den Token in der Adresse; ohne gültigen Token ' +
+      'nennt sie weder Unternehmen noch Adresse.',
+  },
+  {
+    path: '/password-reset/[token]',
+    kind: 'page',
+    access: 'public',
+    requiresRedemptionToken: true,
+    probePath: '/password-reset/unbekannter-token',
+    publicReason:
+      'Wer sein Passwort neu setzt, kommt gerade nicht in sein Konto. Geschützt ist die ' +
+      'Seite durch den Token in der Adresse.',
+  },
+
   { path: SECURITY_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  { path: MEMBERS_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
+  { path: ROLES_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   { path: EXPORT_SETTINGS_PATH, kind: 'page', access: 'authenticated' },
   {
     path: BACKUP_DOWNLOAD_PATH,

@@ -152,7 +152,9 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
 
   it.each(
     publicRoutes()
-      .filter((route) => route.requiresPendingLogin !== true)
+      .filter(
+        (route) => route.requiresPendingLogin !== true && route.requiresRedemptionToken !== true,
+      )
       .map((route) => probePathFor(route)),
   )('liefert die öffentliche Route %s aus', async (pathname) => {
     const response = await fetch(url(pathname), { redirect: 'manual' });
@@ -176,6 +178,29 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
 
     expect([302, 303, 307]).toContain(response.status);
     expect(response.headers.get('location')).toContain(LOGIN_PATH);
+  });
+
+  /**
+   * Einlöseseiten: `200`, aber ohne Auskunft (M8, FA-MEMB-05).
+   *
+   * Hier ist die `200` richtig und die Umleitung wäre falsch: Wer einen
+   * abgelaufenen Einladungslink öffnet, soll lesen können, dass er nicht mehr
+   * gilt. Was er **nicht** lesen darf, ist irgendetwas über das Unternehmen —
+   * sonst ließe sich mit geratenen Token ausprobieren, wer eingeladen wurde.
+   */
+  it.each(
+    publicRoutes()
+      .filter((route) => route.requiresRedemptionToken === true)
+      .map((route) => probePathFor(route)),
+  )('liefert %s ohne gültigen Token neutral aus', async (pathname) => {
+    const response = await fetch(url(pathname), { redirect: 'manual' });
+
+    expect(response.status).toBe(200);
+
+    const body = await response.text();
+    expect(body).not.toContain(TEST_USER_EMAIL);
+    // Kein Formular: Ohne gültigen Token gibt es nichts einzugeben.
+    expect(body).not.toContain('name="password"');
   });
 
   /**

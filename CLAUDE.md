@@ -414,6 +414,73 @@ Kein Trigger auf INSERT (das erste Konto einer neuen Organisation entstünde
 sonst nie) und keiner auf `Role` DELETE (`ON DELETE RESTRICT` schützt benutzte
 Rollen; eine Rolle, die niemand trägt, nimmt niemandem ein Recht).
 
+## Mitglieder (seit M8)
+
+Ein Konto entsteht **ausschließlich per Einladung** (FA-MEMB-01). Die Anwendung
+versendet dabei keine E-Mail und darf keine (NFA-COMP-05): Der Link erscheint
+genau einmal in der Oberfläche — wie die Wiederherstellungscodes — und wird
+außerhalb weitergereicht. Gespeichert liegt nur sein SHA-256-Hash, der Token
+verlässt die Anwendungsschicht als Rückgabewert und existiert danach nirgends.
+
+Dasselbe gilt für die Passwortzurücksetzung. Und was dort **nicht** geschieht,
+ist der Punkt: Die Rechteverwaltung stellt einen Nachweis aus, sie vergibt kein
+Passwort. Ein Verfahren, in dem sie eines vergibt, hätte immer zwei Wissende, und
+der erste Wechsel danach wäre freiwillig.
+
+Fristen: Einladung **sieben Tage**, Zurücksetzung **24 Stunden**. Die Einladung
+ist die längere, weil sie ausgesprochen wird, bevor jemand da ist; die
+Zurücksetzung läuft, während jemand wartet.
+
+**Unbekannt, abgelaufen, zurückgezogen und schon eingelöst antworten gleich**
+(FA-MEMB-05). Die Unterscheidung wäre eine Auskunft darüber, wer eingeladen
+wurde. Ohne gültigen Token zeigt die Einlöseseite deshalb einen Satz und **kein
+Formular** — weder Adresse noch Unternehmensname.
+
+`src/application/members/redeem.ts` ist die dritte und letzte Stelle, die
+`organizationContextOf()` aufruft. Der Grund ist derselbe wie bei der Anmeldung:
+Wer einen Token vorlegt, ist noch niemand, und die Organisation ist das
+*Ergebnis* der Abfrage. Die beiden Vorgänge liegen in einer eigenen Datei, damit
+die Ausnahme nicht neben Funktionen steht, die einen Kontext verlangen, und deren
+Vorbild wird.
+
+**Kein automatisches Anmelden.** Nach dem Setzen des Passworts geht es zur
+Anmeldung. Ein Link, der eine Sitzung eröffnet, wäre ein Passwortersatz mit
+sieben Tagen Gültigkeit — und läge in einem Postfach.
+
+Der Einladungslink zeigt den `legalName` aus den Firmendaten, nicht
+`Organization.name`. Zwei verschiedene Namen für dasselbe Unternehmen — einer in
+der Einladung, ein anderer nach dem Anmelden — sind ein Zweifel an der falschen
+Stelle.
+
+Zwei Regeln aus der Datenbank, beide durch die Eigenheiten von SQLite bestimmt:
+
+- `Invitation_one_open_per_email` ist ein **partieller** eindeutiger Index und
+  kennt die Frist **nicht** — ein Index-`WHERE` darf kein `CURRENT_TIMESTAMP`
+  nennen. Eine abgelaufene Einladung gilt dort weiter als offen. `inviteMember`
+  zieht deshalb erst zurück und stellt dann aus, was ohnehin die gewünschte
+  Bedeutung ist: Wer erneut einlädt, entwertet den alten Link.
+- Ein Rollenumbau **gewährt erst und entzieht dann**. Trigger feuern zeilenweise,
+  aufgeschobene Bedingungen gibt es nicht: Wandert `organization.administer` von
+  einer Rolle auf eine andere und wird zuerst entzogen, bricht die
+  Aussperrsicherung mitten in einer Transaktion ab, die am Ende in Ordnung
+  gewesen wäre.
+
+**Ausscheiden heißt sperren, nicht löschen.** Der Beleg behält seinen Urheber.
+Wer sperrt, beendet zugleich alle Sitzungen — die Auflösung würde sie ohnehin
+abweisen, aber erst beim nächsten Aufruf. Das eigene Konto sperrt niemand: nicht
+weil es unmöglich wäre, sondern weil es keinen Vorgang gibt, den das abbildet.
+
+Ein Konto, das ein Recht nicht hat, sieht in der Seitenleiste **keinen Weg
+dorthin**. `requirePermission` antwortet mit 404, und ein Menüpunkt, der ins
+Nichts führt, ist schlechter als keiner — jeder Eintrag trägt deshalb den
+Schlüssel, den seine Seite verlangt.
+
+Die Zeilenaktionen der beiden Verwaltungsseiten stehen in einer **sichtbaren**
+Spalte, nicht in der Aktionsspalte von `DataTable`: Deren Aktionen liegen unter
+`opacity-0` bis Hover oder Fokus (FA-UI-19). Für die Rechnungsliste ist das
+richtig, weil dort jede Zeilenaktion auch auf der Belegseite erreichbar ist. Hier
+gibt es keine zweite Stelle.
+
 ## Durchsetzung (seit M8)
 
 `can()` entscheidet, was die Oberfläche **zeigt**. `Authorized<K>` in
@@ -585,6 +652,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M6.1 | Ausführung: Satzmaß, Seitenköpfe, einheitliche Listen | umgesetzt |
 | M6.2 | Anmeldung in zwei Schritten, zweiter Faktor nur wo nötig | umgesetzt |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | umgesetzt |
+| M8 | Mandanten, Rollen, Mitglieder, zentrale Verwaltung | in Arbeit |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

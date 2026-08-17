@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="146" height="32" viewBox="0 0 146 32">
+  <rect width="146" height="32" fill="#2A3EA0"></rect>
+  <path fill="#FFFFFF" fill-rule="evenodd" d="M0 0H24V32H0Z M14.6 0H19.2L9.4 32H4.8Z"></path>
+  <text x="36" y="24.6" fill="#FFFFFF" font-family="Fira Sans" font-weight="600" font-size="30" letter-spacing="-0.45">faktura</text>
+</svg>

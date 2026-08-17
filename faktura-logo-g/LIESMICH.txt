@@ -1,0 +1,32 @@
+FAKTURA — Logo-Familie, Richtung G "Der Schrägstrich im Feld"
+
+GEOMETRIE
+Bildmarke  24 × 32 Einheiten, ein Pfad, fill-rule="evenodd".
+Favicon    32 × 32, randabfallend, Schrägstrich zentriert.
+Sperrung   Abstand Marke → Wortmarke = 12 E (0,5 × Markenbreite).
+Schutzraum 6 E (= 1/4 Markenbreite) auf allen Seiten, frei von Linien und Text.
+
+FARBFASSUNGEN
+Primär      #2A3EA0 auf #F5F6F3
+Dokument    #1C1F1C auf Weiß
+Negativ     Weiß auf #2A3EA0
+Einfarbig   Schwarz auf Weiß (Fax, Kopie, Beleg)
+
+MINDESTGRÖSSEN
+Bildmarke solo  16 px Höhe
+Sperrung        20 px Höhe / 32 mm Breite; geprüft bis 40 mm Rechnungskopf
+Nie unter 16 px: die Aussparung liegt dann unter 1,5 px.
+
+WORTMARKE
+Fira Sans 600, Laufweite −0,015 em, Kleinbuchstaben.
+Die Sperrungs-SVGs enthalten die Wortmarke als <text>-Element, damit sie
+editierbar bleibt. Für Fremdsysteme (Druckerei, Fremdserver, PDF-Einbettung)
+die Schrift im Vektorprogramm in Pfade umwandeln — sonst fällt sie auf eine
+Systemschrift zurück. Fira Sans: SIL Open Font License.
+
+VERWENDUNG
+Sidebar / UI    bildmarke, 20 px, #2A3EA0 bzw. Weiß
+Rechnungskopf   sperrung-dokument oder -schwarz
+Browser-Tab     favicon-negativ.svg + PNG 32/128/256
+Nicht: Verläufe, Schatten, Transparenz, abgerundete Kacheln, Rotation,
+Konturvarianten, Umfärben außerhalb der vier Fassungen.

@@ -390,7 +390,7 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | NFA-SEC-01 | Ohne Session liefert jede Route 401/403, Test über alle Routen | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — läuft jede Route des Verzeichnisses ohne Sitzung gegen den gebauten Server |
-| NFA-SEC-02 | Keine öffentliche Registrierung, Erstuser per CLI | MUSS | R | M1 | abgenommen | `scripts/create-user.ts`; keine Registrierungsroute in `src/routes.ts`; Container: `node dist/create-user.mjs` |
+| NFA-SEC-02 | Keine öffentliche Registrierung; Konten entstehen per Einladung | MUSS | T | M8 | umgesetzt | Keine Registrierungsroute in `src/routes.ts`. Seit M8 entsteht ein Konto ausschließlich über eine Einladung der Rechteverwaltung (`src/application/members/invitation-service.ts`); `scripts/create-user.ts` bleibt der Notfallweg von der Kommandozeile. Nachweis: `tests/integration/membership.test.ts` (29) |
 | NFA-SEC-03 | Argon2id ≥64 MB, ≥3 Iterationen | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts` — prüft `m=65536,t=3,p=1` im erzeugten Hash |
 | NFA-SEC-04 | Passwort ≥12 Zeichen, Abgleich Kompromittierungsliste | MUSS | T | M1 | abgenommen | `tests/unit/domain/auth-policies.test.ts`, `tests/unit/infrastructure/security.test.ts`; Liste in `resources/compromised-passwords.txt` (100.000 Einträge, offline) |
 | NFA-SEC-05 | TOTP-2FA mit einmalig anzeigbaren Recovery-Codes | MUSS | M | M1 | umgesetzt | Manuell: TOTP unter /settings/security eingerichtet, QR-Code gescannt, Codes einmalig angezeigt · `tests/unit/domain/auth-policies.test.ts`; seit M6.2 zweistufig: `tests/integration/two-step-login.test.ts`, `tests/integration/browser-two-step-login.test.ts` |

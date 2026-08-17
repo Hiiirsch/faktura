@@ -34,7 +34,7 @@
  */
 import { notFound, redirect } from 'next/navigation';
 
-import { can, type PermissionKey, type PolicyAction, type PolicySubject } from '@/domain/policy/can';
+import { holds, type PermissionKey } from '@/domain/policy/can';
 import { logger } from '@/infrastructure/logging/logger';
 import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 import { LOGIN_PATH } from '@/routes';
@@ -96,14 +96,6 @@ export class ForbiddenError extends Error {
   }
 }
 
-function splitKey(key: PermissionKey): { subject: PolicySubject; action: PolicyAction } {
-  const separator = key.indexOf('.');
-  return {
-    subject: key.slice(0, separator) as PolicySubject,
-    action: key.slice(separator + 1) as PolicyAction,
-  };
-}
-
 /**
  * Prüft die genannten Rechte und liefert den Nachweis.
  *
@@ -115,9 +107,7 @@ export function authorize<K extends PermissionKey>(
   ...keys: readonly K[]
 ): Authorized<K> {
   for (const key of keys) {
-    const { subject, action } = splitKey(key);
-
-    if (!can(session.actor, action, subject)) {
+    if (!holds(session.actor, key)) {
       logger.security('authz.denied', { permission: key, userId: session.userId }, 'warn');
       throw new ForbiddenError(key);
     }
@@ -143,8 +133,7 @@ export function authorizeOptional<K extends PermissionKey>(
   ...keys: readonly K[]
 ): Authorized<K> | null {
   for (const key of keys) {
-    const { subject, action } = splitKey(key);
-    if (!can(session.actor, action, subject)) {
+    if (!holds(session.actor, key)) {
       return null;
     }
   }
@@ -177,9 +166,7 @@ export function authorizeRequest<K extends PermissionKey>(
   ...keys: readonly K[]
 ): Authorized<K> | null {
   for (const key of keys) {
-    const { subject, action } = splitKey(key);
-
-    if (!can(session.actor, action, subject)) {
+    if (!holds(session.actor, key)) {
       logger.security('authz.denied', { permission: key, userId: session.userId }, 'warn');
       return null;
     }

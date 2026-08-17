@@ -40,7 +40,16 @@ export type AuditAction =
   | 'TOTP_DISABLED'
   | 'RECOVERY_CODE_USED'
   | 'RECOVERY_CODES_REGENERATED'
-  | 'USER_CREATED';
+  | 'USER_CREATED'
+  // Mitglieder und Rollen (M8, FA-MEMB-*, FA-ROLE-*)
+  | 'INVITED'
+  | 'INVITATION_REVOKED'
+  | 'INVITATION_ACCEPTED'
+  | 'ROLE_ASSIGNED'
+  | 'PASSWORD_RESET_REQUESTED'
+  | 'PASSWORD_RESET_COMPLETED'
+  | 'DISABLED'
+  | 'ENABLED';
 
 export type AuditEntry = {
   readonly entityType: string;

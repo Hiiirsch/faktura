@@ -169,6 +169,8 @@ export const messages = {
     company: 'Firmendaten',
     numbering: 'Nummernkreis',
     security: 'Sicherheit',
+    members: 'Mitglieder',
+    roles: 'Rollen',
     backup: 'Datenexport',
     settings: 'Einstellungen',
     logout: 'Abmelden',
@@ -179,6 +181,8 @@ export const messages = {
   },
   common: {
     save: 'Speichern',
+    edit: 'Bearbeiten',
+    actions: 'Aktionen',
     cancel: 'Abbrechen',
     close: 'Schließen',
     datePlaceholder: 'TT.MM.JJJJ',
@@ -689,6 +693,175 @@ export const messages = {
     sessionCreated: 'Angemeldet seit',
     sessionRevoke: 'Beenden',
     sessionRevokeAll: 'Alle anderen Sitzungen beenden',
+  },
+  members: {
+    title: 'Mitglieder',
+    heading: 'Mitglieder',
+    intro: 'Konten dieses Unternehmens, ihre Rolle und ihr Zustand.',
+    back: 'Zur Übersicht',
+
+    columnName: 'Name',
+    columnEmail: 'Adresse',
+    columnRole: 'Rolle',
+    columnLastLogin: 'Zuletzt angemeldet',
+    columnState: 'Zustand',
+    nameMissing: 'ohne Namen',
+    neverSignedIn: 'noch nie',
+    stateActive: 'Aktiv',
+    stateDisabled: 'Gesperrt',
+    twoFactorOn: 'mit zweitem Faktor',
+
+    roleChange: 'Rolle ändern',
+    roleChangeSubmit: 'Rolle zuweisen',
+    disable: 'Sperren',
+    enable: 'Entsperren',
+    disableConfirmTitle: 'Konto sperren?',
+    disableConfirm:
+      'Das Konto verliert sofort alle laufenden Sitzungen und kann sich nicht mehr anmelden. Belege und Protokolleinträge bleiben unverändert erhalten.',
+    disabled: 'Das Konto ist gesperrt.',
+    enabled: 'Das Konto ist wieder freigegeben.',
+    roleAssigned: 'Die Rolle wurde zugewiesen.',
+
+    resetPassword: 'Passwort zurücksetzen',
+    resetConfirmTitle: 'Passwortzurücksetzung auslösen?',
+    resetConfirm:
+      'Es entsteht ein Link, der 24 Stunden gilt und genau einmal funktioniert. Das Passwort setzt der Inhaber des Kontos selbst — hier wird keines vergeben.',
+    resetLinkHeading: 'Link zur Passwortzurücksetzung',
+    resetLinkOnceOnly:
+      'Dieser Link wird nur jetzt angezeigt. Er gilt 24 Stunden und funktioniert einmal.',
+
+    inviteHeading: 'Mitglied einladen',
+    inviteIntro:
+      'Die Anwendung versendet keine E-Mail. Der Einladungslink erscheint nach dem Anlegen genau einmal und wird von Hand weitergegeben.',
+    inviteEmail: 'E-Mail-Adresse',
+    inviteRole: 'Rolle',
+    inviteSubmit: 'Einladung anlegen',
+    inviteLinkHeading: 'Einladungslink',
+    inviteLinkOnceOnly:
+      'Dieser Link wird nur jetzt angezeigt. Er gilt sieben Tage und funktioniert einmal.',
+    inviteEmailTaken: 'Zu dieser Adresse gehört bereits ein Konto.',
+    inviteEmailInvalid: 'Bitte eine gültige E-Mail-Adresse angeben.',
+    inviteRoleMissing: 'Bitte eine Rolle wählen.',
+
+    openHeading: 'Offene Einladungen',
+    openEmpty: 'Es sind keine Einladungen offen.',
+    openExpires: 'Gilt noch {days} Tage',
+    openExpiresToday: 'Gilt heute noch',
+    openInvitedBy: 'Eingeladen von',
+    withdraw: 'Zurückziehen',
+    withdrawConfirmTitle: 'Einladung zurückziehen?',
+    withdrawConfirm: 'Der Link funktioniert danach nicht mehr. Eine neue Einladung ist jederzeit möglich.',
+    withdrawn: 'Die Einladung wurde zurückgezogen.',
+
+    errorNOT_FOUND: 'Das Konto wurde nicht gefunden.',
+    errorROLE_NOT_FOUND: 'Die Rolle wurde nicht gefunden.',
+    errorLAST_ADMINISTRATOR:
+      'Das ist das letzte aktive Konto mit Rechteverwaltung. Ohne ein solches Konto ließe sich das Unternehmen nicht mehr verwalten.',
+    errorSELF: 'Das eigene Konto lässt sich nicht sperren.',
+  },
+  roles: {
+    title: 'Rollen',
+    heading: 'Rollen',
+    intro:
+      'Jede Rolle fasst Berechtigungen zusammen. Ein Konto trägt genau eine Rolle.',
+    back: 'Zur Übersicht',
+
+    columnName: 'Rolle',
+    columnPermissions: 'Berechtigungen',
+    columnMembers: 'Konten',
+    permissionCount: '{count} von {total}',
+    memberCount: '{count}',
+    empty: 'Es ist noch keine Rolle angelegt.',
+
+    createHeading: 'Rolle anlegen',
+    editHeading: 'Rolle bearbeiten',
+    name: 'Name',
+    nameHint: 'Zum Beispiel Buchhaltung oder Vertrieb.',
+    description: 'Beschreibung',
+    permissions: 'Berechtigungen',
+    submitCreate: 'Rolle anlegen',
+    submitSave: 'Rolle speichern',
+    delete: 'Löschen',
+    deleteConfirmTitle: 'Rolle löschen?',
+    deleteConfirm: 'Die Rolle verschwindet. Konten, die sie tragen, gibt es dann nicht mehr — deshalb ist das nur bei einer unbenutzten Rolle möglich.',
+    created: 'Die Rolle wurde angelegt.',
+    saved: 'Die Rolle wurde gespeichert.',
+    deleted: 'Die Rolle wurde gelöscht.',
+
+    errorNOT_FOUND: 'Die Rolle wurde nicht gefunden.',
+    errorNAME_TAKEN: 'Eine Rolle mit diesem Namen gibt es bereits.',
+    errorIN_USE:
+      'Diese Rolle tragen noch Konten. Erst umstellen, dann löschen.',
+    errorLAST_ADMINISTRATOR:
+      'Damit verlöre das Unternehmen die letzte Rechteverwaltung. Zuerst ein anderes Konto damit ausstatten.',
+    nameMissing: 'Bitte einen Namen angeben.',
+
+    /** Gegenstände des Berechtigungskatalogs — Reihenfolge wie im Formular. */
+    subject: {
+      invoice: 'Rechnungen',
+      customer: 'Kunden',
+      catalogItem: 'Leistungskatalog',
+      companyProfile: 'Firmendaten',
+      numbering: 'Nummernkreis',
+      security: 'Eigene Sicherheit',
+      template: 'Vorlagen',
+      export: 'Datenexport',
+      organization: 'Verwaltung',
+    },
+    action: {
+      create: 'anlegen',
+      read: 'lesen',
+      update: 'ändern',
+      archive: 'archivieren',
+      delete: 'löschen',
+      duplicate: 'duplizieren',
+      issue: 'festschreiben',
+      cancel: 'stornieren',
+      recordPayment: 'Zahlungen erfassen',
+      run: 'ausführen',
+      administer: 'Mitglieder und Rollen verwalten',
+    },
+    /** Rechte, die jedes Konto ohnehin trägt — im Formular nicht abwählbar. */
+    baseHint: 'Grundrecht, jedes Konto trägt es',
+  },
+  invitation: {
+    title: 'Einladung annehmen',
+    heading: 'Konto einrichten',
+    intro: 'Einladung von {organization} als {role} für {email}.',
+    name: 'Name',
+    nameHint: 'Erscheint in der Mitgliederliste und am Beleg.',
+    password: 'Passwort',
+    passwordRepeat: 'Passwort wiederholen',
+    submit: 'Konto einrichten',
+    done: 'Das Konto ist eingerichtet. Jetzt anmelden.',
+    toLogin: 'Zur Anmeldung',
+    /**
+     * Eine Meldung für unbekannt, abgelaufen, zurückgezogen und schon benutzt
+     * (FA-MEMB-05) — die Unterscheidung wäre eine Auskunft.
+     */
+    invalid:
+      'Dieser Einladungslink gilt nicht. Er kann abgelaufen sein, schon benutzt oder zurückgezogen. Wer eingeladen wurde, bekommt einen neuen.',
+    /** Bestätigung auf der Anmeldeseite, nach der Umleitung dorthin. */
+    accountReady: 'Das Konto ist eingerichtet. Jetzt anmelden.',
+    passwordReady: 'Das Passwort ist gesetzt. Jetzt anmelden.',
+  },
+  passwordReset: {
+    title: 'Passwort setzen',
+    heading: 'Neues Passwort setzen',
+    intro: 'Für {email}. Alle laufenden Sitzungen dieses Kontos enden dabei.',
+    password: 'Neues Passwort',
+    passwordRepeat: 'Passwort wiederholen',
+    submit: 'Passwort setzen',
+    done: 'Das Passwort ist gesetzt. Jetzt anmelden.',
+    invalid:
+      'Dieser Link gilt nicht. Er kann abgelaufen sein oder schon benutzt. Die Rechteverwaltung des Unternehmens legt einen neuen an.',
+  },
+  password: {
+    mismatch: 'Die beiden Eingaben stimmen nicht überein.',
+    tooShort: 'Das Passwort muss mindestens {min} Zeichen haben.',
+    tooLong: 'Das Passwort ist zu lang.',
+    compromised:
+      'Dieses Passwort steht in einer Liste bekannter Datenlecks. Bitte ein anderes wählen.',
   },
   quantity: {
     empty: 'Bitte eine Menge angeben.',

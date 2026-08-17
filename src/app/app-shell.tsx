@@ -3,11 +3,13 @@ import {
   DatabaseBackup,
   FileText,
   Hash,
+  KeyRound,
   LayoutDashboard,
   LayoutTemplate,
   type LucideIcon,
   Package,
   ShieldCheck,
+  UserCog,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -16,11 +18,14 @@ import type { ReactNode } from 'react';
 import { authorize } from '@/application/auth/authorize';
 import type { ActiveSession } from '@/application/auth/session-service';
 import { getCompanyProfile } from '@/application/company/company-profile';
+import { holds, type PermissionKey } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
   EXPORT_SETTINGS_PATH,
   CATALOG_PATH,
+  MEMBERS_SETTINGS_PATH,
+  ROLES_SETTINGS_PATH,
   COMPANY_SETTINGS_PATH,
   CUSTOMERS_PATH,
   DASHBOARD_PATH,
@@ -55,20 +60,85 @@ import { logoutAction } from './auth-actions';
  * einbindet — Server Actions gehören nicht in die reine Anzeigeschicht.
  */
 
-const NAVIGATION = [
-  { href: DASHBOARD_PATH, label: messages.nav.dashboard, icon: LayoutDashboard },
-  { href: INVOICES_PATH, label: messages.nav.invoices, icon: FileText },
-  { href: CUSTOMERS_PATH, label: messages.nav.customers, icon: Users },
-  { href: CATALOG_PATH, label: messages.nav.catalog, icon: Package },
-] as const;
+/**
+ * Ein Eintrag der Navigation samt dem Recht, das ihn sichtbar macht (M8).
+ *
+ * Ohne diese Angabe stünde in der Seitenleiste ein Weg, der mit 404 endet:
+ * `requirePermission` antwortet auf einer Seite ohne Recht mit „nicht
+ * gefunden", und ein Menüpunkt, der ins Nichts führt, ist schlechter als
+ * keiner. Die Zuordnung ist deshalb dieselbe wie in der Seite selbst — der
+ * schwächste Schlüssel, den die Seite verlangt.
+ */
+type NavItem = {
+  readonly href: string;
+  readonly label: string;
+  readonly icon: LucideIcon;
+  /** `undefined` heißt: für jedes angemeldete Konto sichtbar. */
+  readonly permission?: PermissionKey;
+};
 
-const SETTINGS = [
-  { href: COMPANY_SETTINGS_PATH, label: messages.nav.company, icon: Building2 },
-  { href: NUMBERING_SETTINGS_PATH, label: messages.nav.numbering, icon: Hash },
-  { href: TEMPLATE_SETTINGS_PATH, label: messages.templates.title, icon: LayoutTemplate },
+const NAVIGATION: readonly NavItem[] = [
+  { href: DASHBOARD_PATH, label: messages.nav.dashboard, icon: LayoutDashboard },
+  { href: INVOICES_PATH, label: messages.nav.invoices, icon: FileText, permission: 'invoice.read' },
+  {
+    href: CUSTOMERS_PATH,
+    label: messages.nav.customers,
+    icon: Users,
+    permission: 'customer.read',
+  },
+  { href: CATALOG_PATH, label: messages.nav.catalog, icon: Package, permission: 'catalogItem.read' },
+];
+
+const SETTINGS: readonly NavItem[] = [
+  {
+    href: COMPANY_SETTINGS_PATH,
+    label: messages.nav.company,
+    icon: Building2,
+    // Die Seite ist das Bearbeitungsformular; `companyProfile.read` allein ist
+    // ein Grundrecht und würde sie jedem zeigen.
+    permission: 'companyProfile.update',
+  },
+  {
+    href: NUMBERING_SETTINGS_PATH,
+    label: messages.nav.numbering,
+    icon: Hash,
+    permission: 'numbering.read',
+  },
+  {
+    href: TEMPLATE_SETTINGS_PATH,
+    label: messages.templates.title,
+    icon: LayoutTemplate,
+    permission: 'template.read',
+  },
+  {
+    href: MEMBERS_SETTINGS_PATH,
+    label: messages.nav.members,
+    icon: UserCog,
+    permission: 'organization.administer',
+  },
+  {
+    href: ROLES_SETTINGS_PATH,
+    label: messages.nav.roles,
+    icon: KeyRound,
+    permission: 'organization.administer',
+  },
+  // Die eigene Sicherheit ist keine Rechtefrage — `security.read` ist ein
+  // Grundrecht, und der Eintrag steht für jedes Konto.
   { href: SECURITY_SETTINGS_PATH, label: messages.nav.security, icon: ShieldCheck },
-  { href: EXPORT_SETTINGS_PATH, label: messages.nav.backup, icon: DatabaseBackup },
-] as const;
+  {
+    href: EXPORT_SETTINGS_PATH,
+    label: messages.nav.backup,
+    icon: DatabaseBackup,
+    permission: 'export.run',
+  },
+];
+
+/** Die Einträge, die dieses Konto benutzen kann. */
+function visibleTo(items: readonly NavItem[], session: ActiveSession): readonly NavItem[] {
+  return items.filter(
+    (item) => item.permission === undefined || holds(session.actor, item.permission),
+  );
+}
 
 function NavLink({
   href,
@@ -141,15 +211,27 @@ export async function AppShell({
         </div>
 
         <nav aria-label={messages.nav.label} className="flex flex-1 flex-col gap-1 py-4">
-          {NAVIGATION.map((item) => (
-            <NavLink key={item.href} {...item} currentPath={currentPath} />
+          {visibleTo(NAVIGATION, session).map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              currentPath={currentPath}
+            />
           ))}
 
           <span className="px-3 pt-6 pb-2 text-label font-semibold uppercase text-ink-faint">
             {messages.nav.settings}
           </span>
-          {SETTINGS.map((item) => (
-            <NavLink key={item.href} {...item} currentPath={currentPath} />
+          {visibleTo(SETTINGS, session).map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              currentPath={currentPath}
+            />
           ))}
         </nav>
 

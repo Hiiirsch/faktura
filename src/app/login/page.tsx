@@ -6,7 +6,7 @@ import { getOptionalSession } from '@/application/auth/require-session';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { DASHBOARD_PATH } from '@/routes';
-import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 
 import { loginAction, type LoginErrorCode } from './actions';
 
@@ -44,6 +44,22 @@ export default async function LoginPage({
   const rawMinutes = typeof params.minutes === 'string' ? params.minutes : undefined;
   const error = errorMessage(rawError as LoginErrorCode | undefined, rawMinutes);
 
+  /*
+   * Bestätigung nach einem Einlösevorgang (M8).
+   *
+   * Sie steht hier und nicht auf der Einlöseseite, weil die Anmeldung das Ziel
+   * ist: Wer sein Konto eingerichtet hat, soll den Satz genau dort lesen, wo er
+   * als Nächstes etwas tut. Und sie steht in der Adresse, nicht in einem
+   * Zustand — sie gilt einer Handlung, nicht einem Zustand, und soll ein
+   * Neuladen nicht überleben.
+   */
+  const done =
+    params.eingerichtet === '1'
+      ? messages.invitation.accountReady
+      : params.passwort === '1'
+        ? messages.invitation.passwordReady
+        : null;
+
   // Die Middleware reicht den CSRF-Token über eine Kopfzeile durch, weil das
   // zugehörige Cookie beim allerersten Aufruf noch nicht in der Anfrage steht.
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
@@ -54,6 +70,8 @@ export default async function LoginPage({
         <h1 className="text-title font-semibold text-ink">{messages.app.name}</h1>
         <p className="text-ink-muted">{messages.login.intro}</p>
       </header>
+
+      {done === null ? null : <Alert tone="success">{done}</Alert>}
 
       {error !== null ? (
         <p

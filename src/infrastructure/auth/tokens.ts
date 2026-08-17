@@ -24,6 +24,23 @@ export function generateSessionToken(): string {
   return randomBytes(SESSION_TOKEN_BYTES).toString('base64url');
 }
 
+/**
+ * Ein Einlösetoken für Einladung und Passwortzurücksetzung (M8).
+ *
+ * Dieselbe Länge und dasselbe Alphabet wie ein Sitzungstoken — es steht nur an
+ * einer anderen Stelle: nicht in einem Cookie, sondern **in der Adresse**. Der
+ * Link wird außerhalb der Anwendung weitergereicht, also muss er sich
+ * fehlerfrei kopieren lassen; `base64url` enthält keine Zeichen, die eine URL
+ * kodieren müsste.
+ *
+ * Eine eigene Funktion und nicht `generateSessionToken()`, obwohl der Rumpf
+ * derselbe ist: Der Name sagt, was das Geheimnis ist. Wer die Länge der
+ * Sitzungstoken ändert, soll nicht ungewollt die der Einladungen mitändern.
+ */
+export function generateRedemptionToken(): string {
+  return randomBytes(SESSION_TOKEN_BYTES).toString('base64url');
+}
+
 export function hashToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex');
 }

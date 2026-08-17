@@ -88,6 +88,12 @@ const MAY_CALL_ORGANIZATION_CONTEXT_OF: readonly string[] = [
   'src/infrastructure/repositories/organization-context.ts',
   'src/application/auth/session-service.ts',
   'src/application/auth/login.ts',
+  // Einlösen einer Einladung und einer Passwortzurücksetzung (M8). Derselbe
+  // Grund wie bei der Anmeldung: Wer den Token vorlegt, ist noch niemand — die
+  // Organisation ist das *Ergebnis* der Abfrage. Die beiden Vorgänge stehen
+  // deshalb in einer eigenen Datei, damit die Ausnahme nicht neben Funktionen
+  // liegt, die einen Kontext verlangen, und deren Vorbild wird.
+  'src/application/members/redeem.ts',
   // `defaultOrganizationContext()` — der Notfallweg `npm run user:create` hat
   // keine Sitzung. Die Herkunft ist trotzdem belegt, nur anders: „die eine
   // Organisation, die es gibt". Erreichbar ist die Funktion nur von der
@@ -219,9 +225,19 @@ describe('FA-ROLE-03 Jede Server Action prüft, bevor sie schreibt', () => {
      *   Rechteänderung jemanden in einer Sitzung sitzen, die er nicht beenden
      *   kann. `logoutAction` benutzt den Mandantenkontext nur für den
      *   Protokolleintrag.
+     * - Die beiden **Einlösewege** (Einladung, Passwortzurücksetzung) liegen
+     *   ebenfalls vor der Sitzung. Ihr Nachweis ist der Token in der Adresse,
+     *   und ein Recht zu verlangen wäre hier unmöglich: Das Konto entsteht erst
+     *   dabei, oder sein Inhaber kommt gerade nicht hinein.
      */
+    const withoutSession = [
+      'src/app/auth-actions.ts',
+      `src/app/invitations/[token]${path.sep}actions.ts`,
+      `src/app/password-reset/[token]${path.sep}actions.ts`,
+    ];
+
     const relevant = files.filter(
-      (file) => !file.includes(`login${path.sep}`) && file !== 'src/app/auth-actions.ts',
+      (file) => !file.includes(`login${path.sep}`) && !withoutSession.includes(file),
     );
     expect(relevant.length).toBeGreaterThanOrEqual(6);
 

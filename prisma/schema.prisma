@@ -48,6 +48,7 @@ model Organization {
   invoiceLines    InvoiceLine[]
   payments        Payment[]
   auditEntries    AuditLog[]
+  invitations     Invitation[]
 }
 
 // ─── Stammdaten ─────────────────────────────────────────────────────────────
@@ -444,9 +445,14 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  sessions      Session[]
-  recoveryCodes RecoveryCode[]
-  pendingLogins PendingLogin[]
+  sessions        Session[]
+  recoveryCodes   RecoveryCode[]
+  pendingLogins   PendingLogin[]
+  passwordResets  PasswordReset[]
+  /// Von diesem Konto ausgesprochene Einladungen. `onDelete: SetNull` an der
+  /// Gegenseite: Ein gesperrtes Konto wird nie gelöscht, aber die Einladung
+  /// überdauert ohnehin, wer sie ausgesprochen hat.
+  sentInvitations Invitation[]    @relation("InvitationInvitedBy")
 
   @@index([organizationId])
   @@index([roleId])
@@ -508,6 +514,7 @@ model Role {
 
   permissions RolePermission[]
   users       User[]
+  invitations Invitation[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -651,4 +658,67 @@ model AuditLog {
 
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, createdAt])
+}
+
+/// Eine Einladung in ein Unternehmen (M8, FA-MEMB-01..03, -05, -07).
+///
+/// **Nur der Hash des Tokens** liegt hier, wie beim Sitzungstoken und beim
+/// Nachweis des zweiten Anmeldeschritts (NFA-SEC-06). Der Link erscheint genau
+/// einmal in der Oberfläche und wird außerhalb der Anwendung weitergereicht —
+/// die Anwendung versendet keine E-Mail und darf keine (NFA-COMP-05).
+///
+/// **Kein Passwort und kein Passworthash.** Der Eingeladene setzt sein Passwort
+/// selbst; kein anderes Konto kennt es je. Ein Feld dafür wäre die Einladung
+/// dazu, es doch zu vergeben.
+model Invitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Die Adresse, für die die Einladung gilt. Global eindeutig ist am Ende
+  /// `User.email`; hier hält ein partieller Index fest, dass es je Adresse nur
+  /// **eine offene** Einladung gibt (FA-MEMB-07).
+  email          String
+  /// Die Rolle, die das Konto beim Annehmen erhält. `Restrict`, weil eine Rolle
+  /// mit offener Einladung nicht verschwinden darf — sonst entstünde beim
+  /// Annehmen ein Konto ohne Rolle.
+  roleId         String
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  tokenHash      String       @unique
+  invitedById    String?
+  invitedBy      User?        @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  expiresAt      DateTime
+  /// Gesetzt beim Annehmen. Eine angenommene Einladung ist verbraucht, nicht
+  /// gelöscht: Das Protokoll soll den Weg eines Kontos noch zeigen können.
+  acceptedAt     DateTime?
+  /// Zurückgezogen. Für den Aufrufer der Einlöseseite **ununterscheidbar** von
+  /// abgelaufen und von unbekannt (FA-MEMB-05).
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([roleId])
+  @@index([email])
+  @@index([expiresAt])
+}
+
+/// Ein einmalig einlösbarer Nachweis zum Setzen eines neuen Passworts
+/// (M8, FA-MEMB-04).
+///
+/// Ausgelöst wird er von der Rechteverwaltung des Unternehmens, nicht vom
+/// Betroffenen: Es gibt keinen E-Mail-Versand, also auch keinen Weg, einen Link
+/// an eine unbestätigte Adresse zu schicken. Wer ihn auslöst, gibt ihn weiter.
+///
+/// Dass er **kein** neues Passwort setzt, sondern nur dazu berechtigt, ist der
+/// Punkt: Die Rechteverwaltung kennt das Passwort eines Mitglieds nie.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }

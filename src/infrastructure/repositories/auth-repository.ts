@@ -12,11 +12,11 @@
  * Wiederherstellungscodes hängen am Konto, nicht an der Organisation; sie
  * tragen die Spalte deshalb nicht.
  */
-import type { PendingLogin, Prisma, RecoveryCode, Session, User } from '@prisma/client';
+import type { PasswordReset, PendingLogin, Prisma, RecoveryCode, Session, User } from '@prisma/client';
 
 import { clientFor, type TransactionHandle } from './client';
 
-export type { PendingLogin, RecoveryCode, Session, User };
+export type { PasswordReset, PendingLogin, RecoveryCode, Session, User };
 
 /**
  * Die Sitzung mit allem, was die Auflösung braucht (M8).
@@ -70,12 +70,36 @@ export async function findUserByEmail(
   });
 }
 
-export async function findUserById(id: string): Promise<User | null> {
-  return clientFor(undefined).user.findUnique({ where: { id } });
+/**
+ * Das Konto samt Sperrzustand seines Unternehmens.
+ *
+ * Dieselbe Projektion wie `findUserByEmail`, aus demselben Grund: Wo ein Konto
+ * geladen wird, um etwas damit zu tun, gehören die beiden Abweisungsgründe
+ * (`disabledAt`, `Organization.suspendedAt`) in dieselbe Abfrage. Eine zweite
+ * ließe ein Fenster dazwischen — und ein Aufrufer, der sie vergisst, hätte kein
+ * Fenster, sondern ein Loch.
+ */
+export async function findUserById(id: string): Promise<UserWithOrganizationState | null> {
+  return clientFor(undefined).user.findUnique({
+    where: { id },
+    include: { organization: { select: { suspendedAt: true } } },
+  });
 }
 
-export async function createUser(data: Prisma.UserUncheckedCreateInput): Promise<User> {
-  return clientFor(undefined).user.create({ data });
+/**
+ * Legt ein Konto an.
+ *
+ * Der Handle ist nicht schmückend: Beim Annehmen einer Einladung entsteht das
+ * Konto **innerhalb** derselben Transaktion, die die Einladung verbraucht — und
+ * SQLite hat genau einen Schreiber. Ohne den Handle liefe die Anlage auf der
+ * Verbindung außerhalb der Transaktion und wartete auf eine Sperre, die die
+ * Transaktion hält, bis der Socket-Timeout zuschlägt.
+ */
+export async function createUser(
+  data: Prisma.UserUncheckedCreateInput,
+  handle?: TransactionHandle,
+): Promise<User> {
+  return clientFor(handle).user.create({ data });
 }
 
 export async function updateUser(
@@ -118,8 +142,9 @@ export async function deleteSession(id: string): Promise<void> {
 export async function deleteSessionsForUser(
   userId: string,
   exceptSessionId?: string,
+  handle?: TransactionHandle,
 ): Promise<number> {
-  const result = await clientFor(undefined).session.deleteMany({
+  const result = await clientFor(handle).session.deleteMany({
     where: {
       userId,
       ...(exceptSessionId === undefined ? {} : { id: { not: exceptSessionId } }),
@@ -219,4 +244,50 @@ export async function deleteRecoveryCodes(
   handle?: TransactionHandle,
 ): Promise<void> {
   await clientFor(handle).recoveryCode.deleteMany({ where: { userId } });
+}
+
+// ─── Passwortzurücksetzungen (M8, FA-MEMB-04) ───────────────────────────────
+//
+// Hier und nicht in `member-repository.ts`, obwohl die Rechteverwaltung sie
+// auslöst: Ein Zurücksetzungsnachweis ist dasselbe wie ein `PendingLogin` und
+// ein Wiederherstellungscode — ein einmalig einlösbares Geheimnis am Konto, das
+// als Hash liegt und über den Token gefunden wird. Wer ihn einlöst, hat keine
+// Sitzung und keine Organisation; die Zugehörigkeit ist das Ergebnis.
+//
+// Die **Berechtigung**, ihn auszustellen, prüft die Anwendungsschicht: Sie
+// bestätigt über `findMember(context, id)`, dass das Konto zum eigenen
+// Unternehmen gehört, und stellt ihn erst danach aus.
+
+export async function createPasswordReset(
+  data: { readonly userId: string; readonly tokenHash: string; readonly expiresAt: Date },
+  handle?: TransactionHandle,
+): Promise<PasswordReset> {
+  return clientFor(handle).passwordReset.create({ data });
+}
+
+export async function findPasswordResetByHash(tokenHash: string): Promise<PasswordReset | null> {
+  return clientFor(undefined).passwordReset.findUnique({ where: { tokenHash } });
+}
+
+export async function markPasswordResetUsed(
+  id: string,
+  usedAt: Date,
+  handle?: TransactionHandle,
+): Promise<void> {
+  await clientFor(handle).passwordReset.update({ where: { id }, data: { usedAt } });
+}
+
+/**
+ * Verwirft die noch nicht eingelösten Nachweise eines Kontos.
+ *
+ * Aufgerufen vor jedem Ausstellen und nach jedem Einlösen — dieselbe Regel wie
+ * beim zweiten Anmeldeschritt: Ein neuer Nachweis entwertet ältere. Zwei
+ * gleichzeitig gültige Links wären zwei Wege zu einem Passwort, und der
+ * ältere läge länger irgendwo herum.
+ */
+export async function deleteUnusedPasswordResets(
+  userId: string,
+  handle?: TransactionHandle,
+): Promise<void> {
+  await clientFor(handle).passwordReset.deleteMany({ where: { userId, usedAt: null } });
 }

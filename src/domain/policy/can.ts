@@ -151,5 +151,32 @@ export function can(actor: Actor, action: PolicyAction, subject: PolicySubject):
     return false;
   }
 
-  return actor.permissions.has(`${subject}.${action}` as PermissionKey);
+  return holds(actor, `${subject}.${action}` as PermissionKey);
+}
+
+/**
+ * Dieselbe Frage, gestellt mit dem Schlüssel statt mit dem Paar.
+ *
+ * `can()` ist die Form für Aufrufstellen, die über eine Handlung an einem
+ * Gegenstand sprechen — die Oberfläche tut das. Wer dagegen einen Schlüssel in
+ * der Hand hat (die Durchsetzung, die Navigation, das Rollenformular), soll ihn
+ * nicht erst in zwei Teile zerlegen müssen, um ihn wieder zusammenzusetzen.
+ *
+ * Die Prüfung „passt die Handlung zum Gegenstand" entfällt hier, weil sie im Typ
+ * steckt: `PermissionKey` kennt nur die Kombinationen aus `PERMITTED`.
+ */
+export function holds(actor: Actor, key: PermissionKey): boolean {
+  return actor.permissions.has(key);
+}
+
+/** Zerlegt einen Schlüssel in seine beiden Teile. */
+export function splitPermissionKey(key: PermissionKey): {
+  readonly subject: PolicySubject;
+  readonly action: PolicyAction;
+} {
+  const separator = key.indexOf('.');
+  return {
+    subject: key.slice(0, separator) as PolicySubject,
+    action: key.slice(separator + 1) as PolicyAction,
+  };
 }
