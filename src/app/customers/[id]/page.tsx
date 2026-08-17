@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { formatPlainDateDe } from '@/domain/format/de';
 
-import { requireSession } from '@/application/auth/require-session';
+
+import { authorizeOptional, requirePermission } from '@/application/auth/authorize';
 import { getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { getCustomer } from '@/application/customers/customer-service';
 import {
@@ -39,7 +40,7 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('customer.read', 'companyProfile.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const { id } = await params;
@@ -48,9 +49,18 @@ export default async function CustomerDetailPage({
     notFound();
   }
 
+  /*
+   * Die Belege des Kunden nur mit `invoice.read` (M8).
+   *
+   * Ein Konto der Stammdatenpflege sieht die Kundenseite, aber keine Belege —
+   * nicht: keine Kundenseite. Deshalb `authorizeOptional` und ein leerer
+   * Abschnitt statt einer verweigerten Seite.
+   */
+  const readInvoices = authorizeOptional(session, 'invoice.read');
+
   const [company, invoices] = await Promise.all([
     getCompanyProfileOrEmpty(session.organization),
-    listInvoicesForCustomer(session.organization, id),
+    readInvoices === null ? [] : listInvoicesForCustomer(readInvoices, id),
   ]);
 
   // Vorschlag für neue Rechnungen an diesen Kunden (FA-STAMM-03).

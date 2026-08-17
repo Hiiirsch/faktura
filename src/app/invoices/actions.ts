@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import { cancelInvoice } from '@/application/invoices/cancel-invoice';
 import { issueInvoice } from '@/application/invoices/issue-invoice';
@@ -273,9 +274,17 @@ export async function saveDraftAction(
   const context = await readRequestContext();
   const existingId = readText(formData, 'invoiceId').trim();
 
+  /*
+   * **Je Zweig ein eigener Nachweis** (M8).
+   *
+   * Dieselbe Aktion legt an oder speichert — und das sind zwei Rechte. Beide
+   * vorab zu verlangen hieße, dass niemand einen fremden Entwurf ergänzen kann,
+   * ohne auch neue Belege anlegen zu dürfen. Geprüft wird deshalb genau das
+   * Recht, das dieser Aufruf ausübt.
+   */
   if (existingId.length === 0) {
     const created = await createDraftInvoice(
-      session.organization,
+      authorize(session, 'invoice.create'),
       parsed.data,
       session.userId,
       context.ipAddress,
@@ -285,7 +294,7 @@ export async function saveDraftAction(
   }
 
   const result = await updateDraftInvoice(
-    session.organization,
+    authorize(session, 'invoice.update'),
     existingId,
     parsed.data,
     session.userId,
@@ -318,6 +327,7 @@ export async function issueInvoiceAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.update', 'invoice.issue');
   const context = await readRequestContext();
 
   // Vor dem Festschreiben wird der aktuelle Formularstand gespeichert — sonst
@@ -332,7 +342,7 @@ export async function issueInvoiceAction(
   }
 
   const saved = await updateDraftInvoice(
-    session.organization,
+    authorized,
     invoiceId,
     parsed.data,
     session.userId,
@@ -343,7 +353,7 @@ export async function issueInvoiceAction(
   }
 
   const result = await issueInvoice(
-    session.organization,
+    authorized,
     invoiceId,
     session.userId,
     context.ipAddress,
@@ -390,6 +400,7 @@ const idSchema = z.string().trim().min(1).max(64);
 export async function deleteDraftAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.delete');
   const context = await readRequestContext();
 
   const id = idSchema.safeParse(formData.get('invoiceId'));
@@ -398,7 +409,7 @@ export async function deleteDraftAction(formData: FormData): Promise<void> {
   }
 
   const result = await deleteDraftInvoice(
-    session.organization,
+    authorized,
     id.data,
     session.userId,
     context.ipAddress,
@@ -413,6 +424,7 @@ export async function deleteDraftAction(formData: FormData): Promise<void> {
 export async function duplicateInvoiceAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.duplicate');
   const context = await readRequestContext();
 
   const id = idSchema.safeParse(formData.get('invoiceId'));
@@ -421,7 +433,7 @@ export async function duplicateInvoiceAction(formData: FormData): Promise<void> 
   }
 
   const result = await duplicateInvoice(
-    session.organization,
+    authorized,
     id.data,
     session.userId,
     context.ipAddress,
@@ -436,6 +448,7 @@ export async function duplicateInvoiceAction(formData: FormData): Promise<void> 
 export async function cancelInvoiceAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.cancel');
   const context = await readRequestContext();
 
   const id = idSchema.safeParse(formData.get('invoiceId'));
@@ -445,7 +458,7 @@ export async function cancelInvoiceAction(formData: FormData): Promise<void> {
 
   const reason = readText(formData, 'reason').trim();
   const result = await cancelInvoice(
-    session.organization,
+    authorized,
     id.data,
     reason.length === 0 ? null : reason,
     session.userId,
@@ -471,6 +484,7 @@ const paymentSchema = z.object({
 export async function addPaymentAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.recordPayment');
 
   const parsed = paymentSchema.safeParse({
     invoiceId: formData.get('invoiceId'),
@@ -491,7 +505,7 @@ export async function addPaymentAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await addPayment(session.organization, parsed.data.invoiceId, {
+  await addPayment(authorized, parsed.data.invoiceId, {
     amountCents: amount.value,
     paidAt: paidAt.value,
     method: parsed.data.method,
@@ -505,6 +519,7 @@ export async function addPaymentAction(formData: FormData): Promise<void> {
 export async function markPaidAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.recordPayment');
 
   const id = idSchema.safeParse(formData.get('invoiceId'));
   const paidAt = parsePlainDate(readText(formData, 'paidAt'));
@@ -514,7 +529,7 @@ export async function markPaidAction(formData: FormData): Promise<void> {
   }
 
   await markAsFullyPaid(
-    session.organization,
+    authorized,
     id.data,
     paidAt.value,
     readText(formData, 'method').trim() || null,
@@ -527,6 +542,7 @@ export async function markPaidAction(formData: FormData): Promise<void> {
 export async function removePaymentAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.recordPayment');
 
   const paymentId = idSchema.safeParse(formData.get('paymentId'));
   const invoiceId = idSchema.safeParse(formData.get('invoiceId'));
@@ -535,7 +551,7 @@ export async function removePaymentAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await removePayment(session.organization, paymentId.data);
+  await removePayment(authorized, paymentId.data);
 
   revalidatePath(invoicePath(invoiceId.data));
   revalidatePath(INVOICES_PATH);
@@ -596,6 +612,7 @@ export async function quickMarkPaidAction(
 ): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.recordPayment');
 
   const id = idSchema.safeParse(invoiceId);
   if (!id.success) {
@@ -606,7 +623,7 @@ export async function quickMarkPaidAction(
   // der Belegseite. Die Schnellaktion ist für den Regelfall da, nicht für den
   // Nachtrag.
   const result = await markAsFullyPaid(
-    session.organization,
+    authorized,
     id.data,
     todayIn(getAppTimeZone(), new Date()),
     null,
@@ -624,6 +641,7 @@ export async function quickMarkPaidAction(
 export async function quickCancelAction(invoiceId: string, formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.cancel');
   const context = await readRequestContext();
 
   const id = idSchema.safeParse(invoiceId);
@@ -632,7 +650,7 @@ export async function quickCancelAction(invoiceId: string, formData: FormData): 
   }
 
   const result = await cancelInvoice(
-    session.organization,
+    authorized,
     id.data,
     null,
     session.userId,
@@ -654,6 +672,7 @@ export async function quickDuplicateAction(
 ): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.duplicate');
   const context = await readRequestContext();
 
   const id = idSchema.safeParse(invoiceId);
@@ -662,7 +681,7 @@ export async function quickDuplicateAction(
   }
 
   const result = await duplicateInvoice(
-    session.organization,
+    authorized,
     id.data,
     session.userId,
     context.ipAddress,
@@ -687,13 +706,14 @@ export async function quickDuplicateAction(
 export async function bulkMarkPaidAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.recordPayment');
 
   const ids = selectedIds(formData);
   const paidAt = todayIn(getAppTimeZone(), new Date());
   let changed = 0;
 
   for (const id of ids) {
-    const result = await markAsFullyPaid(session.organization, id, paidAt, null);
+    const result = await markAsFullyPaid(authorized, id, paidAt, null);
     if (result.ok) {
       changed += 1;
       revalidatePath(invoicePath(id));
@@ -707,6 +727,7 @@ export async function bulkMarkPaidAction(formData: FormData): Promise<void> {
 export async function bulkDeleteDraftsAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.delete');
   const context = await readRequestContext();
 
   const ids = selectedIds(formData);
@@ -714,7 +735,7 @@ export async function bulkDeleteDraftsAction(formData: FormData): Promise<void> 
 
   for (const id of ids) {
     const result = await deleteDraftInvoice(
-      session.organization,
+      authorized,
       id,
       session.userId,
       context.ipAddress,

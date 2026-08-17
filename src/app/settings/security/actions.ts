@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import { revokeAllSessions, revokeSession } from '@/application/auth/session-service';
 import {
@@ -34,6 +35,7 @@ export async function confirmTotpAction(
 ): Promise<TotpFormState> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'security.update');
 
   const parsed = confirmSchema.safeParse({
     secret: formData.get('secret'),
@@ -46,7 +48,7 @@ export async function confirmTotpAction(
 
   const context = await readRequestContext();
   const result = await confirmTotpSetup(
-    session.organization,
+    authorized,
     session.userId,
     session.email,
     parsed.data.secret,
@@ -68,9 +70,10 @@ export async function regenerateRecoveryCodesAction(
 ): Promise<TotpFormState> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'security.update');
   const context = await readRequestContext();
 
-  const codes = await regenerateRecoveryCodes(session.organization, session.userId, context.ipAddress);
+  const codes = await regenerateRecoveryCodes(authorized, session.userId, context.ipAddress);
 
   revalidatePath(SECURITY_SETTINGS_PATH);
   return { status: 'codes', codes };
@@ -79,15 +82,17 @@ export async function regenerateRecoveryCodesAction(
 export async function disableTotpAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'security.update');
   const context = await readRequestContext();
 
-  await disableTotp(session.organization, session.userId, context.ipAddress);
+  await disableTotp(authorized, session.userId, context.ipAddress);
   revalidatePath(SECURITY_SETTINGS_PATH);
 }
 
 export async function revokeSessionAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'security.update');
 
   const parsed = sessionIdSchema.safeParse(formData.get('sessionId'));
   if (!parsed.success) {
@@ -97,7 +102,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
   const revoked = await revokeSession(session.userId, parsed.data);
   if (revoked) {
     const context = await readRequestContext();
-    await recordAuditEntry(session.organization, {
+    await recordAuditEntry(authorized, {
       entityType: 'Session',
       entityId: parsed.data,
       action: 'SESSION_REVOKED',
@@ -112,11 +117,12 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
 export async function revokeOtherSessionsAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'security.update');
   const context = await readRequestContext();
 
   const count = await revokeAllSessions(session.userId, session.sessionId);
 
-  await recordAuditEntry(session.organization, {
+  await recordAuditEntry(authorized, {
     entityType: 'User',
     entityId: session.userId,
     action: 'SESSIONS_REVOKED_ALL',

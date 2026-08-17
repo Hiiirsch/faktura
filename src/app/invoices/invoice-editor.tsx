@@ -351,6 +351,7 @@ export function InvoiceEditor({
   defaultTaxRatePercent,
   defaultPaymentTerms,
   csrfToken,
+  canIssue,
 }: {
   readonly initial: EditorInitialValues;
   readonly customers: readonly CustomerOption[];
@@ -360,6 +361,14 @@ export function InvoiceEditor({
   /** Zahlungsziel der Firmendaten — gilt, wo kein Kunde eines vorgibt. */
   readonly defaultPaymentTerms: number;
   readonly csrfToken: string;
+  /**
+   * Ob dieses Konto festschreiben darf (M8, `invoice.issue`).
+   *
+   * Ein Wahrheitswert und kein Akteur: Die Rechte eines Kontos gehören nicht ins
+   * Browser-Bündel. Er entscheidet allein über die Sichtbarkeit des Knopfes —
+   * geprüft wird in `issueInvoiceAction`.
+   */
+  readonly canIssue: boolean;
 }): ReactNode {
   const [saveState, saveAction] = useActionState(saveDraftAction, INITIAL_STATE);
   const [issueState, issueAction] = useActionState(issueInvoiceAction, INITIAL_STATE);
@@ -753,7 +762,7 @@ export function InvoiceEditor({
           {messages.invoices.saveDraft}
         </button>
 
-        {initial.invoiceId === null ? null : (
+        {initial.invoiceId === null || !canIssue ? null : (
           /*
             Festschreiben ist unumkehrbar (NFA-QUAL-12) und wird deshalb
             bestätigt — im Dialog der Anwendung, nicht im Fenster des Browsers

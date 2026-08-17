@@ -13,6 +13,7 @@ import {
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { authorize } from '@/application/auth/authorize';
 import type { ActiveSession } from '@/application/auth/session-service';
 import { getCompanyProfile } from '@/application/company/company-profile';
 import { messages } from '@/i18n/de';
@@ -121,7 +122,10 @@ export async function AppShell({
   readonly currentPath: string;
   readonly children: ReactNode;
 }): Promise<ReactNode> {
-  const company = await getCompanyProfile(session.organization);
+  // `companyProfile.read` ist ein Grundrecht (`BASE_PERMISSIONS`) — die Schale
+  // gibt es für jedes angemeldete Konto, und den Namen des eigenen Arbeitgebers
+  // zu kennen ist keine Rechtefrage.
+  const company = await getCompanyProfile(authorize(session, 'companyProfile.read'));
   const organizationName =
     company === null || company.legalName.length === 0
       ? messages.nav.organizationFallback

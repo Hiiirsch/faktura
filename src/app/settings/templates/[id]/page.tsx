@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { listInvoices } from '@/application/invoices/invoice-queries';
 import { getTemplate } from '@/application/templates/template-service';
 import { formatPlainDateDe } from '@/domain/format/de';
@@ -74,7 +74,7 @@ export default async function TemplateEditorPage({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('template.read', 'invoice.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const { id } = await params;

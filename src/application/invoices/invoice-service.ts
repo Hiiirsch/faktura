@@ -25,7 +25,7 @@ import {
   updateInvoice,
   updateLineNet,
 } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type InvoiceLineData = {
   readonly position: number;
@@ -86,7 +86,7 @@ function lineCreateData(lines: readonly InvoiceLineData[], lineNets: readonly nu
 }
 
 export async function createDraftInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.create'>,
   data: DraftInvoiceData,
   actorId: string,
   ipAddress: string | null,
@@ -151,7 +151,7 @@ export type DraftError =
  * die Möglichkeit, eine Position zu übersehen.
  */
 export async function updateDraftInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.update'>,
   invoiceId: string,
   data: DraftInvoiceData,
   actorId: string,
@@ -218,7 +218,7 @@ export async function updateDraftInvoice(
 
 /** Entwürfe dürfen gelöscht werden, festgeschriebene Belege nicht (FA-RECH-11). */
 export async function deleteDraftInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.delete'>,
   invoiceId: string,
   actorId: string,
   ipAddress: string | null,
@@ -252,7 +252,7 @@ export async function deleteDraftInvoice(
  * ist ein frischer Entwurf, kein zweites Exemplar des Originals.
  */
 export async function duplicateInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.duplicate'>,
   invoiceId: string,
   actorId: string,
   ipAddress: string | null,
@@ -334,7 +334,7 @@ export async function duplicateInvoice(
  * würde sie ohnehin abweisen (FA-NUM-08, FA-NUM-09).
  */
 export async function recalculateInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.recordPayment'>,
   invoiceId: string,
 ): Promise<void> {
   const invoice = await findInvoiceWithLinesAndPayments(context, invoiceId);

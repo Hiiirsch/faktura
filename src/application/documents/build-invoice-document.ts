@@ -34,7 +34,7 @@ import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
 import { documentBuyerOf } from '@/application/invoices/invoice-buyer';
 import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
 import { findInvoiceForDocument } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 const DOCUMENT_TYPE_LABELS: Readonly<Record<DocumentType, string>> = {
   INVOICE: 'Rechnung',
@@ -64,7 +64,7 @@ function parseSnapshot<T>(raw: string | null, guard: (value: unknown) => value i
 export type BuildDocumentError = { readonly kind: 'NOT_FOUND' } | { readonly kind: 'NO_COMPANY_PROFILE' };
 
 export async function buildInvoiceDocument(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
 ): Promise<{ ok: true; document: InvoiceDocument } | { ok: false; error: BuildDocumentError }> {
   const [invoice, company] = await Promise.all([

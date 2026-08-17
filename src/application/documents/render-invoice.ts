@@ -30,7 +30,7 @@ import {
 } from '@/infrastructure/repositories/artifact-repository';
 import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
 import { findInvoice } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 import {
   countTemplates,
   createTemplate,
@@ -76,7 +76,7 @@ export type RenderedPdf = {
  * kein Schema. Sie in SQL zu schreiben hieße, HTML und CSS in einer Migration
  * zu pflegen, die sich nie wieder ändern darf.
  */
-export async function ensureDefaultTemplate(context: OrganizationContext): Promise<Template> {
+export async function ensureDefaultTemplate(context: Authorized<'invoice.read'>): Promise<Template> {
   const existing = await findDefaultTemplate(context);
   if (existing !== null) {
     return existing;
@@ -131,7 +131,7 @@ export async function templateSourceOf(template: Template): Promise<TemplateSour
 
 /** Die Vorlage des Belegs: die zugeordnete, sonst die Standardvorlage. */
 async function resolveTemplate(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   templateId: string | null,
 ): Promise<Template | null> {
   if (templateId !== null) {
@@ -162,7 +162,7 @@ export type PreparedDocument = {
 };
 
 async function prepare(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
 ): Promise<Result<PreparedDocument, RenderError>> {
   const invoice = await findInvoice(context, invoiceId);
@@ -208,7 +208,7 @@ async function prepare(
  * Formular statt aus der Datenbank.
  */
 export async function renderWithSources(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
   htmlSource: string,
   cssSource: string,
@@ -247,7 +247,7 @@ export async function renderWithSources(
 
 /** Erzeugt ein PDF, ohne es abzulegen — für Entwürfe und Vorschauen. */
 export async function renderInvoicePdf(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
 ): Promise<Result<RenderedPdf, RenderError>> {
   const prepared = await prepare(context, invoiceId);
@@ -293,7 +293,7 @@ export async function renderInvoicePdf(
  * den Belegstatus in der Anwendungsschicht bleibt.
  */
 export async function renderInvoiceForDownload(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
 ): Promise<Result<RenderedPdf, RenderError>> {
   const invoice = await findInvoice(context, invoiceId);
@@ -315,7 +315,7 @@ export async function renderInvoiceForDownload(
  * Lesefehler statt in eine erneute Erzeugung (FA-PDF-11).
  */
 export async function getOrCreateInvoicePdf(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
 ): Promise<Result<RenderedPdf, RenderError>> {
   const existing = await findArtifact(context, invoiceId, 'pdf');

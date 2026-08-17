@@ -24,7 +24,7 @@
  * der Sicherung, und ein Export mit eingebetteten Binärdaten wäre weder
  * lesbar noch klein.
  */
-import type { OrganizationContext } from '@/application/auth/session-service';
+import type { Authorized } from '@/application/auth/authorize';
 import { logger } from '@/infrastructure/logging/logger';
 import { listAuditEntries } from '@/infrastructure/repositories/audit-repository';
 import { listCatalogItems } from '@/infrastructure/repositories/catalog-repository';
@@ -63,7 +63,7 @@ export function exportFileName(now: Date): string {
 }
 
 export async function exportOrganizationData(
-  context: OrganizationContext,
+  context: Authorized<'export.run'>,
   actorId: string,
   now: Date = new Date(),
 ): Promise<{ readonly fileName: string; readonly json: string }> {

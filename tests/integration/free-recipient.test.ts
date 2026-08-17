@@ -32,6 +32,7 @@ import {
 import { listInvoices, loadInvoiceDetail } from '@/application/invoices/invoice-queries';
 import { type DraftBuyer, EMPTY_BUYER_FIELDS } from '@/domain/invoice/buyer';
 import { defaultPipeline } from '@/infrastructure/rendering/pipeline';
+import { fullyAuthorized } from '@/application/auth/authorize';
 import { organizationContextOf } from '@/infrastructure/repositories/organization-context';
 
 import { customerBuyer, fieldsBuyer, freeBuyer } from '../support/buyer';
@@ -264,7 +265,7 @@ describe('FA-NUM-08 Empfänger nach dem Festschreiben', () => {
 
 describe('Mandantengrenze bei fehlendem Kunden', () => {
   it('weist eine fremde Vorlage auch dann ab, wenn kein Kunde am Beleg hängt', async () => {
-    const second = organizationContextOf('org_zweite');
+    const second = fullyAuthorized(organizationContextOf('org_zweite'));
     await prisma.organization.create({
       data: { id: 'org_zweite', name: 'Zweite' },
     });

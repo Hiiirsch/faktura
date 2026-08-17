@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import {
   createCatalogItem,
@@ -106,13 +107,14 @@ export async function createCatalogItemAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'catalogItem.create');
   const parsed = parseCatalogForm(formData);
   if (!parsed.ok) {
     return parsed.state;
   }
 
   const context = await readRequestContext();
-  await createCatalogItem(session.organization, parsed.data, session.userId, context.ipAddress);
+  await createCatalogItem(authorized, parsed.data, session.userId, context.ipAddress);
 
   revalidatePath(CATALOG_PATH);
   return { status: 'saved' };
@@ -129,6 +131,7 @@ export async function updateCatalogItemAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'catalogItem.update');
 
   const id = z.string().trim().min(1).max(64).safeParse(formData.get('id'));
   if (!id.success) {
@@ -142,7 +145,7 @@ export async function updateCatalogItemAction(
 
   const context = await readRequestContext();
   await updateCatalogItem(
-    session.organization,
+    authorized,
     id.data,
     parsed.data,
     session.userId,
@@ -156,6 +159,7 @@ export async function updateCatalogItemAction(
 export async function setCatalogItemArchivedAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'catalogItem.archive');
 
   const id = z.string().trim().min(1).max(64).safeParse(formData.get('id'));
   if (!id.success) {
@@ -164,7 +168,7 @@ export async function setCatalogItemArchivedAction(formData: FormData): Promise<
 
   const context = await readRequestContext();
   await setCatalogItemArchived(
-    session.organization,
+    authorized,
     id.data,
     formData.get('isArchived') === 'true',
     session.userId,

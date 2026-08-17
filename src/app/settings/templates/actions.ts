@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import {
   createTemplateFrom,
@@ -87,6 +88,7 @@ export async function createTemplateAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'template.create');
   const parsed = templateSchema.safeParse(fields(formData));
 
   if (!parsed.success) {
@@ -95,7 +97,7 @@ export async function createTemplateAction(
 
   const context = await readRequestContext();
   const result = await createTemplateFrom(
-    session.organization,
+    authorized,
     parsed.data,
     session.userId,
     context.ipAddress,
@@ -126,6 +128,7 @@ export async function updateTemplateAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'template.update');
   const id = idSchema.safeParse(formData.get('templateId'));
   const parsed = templateSchema.safeParse(fields(formData));
 
@@ -135,7 +138,7 @@ export async function updateTemplateAction(
 
   const context = await readRequestContext();
   const result = await updateTemplateFrom(
-    session.organization,
+    authorized,
     id.data,
     parsed.data,
     session.userId,
@@ -162,6 +165,7 @@ export async function updateTemplateAction(
 export async function makeDefaultAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'template.update');
 
   const id = idSchema.safeParse(formData.get('templateId'));
   if (!id.success) {
@@ -169,7 +173,7 @@ export async function makeDefaultAction(formData: FormData): Promise<void> {
   }
 
   const context = await readRequestContext();
-  await makeDefault(session.organization, id.data, session.userId, context.ipAddress);
+  await makeDefault(authorized, id.data, session.userId, context.ipAddress);
 
   revalidatePath(TEMPLATE_SETTINGS_PATH);
 }
@@ -177,6 +181,7 @@ export async function makeDefaultAction(formData: FormData): Promise<void> {
 export async function deleteTemplateAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'template.delete');
 
   const id = idSchema.safeParse(formData.get('templateId'));
   if (!id.success) {
@@ -185,7 +190,7 @@ export async function deleteTemplateAction(formData: FormData): Promise<void> {
 
   const context = await readRequestContext();
   const result = await deleteTemplate(
-    session.organization,
+    authorized,
     id.data,
     session.userId,
     context.ipAddress,
@@ -216,6 +221,7 @@ export async function uploadTemplateAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'template.read', 'template.update');
   const id = idSchema.safeParse(formData.get('templateId'));
   const file = formData.get('file');
 
@@ -226,7 +232,7 @@ export async function uploadTemplateAction(
     return { status: 'error', message: messages.templates.uploadEmpty };
   }
 
-  const existing = await getTemplate(session.organization, id.data);
+  const existing = await getTemplate(authorized, id.data);
   if (existing === null) {
     return { status: 'error', message: messages.templates.notFound };
   }
@@ -240,7 +246,7 @@ export async function uploadTemplateAction(
 
   const context = await readRequestContext();
   const result = await updateTemplateFrom(
-    session.organization,
+    authorized,
     id.data,
     {
       name: existing.name,

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { storeImageAsset } from '@/application/assets/asset-service';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import {
   type CompanyProfileData,
@@ -146,6 +147,7 @@ export async function saveCompanyProfileAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'companyProfile.read', 'companyProfile.update');
   const values = collectValues(formData);
 
   const parsed = companySchema.safeParse({
@@ -180,7 +182,7 @@ export async function saveCompanyProfileAction(
   }
 
   const context = await readRequestContext();
-  await saveCompanyProfile(session.organization, data, session.userId, context.ipAddress);
+  await saveCompanyProfile(authorized, data, session.userId, context.ipAddress);
 
   revalidatePath(COMPANY_SETTINGS_PATH);
   return { status: 'saved' };
@@ -210,6 +212,7 @@ export async function uploadLogoAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'companyProfile.read', 'companyProfile.update');
   const file = formData.get('logo');
 
   if (!(file instanceof File) || file.size === 0) {
@@ -217,7 +220,7 @@ export async function uploadLogoAction(
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const result = await storeImageAsset(session.organization, bytes, file.type, file.name);
+  const result = await storeImageAsset(authorized, bytes, file.type, file.name);
 
   if (!result.ok) {
     return {
@@ -227,14 +230,14 @@ export async function uploadLogoAction(
   }
 
   const context = await readRequestContext();
-  const previous = await getCompanyProfile(session.organization);
+  const previous = await getCompanyProfile(authorized);
 
-  await setCompanyLogo(session.organization, result.value.id, session.userId, context.ipAddress);
+  await setCompanyLogo(authorized, result.value.id, session.userId, context.ipAddress);
 
   // Das ersetzte Logo wird entfernt, damit der Speicher nicht mit
   // unerreichbaren Dateien zuwächst.
   if (previous?.logoAssetId != null) {
-    await deleteAsset(session.organization, previous.logoAssetId);
+    await deleteAsset(authorized, previous.logoAssetId);
   }
 
   revalidatePath(COMPANY_SETTINGS_PATH);
@@ -244,15 +247,16 @@ export async function uploadLogoAction(
 export async function removeLogoAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'companyProfile.read', 'companyProfile.update');
   const context = await readRequestContext();
 
-  const profile = await getCompanyProfile(session.organization);
+  const profile = await getCompanyProfile(authorized);
   if (profile?.logoAssetId == null) {
     return;
   }
 
-  await setCompanyLogo(session.organization, null, session.userId, context.ipAddress);
-  await deleteAsset(session.organization, profile.logoAssetId);
+  await setCompanyLogo(authorized, null, session.userId, context.ipAddress);
+  await deleteAsset(authorized, profile.logoAssetId);
 
   revalidatePath(COMPANY_SETTINGS_PATH);
 }

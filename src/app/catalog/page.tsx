@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { getCatalogItem, listCatalogItems } from '@/application/catalog/catalog-service';
 import { cents } from '@/domain/money/money';
 import { messages, unitLabels } from '@/i18n/de';
@@ -36,7 +36,7 @@ export default async function CatalogPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('catalogItem.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const params = await searchParams;

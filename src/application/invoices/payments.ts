@@ -9,7 +9,7 @@ import { type Cents, cents, subtractCents } from '@/domain/money/money';
 import { outstandingAmount } from '@/domain/invoice/status';
 import type { PlainDate } from '@/domain/time/plain-date';
 import { findInvoice } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 import {
   createPayment,
   deletePayment,
@@ -35,7 +35,7 @@ export type PaymentInput = {
   readonly note: string | null;
 };
 
-async function loadPayableInvoice(context: OrganizationContext, invoiceId: string) {
+async function loadPayableInvoice(context: Authorized<'invoice.recordPayment'>, invoiceId: string) {
   const invoice = await findInvoice(context, invoiceId);
 
   if (invoice === null) {
@@ -56,7 +56,7 @@ async function loadPayableInvoice(context: OrganizationContext, invoiceId: strin
 }
 
 export async function addPayment(
-  context: OrganizationContext,
+  context: Authorized<'invoice.recordPayment'>,
   invoiceId: string,
   input: PaymentInput,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
@@ -86,7 +86,7 @@ export async function addPayment(
  * bereits teilbezahlten Rechnung entstünde sonst eine Überzahlung.
  */
 export async function markAsFullyPaid(
-  context: OrganizationContext,
+  context: Authorized<'invoice.recordPayment'>,
   invoiceId: string,
   paidAt: PlainDate,
   method: string | null,
@@ -110,7 +110,7 @@ export async function markAsFullyPaid(
 
 /** Korrigiert eine erfasste Zahlung (FA-STAT-07). */
 export async function updatePayment(
-  context: OrganizationContext,
+  context: Authorized<'invoice.recordPayment'>,
   paymentId: string,
   input: PaymentInput,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
@@ -138,7 +138,7 @@ export async function updatePayment(
 
 /** Nimmt eine irrtümlich erfasste Zahlung zurück (FA-STAT-07). */
 export async function removePayment(
-  context: OrganizationContext,
+  context: Authorized<'invoice.recordPayment'>,
   paymentId: string,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
   const payment = await findPayment(context, paymentId);
@@ -160,7 +160,7 @@ export async function removePayment(
 
 /** Meldet Zahlungseingang und — falls erreicht — vollständige Bezahlung. */
 async function announce(
-  context: OrganizationContext,
+  context: Authorized<'invoice.recordPayment'>,
   invoiceId: string,
   amountCents: Cents,
 ): Promise<void> {
@@ -188,6 +188,6 @@ async function announce(
   void subtractCents;
 }
 
-export async function listPayments(context: OrganizationContext, invoiceId: string) {
+export async function listPayments(context: Authorized<'invoice.read'>, invoiceId: string) {
   return queryPayments(context, invoiceId);
 }

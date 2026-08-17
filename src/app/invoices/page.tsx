@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { authorizeOptional, requirePermission } from '@/application/auth/authorize';
 import { listCustomers } from '@/application/customers/customer-service';
 import {
   listInvoices,
@@ -151,15 +151,25 @@ export default async function InvoicesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('invoice.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const params = await searchParams;
   const filter = readFilter(params);
 
+  /*
+   * Der Kundenfilter hängt an `customer.read` — die Liste selbst nicht (M8).
+   *
+   * Ein Konto, das nur Belege lesen darf, käme sonst nicht in die
+   * Rechnungsliste, weil eine Auswahlliste im Filterkopf ein Recht verlangt,
+   * das mit den Belegen nichts zu tun hat. Ohne das Recht entfällt der Filter,
+   * nicht die Seite.
+   */
+  const readCustomers = authorizeOptional(session, 'customer.read');
+
   const [invoices, customers] = await Promise.all([
     listInvoices(session.organization, filter),
-    listCustomers(session.organization),
+    readCustomers === null ? [] : listCustomers(readCustomers),
   ]);
 
   const notice = noticeFor(
@@ -356,19 +366,25 @@ export default async function InvoicesPage({
           />
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">
-            {messages.invoices.filterCustomer}
-          </span>
-          <select name="customerId" defaultValue={filter.customerId ?? ''} className={INPUT_CLASS}>
-            <option value="">{messages.invoices.filterAll}</option>
-            {customers.map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.companyName ?? customer.contactName ?? customer.customerNumber}
-              </option>
-            ))}
-          </select>
-        </label>
+        {readCustomers === null ? null : (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-ui font-medium text-ink">
+              {messages.invoices.filterCustomer}
+            </span>
+            <select
+              name="customerId"
+              defaultValue={filter.customerId ?? ''}
+              className={INPUT_CLASS}
+            >
+              <option value="">{messages.invoices.filterAll}</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.companyName ?? customer.contactName ?? customer.customerNumber}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <DateField
           name="from"

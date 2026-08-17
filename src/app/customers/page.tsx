@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { can } from '@/domain/policy/can';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { listCustomers } from '@/application/customers/customer-service';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
@@ -28,7 +28,7 @@ export default async function CustomersPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('customer.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const params = await searchParams;

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { getCompanyProfile, getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
@@ -19,7 +19,14 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: `${messages.company.title} · ${messages.app.name}` };
 
 export default async function CompanySettingsPage(): Promise<ReactNode> {
-  const session = await requireSession();
+  /*
+   * **Lesen und Ändern** (M8): `companyProfile.read` allein ist ein Grundrecht,
+   * das jedes Konto trägt — die Schale braucht es für den Unternehmensnamen.
+   * Diese Seite ist aber das Bearbeitungsformular; sie an das Grundrecht zu
+   * hängen hieße, dass jedes Konto die Firmendaten samt Bankverbindung und
+   * Steuernummer aufgeschlagen vor sich hat.
+   */
+  const session = await requirePermission('companyProfile.read', 'companyProfile.update');
   const [profile, saved] = await Promise.all([
     getCompanyProfileOrEmpty(session.organization),
     getCompanyProfile(session.organization),

@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { listTemplates, STARTER_TEMPLATE } from '@/application/templates/template-service';
 import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
@@ -25,7 +25,7 @@ export const metadata = { title: `${messages.templates.title} · ${messages.app.
 type Row = Awaited<ReturnType<typeof listTemplates>>[number];
 
 export default async function TemplateSettingsPage(): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('template.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const templates = await listTemplates(session.organization);

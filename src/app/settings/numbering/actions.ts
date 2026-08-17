@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import {
   setInvoiceNumberFormat,
@@ -36,6 +37,7 @@ export async function saveNumberFormatAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'numbering.update');
   const parsedInput = formatSchema.safeParse(formData.get('format'));
   if (!parsedInput.success) {
     return { status: 'error', message: messages.numbering.formatInvalid };
@@ -70,7 +72,7 @@ export async function saveNumberFormatAction(
 
   const context = await readRequestContext();
   await setInvoiceNumberFormat(
-    session.organization,
+    authorized,
     parsed.value.format,
     session.userId,
     context.ipAddress,
@@ -83,6 +85,7 @@ export async function saveNumberFormatAction(
 export async function saveFileNamePatternAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'numbering.update');
 
   const value = formData.get('pdfFileNamePattern');
   const pattern = typeof value === 'string' ? value.trim() : '';
@@ -92,7 +95,7 @@ export async function saveFileNamePatternAction(formData: FormData): Promise<voi
   }
 
   const context = await readRequestContext();
-  await setPdfFileNamePattern(session.organization, pattern, session.userId, context.ipAddress);
+  await setPdfFileNamePattern(authorized, pattern, session.userId, context.ipAddress);
 
   revalidatePath(NUMBERING_SETTINGS_PATH);
 }
@@ -108,6 +111,7 @@ export async function setStartValueAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'numbering.update');
 
   const scope = scopeSchema.safeParse(formData.get('scope'));
   const startValue = startValueSchema.safeParse(formData.get('startValue'));
@@ -116,7 +120,7 @@ export async function setStartValueAction(
     return { status: 'error', message: messages.numbering.startValueInvalid };
   }
 
-  const result = await setSequenceStartValue(session.organization, scope.data, startValue.data);
+  const result = await setSequenceStartValue(authorized, scope.data, startValue.data);
   if (!result.ok) {
     return {
       status: 'error',

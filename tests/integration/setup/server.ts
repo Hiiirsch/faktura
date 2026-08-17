@@ -30,6 +30,14 @@ export const TEST_LOCKOUT_EMAIL = 'sperre@example.org';
  */
 export const TEST_TOTP_EMAIL = 'zweifaktor@example.org';
 export const TEST_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+/**
+ * Konto mit genau einem Recht (`invoice.read`) — für `permissions.test.ts` (M8).
+ *
+ * Angelegt in `seed-user.ts`; hier steht nur die Adresse, damit der Test sie
+ * nicht doppelt führt.
+ */
+export const TEST_RESTRICTED_EMAIL = 'nurlesen@example.org';
+
 export const TEST_USER_PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
 const TEST_DB_FILE = path.join(projectRoot, 'data', 'integration-test.db');

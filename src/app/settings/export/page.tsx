@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { DATA_EXPORT_PATH, EXPORT_SETTINGS_PATH } from '@/routes';
@@ -31,7 +31,7 @@ export const metadata = { title: `${messages.backup.title} · ${messages.app.nam
  * Datei mit seinen eigenen Mitteln entgegennehmen.
  */
 export default async function ExportSettingsPage(): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('export.run');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   return (

@@ -14,7 +14,7 @@ import {
   setCompanyLogoAsset,
   upsertCompanyProfile,
 } from '@/infrastructure/repositories/company-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type CompanyProfileData = {
   readonly legalName: string;
@@ -78,14 +78,14 @@ export const EMPTY_COMPANY_PROFILE: CompanyProfileData = {
 };
 
 export async function getCompanyProfile(
-  context: OrganizationContext,
+  context: Authorized<'companyProfile.read'>,
 ): Promise<CompanyProfile | null> {
   return findCompanyProfile(context);
 }
 
 /** Liefert das gespeicherte Profil oder die leere Vorbelegung für das Formular. */
 export async function getCompanyProfileOrEmpty(
-  context: OrganizationContext,
+  context: Authorized<'companyProfile.read'>,
 ): Promise<CompanyProfileData> {
   return (await getCompanyProfile(context)) ?? EMPTY_COMPANY_PROFILE;
 }
@@ -109,8 +109,13 @@ function changedFieldNames(
   return keys.filter((key) => before[key] !== after[key]).map(String);
 }
 
+/**
+ * Verlangt **beide** Rechte, weil das Protokoll die geänderten Felder nennt: Um
+ * einen Unterschied zu bilden, muss der vorige Stand gelesen werden. Kein
+ * Zugeständnis im Betrieb — `companyProfile.read` ist ein Grundrecht.
+ */
 export async function saveCompanyProfile(
-  context: OrganizationContext,
+  context: Authorized<'companyProfile.read' | 'companyProfile.update'>,
   data: CompanyProfileData,
   actorId: string,
   ipAddress: string | null,
@@ -136,7 +141,7 @@ export async function saveCompanyProfile(
 
 /** Ändert das Nummernformat (FA-NUM-01). Wirkt nur auf künftige Belege. */
 export async function setInvoiceNumberFormat(
-  context: OrganizationContext,
+  context: Authorized<'numbering.update'>,
   format: string,
   actorId: string,
   ipAddress: string | null,
@@ -159,7 +164,7 @@ export async function setInvoiceNumberFormat(
 
 /** Ändert das Dateinamenmuster erzeugter PDFs (FA-PDF-09). */
 export async function setPdfFileNamePattern(
-  context: OrganizationContext,
+  context: Authorized<'numbering.update'>,
   pattern: string,
   actorId: string,
   ipAddress: string | null,
@@ -181,7 +186,7 @@ export async function setPdfFileNamePattern(
 }
 
 export async function setCompanyLogo(
-  context: OrganizationContext,
+  context: Authorized<'companyProfile.update'>,
   assetId: string | null,
   actorId: string,
   ipAddress: string | null,

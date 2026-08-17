@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { authorizeRequest } from '@/application/auth/authorize';
 import { getOptionalSession } from '@/application/auth/require-session';
 import { renderInvoiceForDownload } from '@/application/documents/render-invoice';
 import { logger } from '@/infrastructure/logging/logger';
@@ -24,8 +25,13 @@ export async function GET(
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
+  const authorized = authorizeRequest(session, 'invoice.read');
+  if (authorized === null) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   const { id } = await context.params;
-  const result = await renderInvoiceForDownload(session.organization, id);
+  const result = await renderInvoiceForDownload(authorized, id);
 
   // `?inline=1` bettet dieselbe Datei ein, statt sie herunterzuladen
   // (FA-PDF-02). Der Download bleibt die Voreinstellung: Wer die Adresse

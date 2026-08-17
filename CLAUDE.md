@@ -414,6 +414,65 @@ Kein Trigger auf INSERT (das erste Konto einer neuen Organisation entstünde
 sonst nie) und keiner auf `Role` DELETE (`ON DELETE RESTRICT` schützt benutzte
 Rollen; eine Rolle, die niemand trägt, nimmt niemandem ein Recht).
 
+## Durchsetzung (seit M8)
+
+`can()` entscheidet, was die Oberfläche **zeigt**. `Authorized<K>` in
+`src/application/auth/authorize.ts` entscheidet, was der Server **tut** — und
+das ist der Schutz: Ein verstecktes Formularfeld lässt sich von Hand nachbauen,
+ein fehlender Knopf hält niemanden auf.
+
+Es ist dasselbe Muster wie beim Mandantenkontext, ein zweites Mal angewandt:
+
+```ts
+// vorher                                     // nachher
+issueInvoice(context: OrganizationContext)    issueInvoice(context: Authorized<'invoice.issue'>)
+```
+
+`session.organization` allein passt danach in **keinen** Anwendungsfall mehr.
+Die Repository-Schicht bleibt unverändert, weil `Authorized<K>` eine
+Schnittmenge mit `OrganizationContext` ist; die Verschärfung wirkt genau eine
+Schicht höher, da, wo die Entscheidung fällt.
+
+**Die Marke trägt eine Menge von Flaggen, nicht den Schlüssel als Wert.** Nur so
+stimmt die Zuweisbarkeit: `Authorized<'a' | 'b'>` heißt „beide geprüft" und
+passt überall hin, wo `Authorized<'a'>` verlangt wird. Trüge sie den Schlüssel
+selbst, wären beide gegenseitig unzuweisbar, und jede Stelle mit zwei Rechten
+bräuchte einen Ausweg. Wo dagegen **eines von zwei** Rechten genügt, steht eine
+Vereinigung von Nachweisen (`allocateInvoiceNumber`: festschreiben **oder**
+stornieren).
+
+Vier Aufrufer, vier Funktionen — jede für eine Art von Ablehnung:
+
+| Aufrufer | Funktion | Bei fehlendem Recht |
+|---|---|---|
+| Server Action | `authorize(session, …)` | wirft `ForbiddenError`, protokolliert |
+| Routenhandler | `authorizeRequest(session, …)` | `null` → 403, protokolliert |
+| Seite | `requirePermission(…)` | `notFound()` — 404, nicht 403 |
+| Abschnitt einer Seite | `authorizeOptional(session, …)` | `null`, **schweigt** |
+
+Eine Seite antwortet mit 404: Ein 403 bestätigt, dass es sie gibt.
+`authorizeOptional` schweigt, weil ein weggelassener Abschnitt kein abgewiesener
+Zugriff ist — sonst stünde bei jedem Seitenaufruf eines eingeschränkten Kontos
+eine Warnung im Log.
+
+Aufgefallen sind bei der Umstellung drei Kopplungen, die vorher niemand sah:
+Der Kundenfilter im Kopf der Rechnungsliste hätte ein reines Lesekonto von der
+**ganzen Liste** ausgeschlossen; die Firmendatenseite hing am Grundrecht
+`companyProfile.read` und hätte jedem Konto Bankverbindung und Steuernummer
+aufgeschlagen vorgelegt; und `saveCompanyProfile` braucht Lesen **und** Ändern,
+weil das Protokoll die geänderten Felder nennt.
+
+Drei Wege führen an dem Modell vorbei, keiner ist ein Typfehler, für jeden
+steht eine Erlaubnisliste in `tests/architecture/authorization.test.ts`:
+`OrganizationContext` in einem Anwendungsfall, `organizationContextOf()` von
+Hand aufgerufen, `fullyAuthorized()` im Anwendungscode. Alle vier Wächter sind
+gegen einen absichtlichen Verstoß geprüft.
+
+`fullyAuthorized()` stellt einen Nachweis über alle Rechte aus, **ohne** zu
+prüfen — für Skripte und für Tests der Fachlogik, die keine Sitzung haben.
+Bewusst eine benannte Funktion statt eines `as`-Casts an der Aufrufstelle: Ein
+Cast wäre überall unsichtbar, diese Funktion ist greppbar.
+
 ## Zwei Identitäten (seit M8)
 
 Es gibt **zwei** getrennte Kontenarten mit getrennten Tabellen, Sitzungen und

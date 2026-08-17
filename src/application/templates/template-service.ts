@@ -12,7 +12,7 @@ import {
 } from '@/domain/rendering/template-upload';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 import {
   countTemplates,
   createTemplate,
@@ -63,13 +63,13 @@ export type TemplateError =
   | { readonly kind: 'IS_DEFAULT' };
 
 export async function listTemplates(
-  context: OrganizationContext,
+  context: Authorized<'template.read'>,
 ): Promise<readonly Template[]> {
   return queryTemplates(context);
 }
 
 export async function getTemplate(
-  context: OrganizationContext,
+  context: Authorized<'template.read'>,
   id: string,
 ): Promise<Template | null> {
   return findTemplate(context, id);
@@ -87,7 +87,7 @@ function marginsValid(input: TemplateGeometryInput): boolean {
 }
 
 export async function createTemplateFrom(
-  context: OrganizationContext,
+  context: Authorized<'template.create'>,
   input: TemplateInput,
   actorId: string,
   ipAddress: string | null,
@@ -129,7 +129,7 @@ export async function createTemplateFrom(
 }
 
 export async function updateTemplateFrom(
-  context: OrganizationContext,
+  context: Authorized<'template.update'>,
   id: string,
   input: TemplateInput,
   actorId: string,
@@ -174,7 +174,7 @@ export async function updateTemplateFrom(
 }
 
 export async function makeDefault(
-  context: OrganizationContext,
+  context: Authorized<'template.update'>,
   id: string,
   actorId: string,
   ipAddress: string | null,
@@ -204,7 +204,7 @@ export async function makeDefault(
  * liegen als Datei vor (FA-TPL-09).
  */
 export async function deleteTemplate(
-  context: OrganizationContext,
+  context: Authorized<'template.delete'>,
   id: string,
   actorId: string,
   ipAddress: string | null,

@@ -144,6 +144,9 @@ export const messages = {
     invoiceCount: '{count} Rechnungen',
     invoiceCountOne: '1 Rechnung',
     empty: 'Noch keine Rechnungen. Die erste Rechnung entsteht in etwa zwei Minuten.',
+    /** Konto ohne `invoice.read` (M8) — die Übersicht besteht aus Belegzahlen. */
+    noInvoiceAccess:
+      'Die Übersicht wertet Belege aus. Diesem Konto fehlt das Recht, Belege zu lesen.',
     metricOutstanding: 'Offen gesamt',
     metricOverdue: 'Davon überfällig',
     metricRevenueMonth: 'Umsatz laufender Monat',
@@ -347,6 +350,8 @@ export const messages = {
     viewHeading: 'Rechnung',
     empty: 'Noch keine Rechnungen. Die erste Rechnung entsteht in etwa zwei Minuten.',
     emptyFiltered: 'Zu diesen Filtern gibt es keinen Beleg. Filter zurücksetzen zeigt wieder alle.',
+    /** Entwurf ohne Bearbeitungsrecht (M8) — das Blatt daneben bleibt sichtbar. */
+    draftNotEditable: 'Dieser Entwurf lässt sich mit den Rechten dieses Kontos nicht bearbeiten.',
     /** Im Tabellenschema angelegt, in V1 ausgeblendet (FA-UI-16). */
     createdBy: 'Erstellt von',
 

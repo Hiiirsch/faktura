@@ -33,6 +33,7 @@ import { cancelInvoice } from '@/application/invoices/cancel-invoice';
 import { cents } from '@/domain/money/money';
 import type { DraftBuyer } from '@/domain/invoice/buyer';
 import { plainDate } from '@/domain/time/plain-date';
+import { fullyAuthorized } from '@/application/auth/authorize';
 import { organizationContextOf } from '@/infrastructure/repositories/organization-context';
 
 import { customerBuyer, fieldsBuyer, freeBuyer } from '../support/buyer';
@@ -273,7 +274,7 @@ describe('Mandantengrenze', () => {
   it('zählt keinen Beleg einer anderen Organisation mit', async () => {
     await issued(RECIPIENT, 100_000, '2026-08-01', '2026-08-31');
 
-    const second = organizationContextOf('org_zweite');
+    const second = fullyAuthorized(organizationContextOf('org_zweite'));
     await prisma.organization.create({ data: { id: 'org_zweite', name: 'Zweite' } });
     await prisma.invoice.create({
       data: {

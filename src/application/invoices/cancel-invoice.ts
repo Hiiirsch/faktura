@@ -22,7 +22,7 @@ import {
   findInvoiceWithLines,
   updateInvoice,
 } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
 import { allocateInvoiceNumber } from './invoice-numbering';
@@ -39,7 +39,7 @@ export type CancelResult =
   | { readonly ok: false; readonly error: CancelError };
 
 export async function cancelInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.cancel'>,
   invoiceId: string,
   reason: string | null,
   actorId: string,

@@ -22,7 +22,7 @@ import {
   findInvoiceDetail,
   listInvoices as queryInvoices,
 } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type InvoiceListFilter = {
   readonly status?: InvoiceStatus | 'OVERDUE';
@@ -73,7 +73,7 @@ export function today(now: Date = new Date()): PlainDate {
 }
 
 export async function listInvoices(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   filter: InvoiceListFilter = {},
   now: Date = new Date(),
 ): Promise<readonly InvoiceListEntry[]> {
@@ -129,7 +129,7 @@ export async function listInvoices(
 export type InvoiceDetail = Awaited<ReturnType<typeof loadInvoiceDetail>>;
 
 export async function loadInvoiceDetail(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   invoiceId: string,
   now: Date = new Date(),
 ) {
@@ -168,7 +168,7 @@ export type { BuyerSnapshot, SellerSnapshot };
 
 /** Belege eines Kunden für die Kundendetailseite (FA-KUND-08). */
 export async function listInvoicesForCustomer(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   customerId: string,
   now: Date = new Date(),
 ): Promise<readonly InvoiceListEntry[]> {

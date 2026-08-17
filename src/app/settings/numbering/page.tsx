@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { listInvoiceSequences } from '@/application/invoices/invoice-numbering';
 import { getAppTimeZone } from '@/application/system/display-settings';
@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: `${messages.numbering.title} · ${messages.app.name}` };
 
 export default async function NumberingSettingsPage(): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('companyProfile.read', 'numbering.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const [company, sequences] = await Promise.all([

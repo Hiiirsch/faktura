@@ -17,7 +17,7 @@ import {
   deleteAsset as removeAsset,
   findAsset,
 } from '@/infrastructure/repositories/asset-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 import { deleteStoredFile, readStoredFile, storeImage } from '@/infrastructure/storage/asset-store';
 
 export type StoredAsset = {
@@ -36,7 +36,7 @@ function sanitizeDisplayName(fileName: string): string {
 }
 
 export async function storeImageAsset(
-  context: OrganizationContext,
+  context: Authorized<'companyProfile.update'>,
   bytes: Uint8Array,
   declaredMimeType: string,
   originalFileName: string,
@@ -61,7 +61,7 @@ export async function storeImageAsset(
 }
 
 export async function getAsset(
-  context: OrganizationContext,
+  context: Authorized<'companyProfile.read'>,
   id: string,
 ): Promise<StoredAsset | null> {
   return findAsset(context, id);
@@ -72,7 +72,7 @@ export async function readAssetContent(asset: StoredAsset): Promise<Buffer> {
 }
 
 /** Entfernt Datensatz und Datei. Wird nur für ersetzte Logos aufgerufen. */
-export async function deleteAsset(context: OrganizationContext, id: string): Promise<void> {
+export async function deleteAsset(context: Authorized<'companyProfile.update'>, id: string): Promise<void> {
   const asset = await findAsset(context, id);
   if (asset === null) {
     return;

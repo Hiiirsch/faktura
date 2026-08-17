@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { formatPlainDateDe } from '@/domain/format/de';
 
-import { requireSession } from '@/application/auth/require-session';
+import { type Authorized, authorizeOptional, requirePermission } from '@/application/auth/authorize';
 import { loadInvoiceDetail, today } from '@/application/invoices/invoice-queries';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import { isTaxCategoryCode } from '@/domain/codes/tax-category';
@@ -17,6 +17,7 @@ import { daysBetween, plainDate } from '@/domain/time/plain-date';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
 import { isTaxScheme } from '@/domain/tax/tax-scheme';
 import { todayIn } from '@/domain/time/plain-date';
+import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
@@ -29,12 +30,11 @@ import {
 } from '@/routes';
 import { ConfirmDialog } from '@/ui/components/dialog';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
-import { PageHeader } from '@/ui/components/page';
+import { EmptyState, PageHeader } from '@/ui/components/page';
 import { formatMoney, formatPercent, formatQuantity, formatUnit } from '@/ui/format';
 
 import { AppShell } from '../../app-shell';
 import { cancelInvoiceAction, deleteDraftAction, duplicateInvoiceAction } from '../actions';
-import type { OrganizationContext } from '@/application/auth/session-service';
 
 import { editorBuyerOf, loadEditorContext } from '../editor-data';
 import { InvoiceEditor } from '../invoice-editor';
@@ -51,7 +51,7 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('invoice.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   const { id } = await params;
@@ -61,6 +61,21 @@ export default async function InvoiceDetailPage({
   if (invoice === null) {
     notFound();
   }
+
+  /*
+   * Der Entwurfseditor erscheint nur, wenn das Konto ihn auch benutzen kann
+   * (M8): Schreibrecht am Beleg **und** die vier Leserechte, aus denen ein Beleg
+   * entsteht (Firmendaten, Kunden, Katalog, Vorlagen). Sonst bleibt links ein
+   * Hinweis — das Blatt rechts zeigt den Entwurf weiterhin.
+   */
+  const editable = authorizeOptional(
+    session,
+    'invoice.update',
+    'companyProfile.read',
+    'customer.read',
+    'catalogItem.read',
+    'template.read',
+  );
 
   const isDraft = invoice.status === 'DRAFT';
   const currency = invoice.currency as CurrencyCode;
@@ -116,15 +131,17 @@ export default async function InvoiceDetailPage({
               {messages.templates.downloadPdf}
             </a>
 
-            <form action={duplicateInvoiceAction}>
-              <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-              <input type="hidden" name="invoiceId" value={invoice.id} />
-              <button type="submit" className={SECONDARY_BUTTON_CLASS}>
-                {messages.invoices.duplicate}
-              </button>
-            </form>
+            {can(session.actor, 'duplicate', 'invoice') ? (
+              <form action={duplicateInvoiceAction}>
+                <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                <input type="hidden" name="invoiceId" value={invoice.id} />
+                <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                  {messages.invoices.duplicate}
+                </button>
+              </form>
+            ) : null}
 
-            {isDraft ? (
+            {isDraft && can(session.actor, 'delete', 'invoice') ? (
               <form action={deleteDraftAction}>
                 <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
                 <input type="hidden" name="invoiceId" value={invoice.id} />
@@ -158,13 +175,16 @@ export default async function InvoiceDetailPage({
         */}
         <div className="grid gap-8 lg:grid-cols-[minmax(30rem,1fr)_minmax(0,1fr)] lg:items-start">
           <div className="flex min-w-0 flex-col gap-6">
-            {isDraft ? (
+            {isDraft && editable !== null ? (
               <DraftEditor
                 invoiceId={invoice.id}
                 csrfToken={csrfToken}
                 invoice={invoice}
-                organization={session.organization}
+                organization={editable}
+                canIssue={can(session.actor, 'issue', 'invoice')}
               />
+            ) : isDraft ? (
+              <EmptyState message={messages.invoices.draftNotEditable} />
             ) : (
               <IssuedView invoice={invoice} currency={currency} csrfToken={csrfToken} />
             )}
@@ -292,11 +312,22 @@ async function DraftEditor({
   csrfToken,
   invoice,
   organization,
+  canIssue,
 }: {
   readonly invoiceId: string;
   readonly csrfToken: string;
+  /**
+   * Ob dieses Konto festschreiben darf (M8).
+   *
+   * Als Wahrheitswert und nicht als Akteur: `InvoiceEditor` ist eine
+   * Client-Komponente, und die Rechte eines Kontos gehören nicht ins
+   * Browser-Bündel. Die eigentliche Prüfung steht ohnehin in der Aktion.
+   */
+  readonly canIssue: boolean;
   readonly invoice: NonNullable<Awaited<ReturnType<typeof loadInvoiceDetail>>>;
-  readonly organization: OrganizationContext;
+  readonly organization: Authorized<
+    'companyProfile.read' | 'customer.read' | 'catalogItem.read' | 'template.read'
+  >;
 }): Promise<ReactNode> {
   const context = await loadEditorContext(organization);
 
@@ -304,6 +335,7 @@ async function DraftEditor({
     <>
       <NoScriptNotice message={messages.common.noScript} />
       <InvoiceEditor
+        canIssue={canIssue}
         initial={{
           invoiceId,
           buyer: editorBuyerOf(invoice),

@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { authorize, authorizeOptional } from '@/application/auth/authorize';
 import { requireSession } from '@/application/auth/require-session';
 import { getCompanyProfile } from '@/application/company/company-profile';
 import {
@@ -9,6 +10,7 @@ import {
   getDashboardMetrics,
 } from '@/application/dashboard/dashboard-metrics';
 import type { CurrencyCode } from '@/domain/codes/currency-code';
+import { can } from '@/domain/policy/can';
 import { formatMoneyDe } from '@/domain/format/de';
 import { cents } from '@/domain/money/money';
 import { daysBetween, plainDate } from '@/domain/time/plain-date';
@@ -96,6 +98,28 @@ export default async function DashboardPage(): Promise<ReactNode> {
   // Erste Anweisung: die Sitzungsprüfung (Spec §11.2).
   const session = await requireSession();
 
+  const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
+  const company = await getCompanyProfile(authorize(session, 'companyProfile.read'));
+
+  /*
+   * Diese Seite ist die Startseite **jedes** Kontos, aber sie besteht aus
+   * Belegzahlen (M8).
+   *
+   * Ohne `invoice.read` bleibt deshalb nichts zu zeigen — und eine Umleitung
+   * wäre hier falsch: Sie ginge auf einen Bereich, für den dasselbe gelten
+   * könnte, und im schlechtesten Fall im Kreis. Also die Schale mit einem
+   * benannten Leerzustand.
+   */
+  const readInvoices = authorizeOptional(session, 'invoice.read');
+  if (readInvoices === null) {
+    return (
+      <AppShell session={session} csrfToken={csrfToken} currentPath={DASHBOARD_PATH}>
+        <PageHeader title={messages.dashboard.heading} />
+        <EmptyState message={messages.dashboard.noInvoiceAccess} />
+      </AppShell>
+    );
+  }
+
   /*
    * Eine Auswertungsfunktion für die ganze Seite (FA-DASH-09).
    *
@@ -104,11 +128,7 @@ export default async function DashboardPage(): Promise<ReactNode> {
    * Stelle, die „Umsatz" ausrechnet, ist eine zweite Auslegung davon, was
    * Umsatz ist.
    */
-  const [metrics, company] = await Promise.all([
-    getDashboardMetrics(session.organization),
-    getCompanyProfile(session.organization),
-  ]);
-  const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
+  const metrics = await getDashboardMetrics(readInvoices);
 
   const year = metrics.today.slice(0, 4);
   const currentMonth = metrics.today.slice(0, 7);
@@ -148,9 +168,11 @@ export default async function DashboardPage(): Promise<ReactNode> {
       <PageHeader
         title={messages.dashboard.heading}
         actions={
-          <Link href={NEW_INVOICE_PATH} className={PRIMARY_BUTTON_CLASS}>
-            {messages.invoices.create}
-          </Link>
+          can(session.actor, 'create', 'invoice') ? (
+            <Link href={NEW_INVOICE_PATH} className={PRIMARY_BUTTON_CLASS}>
+              {messages.invoices.create}
+            </Link>
+          ) : null
         }
       />
 
@@ -173,9 +195,11 @@ export default async function DashboardPage(): Promise<ReactNode> {
         <EmptyState
           message={messages.dashboard.empty}
           action={
-            <Link href={NEW_INVOICE_PATH} className={PRIMARY_BUTTON_CLASS}>
-              {messages.invoices.create}
-            </Link>
+            can(session.actor, 'create', 'invoice') ? (
+              <Link href={NEW_INVOICE_PATH} className={PRIMARY_BUTTON_CLASS}>
+                {messages.invoices.create}
+              </Link>
+            ) : null
           }
         />
       ) : (

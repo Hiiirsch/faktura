@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getAsset, readAssetContent } from '@/application/assets/asset-service';
+import { authorizeRequest } from '@/application/auth/authorize';
 import { getOptionalSession } from '@/application/auth/require-session';
 import { logger } from '@/infrastructure/logging/logger';
 
@@ -29,8 +30,16 @@ export async function GET(
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
+  // Ein Bild dieser Organisation — dasselbe Recht wie das Lesen der Firmendaten,
+  // zu denen es gehört. Das ist ein Grundrecht: Jedes Konto sieht das Logo im
+  // Kopf der Anwendung.
+  const authorized = authorizeRequest(session, 'companyProfile.read');
+  if (authorized === null) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   const { id } = await context.params;
-  const asset = await getAsset(session.organization, id);
+  const asset = await getAsset(authorized, id);
   if (asset === null) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }

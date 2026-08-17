@@ -14,12 +14,11 @@ import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import {
   createCustomer as insertCustomer,
   findCustomer,
-  findCustomerByNumber,
   listCustomers as queryCustomers,
   updateCustomer as writeCustomer,
 } from '@/infrastructure/repositories/customer-repository';
 import { incrementSequence } from '@/infrastructure/repositories/number-sequence-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type CustomerData = {
   readonly companyName: string | null;
@@ -57,13 +56,13 @@ export type CustomerListFilter = {
  * Anlagen erhalten unterschiedliche Nummern, ohne dass der Zählerstand zuvor
  * gelesen und zurückgeschrieben werden müsste.
  */
-async function allocateCustomerNumber(context: OrganizationContext): Promise<string> {
+async function allocateCustomerNumber(context: Authorized<'customer.create'>): Promise<string> {
   const lastValue = await incrementSequence(context, CUSTOMER_NUMBER_SEQUENCE_SCOPE);
   return formatCustomerNumber(lastValue);
 }
 
 export async function listCustomers(
-  context: OrganizationContext,
+  context: Authorized<'customer.read'>,
   filter: CustomerListFilter = {},
 ): Promise<readonly Customer[]> {
   return queryCustomers(context, {
@@ -78,20 +77,20 @@ export async function listCustomers(
  * über den Snapshot sichtbar (ab M4).
  */
 export async function listSelectableCustomers(
-  context: OrganizationContext,
+  context: Authorized<'customer.read'>,
 ): Promise<readonly Customer[]> {
   return listCustomers(context, { includeArchived: false });
 }
 
 export async function getCustomer(
-  context: OrganizationContext,
+  context: Authorized<'customer.read'>,
   id: string,
 ): Promise<Customer | null> {
   return findCustomer(context, id);
 }
 
 export async function createCustomer(
-  context: OrganizationContext,
+  context: Authorized<'customer.create'>,
   data: CustomerData,
   actorId: string,
   ipAddress: string | null,
@@ -114,7 +113,7 @@ export async function createCustomer(
 
 /** `null`, wenn es den Kunden in dieser Organisation nicht gibt. */
 export async function updateCustomer(
-  context: OrganizationContext,
+  context: Authorized<'customer.update'>,
   id: string,
   data: CustomerData,
   actorId: string,
@@ -148,7 +147,7 @@ export async function updateCustomer(
 }
 
 export async function setCustomerArchived(
-  context: OrganizationContext,
+  context: Authorized<'customer.archive'>,
   id: string,
   isArchived: boolean,
   actorId: string,
@@ -168,11 +167,4 @@ export async function setCustomerArchived(
   });
 
   return customer;
-}
-
-export async function customerNumberExists(
-  context: OrganizationContext,
-  customerNumber: string,
-): Promise<boolean> {
-  return (await findCustomerByNumber(context, customerNumber)) !== null;
 }

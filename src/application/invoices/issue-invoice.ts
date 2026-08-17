@@ -19,7 +19,7 @@ import {
   findLatestIssueDate,
   updateInvoice,
 } from '@/infrastructure/repositories/invoice-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
 import { buyerSnapshotOf, draftBuyerOf } from './invoice-buyer';
@@ -46,7 +46,7 @@ function toDate(value: string | null): PlainDate | null {
 }
 
 export async function issueInvoice(
-  context: OrganizationContext,
+  context: Authorized<'invoice.issue'>,
   invoiceId: string,
   actorId: string,
   ipAddress: string | null,
@@ -183,7 +183,7 @@ export async function issueInvoice(
  * eine Rechnung mit höherer Nummer und früherem Datum.
  */
 export async function findBackdating(
-  context: OrganizationContext,
+  context: Authorized<'invoice.issue'>,
   handle: TransactionHandle,
   issueDate: PlainDate,
   documentType: string,

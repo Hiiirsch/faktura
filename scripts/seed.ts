@@ -33,13 +33,14 @@ import { cents } from '@/domain/money/money';
 import { addDays, plainDate, todayIn } from '@/domain/time/plain-date';
 import { logger } from '@/infrastructure/logging/logger';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
+import { fullyAuthorized } from '@/application/auth/authorize';
 import {
   DEFAULT_ORGANIZATION_ID,
   organizationContextOf,
 } from '@/infrastructure/repositories/organization-context';
 
 const ACTOR = 'seed';
-const org = organizationContextOf(DEFAULT_ORGANIZATION_ID);
+const org = fullyAuthorized(organizationContextOf(DEFAULT_ORGANIZATION_ID));
 
 const COMPANY = {
   ...EMPTY_COMPANY_PROFILE,

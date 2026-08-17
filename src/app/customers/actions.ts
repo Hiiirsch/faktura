@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import {
   createCustomer,
@@ -153,6 +154,7 @@ export async function createCustomerAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'customer.create');
   const parsed = parseCustomerForm(formData);
   if (!parsed.ok) {
     return parsed.state;
@@ -160,7 +162,7 @@ export async function createCustomerAction(
 
   const context = await readRequestContext();
   const customer = await createCustomer(
-    session.organization,
+    authorized,
     parsed.data,
     session.userId,
     context.ipAddress,
@@ -181,6 +183,7 @@ export async function updateCustomerAction(
   }
 
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'customer.update');
 
   const id = z.string().trim().min(1).max(64).safeParse(formData.get('id'));
   if (!id.success) {
@@ -194,7 +197,7 @@ export async function updateCustomerAction(
 
   const context = await readRequestContext();
   await updateCustomer(
-    session.organization,
+    authorized,
     id.data,
     parsed.data,
     session.userId,
@@ -209,6 +212,7 @@ export async function updateCustomerAction(
 export async function setCustomerArchivedAction(formData: FormData): Promise<void> {
   await assertRequestIntegrity(formData);
   const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'customer.archive');
 
   const id = z.string().trim().min(1).max(64).safeParse(formData.get('id'));
   if (!id.success) {
@@ -217,7 +221,7 @@ export async function setCustomerArchivedAction(formData: FormData): Promise<voi
 
   const context = await readRequestContext();
   await setCustomerArchived(
-    session.organization,
+    authorized,
     id.data,
     formData.get('isArchived') === 'true',
     session.userId,

@@ -10,7 +10,7 @@ import { getCompanyProfileOrEmpty } from '@/application/company/company-profile'
 import { listSelectableCustomers } from '@/application/customers/customer-service';
 import { draftBuyerOf, type StoredBuyer } from '@/application/invoices/invoice-buyer';
 import { listTemplates } from '@/application/templates/template-service';
-import type { OrganizationContext } from '@/application/auth/session-service';
+import type { Authorized } from '@/application/auth/authorize';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import type { CountryCode } from '@/domain/codes/country-code';
 import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
@@ -86,8 +86,19 @@ export type EditorContext = {
   readonly initialBuyer: EditorBuyerValues;
 };
 
+/**
+ * Alles, was der Editor zum Anlegen eines Belegs braucht.
+ *
+ * **Vier Leserechte in einem Nachweis** (M8): Ein Beleg entsteht nicht aus sich
+ * heraus — er braucht die Firmendaten für den Absender, einen Kunden, den
+ * Katalog für die Positionen und eine Vorlage. Wer Belege schreiben darf, muss
+ * diese vier lesen dürfen; ein Beleg an einen Kunden, den man nicht sehen darf,
+ * ist keine sinnvolle Lockerung.
+ */
 export async function loadEditorContext(
-  organization: OrganizationContext,
+  organization: Authorized<
+    'companyProfile.read' | 'customer.read' | 'catalogItem.read' | 'template.read'
+  >,
   now: Date = new Date(),
 ): Promise<EditorContext> {
   const [company, customers, catalog, templates] = await Promise.all([

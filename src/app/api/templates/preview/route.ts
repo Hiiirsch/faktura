@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { authorizeRequest } from '@/application/auth/authorize';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { getOptionalSession } from '@/application/auth/require-session';
 import { renderWithSources } from '@/application/documents/render-invoice';
@@ -34,6 +35,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
+  /*
+   * **Zwei Rechte**, weil zwei Dinge zusammenkommen: Die Vorschau setzt eine
+   * ungespeicherte Vorlage (`template.read`) mit den Daten eines echten Belegs
+   * (`invoice.read`). Nur das erste zu verlangen hieße, dass ein Konto ohne
+   * Belegzugriff über den Vorlagen-Editor an Belegdaten kommt.
+   */
+  const authorized = authorizeRequest(session, 'template.read', 'invoice.read');
+  if (authorized === null) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   const formData = await request.formData();
 
   try {
@@ -54,7 +66,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const result = await renderWithSources(
-    session.organization,
+    authorized,
     invoiceId,
     htmlSource,
     cssSource,

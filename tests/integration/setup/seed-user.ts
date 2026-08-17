@@ -14,6 +14,8 @@
  * verdeckt ab und ist damit nicht automatisierbar. Der Weg über dieselben
  * Infrastrukturfunktionen prüft dieselbe Hashing-Konfiguration.
  */
+import { PrismaClient } from '@prisma/client';
+
 import { EMPTY_COMPANY_PROFILE, saveCompanyProfile } from '@/application/company/company-profile';
 import { createCustomer } from '@/application/customers/customer-service';
 import { issueInvoice } from '@/application/invoices/issue-invoice';
@@ -21,11 +23,13 @@ import { createDraftInvoice } from '@/application/invoices/invoice-service';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { createUser, findUserByEmail } from '@/infrastructure/repositories/auth-repository';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
-import { customerBuyer } from '../../support/buyer';
+import { fullyAuthorized } from '@/application/auth/authorize';
 import {
   DEFAULT_ORGANIZATION_ID,
   organizationContextOf,
 } from '@/infrastructure/repositories/organization-context';
+
+import { customerBuyer } from '../../support/buyer';
 
 const EMAIL = 'pruefung@example.org';
 /** Eigenes Konto für den Sperrtest — es wird dabei für 15 Minuten gesperrt. */
@@ -33,6 +37,16 @@ const LOCKOUT_EMAIL = 'sperre@example.org';
 /** Eigenes Konto mit zweitem Faktor für den zweistufigen Anmeldeweg (M6.2). */
 const TOTP_EMAIL = 'zweifaktor@example.org';
 const TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+/**
+ * Ein Konto mit **einem** Recht — für die Prüfung der Durchsetzung über HTTP
+ * (M8, `permissions.test.ts`).
+ *
+ * `invoice.read` und nichts weiter außer den Grundrechten. Damit ist es ein
+ * echter Fall und keine Attrappe: Es darf die Rechnungsliste sehen, aber
+ * weder Firmendaten ändern noch exportieren.
+ */
+const RESTRICTED_EMAIL = 'nurlesen@example.org';
+const RESTRICTED_ROLE_NAME = 'Nur Lesen';
 const PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
 const passwordHash = await hashPassword(PASSWORD);
@@ -60,6 +74,31 @@ for (const email of [EMAIL, LOCKOUT_EMAIL]) {
   }
 }
 
+if ((await findUserByEmail(RESTRICTED_EMAIL)) === null) {
+  // Die Rolle entsteht hier über Prisma und nicht über einen Anwendungsfall:
+  // Die Rollenverwaltung ist Sache von M8/B4, die Einrichtung braucht sie jetzt.
+  const prisma = new PrismaClient();
+  const role = await prisma.role.upsert({
+    where: { organizationId_name: { organizationId: DEFAULT_ORGANIZATION_ID, name: RESTRICTED_ROLE_NAME } },
+    update: {},
+    create: {
+      organizationId: DEFAULT_ORGANIZATION_ID,
+      name: RESTRICTED_ROLE_NAME,
+      permissions: {
+        create: [{ organizationId: DEFAULT_ORGANIZATION_ID, permissionKey: 'invoice.read' }],
+      },
+    },
+  });
+  await prisma.$disconnect();
+
+  await createUser({
+    email: RESTRICTED_EMAIL,
+    passwordHash,
+    organizationId: DEFAULT_ORGANIZATION_ID,
+    roleId: role.id,
+  });
+}
+
 if ((await findUserByEmail(TOTP_EMAIL)) === null) {
   await createUser({
     email: TOTP_EMAIL,
@@ -72,7 +111,7 @@ if ((await findUserByEmail(TOTP_EMAIL)) === null) {
 }
 
 // Ein festgeschriebener Beleg für den Browsertest.
-const organization = organizationContextOf(DEFAULT_ORGANIZATION_ID);
+const organization = fullyAuthorized(organizationContextOf(DEFAULT_ORGANIZATION_ID));
 const ACTOR = 'einrichtung';
 
 await saveCompanyProfile(

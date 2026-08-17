@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { CUSTOMERS_PATH } from '@/routes';
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: `${messages.customers.createHeading} · ${messages.app.name}` };
 
 export default async function NewCustomerPage(): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('customer.create', 'customer.read');
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={CUSTOMERS_PATH}>

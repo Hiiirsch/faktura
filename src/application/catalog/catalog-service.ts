@@ -12,7 +12,7 @@ import {
   listCatalogItems as queryCatalogItems,
   updateCatalogItem as writeCatalogItem,
 } from '@/infrastructure/repositories/catalog-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type CatalogItemData = {
   readonly name: string;
@@ -36,21 +36,21 @@ export type CatalogItem = {
 };
 
 export async function listCatalogItems(
-  context: OrganizationContext,
+  context: Authorized<'catalogItem.read'>,
   includeArchived = false,
 ): Promise<readonly CatalogItem[]> {
   return queryCatalogItems(context, includeArchived);
 }
 
 export async function getCatalogItem(
-  context: OrganizationContext,
+  context: Authorized<'catalogItem.read'>,
   id: string,
 ): Promise<CatalogItem | null> {
   return findCatalogItem(context, id);
 }
 
 export async function createCatalogItem(
-  context: OrganizationContext,
+  context: Authorized<'catalogItem.create'>,
   data: CatalogItemData,
   actorId: string,
   ipAddress: string | null,
@@ -70,7 +70,7 @@ export async function createCatalogItem(
 }
 
 export async function updateCatalogItem(
-  context: OrganizationContext,
+  context: Authorized<'catalogItem.update'>,
   id: string,
   data: CatalogItemData,
   actorId: string,
@@ -93,7 +93,7 @@ export async function updateCatalogItem(
 }
 
 export async function setCatalogItemArchived(
-  context: OrganizationContext,
+  context: Authorized<'catalogItem.archive'>,
   id: string,
   isArchived: boolean,
   actorId: string,

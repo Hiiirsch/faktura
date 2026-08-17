@@ -24,7 +24,7 @@ import {
   listSequencesWithPrefix,
   setSequenceValue,
 } from '@/infrastructure/repositories/number-sequence-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type SequenceState = {
   readonly scope: string;
@@ -34,9 +34,15 @@ export type SequenceState = {
 /**
  * Erhöht den Zähler des Bereichs und gibt die formatierte Nummer zurück.
  * Muss innerhalb einer Transaktion aufgerufen werden (FA-NUM-03).
+ *
+ * **Zwei Rechte führen hierher, und eines genügt** — deshalb eine Vereinigung
+ * von Nachweisen und nicht `Authorized<'invoice.issue' | 'invoice.cancel'>`:
+ * Letzteres verlangte beide. Eine Nummer entsteht beim Festschreiben (FA-NUM-01)
+ * und beim Stornieren, weil die Gutschrift ein eigener Beleg mit eigener Nummer
+ * ist (FA-STORNO-02). Wer stornieren darf, muss nicht auch festschreiben dürfen.
  */
 export async function allocateInvoiceNumber(
-  context: OrganizationContext,
+  context: Authorized<'invoice.issue'> | Authorized<'invoice.cancel'>,
   handle: TransactionHandle,
   format: string,
   issueDate: PlainDate,
@@ -49,7 +55,7 @@ export async function allocateInvoiceNumber(
 
 /** Zählerstände aller Belegbereiche (FA-NUM-06). */
 export async function listInvoiceSequences(
-  context: OrganizationContext,
+  context: Authorized<'numbering.read'>,
 ): Promise<readonly SequenceState[]> {
   const sequences = await listSequencesWithPrefix(context, INVOICE_SEQUENCE_PREFIX);
 
@@ -69,7 +75,7 @@ export type StartValueError =
  * und beides ließe sich nicht mehr heilen.
  */
 export async function setSequenceStartValue(
-  context: OrganizationContext,
+  context: Authorized<'numbering.update'>,
   scope: string,
   startValue: number,
 ): Promise<{ ok: true } | { ok: false; error: StartValueError }> {

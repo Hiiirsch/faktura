@@ -2,7 +2,8 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
+import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { COMPANY_SETTINGS_PATH, INVOICES_PATH } from '@/routes';
@@ -18,7 +19,13 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: `${messages.invoices.createHeading} · ${messages.app.name}` };
 
 export default async function NewInvoicePage(): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission(
+    'invoice.create',
+    'companyProfile.read',
+    'customer.read',
+    'catalogItem.read',
+    'template.read',
+  );
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
   const context = await loadEditorContext(session.organization);
 
@@ -50,7 +57,14 @@ export default async function NewInvoicePage(): Promise<ReactNode> {
           bequemere Weg, aber nicht mehr der einzige.
         */}
         <NoScriptNotice message={messages.common.noScript} />
+        {/*
+          `canIssue` ist hier ohne Wirkung: Ein Beleg ohne Kennung lässt sich
+          nicht festschreiben, der Knopf erscheint erst nach dem ersten
+          Speichern. Der Wert steht trotzdem, damit die Sichtbarkeitsregel nicht
+          davon abhängt, über welche Seite der Editor gerendert wird.
+        */}
         <InvoiceEditor
+          canIssue={can(session.actor, 'issue', 'invoice')}
           initial={{
             invoiceId: null,
             buyer: context.initialBuyer,

@@ -18,7 +18,7 @@
  * eine Übersicht, die um Mitternacht geladen wird, einen Beleg gleichzeitig
  * als überfällig und als heute fällig ausweisen.
  */
-import type { OrganizationContext } from '@/application/auth/session-service';
+import type { Authorized } from '@/application/auth/authorize';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import {
   buyerDisplayName,
@@ -149,7 +149,7 @@ const EMPTY_CUSTOMER = {
 };
 
 export async function getDashboardMetrics(
-  context: OrganizationContext,
+  context: Authorized<'invoice.read'>,
   now: Date = new Date(),
 ): Promise<DashboardMetrics> {
   const today = todayIn(getAppTimeZone(), now);

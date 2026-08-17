@@ -45,6 +45,7 @@ import { listInvoices, loadInvoiceDetail } from '@/application/invoices/invoice-
 import { addPayment, listPayments } from '@/application/invoices/payments';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
+import { fullyAuthorized } from '@/application/auth/authorize';
 import { organizationContextOf } from '@/infrastructure/repositories/organization-context';
 
 import { customerBuyer } from '../support/buyer';
@@ -58,7 +59,7 @@ const ACTOR = 'pruef-akteur';
 
 /** Die zweite Organisation entsteht in jedem Test neu. */
 const SECOND_ORGANIZATION_ID = 'org_zweite';
-const second = organizationContextOf(SECOND_ORGANIZATION_ID);
+const second = fullyAuthorized(organizationContextOf(SECOND_ORGANIZATION_ID));
 
 const CUSTOMER: CustomerData = {
   companyName: 'Beispiel GmbH',

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import QRCode from 'qrcode';
 
-import { requireSession } from '@/application/auth/require-session';
+import { requirePermission } from '@/application/auth/authorize';
 import { getSecurityOverview } from '@/application/auth/security-overview';
 import { beginTotpSetup } from '@/application/auth/totp-setup';
 import { checkSystemStatus } from '@/application/system/check-system-status';
@@ -30,7 +30,7 @@ export default async function SecuritySettingsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const session = await requireSession();
+  const session = await requirePermission('security.read');
   const [overview, status] = await Promise.all([
     getSecurityOverview(session.userId, session.sessionId),
     checkSystemStatus(),

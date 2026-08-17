@@ -21,7 +21,7 @@ import {
   replaceRecoveryCodes as writeRecoveryCodes,
   updateUser,
 } from '@/infrastructure/repositories/auth-repository';
-import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { Authorized } from '@/application/auth/authorize';
 
 export type TotpSetupOffer = {
   readonly secret: string;
@@ -67,7 +67,7 @@ async function replaceRecoveryCodes(userId: string): Promise<readonly string[]> 
  * Wiederherstellungscodes zurück.
  */
 export async function confirmTotpSetup(
-  organization: OrganizationContext,
+  organization: Authorized<'security.update'>,
   userId: string,
   email: string,
   secret: string,
@@ -103,7 +103,7 @@ export async function confirmTotpSetup(
 }
 
 export async function disableTotp(
-  organization: OrganizationContext,
+  organization: Authorized<'security.update'>,
   userId: string,
   ipAddress: string | null,
 ): Promise<void> {
@@ -122,7 +122,7 @@ export async function disableTotp(
 }
 
 export async function regenerateRecoveryCodes(
-  organization: OrganizationContext,
+  organization: Authorized<'security.update'>,
   userId: string,
   ipAddress: string | null,
 ): Promise<readonly string[]> {
