@@ -129,6 +129,28 @@ export const messages = {
     accountDisabled: 'Das Konto ist gesperrt.',
     accountEnabled: 'Das Konto ist entsperrt.',
     errorNOT_FOUND: 'Nicht gefunden.',
+    errorNO_OWNER_ROLE:
+      'Dieses Unternehmen führt keine Rolle mit Rechteverwaltung. Ohne sie lässt sich keine Einladung ausstellen.',
+
+    // ── Wege aus einer Sackgasse (M9) ────────────────────────────────────
+    openInvitationsHeading: 'Offene Einladungen',
+    openInvitationsEmpty: 'Es ist keine Einladung offen.',
+    openInvitationExpires: 'Gilt bis {date}',
+    withdraw: 'Zurückziehen',
+    withdrawn: 'Die Einladung wurde zurückgezogen.',
+    reissueHeading: 'Einladung erneut ausstellen',
+    reissueIntro:
+      'Wenn der Einladungslink verloren ging. Der bisherige Link wird dabei entwertet; die Rolle bleibt die des Unternehmens.',
+    reissueSubmit: 'Einladung ausstellen',
+    reissuedHeading: 'Neuer Einladungslink',
+    tenantResetHeading: 'Link zur Passwortzurücksetzung',
+    tenantResetSectionHeading: 'Passwort eines Kontos zurücksetzen',
+    tenantResetIntro:
+      'Für den Fall, dass ein Unternehmen sich ausgesperrt hat — etwa wenn das einzige Konto mit Rechteverwaltung sein Passwort vergessen hat. Alle Sitzungen des Kontos enden dabei, und der Vorgang steht im Protokoll des Unternehmens.',
+    tenantResetSubmit: 'Zurücksetzungslink ausstellen',
+    tenantResetAccount: 'Konto',
+    linkOnceOnly:
+      'Dieser Link wird nur jetzt angezeigt. Er gilt bis zum genannten Zeitpunkt und funktioniert genau einmal.',
     errorLAST_ADMINISTRATOR:
       'Die Datenbank hat die Änderung abgewiesen: Es wäre das letzte aktive Konto mit Rechteverwaltung dieses Unternehmens.',
   },

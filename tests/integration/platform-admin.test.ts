@@ -30,13 +30,19 @@ import {
   getOrganizationAccounts,
   listManagedOrganizations,
   OWNER_ROLE_NAME,
+  reissueInvitation,
   setOrganizationSuspended,
   setPlatformUserDisabled,
+  startTenantPasswordReset,
 } from '@/application/admin/organization-admin';
 import { fullyAuthorized } from '@/application/auth/authorize';
 import { login } from '@/application/auth/login';
 import { resolveSession } from '@/application/auth/session-service';
-import { acceptInvitation } from '@/application/members/redeem';
+import {
+  acceptInvitation,
+  completePasswordReset,
+  loadInvitation,
+} from '@/application/members/redeem';
 import { EMPTY_COMPANY_PROFILE, saveCompanyProfile } from '@/application/company/company-profile';
 import { createDraftInvoice } from '@/application/invoices/invoice-service';
 import { issueInvoice } from '@/application/invoices/issue-invoice';
@@ -555,5 +561,207 @@ describe('FA-ADM-05 Der Betreiber kann Konten sperren', () => {
     expect(
       (await prisma.user.findUniqueOrThrow({ where: { id: account.id } })).disabledAt,
     ).toBeNull();
+  });
+});
+
+describe('FA-ADM-09 / FA-ADM-10 Wege aus einer Sackgasse (M9/B1)', () => {
+  /**
+   * Die Lücke, die den Block ausgelöst hat.
+   *
+   * Ein aufgegebener erster Anlauf hinterlässt eine offene Einladung. Der
+   * partielle Index `Invitation_one_open_per_email` gilt **global**, also ließ
+   * der zweite Anlauf mit derselben Adresse die ganze Transaktion an einem
+   * Indexfehler scheitern — und der Betreiber bekam einen Datenbankfehler statt
+   * einer Meldung.
+   */
+  it('legt ein zweites Unternehmen mit derselben Inhaberadresse an', async () => {
+    const { platform, adminUserId } = await platformContext();
+
+    const first = await createManagedOrganization(
+      platform,
+      { name: 'Erster Anlauf', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    expect(first.ok).toBe(true);
+
+    const second = await createManagedOrganization(
+      platform,
+      { name: 'Zweiter Anlauf', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+
+    expect(second.ok).toBe(true);
+    if (!second.ok || !first.ok) return;
+
+    // Der erste Link ist entwertet, der zweite gilt.
+    expect((await loadInvitation(first.value.token, NOW)).ok).toBe(false);
+    expect((await loadInvitation(second.value.token, NOW)).ok).toBe(true);
+  });
+
+  it('stellt die verlorene Einladung eines Unternehmens erneut aus', async () => {
+    const { platform, adminUserId } = await platformContext();
+
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+
+    // Der Link geht verloren — hier: er wird schlicht nicht benutzt.
+    const reissued = await reissueInvitation(
+      platform,
+      created.value.organizationId,
+      'chef@bosch.example',
+      adminUserId,
+      null,
+      NOW,
+    );
+
+    expect(reissued.ok).toBe(true);
+    if (!reissued.ok) return;
+
+    // Der alte Link gilt nicht mehr, der neue führt ins selbe Unternehmen mit
+    // derselben Rolle.
+    expect((await loadInvitation(created.value.token, NOW)).ok).toBe(false);
+
+    const offer = await loadInvitation(reissued.value.token, NOW);
+    expect(offer.ok).toBe(true);
+    if (!offer.ok) return;
+    expect(offer.value.roleName).toBe(OWNER_ROLE_NAME);
+
+    // Und er lässt sich einlösen.
+    const accepted = await acceptInvitation(
+      reissued.value.token,
+      { name: 'Bosch', password: OWNER_PASSWORD },
+      null,
+      NOW,
+    );
+    expect(accepted.ok).toBe(true);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'chef@bosch.example' } });
+    expect(user.organizationId).toBe(created.value.organizationId);
+  });
+
+  it('weist eine erneute Einladung an eine belegte Adresse ab', async () => {
+    const { platform, adminUserId } = await platformContext();
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+    await acceptInvitation(
+      created.value.token,
+      { name: 'Bosch', password: OWNER_PASSWORD },
+      null,
+      NOW,
+    );
+
+    const again = await reissueInvitation(
+      platform,
+      created.value.organizationId,
+      'chef@bosch.example',
+      adminUserId,
+      null,
+      NOW,
+    );
+
+    expect(again.ok).toBe(false);
+    if (again.ok) return;
+    expect(again.error.kind).toBe('EMAIL_TAKEN');
+  });
+
+  /**
+   * Die zweite Sackgasse: Das einzige Konto mit Rechteverwaltung hat sein
+   * Passwort vergessen. Zurücksetzen kann es nur, wer `organization.administer`
+   * hält — also nur es selbst.
+   */
+  it('setzt das Passwort eines ausgesperrten Mandantenkontos zurück', async () => {
+    const { platform, adminUserId } = await platformContext();
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+    await acceptInvitation(
+      created.value.token,
+      { name: 'Bosch', password: OWNER_PASSWORD },
+      null,
+      NOW,
+    );
+
+    const signedIn = await login(
+      { email: 'chef@bosch.example', password: OWNER_PASSWORD },
+      CONTEXT,
+      NOW,
+    );
+    if (!signedIn.ok || signedIn.value.kind !== 'SESSION') throw new Error('keine Sitzung');
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'chef@bosch.example' } });
+
+    const reset = await startTenantPasswordReset(platform, user.id, adminUserId, null, NOW);
+    expect(reset.ok).toBe(true);
+    if (!reset.ok) return;
+
+    // Alle Sitzungen des Kontos enden sofort.
+    expect(await resolveSession(signedIn.value.session.token, NOW)).toBeNull();
+    expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
+
+    // Der Betreiber hat kein Passwort gesetzt — das tut der Inhaber.
+    const done = await completePasswordReset(reset.value.token, 'Holunderbluete-im-Juni-8', null, NOW);
+    expect(done.ok).toBe(true);
+
+    expect(
+      (await login({ email: 'chef@bosch.example', password: 'Holunderbluete-im-Juni-8' }, CONTEXT, NOW))
+        .ok,
+    ).toBe(true);
+  });
+
+  /**
+   * Der Eingriff ist sichtbar — das ist der Preis, zu dem er zugelassen wurde.
+   *
+   * Er steht im Protokoll **des Unternehmens**, mit `actorKind: 'ADMIN'`. Wer
+   * dort liest, sieht, dass der Anstoß von außen kam.
+   */
+  it('steht jeder Eingriff im Protokoll des Unternehmens', async () => {
+    const { platform, adminUserId } = await platformContext();
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+    await acceptInvitation(
+      created.value.token,
+      { name: 'Bosch', password: OWNER_PASSWORD },
+      null,
+      NOW,
+    );
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'chef@bosch.example' } });
+
+    await startTenantPasswordReset(platform, user.id, adminUserId, null, NOW);
+
+    const entries = await prisma.auditLog.findMany({
+      where: { organizationId: created.value.organizationId },
+    });
+    const reset = entries.find((entry) => entry.action === 'PASSWORD_RESET_REQUESTED');
+
+    expect(reset).toBeDefined();
+    expect(reset?.actorKind).toBe('ADMIN');
+    expect(reset?.actorId).toBe(adminUserId);
   });
 });

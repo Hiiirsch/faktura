@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import {
   getManagedOrganization,
+  getOpenInvitations,
   getOrganizationAccounts,
 } from '@/application/admin/organization-admin';
 import { requireAdminSession } from '@/application/admin/require-admin-session';
@@ -14,6 +15,7 @@ import { ADMIN_PATH } from '@/routes';
 import { ConfirmDialog } from '@/ui/components/dialog';
 import {
   Alert,
+  NoScriptNotice,
   QUIET_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
   SECTION_CLASS,
@@ -24,7 +26,12 @@ import { DataTable } from '@/ui/components/table';
 import { Toast } from '@/ui/components/toast';
 import { formatDate, formatDateTime } from '@/ui/format';
 
-import { setAccountDisabledAction, setOrganizationSuspendedAction } from '../../actions';
+import {
+  setAccountDisabledAction,
+  setOrganizationSuspendedAction,
+  withdrawInvitationAsPlatformAction,
+} from '../../actions';
+import { ReissueInvitationForm, TenantPasswordResetForm } from './recovery-forms';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +47,8 @@ function noticeFor(done: string | undefined): string | null {
       return messages.admin.accountDisabled;
     case 'kontoEntsperrt':
       return messages.admin.accountEnabled;
+    case 'zurueckgezogen':
+      return messages.admin.withdrawn;
     default:
       return null;
   }
@@ -51,6 +60,8 @@ function errorFor(kind: string | undefined): string | null {
       return messages.admin.errorNOT_FOUND;
     case 'LAST_ADMINISTRATOR':
       return messages.admin.errorLAST_ADMINISTRATOR;
+    case 'NO_OWNER_ROLE':
+      return messages.admin.errorNO_OWNER_ROLE;
     default:
       return null;
   }
@@ -85,7 +96,10 @@ export default async function AdminOrganizationPage({
     notFound();
   }
 
-  const accounts = await getOrganizationAccounts(session.platform, id);
+  const [accounts, invitations] = await Promise.all([
+    getOrganizationAccounts(session.platform, id),
+    getOpenInvitations(session.platform, id),
+  ]);
 
   const params_ = await searchParams;
   const notice = noticeFor(typeof params_.erledigt === 'string' ? params_.erledigt : undefined);
@@ -253,6 +267,86 @@ export default async function AdminOrganizationPage({
           />
         )}
       </section>
+
+      {/*
+        Die drei Wege aus einer Sackgasse (M9/B1).
+
+        Sie stehen unter den Konten und nicht darüber: Es sind Werkzeuge für den
+        Ausnahmefall, nicht der Alltag der Verwaltung.
+      */}
+      <section className={SECTION_CLASS}>
+        <h2 className="text-section font-semibold text-ink">
+          {messages.admin.openInvitationsHeading}
+        </h2>
+
+        {invitations.length === 0 ? (
+          <p className="text-ui text-ink-muted">{messages.admin.openInvitationsEmpty}</p>
+        ) : (
+          <ul className="flex flex-col">
+            {invitations.map((invitation) => (
+              <li
+                key={invitation.id}
+                className="flex flex-wrap items-center justify-between gap-4 border-b border-rule py-3 last:border-b-0"
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="font-mono text-data text-ink">{invitation.email}</span>
+                  <span className="text-small text-ink-muted">
+                    {messages.admin.openInvitationExpires.replace(
+                      '{date}',
+                      formatDate(invitation.expiresAt, timeZone),
+                    )}
+                  </span>
+                </span>
+
+                <form
+                  action={withdrawInvitationAsPlatformAction.bind(null, id, invitation.id)}
+                >
+                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                  <button type="submit" className={QUIET_BUTTON_CLASS}>
+                    {messages.admin.withdraw}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className={SECTION_CLASS}>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-section font-semibold text-ink">
+            {messages.admin.reissueHeading}
+          </h2>
+          <p className="max-w-form text-ui text-ink-muted">{messages.admin.reissueIntro}</p>
+        </div>
+        <NoScriptNotice message={messages.common.noScript} />
+        <ReissueInvitationForm
+          organizationId={id}
+          csrfToken={csrfToken}
+          defaultEmail={invitations[0]?.email ?? ''}
+        />
+      </section>
+
+      {accounts.length === 0 ? null : (
+        <section className={SECTION_CLASS}>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-section font-semibold text-ink">
+              {messages.admin.tenantResetSectionHeading}
+            </h2>
+            <p className="max-w-form text-ui text-ink-muted">
+              {messages.admin.tenantResetIntro}
+            </p>
+          </div>
+          <TenantPasswordResetForm
+            organizationId={id}
+            csrfToken={csrfToken}
+            accounts={accounts.map((account) => ({
+              value: account.id,
+              label: account.email,
+            }))}
+          />
+        </section>
+      )}
     </main>
   );
 }

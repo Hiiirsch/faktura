@@ -412,6 +412,22 @@ export async function createOrganizationWithOwner(
   return runInTransaction(async (handle) => {
     const client = clientFor(handle);
 
+    /*
+     * Erst zurückziehen, dann anlegen (M9/B1).
+     *
+     * `Invitation_one_open_per_email` ist **global** partiell eindeutig: Eine
+     * offene Einladung an dieselbe Adresse — aus einem früheren, aufgegebenen
+     * Anlauf — ließ die ganze Transaktion an einem Indexfehler scheitern, und
+     * der Betreiber bekam einen Datenbankfehler statt einer Meldung.
+     *
+     * Dieselbe Reihenfolge wie in `inviteMember` (`invitation-service.ts`), und
+     * mit derselben Bedeutung: Wer erneut einlädt, entwertet den alten Link.
+     */
+    await client.invitation.updateMany({
+      where: { email: data.ownerEmail, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
     const organization = await client.organization.create({ data: { name: data.name } });
 
     const role = await client.role.create({
@@ -440,6 +456,134 @@ export async function createOrganizationWithOwner(
     });
 
     return { organizationId: organization.id, invitationId: invitation.id };
+  });
+}
+
+/**
+ * Stellt eine neue Einladung für das Inhaberkonto aus (M9/B1).
+ *
+ * **Warum der Betreiber das können muss.** Die Einladung eines Unternehmens
+ * erscheint genau einmal. Geht sie verloren, kam bis M9 niemand mehr hinein: Die
+ * Mitgliederverwaltung erreicht nur, wer schon drin ist, und der Betreiber hatte
+ * keinen Weg. Ein Zugang, dessen Verlust niemand heilen kann, ist kein Zugang,
+ * sondern eine Falle — dieselbe Klasse Fehler wie beim Betreiberkonto selbst,
+ * dort mit `admin:reset` behoben.
+ *
+ * Die Rolle bleibt, was sie war: die des vorhandenen Nachweises, sonst die
+ * Inhaberrolle. Der Betreiber wählt sie nicht — welche Rechte im Unternehmen
+ * gelten, geht ihn nichts an.
+ */
+export async function reissueOwnerInvitation(
+  _context: PlatformContext,
+  organizationId: string,
+  data: {
+    readonly email: string;
+    readonly roleId: string;
+    readonly tokenHash: string;
+    readonly expiresAt: Date;
+  },
+  now: Date,
+): Promise<string> {
+  return runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    await client.invitation.updateMany({
+      where: { email: data.email, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    const invitation = await client.invitation.create({
+      data: { organizationId, ...data },
+    });
+
+    return invitation.id;
+  });
+}
+
+/** Offene Einladungen eines Unternehmens — für die Adminansicht. */
+export async function listOpenInvitationsForPlatform(
+  _context: PlatformContext,
+  organizationId: string,
+): Promise<
+  readonly {
+    readonly id: string;
+    readonly email: string;
+    readonly roleId: string;
+    readonly expiresAt: Date;
+  }[]
+> {
+  return clientFor(undefined).invitation.findMany({
+    where: { organizationId, acceptedAt: null, revokedAt: null },
+    select: { id: true, email: true, roleId: true, expiresAt: true },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function revokeInvitationForPlatform(
+  _context: PlatformContext,
+  organizationId: string,
+  invitationId: string,
+  now: Date,
+): Promise<number> {
+  const result = await clientFor(undefined).invitation.updateMany({
+    where: { id: invitationId, organizationId, acceptedAt: null, revokedAt: null },
+    data: { revokedAt: now },
+  });
+  return result.count;
+}
+
+/**
+ * Die Rolle, die eine neue Einladung mitbringen soll.
+ *
+ * Der offene Nachweis nennt sie, sonst die Rolle mit der Rechteverwaltung — denn
+ * genau die fehlt, wenn ein Unternehmen sich ausgesperrt hat. Gibt es keine,
+ * bleibt `null` und der Aufrufer meldet das.
+ */
+export async function findOwnerRoleId(
+  _context: PlatformContext,
+  organizationId: string,
+): Promise<string | null> {
+  const role = await clientFor(undefined).role.findFirst({
+    where: {
+      organizationId,
+      permissions: { some: { permissionKey: 'organization.administer' } },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+
+  return role?.id ?? null;
+}
+
+/**
+ * Stellt einen Passwortzurücksetzungsnachweis für ein **Mandantenkonto** aus
+ * (M9/B1).
+ *
+ * **Die heikelste Funktion dieser Datei.** Sie ist der einzige Weg, auf dem der
+ * Betreiber etwas anfassen kann, das einem Konto in einem Unternehmen gehört.
+ * Gebaut wurde sie für eine Sackgasse: Verliert das einzige Konto mit
+ * `organization.administer` sein Passwort, kann es niemand zurücksetzen — die
+ * Zurücksetzung verlangt genau dieses Recht.
+ *
+ * **Was sie nicht tut:** ein Passwort setzen, eine Sitzung eröffnen oder Daten
+ * lesen. Sie stellt einen Nachweis aus, den ein Mensch einlöst. Der Betreiber
+ * könnte ihn selbst einlösen und das Konto übernehmen — das ist der bewusst in
+ * Kauf genommene Preis (Plan M9, H6), und deshalb steht der Vorgang mit
+ * `actorKind: 'ADMIN'` im Protokoll **des Unternehmens**, und alle Sitzungen des
+ * Kontos enden dabei.
+ */
+export async function createTenantPasswordReset(
+  _context: PlatformContext,
+  userId: string,
+  data: { readonly tokenHash: string; readonly expiresAt: Date },
+): Promise<void> {
+  await runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    // Ein neuer Nachweis entwertet ältere — dieselbe Regel wie überall.
+    await client.passwordReset.deleteMany({ where: { userId, usedAt: null } });
+    await client.passwordReset.create({ data: { userId, ...data } });
+    await client.session.deleteMany({ where: { userId } });
   });
 }
 

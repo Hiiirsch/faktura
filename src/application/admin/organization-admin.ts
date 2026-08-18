@@ -21,6 +21,7 @@
  */
 import type { PlatformContext } from '@/application/admin/admin-session-service';
 import { invitationExpiry } from '@/domain/auth/invitation-policy';
+import { passwordResetExpiry } from '@/domain/auth/password-reset-policy';
 import { ALL_PERMISSION_KEYS } from '@/domain/policy/can';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordPlatformAuditEntry } from '@/infrastructure/audit/audit-log';
@@ -30,18 +31,31 @@ import { logger } from '@/infrastructure/logging/logger';
 import {
   countOrganizations,
   createOrganizationWithOwner,
+  createTenantPasswordReset,
   deleteSessionsOfOrganization,
   findOrganizationWithMetrics,
+  findOwnerRoleId,
   findUserForPlatform,
+  listOpenInvitationsForPlatform,
   listOrganizationsWithMetrics,
   listUsersForPlatform,
   type OrganizationMetrics,
   type PlatformUser,
+  reissueOwnerInvitation,
+  revokeInvitationForPlatform,
   updateOrganizationForPlatform,
   updateUserForPlatform,
 } from '@/infrastructure/repositories/platform-repository';
 
 export type { OrganizationMetrics, PlatformUser };
+
+/** Eine offene Einladung, wie die Adminansicht sie zeigt. */
+export type OpenInvitation = {
+  readonly id: string;
+  readonly email: string;
+  readonly roleId: string;
+  readonly expiresAt: Date;
+};
 
 /**
  * Der Name der Rolle, die jedes neue Unternehmen mitbekommt.
@@ -58,7 +72,16 @@ export type OrganizationAdminError =
   | { readonly kind: 'NOT_FOUND' }
   /** Die Adresse gehört schon zu einem Konto — global, nicht je Unternehmen. */
   | { readonly kind: 'EMAIL_TAKEN' }
-  | { readonly kind: 'NAME_MISSING' };
+  | { readonly kind: 'NAME_MISSING' }
+  /**
+   * Das Unternehmen führt keine Rolle mit Rechteverwaltung.
+   *
+   * Sollte es nach FA-ROLE-04 nicht geben — die Trigger halten mindestens ein
+   * aktives Konto damit. Eintreten kann es trotzdem, etwa nach einem Eingriff
+   * an der Datenbank vorbei, und dann soll die Meldung das sagen statt eine
+   * Einladung ohne Rolle auszustellen.
+   */
+  | { readonly kind: 'NO_OWNER_ROLE' };
 
 export async function countManagedOrganizations(platform: PlatformContext): Promise<number> {
   return countOrganizations(platform);
@@ -248,4 +271,156 @@ export async function setPlatformUserDisabled(
   logger.security('admin.user_state_changed', { adminUserId, userId, disabled });
 
   return ok(null);
+}
+
+// ─── Wege aus einer Sackgasse (M9/B1) ───────────────────────────────────────
+//
+// Beide Funktionen hier haben denselben Anlass: Ein Zugang ist verloren, und der
+// einzige, der ihn wiederherstellen könnte, ist genau der Verlorene. Dieselbe
+// Klasse Fehler hat der Betreiberzugang gezeigt; dort heißt die Antwort
+// `admin:reset`.
+
+/** Offene Einladungen eines Unternehmens — für die Adminansicht. */
+export async function getOpenInvitations(
+  platform: PlatformContext,
+  organizationId: string,
+): Promise<readonly OpenInvitation[]> {
+  return listOpenInvitationsForPlatform(platform, organizationId);
+}
+
+/**
+ * Stellt die Einladung für das Inhaberkonto neu aus (FA-ADM-09).
+ *
+ * Die Rolle wählt der Betreiber **nicht**: Genommen wird die des offenen
+ * Nachweises, sonst die Rolle mit `organization.administer`. Welche Rechte in
+ * einem Unternehmen gelten, geht ihn nichts an.
+ *
+ * Die Adresse ebenso wenig frei wählbar, wenn es schon eine offene Einladung
+ * gibt — sonst wäre „erneut ausstellen" ein Weg, die Einladung an eine andere
+ * Adresse umzuleiten.
+ */
+export async function reissueInvitation(
+  platform: PlatformContext,
+  organizationId: string,
+  email: string,
+  adminUserId: string,
+  ipAddress: string | null,
+  now: Date = new Date(),
+): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, OrganizationAdminError>> {
+  const organization = await findOrganizationWithMetrics(platform, organizationId);
+  if (organization === null) {
+    return err({ kind: 'NOT_FOUND' });
+  }
+
+  const address = email.trim().toLowerCase();
+  if (address.length === 0) {
+    return err({ kind: 'NOT_FOUND' });
+  }
+
+  if ((await findUserByEmail(address)) !== null) {
+    return err({ kind: 'EMAIL_TAKEN' });
+  }
+
+  const open = await listOpenInvitationsForPlatform(platform, organizationId);
+  const roleId = open.find((entry) => entry.email === address)?.roleId
+    ?? (await findOwnerRoleId(platform, organizationId));
+
+  if (roleId === null) {
+    return err({ kind: 'NO_OWNER_ROLE' });
+  }
+
+  const token = generateRedemptionToken();
+  const expiresAt = invitationExpiry(now);
+
+  const invitationId = await reissueOwnerInvitation(
+    platform,
+    organizationId,
+    { email: address, roleId, tokenHash: hashToken(token), expiresAt },
+    now,
+  );
+
+  await recordPlatformAuditEntry(platform, organizationId, {
+    entityType: 'Invitation',
+    entityId: invitationId,
+    action: 'INVITED',
+    actorId: adminUserId,
+    ipAddress,
+    details: { email: address, reissued: true },
+  });
+
+  logger.security('admin.invitation_reissued', { adminUserId, organizationId });
+
+  return ok({ token, expiresAt });
+}
+
+export async function withdrawInvitationAsPlatform(
+  platform: PlatformContext,
+  organizationId: string,
+  invitationId: string,
+  adminUserId: string,
+  ipAddress: string | null,
+  now: Date = new Date(),
+): Promise<Result<null, OrganizationAdminError>> {
+  const revoked = await revokeInvitationForPlatform(platform, organizationId, invitationId, now);
+  if (revoked === 0) {
+    return err({ kind: 'NOT_FOUND' });
+  }
+
+  await recordPlatformAuditEntry(platform, organizationId, {
+    entityType: 'Invitation',
+    entityId: invitationId,
+    action: 'INVITATION_REVOKED',
+    actorId: adminUserId,
+    ipAddress,
+  });
+
+  return ok(null);
+}
+
+/**
+ * Stellt einen Zurücksetzungsnachweis für ein **Mandantenkonto** aus
+ * (FA-ADM-10).
+ *
+ * **Der Eingriff mit der größten Reichweite, den der Betreiber hat** — und der
+ * einzige, der etwas berührt, das einem Konto in einem Unternehmen gehört.
+ * Gebaut für die Sackgasse: Verliert das einzige Konto mit
+ * `organization.administer` sein Passwort, kann es niemand zurücksetzen, denn
+ * die Zurücksetzung verlangt genau dieses Recht.
+ *
+ * Was er damit **nicht** bekommt: eine Sitzung, ein Passwort oder Einsicht. Er
+ * stellt einen Nachweis aus, den ein Mensch einlöst. Dass er ihn selbst einlösen
+ * könnte, ist der bewusst in Kauf genommene Preis — deshalb steht der Vorgang im
+ * Protokoll **des Unternehmens**, und alle Sitzungen des Kontos enden dabei.
+ */
+export async function startTenantPasswordReset(
+  platform: PlatformContext,
+  userId: string,
+  adminUserId: string,
+  ipAddress: string | null,
+  now: Date = new Date(),
+): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, OrganizationAdminError>> {
+  const user = await findUserForPlatform(platform, userId);
+  if (user === null) {
+    return err({ kind: 'NOT_FOUND' });
+  }
+
+  const token = generateRedemptionToken();
+  const expiresAt = passwordResetExpiry(now);
+
+  await createTenantPasswordReset(platform, userId, { tokenHash: hashToken(token), expiresAt });
+
+  await recordPlatformAuditEntry(platform, user.organizationId, {
+    entityType: 'User',
+    entityId: userId,
+    action: 'PASSWORD_RESET_REQUESTED',
+    actorId: adminUserId,
+    ipAddress,
+    // Damit im Protokoll des Unternehmens steht, dass der Anstoß von außen kam
+    // — `actorKind` allein sagt es, aber nicht jeder liest die Spalte.
+    details: { byPlatform: true },
+  });
+
+  logger.security('admin.tenant_password_reset', { adminUserId, userId });
+
+  return ok({ token, expiresAt });
 }

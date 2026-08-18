@@ -603,6 +603,45 @@ das inzwischen auf anderem Weg entstanden ist, und ein `RESET`-Nachweis legt
 keines an. Ein unbekannter Wert fällt durch beide Zweige — die sichere Richtung,
 deshalb braucht es dafür keinen Trigger.
 
+## Wege aus einer Sackgasse (seit M9)
+
+Zwei Zugänge waren unwiederbringlich, und beide hatten dieselbe Form: **Der
+einzige, der sie wiederherstellen könnte, ist genau der Verlorene.**
+
+- Die Einladung eines Unternehmens erscheint genau einmal. Ging sie verloren,
+  kam niemand hinein — die Mitgliederverwaltung erreicht nur, wer schon drin ist.
+- Verliert das einzige Konto mit `organization.administer` sein Passwort, kann es
+  niemand zurücksetzen: Die Zurücksetzung verlangt genau dieses Recht. Der
+  Trigger garantiert, dass ein solches Konto **existiert**, nicht dass jemand
+  hineinkommt.
+
+Der Betreiber kann jetzt beides: eine Einladung erneut ausstellen und einen
+Zurücksetzungsnachweis für ein Mandantenkonto. **Was er dabei nicht bekommt:**
+eine Sitzung, ein Passwort oder Einsicht. Er stellt einen Nachweis aus, den ein
+Mensch einlöst.
+
+Dass er ihn selbst einlösen und ein Konto übernehmen könnte, ist der bewusst in
+Kauf genommene Preis (Plan M9, H6). Sichtbar gemacht wird er auf zwei Wegen: Der
+Vorgang steht im Protokoll **des Unternehmens** mit `actorKind: 'ADMIN'`, und
+alle Sitzungen des Kontos enden dabei.
+
+Nebenbei behoben: `createOrganizationWithOwner` zog offene Einladungen nicht
+zurück. Ein zweiter Anlauf mit derselben Inhaberadresse lief damit in den
+globalen partiellen Index `Invitation_one_open_per_email` — der Betreiber sah
+einen Datenbankfehler statt einer Meldung.
+
+**Der Wächter des Adminbereichs hatte dabei seine dritte Lücke.** Er prüfte zwei
+Listen: Geschäftsdelegates (nur zählen) und Verwaltungsdelegates (frei). Was in
+**keiner** von beiden stand, prüfte niemand — `invitation` und `passwordReset`
+kamen so herein, ohne dass jemand die Frage beantworten musste. Jetzt muss jedes
+benutzte Delegate in einer der Listen stehen.
+
+Der erste Anlauf dieser dritten Prüfung war selbst kaputt: Er suchte
+`.<name>.<methode>(` und filterte dann heraus, was kein Delegate sein konnte —
+und warf dabei genau die unbekannten weg, die er finden sollte. Er bestand,
+während `recoveryCode` ungeprüft durchging. Erfasst wird jetzt der **Empfänger**
+(`clientFor(...)` oder `client`), nicht nur der Name.
+
 ## Urheber am Beleg (seit M8)
 
 `Invoice.createdById` verweist auf `User` — ein echter Fremdschlüssel, kein

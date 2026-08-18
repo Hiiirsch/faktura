@@ -42,8 +42,27 @@ const ADMINISTRATIVE = [
   'user',
   'adminUser',
   'adminSession',
+  'adminInvitation',
   'session',
   'auditLog',
+  /*
+   * Seit M9/B1 zusätzlich — und die Aufnahme ist eine Entscheidung, keine
+   * Formalität.
+   *
+   * `invitation` und `passwordReset` sind **Wege in** ein Unternehmen, keine
+   * Daten **des** Unternehmens: Sie tragen eine Adresse und einen Tokenhash,
+   * keinen Beleg und keinen Betrag. Der Betreiber braucht sie, weil ein
+   * verlorener Einladungslink oder ein vergessenes Passwort der
+   * Rechteverwaltung sonst eine Sackgasse wäre, aus der niemand herausführt.
+   *
+   * `role` steht mit, weil eine neu ausgestellte Einladung eine Rolle
+   * mitbringen muss — der Betreiber **wählt** sie nicht, er liest die vorhandene
+   * (`findOwnerRoleId`). Welche Rechte in einem Unternehmen gelten, geht ihn
+   * nichts an.
+   */
+  'invitation',
+  'passwordReset',
+  'role',
 ];
 
 /**
@@ -132,6 +151,50 @@ describe('FA-ADM-02 Das Betreiber-Repository fasst keine Geschäftsdaten an', ()
     );
 
     expect(offenders).toEqual([]);
+  });
+
+  /**
+   * Die Lücke, die M9/B1 aufgedeckt hat: **was in keiner Liste steht, prüft
+   * niemand.**
+   *
+   * Die Prüfung auf Geschäftsdaten läuft über eine Aufzählung, und die auf
+   * Verwaltungsgegenstände ebenso. Ein Delegate, das in **keiner** von beiden
+   * vorkommt, fiel damit durch beide Netze — `invitation` und `passwordReset`
+   * kamen so hinein, ohne dass jemand die Frage beantworten musste, ob sie
+   * dorthin gehören.
+   *
+   * Deshalb hier die dritte Prüfung: Jedes benutzte Delegate muss in einer der
+   * beiden Listen stehen. Wer ein neues anfasst, beantwortet die Frage — im
+   * Diff, sichtbar.
+   */
+  it('benutzt kein Delegate, das in keiner Liste steht', () => {
+    const source = sourceOf(PLATFORM_REPOSITORY);
+    const known = new Set([...ADMINISTRATIVE, ...BUSINESS]);
+
+    /*
+     * Erfasst wird der **Empfänger**, nicht nur der Name.
+     *
+     * Der erste Anlauf suchte `.<name>.<methode>(` und filterte dann heraus,
+     * was kein Delegate sein konnte — und warf dabei genau die unbekannten
+     * Delegates weg, die er finden sollte. Er bestand, während `recoveryCode`
+     * ungeprüft durchging.
+     *
+     * Ein Prisma-Delegate wird in dieser Datei ausschließlich über
+     * `clientFor(...)` oder eine daraus gebundene Variable `client`
+     * angesprochen. Genau das steht jetzt im Ausdruck; damit braucht es keinen
+     * Filter, und was gefunden wird, ist ein Delegate.
+     */
+    const used = new Set(
+      [...source.matchAll(/(?:clientFor\([^)]*\)|\bclient)\.([a-z][a-zA-Z]*)\.[a-zA-Z]+\s*\(/gu)].map(
+        (match) => match[1] ?? '',
+      ),
+    );
+
+    expect([...used].filter((delegate) => !known.has(delegate))).toEqual([]);
+
+    // Gegenprobe: Die Prüfung darf nicht dadurch bestehen, dass sie nichts
+    // findet.
+    expect(used.size).toBeGreaterThan(5);
   });
 
   it('kennt die Verwaltungsgegenstände, die es benutzen darf', () => {

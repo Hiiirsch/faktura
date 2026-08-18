@@ -8,8 +8,11 @@ import { z } from 'zod';
 import { endAdminSession } from '@/application/admin/admin-session-service';
 import {
   createManagedOrganization,
+  reissueInvitation,
   setOrganizationSuspended,
   setPlatformUserDisabled,
+  startTenantPasswordReset,
+  withdrawInvitationAsPlatform,
 } from '@/application/admin/organization-admin';
 import { requireAdminSessionOrThrow } from '@/application/admin/require-admin-session';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
@@ -25,6 +28,7 @@ import {
   ADMIN_PATH,
   adminOrganizationPath,
   invitationPath,
+  passwordResetPath,
 } from '@/routes';
 
 /** Abmelden aus der Verwaltung: Sitzung serverseitig beenden, Cookie löschen. */
@@ -49,8 +53,8 @@ export async function adminLogoutAction(formData: FormData): Promise<void> {
  * Mitgliederverwaltung: Ein Link aus einem `Host`-Header zeigt auf das, was der
  * Aufrufer behauptet.
  */
-function absoluteInvitationLink(token: string): string {
-  return `${getEnv().APP_URL.replace(/\/$/u, '')}${invitationPath(token)}`;
+function absoluteLink(pathname: string): string {
+  return `${getEnv().APP_URL.replace(/\/$/u, '')}${pathname}`;
 }
 
 export type NewOrganizationState =
@@ -125,7 +129,7 @@ export async function createOrganizationAction(
     status: 'created',
     organizationId: result.value.organizationId,
     email: parsed.data.ownerEmail,
-    link: absoluteInvitationLink(result.value.token),
+    link: absoluteLink(invitationPath(result.value.token)),
   };
 }
 
@@ -201,5 +205,137 @@ export async function setAccountDisabledAction(
       (failed === null
         ? `erledigt=${disabled ? 'kontoGesperrt' : 'kontoEntsperrt'}`
         : `fehler=${failed}`),
+  );
+}
+
+// ─── Wege aus einer Sackgasse (M9/B1) ───────────────────────────────────────
+//
+// Beide Aktionen geben einen Link zurück, der **genau einmal** sichtbar ist —
+// dieselbe Bauart wie die Einladung beim Anlegen und die Wiederherstellungscodes.
+// Deshalb `useActionState` und kein Redirect: Über eine Umleitung ließe sich der
+// Link nur transportieren, indem man ihn zwischenspeichert.
+
+export type RecoveryState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'issued'; readonly heading: string; readonly link: string }
+  | { readonly status: 'error'; readonly message: string };
+
+const idSchema = z.string().trim().min(1).max(64);
+
+export async function reissueInvitationAction(
+  organizationId: string,
+  _previous: RecoveryState,
+  formData: FormData,
+): Promise<RecoveryState> {
+  try {
+    await assertRequestIntegrity(formData);
+  } catch {
+    return { status: 'error', message: messages.common.rejected };
+  }
+
+  const session = await requireAdminSessionOrThrow();
+
+  const email = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email())
+    .safeParse(formData.get('email'));
+
+  if (!email.success) {
+    return { status: 'error', message: messages.admin.emailInvalid };
+  }
+
+  const context = await readRequestContext();
+  const result = await reissueInvitation(
+    session.platform,
+    organizationId,
+    email.data,
+    session.adminUserId,
+    context.ipAddress,
+  );
+
+  if (!result.ok) {
+    return {
+      status: 'error',
+      message:
+        result.error.kind === 'EMAIL_TAKEN'
+          ? messages.admin.emailTaken
+          : result.error.kind === 'NO_OWNER_ROLE'
+            ? messages.admin.errorNO_OWNER_ROLE
+            : messages.admin.errorNOT_FOUND,
+    };
+  }
+
+  revalidatePath(adminOrganizationPath(organizationId));
+
+  return {
+    status: 'issued',
+    heading: messages.admin.reissuedHeading,
+    link: absoluteLink(invitationPath(result.value.token)),
+  };
+}
+
+export async function resetTenantPasswordAction(
+  organizationId: string,
+  _previous: RecoveryState,
+  formData: FormData,
+): Promise<RecoveryState> {
+  try {
+    await assertRequestIntegrity(formData);
+  } catch {
+    return { status: 'error', message: messages.common.rejected };
+  }
+
+  const session = await requireAdminSessionOrThrow();
+
+  const userId = idSchema.safeParse(formData.get('userId'));
+  if (!userId.success) {
+    return { status: 'error', message: messages.admin.errorNOT_FOUND };
+  }
+
+  const context = await readRequestContext();
+  const result = await startTenantPasswordReset(
+    session.platform,
+    userId.data,
+    session.adminUserId,
+    context.ipAddress,
+  );
+
+  if (!result.ok) {
+    return { status: 'error', message: messages.admin.errorNOT_FOUND };
+  }
+
+  revalidatePath(adminOrganizationPath(organizationId));
+
+  return {
+    status: 'issued',
+    heading: messages.admin.tenantResetHeading,
+    link: absoluteLink(passwordResetPath(result.value.token)),
+  };
+}
+
+/** Zurückziehen braucht keinen Rückkanal — die Meldung steht in der Adresse. */
+export async function withdrawInvitationAsPlatformAction(
+  organizationId: string,
+  invitationId: string,
+  formData: FormData,
+): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireAdminSessionOrThrow();
+
+  const context = await readRequestContext();
+  const result = await withdrawInvitationAsPlatform(
+    session.platform,
+    organizationId,
+    invitationId,
+    session.adminUserId,
+    context.ipAddress,
+  );
+
+  revalidatePath(adminOrganizationPath(organizationId));
+  redirect(
+    `${adminOrganizationPath(organizationId)}?` +
+      (result.ok ? 'erledigt=zurueckgezogen' : `fehler=${result.error.kind}`),
   );
 }
