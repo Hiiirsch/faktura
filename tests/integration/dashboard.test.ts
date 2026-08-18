@@ -38,12 +38,12 @@ import { organizationContextOf } from '@/infrastructure/repositories/organizatio
 
 import { customerBuyer, fieldsBuyer, freeBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization as org } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 
 /** Der Bezugszeitpunkt aller Prüfungen — die Uhr bleibt unangetastet. */
 const NOW = new Date('2026-08-15T10:00:00Z');
@@ -135,7 +135,7 @@ describe('FA-DASH-01 bis -04 Kennzahlen', () => {
     await issued(RECIPIENT, 50_000, '2026-08-01', '2026-08-31');
     // Bezahlt: zählt zum Umsatz, nicht zu den Forderungen.
     const paid = await issued(RECIPIENT, 30_000, '2026-08-05', '2026-08-20');
-    await markAsFullyPaid(org, paid, plainDate(TODAY), null);
+    await markAsFullyPaid(org, paid, plainDate(TODAY), null, ACTOR, null);
 
     const metrics = await getDashboardMetrics(org, NOW);
 
@@ -156,7 +156,7 @@ describe('FA-DASH-01 bis -04 Kennzahlen', () => {
       paidAt: plainDate('2026-08-10'),
       method: null,
       note: null,
-    });
+    }, ACTOR, null);
 
     const metrics = await getDashboardMetrics(org, NOW);
 

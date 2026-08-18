@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import { authorizeOptional, requirePermission } from '@/application/auth/authorize';
 import { listCustomers } from '@/application/customers/customer-service';
+import { countMembers } from '@/application/members/member-service';
 import {
   listInvoices,
   today,
@@ -167,6 +168,16 @@ export default async function InvoicesPage({
    */
   const readCustomers = authorizeOptional(session, 'customer.read');
 
+  /*
+   * Wie viele Konten das Unternehmen führt — allein für die Sichtbarkeit der
+   * Spalte „Erstellt von" (FA-UI-16).
+   *
+   * `countMembers` hängt an `invoice.read`, dem Recht, das auch diese Seite
+   * verlangt: Der Urheber eines Belegs ist innerhalb eines Unternehmens keine
+   * geschützte Auskunft, er steht in derselben Zeile wie der Beleg selbst.
+   */
+  const memberCount = await countMembers(session.organization);
+
   const [invoices, customers] = await Promise.all([
     listInvoices(session.organization, filter),
     readCustomers === null ? [] : listCustomers(readCustomers),
@@ -315,12 +326,21 @@ export default async function InvoicesPage({
       ),
     },
     {
-      // Im Schema angelegt, in V1 ausgeblendet — eingeblendet ab zwei
-      // Mitgliedern (FA-UI-16, §7).
+      /*
+       * „Erstellt von" — seit M8 gefüllt und **bedingt sichtbar** (FA-UI-16, §7).
+       *
+       * Sie erscheint erst, wenn das Unternehmen mehr als ein Konto führt. In
+       * einem Einpersonenbetrieb stünde in jeder Zeile derselbe Name: eine
+       * Spalte, die nichts unterscheidet, kostet Breite und trägt nichts.
+       *
+       * Bestandsbelege aus der Zeit vor M8 zeigen einen Gedankenstrich. Sie
+       * nachträglich aus dem Protokoll zuzuschreiben hieße raten.
+       */
       key: 'createdBy',
       header: messages.invoices.createdBy,
-      hidden: true,
-      cell: () => messages.common.none,
+      hidden: memberCount < 2,
+      fit: true,
+      cell: (invoice) => invoice.createdByName ?? messages.common.none,
     },
   ];
 

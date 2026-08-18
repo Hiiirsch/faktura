@@ -505,12 +505,19 @@ export async function addPaymentAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await addPayment(authorized, parsed.data.invoiceId, {
-    amountCents: amount.value,
-    paidAt: paidAt.value,
-    method: parsed.data.method,
-    note: parsed.data.note,
-  });
+  const context = await readRequestContext();
+  await addPayment(
+    authorized,
+    parsed.data.invoiceId,
+    {
+      amountCents: amount.value,
+      paidAt: paidAt.value,
+      method: parsed.data.method,
+      note: parsed.data.note,
+    },
+    session.userId,
+    context.ipAddress,
+  );
 
   revalidatePath(invoicePath(parsed.data.invoiceId));
   revalidatePath(INVOICES_PATH);
@@ -528,11 +535,14 @@ export async function markPaidAction(formData: FormData): Promise<void> {
     return;
   }
 
+  const context = await readRequestContext();
   await markAsFullyPaid(
     authorized,
     id.data,
     paidAt.value,
     readText(formData, 'method').trim() || null,
+    session.userId,
+    context.ipAddress,
   );
 
   revalidatePath(invoicePath(id.data));
@@ -551,7 +561,8 @@ export async function removePaymentAction(formData: FormData): Promise<void> {
     return;
   }
 
-  await removePayment(authorized, paymentId.data);
+  const context = await readRequestContext();
+  await removePayment(authorized, paymentId.data, session.userId, context.ipAddress);
 
   revalidatePath(invoicePath(invoiceId.data));
   revalidatePath(INVOICES_PATH);
@@ -622,11 +633,14 @@ export async function quickMarkPaidAction(
   // Bezahlt wurde heute — für ein abweichendes Datum gibt es das Formular auf
   // der Belegseite. Die Schnellaktion ist für den Regelfall da, nicht für den
   // Nachtrag.
+  const context = await readRequestContext();
   const result = await markAsFullyPaid(
     authorized,
     id.data,
     todayIn(getAppTimeZone(), new Date()),
     null,
+    session.userId,
+    context.ipAddress,
   );
 
   revalidatePath(INVOICES_PATH);
@@ -708,12 +722,20 @@ export async function bulkMarkPaidAction(formData: FormData): Promise<void> {
   const session = await requireSessionOrThrow();
   const authorized = authorize(session, 'invoice.recordPayment');
 
+  const context = await readRequestContext();
   const ids = selectedIds(formData);
   const paidAt = todayIn(getAppTimeZone(), new Date());
   let changed = 0;
 
   for (const id of ids) {
-    const result = await markAsFullyPaid(authorized, id, paidAt, null);
+    const result = await markAsFullyPaid(
+      authorized,
+      id,
+      paidAt,
+      null,
+      session.userId,
+      context.ipAddress,
+    );
     if (result.ok) {
       changed += 1;
       revalidatePath(invoicePath(id));

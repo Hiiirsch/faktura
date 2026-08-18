@@ -37,12 +37,12 @@ import { organizationContextOf } from '@/infrastructure/repositories/organizatio
 
 import { customerBuyer, fieldsBuyer, freeBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization as org } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 
 const COMPANY = {
   ...EMPTY_COMPANY_PROFILE,

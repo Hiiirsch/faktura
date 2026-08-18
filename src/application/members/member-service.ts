@@ -62,6 +62,25 @@ export async function getMembers(
 }
 
 /**
+ * Wie viele Konten das Unternehmen führt (M8, B6).
+ *
+ * **Gebunden an `invoice.read`, nicht an `organization.administer`**, und das
+ * ist Absicht: Gebraucht wird die Zahl von der Rechnungsliste, für die
+ * Sichtbarkeit der Spalte „Erstellt von" (FA-UI-16). Hinge sie an der
+ * Rechteverwaltung, sähe ein gewöhnliches Mitglied die Spalte nie — obwohl der
+ * Urheber eines Belegs innerhalb eines Unternehmens keine geschützte Auskunft
+ * ist; er steht in derselben Zeile wie der Beleg, den alle sehen.
+ *
+ * Eine Zahl, keine Liste: Namen und Adressen der Kollegen stehen weiterhin
+ * hinter `organization.administer`.
+ */
+export async function countMembers(
+  context: Authorized<'invoice.read'>,
+): Promise<number> {
+  return (await listMembers(context)).length;
+}
+
+/**
  * Ob dieses Konto die letzte aktive Rechteverwaltung ist.
  *
  * Die Zusage liegt im Trigger `Organization_keeps_administrator_*`; diese

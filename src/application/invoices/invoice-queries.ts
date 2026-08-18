@@ -34,6 +34,18 @@ export type InvoiceListFilter = {
   readonly direction?: 'asc' | 'desc';
 };
 
+/**
+ * Der Anzeigename eines Kontos: erfasster Name, sonst die Adresse.
+ *
+ * Die Adresse als Rückfall und nicht „unbekannt": Wer den Beleg angelegt hat,
+ * ist bekannt — nur sein Name ist es nicht.
+ */
+function actorNameOf(
+  actor: { readonly name: string | null; readonly email: string } | null,
+): string | null {
+  return actor === null ? null : (actor.name ?? actor.email);
+}
+
 function customerNameOf(
   customer: { readonly companyName: string | null; readonly contactName: string | null } | null,
 ): string | null {
@@ -54,6 +66,14 @@ export type InvoiceListEntry = {
   readonly grossTotalCents: number;
   readonly paidTotalCents: number;
   readonly currency: string;
+  /**
+   * Wer den Beleg angelegt hat (M8, FA-UI-16).
+   *
+   * `null` bei Bestandsbelegen aus der Zeit vor M8 — sie tragen keinen Urheber
+   * und bekommen keinen: Eine geratene Urheberschaft an einem unveränderlichen
+   * Beleg wäre schlimmer als eine leere.
+   */
+  readonly createdByName: string | null;
 };
 
 function asStatus(value: string): InvoiceStatus {
@@ -115,6 +135,7 @@ export async function listInvoices(
       // steht hier der Name vom Beleg; bleibt auch der leer, ein Gedankenstrich
       // — die Liste soll nicht eine Kennung anzeigen, die niemandem hilft.
       customerName: buyerDisplayName(draftBuyerOf(invoice), customerNameOf(invoice.customer)) ?? '',
+      createdByName: actorNameOf(invoice.createdBy),
       customerId: invoice.customerId,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,

@@ -577,6 +577,65 @@ Migration, denn ein Passwort in einer Migration steht im Repository. Der zweite
 Faktor entsteht dabei mit dem Konto; das Geheimnis erscheint genau einmal.
 Wiederherstellungscodes gibt es für die Verwaltung nicht.
 
+## Urheber am Beleg (seit M8)
+
+`Invoice.createdById` verweist auf `User` — ein echter Fremdschlüssel, kein
+Textfeld wie `AuditLog.actorId`. Der Unterschied ist begründet: Ein Konto wird
+**nie gelöscht**, sondern gesperrt, gerade damit der Beleg seinen Urheber
+behält. Damit kann der Verweis nicht ins Leere zeigen.
+
+Der Fremdschlüssel hat sofort etwas aufgedeckt: Die Integrationstests übergaben
+seit M4 erfundene Akteure (`test`, `pruef-akteur`, `einrichtung`). Das ging gut,
+weil `AuditLog.actorId` keinen Fremdschlüssel trägt — sie behaupteten also einen
+Akteur, den niemand hätte finden können. `resetDatabase()` legt jetzt ein
+Prüfkonto mit fester Kennung an (`TEST_ACTOR_ID`), und die Tests handeln in
+dessen Namen. Das Konto trägt **keine Rolle**, damit es in keiner Rechteprüfung
+mitzählt — insbesondere nicht in der Aussperrsicherung.
+
+**Die Kopie gehört dem, der sie anlegt.** Beim Duplizieren wandert alles mit —
+Empfänger, Positionen, Vorlage. Der Urheber gerade nicht: Er ist keine
+Eigenschaft des Belegs, sondern eine des Vorgangs, der ihn erzeugt hat. Dasselbe
+gilt für die Gutschrift beim Stornieren.
+
+Bestandsbelege tragen `NULL` und behalten es. Sie nachträglich aus dem Protokoll
+zuzuschreiben hieße raten, und eine geratene Urheberschaft an einem
+unveränderlichen Beleg ist schlimmer als eine leere.
+
+Die Spalte „Erstellt von" erscheint erst, wenn das Unternehmen **mehr als ein
+Konto** führt: In einem Einpersonenbetrieb stünde in jeder Zeile derselbe Name.
+Die Zahl kommt aus `countMembers`, und die hängt an `invoice.read` statt an
+`organization.administer` — der Urheber eines Belegs ist innerhalb eines
+Unternehmens keine geschützte Auskunft, er steht in derselben Zeile wie der
+Beleg. Eine Zahl, keine Liste: Namen und Adressen der Kollegen bleiben hinter
+der Rechteverwaltung.
+
+**Der Akteur reist im Ausführungskontext, nicht im Ereignis.** Ein
+`InvoiceIssued` beschreibt, was geschehen ist, nicht unter welchen Umständen.
+`InvoiceEventContext` trägt deshalb Mandant, Akteur und Herkunft; der
+Typparameter von `InvoiceEventHandler` stand dafür immer schon offen. Damit
+fallen die beiden `void actorId;` in `issue-invoice.ts` und `cancel-invoice.ts`,
+die seit M4 dort standen, weil es keinen Weg gab, den Akteur weiterzureichen.
+
+Dabei kamen zwei weitere Lücken heraus, beide gegen NFA-COMP-01: Zahlungen
+trugen keinen Akteur im Protokoll, und **Korrigieren und Zurücknehmen einer
+Zahlung schrieben überhaupt nichts** — es gab dafür kein Domain-Ereignis und
+damit keinen Handler. Die Aktion `PAYMENT_REMOVED` stand seit M4 im Katalog und
+wurde nie benutzt; das war der Hinweis, den niemand gelesen hat.
+
+### Die Migration, die keine sein durfte
+
+Für eine neue Spalte mit Fremdschlüssel erzeugt Prisma unter SQLite eine
+`RedefineTables`-Migration: neue Tabelle, Daten kopieren, `DROP TABLE "Invoice"`,
+umbenennen. Sie hätte **elf** Trigger mitgenommen — die vier auf `Invoice` und
+sieben weitere auf `InvoiceLine`, `Payment` und `InvoiceArtifact`, die `Invoice`
+nur lesen.
+
+Ersetzt durch ein reines `ALTER TABLE "Invoice" ADD COLUMN`. SQLite erlaubt das
+mit `REFERENCES`, solange die Spalte nullable ist und keinen Vorgabewert hat.
+Danach wird **ein** Trigger neu angelegt: `Invoice_immutable_after_issue` muss
+die neue Spalte kennen, sonst wäre die Urheberangabe an einem festgeschriebenen
+Beleg still veränderlich — das Gegenteil dessen, wofür sie da ist.
+
 ## Verwaltung (seit M8)
 
 Der Betreiber legt Unternehmen an, legt sie still und sperrt Konten. Mehr nicht

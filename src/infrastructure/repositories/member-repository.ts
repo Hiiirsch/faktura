@@ -16,7 +16,7 @@
 import type { Prisma, User } from '@prisma/client';
 
 import { clientFor, type TransactionHandle } from './client';
-import type { OrganizationContext } from './organization-context';
+import { DEFAULT_ORGANIZATION_ID, type OrganizationContext } from './organization-context';
 
 const forMember = {
   id: true,
@@ -77,3 +77,21 @@ export async function updateMember(
 }
 
 export type { User };
+
+/**
+ * Das erste Konto der Standardorganisation — **nur für das Beispieldatenskript**.
+ *
+ * Ohne Kontext, und das ist hier vertretbar: Das Skript läuft von der
+ * Kommandozeile gegen eine Entwicklungsdatenbank und sucht kein bestimmtes
+ * Konto, sondern *irgendeines*, dem es die Beispielbelege zuschreiben kann.
+ * Aus einer Route ist die Funktion nicht erreichbar — sie steht in der
+ * Erlaubnisliste von `tests/architecture/authorization.test.ts` nicht, weil sie
+ * keinen Kontext erzeugt.
+ */
+export async function listUsersOfDefaultOrganization(): Promise<Member | null> {
+  return clientFor(undefined).user.findFirst({
+    where: { organizationId: DEFAULT_ORGANIZATION_ID, disabledAt: null },
+    select: forMember,
+    orderBy: { createdAt: 'asc' },
+  });
+}

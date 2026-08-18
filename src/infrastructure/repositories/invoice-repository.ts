@@ -139,6 +139,9 @@ export type InvoiceListQuery = {
 
 const forList = {
   customer: { select: { id: true, companyName: true, contactName: true } },
+  // Nur Name und Adresse: Der Urheber erscheint als Wort in einer Spalte, nicht
+  // als Konto mit Rechten (M8, FA-UI-16).
+  createdBy: { select: { name: true, email: true } },
 } satisfies Prisma.InvoiceInclude;
 
 export type InvoiceListRow = Prisma.InvoiceGetPayload<{ include: typeof forList }>;

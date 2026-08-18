@@ -280,6 +280,15 @@ model Invoice {
   grossTotalCents Int @default(0)
   paidTotalCents  Int @default(0)
 
+  /// Wer den Beleg angelegt hat (M8, FA-UI-16).
+  ///
+  /// Optional, und das bleibt es: Bestandsbelege aus der Zeit vor M8 tragen
+  /// hier `NULL` und behalten es. Sie nachträglich aus dem Protokoll
+  /// zuzuschreiben hieße raten — und eine geratene Urheberschaft an einem
+  /// unveränderlichen Beleg ist schlimmer als eine leere.
+  createdById String?
+  createdBy   User?   @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
   issuedAt    DateTime?
   cancelledAt DateTime?
   createdAt   DateTime  @default(now())
@@ -447,6 +456,13 @@ model User {
 
   sessions        Session[]
   recoveryCodes   RecoveryCode[]
+  /// Belege, die dieses Konto angelegt hat (M8, FA-UI-16).
+  ///
+  /// `onDelete: SetNull` an der Gegenseite ist kein Zugeständnis: Ein Konto wird
+  /// nie gelöscht, sondern gesperrt — gerade damit der Beleg seinen Urheber
+  /// behält. Die Regel steht da für den Fall, dass eine ganze Organisation
+  /// entfernt wird.
+  createdInvoices Invoice[]       @relation("InvoiceCreatedBy")
   pendingLogins   PendingLogin[]
   passwordResets  PasswordReset[]
   /// Von diesem Konto ausgesprochene Einladungen. `onDelete: SetNull` an der

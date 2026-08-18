@@ -36,13 +36,15 @@ import type { InvoiceEvent } from '@/domain/invoice/events';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
 
+import { DEFAULT_ORGANIZATION_ID } from '@/infrastructure/repositories/organization-context';
+
 import { customerBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 
 const CUSTOMER: CustomerData = {
   companyName: 'Beispiel GmbH',
@@ -358,9 +360,9 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
       paidAt: plainDate('2026-03-05'),
       method: null,
       note: null,
-    });
+    }, ACTOR, null);
 
-    expect((await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), 'Überweisung')).ok).toBe(true);
+    expect((await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), 'Überweisung', ACTOR, null)).ok).toBe(true);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({
       where: { id },
@@ -376,9 +378,9 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('meldet, wenn nichts mehr offen ist', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null, ACTOR, null);
 
-    const again = await markAsFullyPaid(testOrganization, id, plainDate('2026-03-11'), null);
+    const again = await markAsFullyPaid(testOrganization, id, plainDate('2026-03-11'), null, ACTOR, null);
     expect(again.ok).toBe(false);
     if (!again.ok) {
       expect(again.error.kind).toBe('NOTHING_OUTSTANDING');
@@ -387,7 +389,7 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('korrigiert eine Zahlung und leitet den Status neu ab (FA-STAT-07)', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null, ACTOR, null);
 
     const payment = await prisma.payment.findFirstOrThrow({ where: { invoiceId: id } });
     await updatePayment(testOrganization, payment.id, {
@@ -395,7 +397,7 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
       paidAt: plainDate('2026-03-10'),
       method: null,
       note: 'korrigiert',
-    });
+    }, ACTOR, null);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('PARTIALLY_PAID');
@@ -404,10 +406,10 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
 
   it('nimmt eine Zahlung zurück und stellt den offenen Zustand wieder her', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null, ACTOR, null);
 
     const payment = await prisma.payment.findFirstOrThrow({ where: { invoiceId: id } });
-    expect((await removePayment(testOrganization, payment.id)).ok).toBe(true);
+    expect((await removePayment(testOrganization, payment.id, ACTOR, null)).ok).toBe(true);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('ISSUED');
@@ -423,7 +425,7 @@ describe('Zahlungen (FA-STAT-06, -07)', () => {
       paidAt: plainDate('2026-03-05'),
       method: null,
       note: null,
-    });
+    }, ACTOR, null);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -473,7 +475,7 @@ describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
 
   it('storniert auch eine bereits bezahlte Rechnung (FA-STAT-10)', async () => {
     const id = await issuedInvoice();
-    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
+    await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null, ACTOR, null);
 
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id } })).status).toBe('PAID');
 
@@ -520,7 +522,7 @@ describe('Storno (FA-STAT-08, -09, -10, A4)', () => {
       paidAt: plainDate('2026-03-20'),
       method: null,
       note: null,
-    });
+    }, ACTOR, null);
 
     expect(payment.ok).toBe(false);
     if (!payment.ok) {
@@ -537,7 +539,7 @@ describe('Protokollierung (FA-STAT-11, NFA-COMP-01)', () => {
       paidAt: plainDate('2026-03-10'),
       method: 'Überweisung',
       note: null,
-    });
+    }, ACTOR, null);
     await cancelInvoice(testOrganization, id, null, ACTOR, null);
 
     const actions = (
@@ -564,7 +566,7 @@ describe('Domain-Ereignisse (NFA-ARCH-08)', () => {
 
     try {
       const id = await issuedInvoice();
-      await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null);
+      await markAsFullyPaid(testOrganization, id, plainDate('2026-03-10'), null, ACTOR, null);
       await cancelInvoice(testOrganization, id, null, ACTOR, null);
 
       expect(seen.map((event) => event.type)).toEqual([
@@ -585,11 +587,10 @@ describe('Domain-Ereignisse (NFA-ARCH-08)', () => {
 
     try {
       await expect(
-        dispatchInvoiceEvent(testOrganization, {
-          type: 'InvoicePaid',
-          invoiceId: 'x',
-          grossTotalCents: cents(100),
-        }),
+        dispatchInvoiceEvent(
+          { organization: testOrganization, actorId: ACTOR, ipAddress: null },
+          { type: 'InvoicePaid', invoiceId: 'x', grossTotalCents: cents(100) },
+        ),
       ).resolves.toBeUndefined();
     } finally {
       unregister();
@@ -684,5 +685,119 @@ describe('Liste und Filter (FA-RECH-15, -16; FA-STAT-02)', () => {
       'RE-2026-0002',
       'RE-2026-0003',
     ]);
+  });
+});
+
+describe('FA-UI-16 / NFA-COMP-01 Der Urheber am Beleg (M8, B6)', () => {
+  /** Ein Entwurf mit Kunde — der kürzeste Weg zu einem Beleg mit Urheber. */
+  async function seedDraft(): Promise<string> {
+    const customerId = await makeCustomer();
+    const { id } = await createDraftInvoice(testOrganization, draft(customerId), ACTOR, null);
+    return id;
+  }
+
+  it('trägt ein Entwurf den Urheber, der ihn angelegt hat', async () => {
+    const id = await seedDraft();
+
+    const invoices = await listInvoices(testOrganization, {});
+    const entry = invoices.find((row) => row.id === id);
+
+    expect(entry?.createdByName).toBe('pruef-akteur@example.org');
+  });
+
+  /**
+   * Die Kopie gehört dem, der sie anlegt.
+   *
+   * Bei einer Duplizierung wandert alles mit — Empfänger, Positionen, Vorlage.
+   * Der Urheber gerade nicht: Er ist keine Eigenschaft des Belegs, sondern eine
+   * des Vorgangs, der ihn erzeugt hat.
+   */
+  it('gehört eine Kopie ihrem eigenen Urheber', async () => {
+    const id = await seedDraft();
+
+    const other = await prisma.user.create({
+      data: {
+        email: 'zweiter@example.org',
+        passwordHash: 'unbenutzt',
+        organizationId: DEFAULT_ORGANIZATION_ID,
+      },
+    });
+
+    const copy = await duplicateInvoice(testOrganization, id, other.id, null);
+    expect(copy.ok).toBe(true);
+    if (!copy.ok) return;
+
+    const stored = await prisma.invoice.findUniqueOrThrow({ where: { id: copy.id } });
+    expect(stored.createdById).toBe(other.id);
+  });
+
+  /**
+   * Ein Bestandsbeleg bleibt ohne Urheber.
+   *
+   * Belege aus der Zeit vor M8 tragen `NULL` und behalten es. Sie nachträglich
+   * aus dem Protokoll zuzuschreiben hieße raten — und eine geratene
+   * Urheberschaft an einem unveränderlichen Beleg ist schlimmer als eine leere.
+   */
+  it('bleibt ein Beleg ohne Urheber ohne Urheber', async () => {
+    const id = await seedDraft();
+    await prisma.invoice.update({ where: { id }, data: { createdById: null } });
+
+    const invoices = await listInvoices(testOrganization, {});
+
+    expect(invoices.find((row) => row.id === id)?.createdByName).toBeNull();
+  });
+
+  /**
+   * Die Urheberangabe ist nach dem Festschreiben unveränderlich (FA-NUM-08).
+   *
+   * Der Trigger `Invoice_immutable_after_issue` kennt die Spalte seit B6. Ohne
+   * diese Zeile ließe sich die Urheberschaft an einem festgeschriebenen Beleg
+   * still umschreiben — genau das Gegenteil dessen, wofür sie da ist.
+   */
+  it('lässt sich der Urheber nach dem Festschreiben nicht ändern', async () => {
+    const id = await seedDraft();
+    const issued = await issueInvoice(testOrganization, id, ACTOR, null);
+    expect(issued.ok).toBe(true);
+
+    await expect(
+      prisma.invoice.update({ where: { id }, data: { createdById: null } }),
+    ).rejects.toThrow();
+  });
+
+  /**
+   * Zahlungen nennen jetzt einen Akteur (NFA-COMP-01).
+   *
+   * Bis B6 entstanden die Protokolleinträge zu Zahlungen im Ereignis-Handler,
+   * und der bekam keinen Akteur — sie standen also ohne. Zurücknehmen und
+   * Korrigieren schrieben überhaupt nichts: Die Aktion `PAYMENT_REMOVED` stand
+   * seit M4 im Katalog und wurde nie benutzt.
+   */
+  it('protokolliert Zahlung, Korrektur und Rücknahme mit Akteur', async () => {
+    const id = await seedDraft();
+    await issueInvoice(testOrganization, id, ACTOR, null);
+
+    await addPayment(
+      testOrganization,
+      id,
+      { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: null, note: null },
+      ACTOR,
+      null,
+    );
+
+    const payment = await prisma.payment.findFirstOrThrow({ where: { invoiceId: id } });
+    await removePayment(testOrganization, payment.id, ACTOR, null);
+
+    const entries = await prisma.auditLog.findMany({ where: { entityId: id } });
+    const actions = entries.map((entry) => entry.action);
+
+    expect(actions).toContain('PAYMENT_RECORDED');
+    expect(actions).toContain('PAYMENT_REMOVED');
+
+    // Und alle drei nennen den Akteur — auch das Festschreiben, das ihn bis B6
+    // in einem `void actorId;` verlor.
+    for (const action of ['ISSUED', 'PAYMENT_RECORDED', 'PAYMENT_REMOVED']) {
+      const entry = entries.find((row) => row.action === action);
+      expect(entry?.actorId, action).toBe(ACTOR);
+    }
   });
 });

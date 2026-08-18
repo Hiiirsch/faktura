@@ -5,7 +5,7 @@
  * sind Teilzahlungen, Korrekturen und ein späterer Kontoabgleich möglich
  * (Spec §7). Der Status wird nach jeder Änderung neu abgeleitet, nie gesetzt.
  */
-import { type Cents, cents, subtractCents } from '@/domain/money/money';
+import { type Cents, cents } from '@/domain/money/money';
 import { outstandingAmount } from '@/domain/invoice/status';
 import type { PlainDate } from '@/domain/time/plain-date';
 import { findInvoice } from '@/infrastructure/repositories/invoice-repository';
@@ -17,6 +17,8 @@ import {
   listPayments as queryPayments,
   updatePayment as writePayment,
 } from '@/infrastructure/repositories/payment-repository';
+
+import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 
 import { dispatchInvoiceEvent, ensureDefaultHandlers } from './event-dispatcher';
 import { recalculateInvoice } from './invoice-service';
@@ -55,10 +57,21 @@ async function loadPayableInvoice(context: Authorized<'invoice.recordPayment'>, 
   return { ok: true as const, invoice };
 }
 
+/**
+ * Erfasst eine Zahlung (FA-STAT-05).
+ *
+ * **Akteur und Herkunft sind seit M8/B6 Pflicht.** Bis dahin trugen die
+ * Protokolleinträge zu Zahlungen keinen Akteur — sie entstanden im
+ * Ereignis-Handler, und der bekam keinen. NFA-COMP-01 verlangt Zeitpunkt,
+ * Aktion **und** Akteur; die Lücke fiel erst auf, als der Urheber am Beleg dazu
+ * zwang, den Weg des Akteurs überhaupt zu Ende zu denken.
+ */
 export async function addPayment(
   context: Authorized<'invoice.recordPayment'>,
   invoiceId: string,
   input: PaymentInput,
+  actorId: string,
+  ipAddress: string | null,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
   ensureDefaultHandlers();
 
@@ -75,7 +88,7 @@ export async function addPayment(
   });
 
   await recalculateInvoice(context, invoiceId);
-  await announce(context, invoiceId, input.amountCents);
+  await announce(context, invoiceId, input.amountCents, actorId, ipAddress);
 
   return { ok: true };
 }
@@ -90,6 +103,8 @@ export async function markAsFullyPaid(
   invoiceId: string,
   paidAt: PlainDate,
   method: string | null,
+  actorId: string,
+  ipAddress: string | null,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
   const loaded = await loadPayableInvoice(context, invoiceId);
   if (!loaded.ok) {
@@ -105,14 +120,36 @@ export async function markAsFullyPaid(
     return { ok: false, error: { kind: 'NOTHING_OUTSTANDING' } };
   }
 
-  return addPayment(context, invoiceId, { amountCents: outstanding, paidAt, method, note: null });
+  return addPayment(
+    context,
+    invoiceId,
+    { amountCents: outstanding, paidAt, method, note: null },
+    actorId,
+    ipAddress,
+  );
 }
 
-/** Korrigiert eine erfasste Zahlung (FA-STAT-07). */
+/**
+ * Korrigiert eine erfasste Zahlung (FA-STAT-07).
+ *
+ * **Der Protokolleintrag ist neu in M8/B6.** Korrigieren und Zurücknehmen einer
+ * Zahlung änderten den Zahlungsstand eines Belegs, ohne eine Spur zu
+ * hinterlassen — es gab dafür kein Domain-Ereignis, und damit auch keinen
+ * Handler, der etwas geschrieben hätte. Die Aktion `PAYMENT_REMOVED` stand seit
+ * M4 im Katalog und wurde nie benutzt; das war der Hinweis, den niemand gelesen
+ * hat.
+ *
+ * Geschrieben wird hier unmittelbar und nicht über ein Ereignis: Ein Ereignis
+ * beschreibt eine Zustandsänderung, die andere interessieren könnte. Eine
+ * Korrektur ist eine Berichtigung — sie gehört ins Protokoll, aber nicht in den
+ * Mahnlauf.
+ */
 export async function updatePayment(
   context: Authorized<'invoice.recordPayment'>,
   paymentId: string,
   input: PaymentInput,
+  actorId: string,
+  ipAddress: string | null,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
   const payment = await findPayment(context, paymentId);
 
@@ -133,6 +170,16 @@ export async function updatePayment(
   });
 
   await recalculateInvoice(context, payment.invoiceId);
+
+  await recordAuditEntry(context, {
+    entityType: 'Invoice',
+    entityId: payment.invoiceId,
+    action: 'PAYMENT_RECORDED',
+    actorId: actorId.length === 0 ? null : actorId,
+    ipAddress,
+    details: { paymentId, amountCents: input.amountCents, corrected: true },
+  });
+
   return { ok: true };
 }
 
@@ -140,6 +187,8 @@ export async function updatePayment(
 export async function removePayment(
   context: Authorized<'invoice.recordPayment'>,
   paymentId: string,
+  actorId: string,
+  ipAddress: string | null,
 ): Promise<{ ok: true } | { ok: false; error: PaymentError }> {
   const payment = await findPayment(context, paymentId);
 
@@ -155,6 +204,15 @@ export async function removePayment(
   await deletePayment(context, paymentId);
   await recalculateInvoice(context, payment.invoiceId);
 
+  await recordAuditEntry(context, {
+    entityType: 'Invoice',
+    entityId: payment.invoiceId,
+    action: 'PAYMENT_REMOVED',
+    actorId: actorId.length === 0 ? null : actorId,
+    ipAddress,
+    details: { paymentId, amountCents: payment.amountCents },
+  });
+
   return { ok: true };
 }
 
@@ -163,13 +221,17 @@ async function announce(
   context: Authorized<'invoice.recordPayment'>,
   invoiceId: string,
   amountCents: Cents,
+  actorId: string,
+  ipAddress: string | null,
 ): Promise<void> {
   const invoice = await findInvoice(context, invoiceId);
   if (invoice === null) {
     return;
   }
 
-  await dispatchInvoiceEvent(context, {
+  const acting = { organization: context, actorId, ipAddress };
+
+  await dispatchInvoiceEvent(acting, {
     type: 'InvoicePaymentRecorded',
     invoiceId,
     amountCents,
@@ -178,14 +240,13 @@ async function announce(
   });
 
   if (invoice.status === 'PAID') {
-    await dispatchInvoiceEvent(context, {
+    await dispatchInvoiceEvent(acting, {
       type: 'InvoicePaid',
       invoiceId,
       grossTotalCents: cents(invoice.grossTotalCents),
     });
   }
 
-  void subtractCents;
 }
 
 export async function listPayments(context: Authorized<'invoice.read'>, invoiceId: string) {

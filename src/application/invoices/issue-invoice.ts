@@ -162,16 +162,13 @@ export async function issueInvoice(
     return result;
   }
 
-  await dispatchInvoiceEvent(context, {
+  await dispatchInvoiceEvent({ organization: context, actorId, ipAddress }, {
     type: 'InvoiceIssued',
     invoiceId,
     invoiceNumber: result.invoiceNumber,
     issueDate,
     grossTotalCents: cents(invoice.grossTotalCents),
   });
-
-  void actorId;
-  void ipAddress;
 
   return result;
 }

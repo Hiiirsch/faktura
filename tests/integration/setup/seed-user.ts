@@ -137,7 +137,19 @@ if ((await findUserByEmail(TOTP_EMAIL)) === null) {
 
 // Ein festgeschriebener Beleg für den Browsertest.
 const organization = fullyAuthorized(organizationContextOf(DEFAULT_ORGANIZATION_ID));
-const ACTOR = 'einrichtung';
+/**
+ * Der Akteur der Einrichtung (M8, B6).
+ *
+ * Seit `Invoice.createdById` auf `User` verweist, muss das ein echtes Konto
+ * sein — eine erfundene Zeichenkette ist ein Fremdschlüsselfehler. Genommen
+ * wird das Prüfkonto: Es hat die Belege im Bestand angelegt, und genau das soll
+ * die Spalte „Erstellt von" später zeigen.
+ */
+const seedActor = await findUserByEmail(EMAIL);
+if (seedActor === null) {
+  throw new Error('Das Prüfkonto fehlt — ohne Urheber lässt sich kein Beleg anlegen.');
+}
+const ACTOR = seedActor.id;
 
 await saveCompanyProfile(
   organization,

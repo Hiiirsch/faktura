@@ -33,13 +33,23 @@ import { cents } from '@/domain/money/money';
 import { addDays, plainDate, todayIn } from '@/domain/time/plain-date';
 import { logger } from '@/infrastructure/logging/logger';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
+import { listUsersOfDefaultOrganization } from '@/infrastructure/repositories/member-repository';
 import { fullyAuthorized } from '@/application/auth/authorize';
 import {
   DEFAULT_ORGANIZATION_ID,
   organizationContextOf,
 } from '@/infrastructure/repositories/organization-context';
 
-const ACTOR = 'seed';
+/**
+ * Der Akteur der Beispieldaten (M8, B6).
+ *
+ * `Invoice.createdById` verweist auf `User`. Der Beispielbestand läuft gegen
+ * eine Datenbank, in der schon ein Konto steht — sonst hätte niemand ihn
+ * angefordert. Gibt es keines, bleibt der Urheber leer: Ein erfundener Wert
+ * wäre ein Fremdschlüsselfehler, und ein geratener eine falsche Angabe an einem
+ * Beleg.
+ */
+let ACTOR = '';
 const org = fullyAuthorized(organizationContextOf(DEFAULT_ORGANIZATION_ID));
 
 const COMPANY = {
@@ -106,6 +116,17 @@ function pick<T>(values: readonly T[]): T {
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Das Seed-Kommando läuft nicht gegen eine Produktionsdatenbank.');
+  }
+
+  const first = await listUsersOfDefaultOrganization();
+  ACTOR = first?.id ?? '';
+
+  if (ACTOR.length === 0) {
+    logger.warn('seed.no_user', {
+      hint:
+        'Kein Konto in der Standardorganisation — die Beispielbelege entstehen ohne ' +
+        'Urheberangabe. Zuerst npm run user:create ausführen.',
+    });
   }
 
   await saveCompanyProfile(org, COMPANY, ACTOR, null);
@@ -251,15 +272,28 @@ async function main(): Promise<void> {
           await cancelInvoice(org, draft.id, 'Falsche Position abgerechnet', ACTOR, null);
           cancelled += 1;
         } else if (roll < 0.7) {
-          await markAsFullyPaid(org, draft.id, addDays(plainDate(issueDate), 10), 'Überweisung');
+          await markAsFullyPaid(
+            org,
+            draft.id,
+            addDays(plainDate(issueDate), 10),
+            'Überweisung',
+            ACTOR,
+            null,
+          );
           paid += 1;
         } else if (roll < 0.85) {
-          await addPayment(org, draft.id, {
-            amountCents: cents(5_000),
-            paidAt: addDays(plainDate(issueDate), 12),
-            method: 'Überweisung',
-            note: 'Teilzahlung',
-          });
+          await addPayment(
+            org,
+            draft.id,
+            {
+              amountCents: cents(5_000),
+              paidAt: addDays(plainDate(issueDate), 12),
+              method: 'Überweisung',
+              note: 'Teilzahlung',
+            },
+            ACTOR,
+            null,
+          );
           partiallyPaid += 1;
         }
         // Der Rest bleibt offen — darunter die überfälligen aus den Vorjahren.

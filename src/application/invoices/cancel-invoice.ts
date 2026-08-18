@@ -12,7 +12,6 @@
  * fällt der Betrag dadurch heraus, dass das Original ausscheidet — die
  * Gutschrift zählt nie mit (`countsTowardRevenue`).
  */
-import { cents } from '@/domain/money/money';
 import { parsePlainDate, type PlainDate, todayIn } from '@/domain/time/plain-date';
 import { getEnv } from '@/infrastructure/config/env';
 import { runInTransaction } from '@/infrastructure/repositories/client';
@@ -112,6 +111,9 @@ export async function cancelInvoice(
         grossTotalCents: invoice.grossTotalCents,
         paidTotalCents: 0,
         issuedAt: now,
+        // Die Gutschrift gehört dem, der storniert — nicht dem Urheber des
+        // stornierten Belegs.
+        createdById: actorId.length === 0 ? null : actorId,
       },
       invoice.lines.map((line) => ({
         position: line.position,
@@ -138,16 +140,12 @@ export async function cancelInvoice(
     return { creditNoteId: creditNote.id, creditNoteNumber };
   });
 
-  await dispatchInvoiceEvent(context, {
+  await dispatchInvoiceEvent({ organization: context, actorId, ipAddress }, {
     type: 'InvoiceCancelled',
     invoiceId: invoice.id,
     creditNoteId: result.creditNoteId,
     creditNoteNumber: result.creditNoteNumber,
   });
-
-  void actorId;
-  void ipAddress;
-  void cents;
 
   return { ok: true, ...result };
 }

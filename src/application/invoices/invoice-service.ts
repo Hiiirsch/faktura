@@ -85,6 +85,18 @@ function lineCreateData(lines: readonly InvoiceLineData[], lineNets: readonly nu
   }));
 }
 
+/**
+ * Der Urheber, wie er an den Beleg geschrieben wird (M8, FA-UI-16).
+ *
+ * `Invoice.createdById` verweist auf `User`. Wo kein Konto handelt — im
+ * Beispieldatenskript ohne angelegten Benutzer —, bleibt die Angabe **leer**
+ * statt erfunden: Eine geratene Urheberschaft an einem Beleg, den niemand mehr
+ * ändern kann, ist schlimmer als eine leere.
+ */
+function createdByOf(actorId: string): string | null {
+  return actorId.length === 0 ? null : actorId;
+}
+
 export async function createDraftInvoice(
   context: Authorized<'invoice.create'>,
   data: DraftInvoiceData,
@@ -124,6 +136,7 @@ export async function createDraftInvoice(
       netTotalCents: totals.netTotalCents,
       taxTotalCents: totals.taxTotalCents,
       grossTotalCents: totals.grossTotalCents,
+      createdById: createdByOf(actorId),
     },
     lineCreateData(data.lines, totals.lineNets),
   );
@@ -297,6 +310,8 @@ export async function duplicateInvoice(
       taxTotalCents: source.taxTotalCents,
       grossTotalCents: source.grossTotalCents,
       paidTotalCents: 0,
+      // Die Kopie gehört dem, der sie anlegt — nicht dem Urheber der Vorlage.
+      createdById: createdByOf(actorId),
     },
     source.lines.map((line) => ({
       position: line.position,

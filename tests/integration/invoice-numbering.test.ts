@@ -23,12 +23,12 @@ import { plainDate } from '@/domain/time/plain-date';
 
 import { customerBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 
 const CUSTOMER: CustomerData = {
   companyName: 'Beispiel GmbH',
@@ -336,7 +336,7 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
 
   it('wechselt bei Teilzahlung auf teilbezahlt (FA-STAT-04)', async () => {
     const id = await issuedInvoice();
-    await addPayment(testOrganization, id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: 'Überweisung', note: null });
+    await addPayment(testOrganization, id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: 'Überweisung', note: null }, ACTOR, null);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('PARTIALLY_PAID');
@@ -345,8 +345,8 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
 
   it('wechselt bei vollständiger Zahlung auf bezahlt (FA-STAT-05)', async () => {
     const id = await issuedInvoice();
-    await addPayment(testOrganization, id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: null, note: null });
-    await addPayment(testOrganization, id, { amountCents: cents(6_900), paidAt: plainDate('2026-03-08'), method: null, note: null });
+    await addPayment(testOrganization, id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: null, note: null }, ACTOR, null);
+    await addPayment(testOrganization, id, { amountCents: cents(6_900), paidAt: plainDate('2026-03-08'), method: null, note: null }, ACTOR, null);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('PAID');
@@ -355,8 +355,8 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
 
   it('speichert Zahlungen als einzelne Datensätze (FA-STAT-03)', async () => {
     const id = await issuedInvoice();
-    await addPayment(testOrganization, id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: 'Überweisung', note: 'Teilbetrag' });
-    await addPayment(testOrganization, id, { amountCents: cents(6_900), paidAt: plainDate('2026-03-08'), method: 'Lastschrift', note: null });
+    await addPayment(testOrganization, id, { amountCents: cents(5_000), paidAt: plainDate('2026-03-05'), method: 'Überweisung', note: 'Teilbetrag' }, ACTOR, null);
+    await addPayment(testOrganization, id, { amountCents: cents(6_900), paidAt: plainDate('2026-03-08'), method: 'Lastschrift', note: null }, ACTOR, null);
 
     const payments = await prisma.payment.findMany({
       where: { invoiceId: id },
@@ -372,7 +372,7 @@ describe('Zahlungen und Statusableitung (FA-STAT-03, -04, -05)', () => {
   it('lässt einen Entwurf trotz Zahlung ein Entwurf bleiben', async () => {
     const customerId = await makeCustomer();
     const { id } = await createDraftInvoice(testOrganization, draft(customerId, '2026-03-01'), ACTOR, null);
-    await addPayment(testOrganization, id, { amountCents: cents(11_900), paidAt: plainDate('2026-03-05'), method: null, note: null });
+    await addPayment(testOrganization, id, { amountCents: cents(11_900), paidAt: plainDate('2026-03-05'), method: null, note: null }, ACTOR, null);
 
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id } });
     expect(invoice.status).toBe('DRAFT');

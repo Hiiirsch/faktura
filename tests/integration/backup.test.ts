@@ -44,14 +44,14 @@ import { platformContextOf } from '@/infrastructure/repositories/platform-contex
 
 import { fieldsBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization as org } from './setup/organization';
 import { TEST_BASE_URL } from './setup/server';
 
 const run = promisify(execFile);
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 /**
  * Der Betreiberkontext für die Sicherung.
  *

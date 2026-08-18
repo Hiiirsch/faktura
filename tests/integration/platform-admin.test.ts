@@ -258,6 +258,11 @@ describe('FA-ORG-05 / FA-NUM-02 Nummernkreise gelten je Unternehmen', () => {
 
       await acceptInvitation(created.value.token, { name, password: OWNER_PASSWORD }, null, NOW);
 
+      // Der Urheber der Belege ist der Inhaber — seit B6 verweist
+      // `Invoice.createdById` auf `User`, eine erfundene Kennung wäre ein
+      // Fremdschlüsselfehler.
+      const owner = await prisma.user.findUniqueOrThrow({ where: { email } });
+
       /*
        * Ab hier arbeitet der Test als **Mandant**, nicht als Betreiber: Der
        * Kontext entsteht aus der Organisation, nicht aus der Adminsitzung. Es
@@ -277,7 +282,7 @@ describe('FA-ORG-05 / FA-NUM-02 Nummernkreise gelten je Unternehmen', () => {
           countryCode: 'DE',
           taxNumber: '12/345/67890',
         },
-        'test',
+        owner.id,
         null,
       );
 
@@ -310,11 +315,11 @@ describe('FA-ORG-05 / FA-NUM-02 Nummernkreise gelten je Unternehmen', () => {
             },
           ],
         },
-        'test',
+        owner.id,
         null,
       );
 
-      const issued = await issueInvoice(org, draft.id, 'test', null);
+      const issued = await issueInvoice(org, draft.id, owner.id, null);
       expect(issued.ok, `${name} festschreiben`).toBe(true);
       if (!issued.ok) return;
 

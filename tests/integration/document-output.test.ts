@@ -57,10 +57,10 @@ import { verifyArtifact } from '@/infrastructure/storage/artifact-store';
 import { customerBuyer } from '../support/buyer';
 import { pdfContainsText } from '../support/pdf-text';
 
-import { resetDatabase } from './setup/database';
+import { resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization as org } from './setup/organization';
 
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 
 const COMPANY = {
   ...EMPTY_COMPANY_PROFILE,
@@ -737,7 +737,7 @@ describe('Zahlungen erscheinen im Beleg', () => {
       paidAt: plainDate('2026-03-05'),
       method: null,
       note: null,
-    });
+    }, ACTOR, null);
 
     const html = await documentHtmlOf(invoiceId);
 

@@ -137,6 +137,58 @@ describe('Der Bestand an Triggern', () => {
   });
 
   /**
+   * Die gefährlichste Migration und was sie **nicht** getan hat (M8, B6).
+   *
+   * `invoice_created_by` fügt `Invoice` eine Spalte mit Fremdschlüssel hinzu.
+   * Prisma erzeugt dafür unter SQLite eine `RedefineTables`-Migration —
+   * `DROP TABLE "Invoice"` inbegriffen —, und die hätte **elf** Trigger
+   * mitgenommen: die vier auf `Invoice` und sieben weitere auf `InvoiceLine`,
+   * `Payment` und `InvoiceArtifact`, die `Invoice` nur lesen.
+   *
+   * Die Migration wurde deshalb von Hand auf ein `ALTER TABLE ADD COLUMN`
+   * zurückgeführt. Dieser Test ist der Beleg, dass es geblieben ist.
+   */
+  it('behält alle Trigger rund um den Beleg', async () => {
+    await resetDatabase();
+    const actual = new Set(await namesOf('trigger'));
+
+    for (const trigger of [
+      'Invoice_immutable_after_issue',
+      'Invoice_no_delete_after_issue',
+      'Invoice_organization_matches_insert',
+      'Invoice_organization_matches_update',
+      'InvoiceLine_immutable_after_issue',
+      'InvoiceLine_no_delete_after_issue',
+      'InvoiceLine_organization_matches_insert',
+      'InvoiceLine_organization_matches_update',
+      'InvoiceArtifact_organization_matches_insert',
+      'Payment_organization_matches_insert',
+      'Payment_organization_matches_update',
+    ]) {
+      expect(actual.has(trigger), trigger).toBe(true);
+    }
+  });
+
+  /**
+   * Und die neue Spalte ist von der Unveränderbarkeit erfasst (FA-NUM-08).
+   *
+   * Eine Spalte hinzuzufügen, ohne den Trigger zu erweitern, ist der leise Weg
+   * zu einem Feld, das sich an einem festgeschriebenen Beleg noch ändern lässt.
+   * Bei der Urheberangabe wäre das besonders schlecht: Sie ließe sich
+   * nachträglich umschreiben, und das ist das Gegenteil dessen, wofür sie da
+   * ist.
+   */
+  it('kennt der Unveränderbarkeitstrigger die Urheberspalte', async () => {
+    await resetDatabase();
+
+    const rows = await prisma.$queryRawUnsafe<{ readonly sql: string }[]>(
+      "SELECT sql FROM sqlite_master WHERE name = 'Invoice_immutable_after_issue'",
+    );
+
+    expect(rows[0]?.sql).toContain('createdById');
+  });
+
+  /**
    * Die Mandantengrenze im Einzelnen.
    *
    * Ein eigener Fall, weil diese Gruppe bei einem Neuaufbau von `Invoice` als

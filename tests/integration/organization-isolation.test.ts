@@ -50,12 +50,12 @@ import { organizationContextOf } from '@/infrastructure/repositories/organizatio
 
 import { customerBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
-const ACTOR = 'pruef-akteur';
+const ACTOR = TEST_ACTOR_ID;
 
 /** Die zweite Organisation entsteht in jedem Test neu. */
 const SECOND_ORGANIZATION_ID = 'org_zweite';
@@ -169,7 +169,7 @@ async function seed(organization: typeof testOrganization, marker: string) {
     paidAt: plainDate('2026-03-05'),
     method: null,
     note: null,
-  });
+  }, ACTOR, null);
 
   return { customerId: customer.id, catalogItemId: item.id, invoiceId: draft.id };
 }
@@ -347,7 +347,7 @@ describe('Schreiben greift nicht auf fremde Datensätze durch', () => {
       paidAt: plainDate('2026-03-06'),
       method: null,
       note: null,
-    });
+    }, ACTOR, null);
     expect(payment.ok).toBe(false);
     if (payment.ok) return;
     expect(payment.error.kind).toBe('NOT_FOUND');
