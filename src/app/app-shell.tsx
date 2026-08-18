@@ -173,10 +173,16 @@ function NavLink({
   );
 }
 
-/** Initialen aus der Anmeldeadresse — es gibt in V1 keinen erfassten Namen. */
-function initialsOf(email: string): string {
-  const local = email.split('@')[0] ?? email;
-  const parts = local.split(/[._-]+/).filter((part) => part.length > 0);
+/**
+ * Initialen für die Kontozone.
+ *
+ * Aus dem erfassten Namen, wo es einen gibt (seit M8) — sonst aus dem Teil der
+ * Adresse vor dem `@`. Der Rückfall bleibt, weil ein Name freiwillig ist: Wer
+ * eine Einladung ohne Namen annimmt, soll nicht mit einem leeren Kreis dasitzen.
+ */
+function initialsOf(name: string | null, email: string): string {
+  const source = name === null || name.trim().length === 0 ? (email.split('@')[0] ?? email) : name;
+  const parts = source.split(/[\s._-]+/u).filter((part) => part.length > 0);
   const letters = parts.slice(0, 2).map((part) => part.slice(0, 1));
   return (letters.join('') || email.slice(0, 1)).toUpperCase();
 }
@@ -204,7 +210,17 @@ export async function AppShell({
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       <aside className="flex shrink-0 flex-col border-rule bg-surface-sunken border-b lg:h-screen lg:w-sidebar lg:sticky lg:top-0 lg:border-r lg:border-b-0">
-        {/* [ORG-ZONE] — feste Höhe, später der Organisationswechsler (§7). */}
+        {/*
+          [ORG-ZONE] — Anwendung und Unternehmen (FA-UI-15).
+          
+          Die Zone war seit M5.5b für einen **Organisationswechsler**
+          freigehalten. Den wird es nicht geben: Eine Adresse gehört zu genau
+          einem Unternehmen (FA-ORG-04), also gibt es nichts zu wechseln. Wer
+          zwei Unternehmen führt, führt zwei Konten und meldet sich um.
+          
+          Die feste Höhe bleibt — sie hält die Navigation darunter an ihrem
+          Platz, unabhängig davon, wie lang der Unternehmensname ist.
+        */}
         <div className="flex h-zone shrink-0 flex-col justify-center border-b border-rule px-4">
           <span className="text-ui font-semibold text-ink">{messages.app.name}</span>
           <span className="truncate text-small text-ink-muted">{organizationName}</span>
@@ -235,7 +251,19 @@ export async function AppShell({
           ))}
         </nav>
 
-        {/* [NUTZER-ZONE] — feste Höhe, später das Kontomenü (§7). */}
+        {/*
+          [NUTZER-ZONE] — Konto und Rolle (FA-UI-15).
+          
+          Seit M8 steht hier, **wer** angemeldet ist und **als was**: Name (oder
+          Adresse, solange kein Name erfasst ist) und der Name der Rolle. Die
+          Rolle gehört dazu, weil sie erklärt, warum die Navigation darüber so
+          aussieht, wie sie aussieht — ein Konto ohne `invoice.read` sieht keinen
+          Eintrag „Rechnungen" und soll den Grund nicht raten müssen.
+          
+          Kein aufklappbares Menü: Darin stünden genau zwei Einträge, und beide
+          gibt es schon — „Sicherheit" in der Navigation, „Abmelden" hier. Ein
+          Menü wäre ein Klick mehr für nichts.
+        */}
         <div
           aria-label={messages.nav.userZone}
           className="flex h-zone shrink-0 items-center gap-3 border-t border-rule px-4"
@@ -244,11 +272,18 @@ export async function AppShell({
             aria-hidden="true"
             className="flex size-8 shrink-0 items-center justify-center rounded-control bg-accent-wash text-label font-semibold text-accent"
           >
-            {initialsOf(session.email)}
+            {initialsOf(session.name, session.email)}
           </span>
-          <span className="min-w-0 flex-1 truncate text-small text-ink-muted">
-            {session.email}
+
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-small font-medium text-ink">
+              {session.name ?? session.email}
+            </span>
+            <span className="truncate text-label text-ink-faint">
+              {session.roleName ?? messages.nav.roleMissing}
+            </span>
           </span>
+
           <form action={logoutAction}>
             <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
             <button

@@ -365,6 +365,70 @@ Verzeichnis gegen das Dateisystem ab.
 | CSRF | Herkunftsprüfung **und** Double-Submit-Token in jeder schreibenden Aktion |
 | Header | CSP mit Nonce, HSTS, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` |
 | Zugriffsschutz | `requireSession()` als erste Anweisung jeder Seite und Aktion, zusätzlich `src/proxy.ts` |
+| Berechtigungen | `Authorized<K>` — jeder Anwendungsfall verlangt einen typgeprüften Nachweis; ein Aufruf ohne Prüfung ist ein Übersetzungsfehler |
+| Mandantentrennung | `OrganizationContext` als erster Pflichtparameter jeder Datenzugriffsfunktion, dazu Datenbanktrigger je Verweiskante |
+| Verwaltung | eigene Konten, eigene Sitzung, eigenes Cookie; eine Adminsitzung führt **keinen** Mandantenkontext und kommt damit an keine Geschäftsdaten |
+
+## Mehrere Unternehmen
+
+Eine Installation trägt beliebig viele Unternehmen. Was sie trennt, ist nicht
+eine Prüfung, sondern der Typ: Jede Funktion, die auf Daten zugreift, verlangt
+einen `OrganizationContext` als ersten Pflichtparameter. Eine Abfrage ohne
+Mandantenfilter lässt sich nicht schreiben — sie ist ein Übersetzungsfehler.
+
+Darunter liegt eine zweite Ebene: Datenbanktrigger halten jede Verweiskante
+innerhalb eines Unternehmens. Sie greifen auch dann, wenn jemand am
+Anwendungscode vorbei schreibt.
+
+**Nummernkreise gelten je Unternehmen.** Zwei Unternehmen, die am selben Tag
+ihren ersten Beleg festschreiben, bekommen beide `RE-2026-0001`.
+
+### Rollen
+
+Jedes Unternehmen legt **eigene** Rollen an; fest ist nur der Katalog der 28
+Berechtigungen. Ein Konto trägt genau eine Rolle. Berechtigungen werden bei
+jeder Anfrage frisch gelesen — ein entzogenes Recht wirkt beim nächsten Klick,
+nicht beim nächsten Anmelden.
+
+Drei Rechte trägt jedes Konto ohne Rolle: den Namen des eigenen Arbeitgebers
+lesen und die eigene Sicherheit einsehen und ändern. Beides sind keine
+Rechtefragen.
+
+**Die Aussperrsicherung:** Je Unternehmen hält immer mindestens ein nicht
+gesperrtes Konto die Rechteverwaltung. Das garantiert die Datenbank, nicht die
+Anwendung — sonst ließe sich ein Unternehmen durch eine unglückliche
+Rollenänderung aussperren, und niemand außer dem Betreiber käme wieder hinein.
+
+### Mitglieder
+
+Mitglieder kommen ausschließlich über eine **Einladung** hinein. Der Link gilt
+sieben Tage, funktioniert einmal und erscheint genau einmal in der Oberfläche —
+die Anwendung versendet keine E-Mail und darf keine.
+
+Das Passwort setzt der Eingeladene selbst. Kein anderes Konto erfährt es, auch
+nicht die Rechteverwaltung: Sie kann eine Zurücksetzung auslösen, aber kein
+Passwort vergeben. Der Zurücksetzungslink gilt 24 Stunden, funktioniert einmal
+und beendet dabei **alle** Sitzungen des Kontos.
+
+Wer ausscheidet, wird **gesperrt, nicht gelöscht**: Der Beleg behält seinen
+Urheber. Der Preis ist benannt — die Adresse bleibt dauerhaft belegt.
+
+### Was die Verwaltung nicht sieht
+
+Der Betreiber legt Unternehmen an, legt sie still und sperrt im Notfall einzelne
+Konten. Was er **nicht** sieht, ist irgendeine Rechnung, irgendein Kunde,
+irgendein Betrag. Je Unternehmen zeigt die Verwaltung vier Zahlen: Konten,
+Belege, Kunden, letzte Anmeldung.
+
+Das ist keine Einstellung, sondern eine Eigenschaft des Aufbaus. Eine
+Adminsitzung führt keinen Mandantenkontext, und jede Abfrage von Geschäftsdaten
+verlangt einen. Es gibt auch keine Funktion, die aus dem einen das andere macht;
+diese Nichtexistenz wird von einem Test festgehalten.
+
+Beim Anlegen eines Unternehmens entstehen in **einem** Vorgang das Unternehmen,
+die Rolle „Inhaber" mit allen Berechtigungen und eine Einladung. Der Betreiber
+kennt damit zu keinem Zeitpunkt ein Passwort innerhalb eines Unternehmens — der
+stärkste Beleg für die Trennung, den das System liefern kann.
 
 ## Unveränderbarkeit
 

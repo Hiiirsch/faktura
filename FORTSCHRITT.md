@@ -8,11 +8,14 @@ und durch den genannten Nachweis belegt · `abgenommen` — vom Auftraggeber fre
 **Nachweis:** Pfad zur Testdatei bzw. `Review:` / `Manuell:` bei den
 Verifikationsarten R und M.
 
-**MS:** Meilenstein laut Anforderungskatalog §16. Ein `†` markiert IDs, die in §16
-**keinem** Meilenstein zugeordnet sind — der eingetragene Meilenstein ist ein
-Vorschlag und steht noch zur Freigabe aus.
+**MS:** Meilenstein laut Anforderungskatalog §17 (bis M8: §16 — der Katalog hat
+mit dem neuen Abschnitt „Mandanten, Rollen und Verwaltung" eine Nummer
+verschoben). Ein `†` markiert IDs, die dort **keinem** Meilenstein zugeordnet
+sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
+Freigabe aus.
 
-Stand: 2026-08-15 · 133 von 171 erledigt (93 abgenommen: M0–M4, 40 umgesetzt) ·
+Stand: 2026-08-18 · 133 von 171 erledigt (93 abgenommen: M0–M4, 40 umgesetzt) ·
+**M8 umgesetzt** — 30 neue IDs in Abschnitt 17 (Katalog §16 „Mandanten, Rollen und Verwaltung"), alle belegt ·
 **M5 umgesetzt, Abnahme offen** · **M5.6 (PDF-Vorschau), M5.7 (Empfänger ohne
 Kunde), M5.8 (überarbeitete Oberfläche), M6 (Übersicht), M6.1 (Ausführung) und
 M6.2 (zweistufige Anmeldung) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
@@ -31,6 +34,28 @@ Pflichtangaben FA-PFL-01 bis -11 werden am Satz geprüft, den der Renderer
 erhält, nicht an der fertigen Datei — Chromium bettet die Belegschrift als
 Teilmenge ein, die Textbytes sind dann Glyphennummern und ohne vollwertigen
 PDF-Parser nicht lesbar.
+
+**M8 — Mandanten, Rollen und Verwaltung (umgesetzt, Abnahme offen).** Mehrere
+Unternehmen in einer Installation, eigene Rollen je Unternehmen, Mitglieder per
+Einladung, eine zentrale Verwaltung ohne Zugriff auf Geschäftsdaten. Der Kern
+sind zwei markierte Typen: `Authorized<K>` macht einen fehlenden Rechtecheck zum
+Übersetzungsfehler, `PlatformContext` macht „die Verwaltung sieht keine
+Rechnungen" zu einer Eigenschaft des Typsystems statt einer Absicht.
+
+**Drei Lücken, die M8 in älterem Code aufgedeckt hat** — keine davon war in einem
+Typ oder Test sichtbar:
+
+1. *Der Wächter des Adminbereichs hatte ein Loch.* Er suchte nach
+   `client.invoice.<methode>(`, also der direkten Form. `organization.findMany({
+   include: { invoices: true } })` geht über ein anderes Delegate, nennt dieselbe
+   Beziehung und liefert vollständige Belegzeilen — er hätte es durchgelassen.
+   Geprüft wird jetzt zusätzlich über die Beziehungsnamen.
+2. *Zahlungen trugen keinen Akteur im Protokoll*, und Korrektur wie Rücknahme
+   schrieben überhaupt nichts. Die Aktion `PAYMENT_REMOVED` stand seit M4
+   unbenutzt im Katalog — der Hinweis, den niemand gelesen hat (NFA-COMP-01).
+3. *Die Integrationstests nannten erfundene Akteure* (`test`, `pruef-akteur`).
+   Das ging gut, solange `AuditLog.actorId` keinen Fremdschlüssel trug; mit
+   `Invoice.createdById` wurde daraus ein Fehler.
 
 **M7 — Betrieb (umgesetzt, Abnahme offen).** Alle vierzehn Anforderungen sind
 belegt: Protokollierung, Healthcheck, Sicherung, Wiederherstellung,
@@ -245,7 +270,7 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | FA-KUND-01 | Kunden anlegen, bearbeiten, durchsuchen | MUSS | T | M2 | abgenommen | `tests/integration/master-data.test.ts` — Anlegen, Ändern, Suche über Name, Nummer, Ort und E-Mail |
-| FA-KUND-02 | Automatische eindeutige Kundennummer | MUSS | T | M2 | abgenommen | `tests/unit/domain/master-data.test.ts` (Format), `tests/integration/master-data.test.ts` (fortlaufend, auch bei gleichzeitiger Anlage) |
+| FA-KUND-02 | Automatische eindeutige Kundennummer je Unternehmen | MUSS | T | M2 | abgenommen | `tests/unit/domain/master-data.test.ts` (Format), `tests/integration/master-data.test.ts` (fortlaufend, auch bei gleichzeitiger Anlage). Seit M8 je Unternehmen: `NumberSequence` trägt `organizationId` |
 | FA-KUND-03 | Land als ISO-3166-1-alpha-2 | MUSS | R | M2 | abgenommen | Review: `countryCode` gegen `COUNTRY_CODES` geprüft, Auswahlfeld statt Freitext |
 | FA-KUND-04 | USt-IdNr formal je Land geprüft | MUSS | T | M2 | abgenommen | `tests/unit/domain/master-data.test.ts` — Format je Land, Abgleich mit dem gewählten Land, Sonderfall EL/GR |
 | FA-KUND-05 | Kundenspezifisches Zahlungsziel überschreibt Standard | MUSS | T | M2 | abgenommen | `tests/unit/domain/master-data.test.ts` (`resolvePaymentTerms`), `tests/integration/master-data.test.ts` (Persistenz) |
@@ -297,7 +322,7 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | FA-NUM-01 | Format konfigurierbar mit `{YYYY}` `{YY}` `{MM}` `{SEQ:n}` | MUSS | T | M3 | abgenommen | `tests/unit/domain/invoice-number.test.ts` — alle vier Platzhalter, Mehrfachnutzung, Breitenwachstum |
-| FA-NUM-02 | Nummer ausschließlich beim Festschreiben | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Entwurf ohne Nummer, Vergabe erst beim Festschreiben |
+| FA-NUM-02 | Nummer ausschließlich beim Festschreiben | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — Entwurf ohne Nummer, Vergabe erst beim Festschreiben. Seit M8 gilt der Nummernkreis je Unternehmen — `tests/integration/platform-admin.test.ts` zeigt zwei Mandanten mit derselben ersten Nummer (FA-ORG-05) |
 | FA-NUM-03 | Nummer und Statuswechsel in einer Transaktion | MUSS | R | M3 | abgenommen | Review: `issueInvoice` in `src/application/invoices/invoice-service.ts` — Nummer und Statuswechsel in einem `$transaction`-Aufruf |
 | FA-NUM-04 | Nebenläufige Festschreibungen ohne Nummernkollision | MUSS | T | M3 | abgenommen | `tests/integration/invoice-numbering.test.ts` — zwölf gleichzeitige Festschreibungen ergeben lückenlos 0001 bis 0012 |
 | FA-NUM-05 | Jahreswechsel startet Zähler neu | SOLL | T | M3 | abgenommen | `tests/unit/domain/invoice-number.test.ts`, `tests/integration/invoice-numbering.test.ts` — Jahreswechsel startet neu; Monatszähler nur mit Jahreskomponente |
@@ -496,7 +521,7 @@ Auftraggeber vorgegeben hat.
 | FA-UI-12 | Navigationseinträge mit Symbol **und** Text aus einem Satz; aktiver Eintrag durch Fläche und Balken | MUSS | M | M5.8 | umgesetzt | `src/app/app-shell.tsx` — Lucide-Symbole in `ICON_STROKE`, `bg-accent-wash` plus 2 px `border-l`; Manuell: aktiver Eintrag bleibt ohne Farbe unterscheidbar |
 | FA-UI-13 | Datumsfelder akzeptieren Direkteingabe `TT.MM.JJJJ` neben der Kalenderauswahl | MUSS | T | M5.8 | umgesetzt | `src/ui/components/date-field.tsx`; `tests/unit/ui/date-input.test.ts` — Textfeld in fester deutscher Schreibweise, Kalender daneben, ISO im abgeschickten Feld |
 | FA-UI-14 | Aktionen laufen über eine zentrale `can()`-Funktion | MUSS | T | M8 | umgesetzt | `src/domain/policy/can.ts` — seit M8 mit Akteur; `tests/unit/domain/policy.test.ts` (10). Die Sichtbarkeit ist dabei die Zugabe, nicht der Schutz: Durchgesetzt wird serverseitig über `Authorized<K>` in `src/application/auth/authorize.ts` (FA-ROLE-03), nachgewiesen in `tests/integration/permissions.test.ts` (10) und `tests/architecture/authorization.test.ts` (6) |
-| FA-UI-15 | Sidebar-Zonen für Organisation und Nutzer mit fester Höhe | SOLL | R | M5.5b | umgesetzt | `src/app/app-shell.tsx` — `h-zone` (56 px) für beide Zonen |
+| FA-UI-15 | Sidebar-Zonen für Organisation und Nutzer, gefüllt | SOLL | M | M8 | umgesetzt | `src/app/app-shell.tsx` — Kopfzone: Anwendung und Unternehmensname; Fußzone: Name (oder Adresse) und Rolle des angemeldeten Kontos. Ein Organisationswechsler entfällt: Eine Adresse gehört zu genau einem Unternehmen (FA-ORG-04) |
 | FA-UI-16 | Spalte „Erstellt von“ — gefüllt, sichtbar ab zwei Konten | SOLL | T | M8 | umgesetzt | `Invoice.createdById` (Fremdschlüssel auf `User`); `src/app/invoices/page.tsx` blendet die Spalte ein, sobald `countMembers` mehr als ein Konto meldet. Bestandsbelege behalten `NULL` und zeigen einen Gedankenstrich. Nachweis: `tests/integration/invoice-lifecycle.test.ts` (Urheber am Entwurf, eigener Urheber der Kopie, Unveränderbarkeit nach dem Festschreiben) |
 | FA-UI-17 | Bestätigungen als Dialog der Anwendung, nicht als `window.confirm`; der Dialog nennt die Folge | MUSS | T | M5.8 | umgesetzt | `src/ui/components/dialog.tsx`; `tests/integration/browser-invoice-list.test.ts` — natives `<dialog>`, Escape schließt, kein Browserfenster |
 | FA-UI-18 | Jede Aktion ohne Seitenwechsel wird durch einen Toast bestätigt | MUSS | T | M5.8 | umgesetzt | `src/ui/components/toast.tsx`; `tests/integration/browser-invoice-list.test.ts` |
@@ -510,7 +535,44 @@ Auftraggeber vorgegeben hat.
 
 ---
 
-## Abnahmeszenarien (Katalog §17)
+## 17. Mandanten, Rollen und Verwaltung (Katalog §16)
+
+| ID | Anforderung | Prio | Verif. | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-ORG-01 | Beliebig viele Unternehmen, keine Kreuzzugriffe | MUSS | T | M8 | umgesetzt | `OrganizationContext` als Pflichtparameter jeder Repository-Funktion (M5.5a) plus zwölf Mandantentrigger; `tests/integration/organization-isolation.test.ts`, `tests/integration/platform-admin.test.ts` |
+| FA-ORG-02 | Unternehmen, Inhaberrolle und Einladung in einem Vorgang | MUSS | T | M8 | umgesetzt | `createOrganizationWithOwner` in `platform-repository.ts` — eine Transaktion; `tests/integration/platform-admin.test.ts` |
+| FA-ORG-03 | Stilllegen beendet Sitzungen sofort, ohne Datenverlust | MUSS | T | M8 | umgesetzt | `setOrganizationSuspended`; `Organization.suspendedAt` wird in derselben Abfrage wie die Sitzung gelesen; `tests/integration/platform-admin.test.ts` (drei Fälle: Sitzungsende, Datenerhalt, Freigabe) |
+| FA-ORG-04 | Eine Adresse gehört zu genau einem Unternehmen | MUSS | T | M8 | umgesetzt | `User.email` global eindeutig; `inviteMember` und `createManagedOrganization` weisen belegte Adressen ab; `tests/integration/membership.test.ts` |
+| FA-ORG-05 | Nummernkreise je Unternehmen | MUSS | T | M8 | umgesetzt | `NumberSequence` trägt `organizationId`; `tests/integration/platform-admin.test.ts` — zwei Unternehmen, beide `RE-2026-0001`. Vor M8 nicht prüfbar, weil es nur einen Mandanten gab |
+| FA-ROLE-01 | Eigene Rollen je Unternehmen aus festem Katalog | MUSS | T | M8 | umgesetzt | `src/domain/policy/can.ts` (`PERMITTED`, 28 Schlüssel), `role-service.ts`, `/settings/roles`; `tests/integration/membership.test.ts`, `tests/unit/domain/policy.test.ts` |
+| FA-ROLE-02 | Ein Konto trägt genau eine Rolle, nur aus dem eigenen Unternehmen | MUSS | T | M8 | umgesetzt | `User.roleId`; Trigger `User_role_matches_organization_*`; `tests/integration/roles.test.ts` |
+| FA-ROLE-03 | Serverseitige Durchsetzung, auch ohne Oberfläche | MUSS | T | M8 | umgesetzt | `Authorized<K>` in `src/application/auth/authorize.ts`; `tests/integration/permissions.test.ts` — vier Fälle über HTTP ohne jede Oberfläche |
+| FA-ROLE-04 | Aussperrsicherung, von der Datenbank durchgesetzt | MUSS | T | M8 | umgesetzt | Drei Trigger `Organization_keeps_administrator_*`; die Anwendung erklärt vorher (`LAST_ADMINISTRATOR`). `tests/integration/roles.test.ts`, `tests/integration/membership.test.ts`, `tests/integration/platform-admin.test.ts` |
+| FA-ROLE-05 | Rechteänderung wirkt ohne erneute Anmeldung | MUSS | T | M8 | umgesetzt | `forSession` liest die Berechtigungen bei jeder Auflösung; `tests/integration/roles.test.ts` — dasselbe Token vor und nach dem Entzug |
+| FA-ROLE-06 | Geschlossener Katalog: unbekannter Schlüssel gewährt nichts | MUSS | T | M8 | umgesetzt | `actorOf()` verwirft Unbekanntes, `readPermissionKeys()` speichert es gar nicht erst; `tests/unit/domain/policy.test.ts`, `tests/integration/membership.test.ts` |
+| FA-MEMB-01 | Konten entstehen nur per Einladung | MUSS | T | M8 | umgesetzt | `invitation-service.ts`, `/settings/members`; `tests/integration/membership.test.ts` |
+| FA-MEMB-02 | Sieben Tage Frist, einmal einlösbar | MUSS | T | M8 | umgesetzt | `src/domain/auth/invitation-policy.ts`; `tests/integration/membership.test.ts` (abgelaufen, zweimal eingelöst) |
+| FA-MEMB-03 | Passwort setzt der Eingeladene selbst | MUSS | T | M8 | umgesetzt | `Invitation` trägt kein Passwortfeld; `acceptInvitation` in `redeem.ts` hasht es an Ort und Stelle; `tests/integration/membership.test.ts`, `tests/integration/platform-admin.test.ts` |
+| FA-MEMB-04 | Zurücksetzung: 24 Stunden, einmalig, beendet alle Sitzungen | MUSS | T | M8 | umgesetzt | `password-reset-policy.ts`, `startPasswordReset`, `completePasswordReset`; `tests/integration/membership.test.ts` (sechs Fälle) |
+| FA-MEMB-05 | Alle Ablehnungen ununterscheidbar, kein Formular ohne Nachweis | MUSS | T | M8 | umgesetzt | `redeem.ts` liefert für alle Fälle `INVALID`; `tests/integration/membership.test.ts`, `tests/integration/route-protection.test.ts` (200 ohne Auskunft, kein Passwortfeld) |
+| FA-MEMB-06 | Sperren statt löschen; Sitzungen enden sofort | MUSS | T | M8 | umgesetzt | `setMemberDisabled`; `tests/integration/membership.test.ts`, `tests/integration/roles.test.ts` |
+| FA-MEMB-07 | Eine offene Einladung je Adresse | MUSS | T | M8 | umgesetzt | Partieller Index `Invitation_one_open_per_email`; `inviteMember` zieht vorher zurück; `tests/integration/membership.test.ts`, `tests/integration/database-triggers.test.ts` |
+| FA-MEMB-08 | Kein E-Mail-Versand; Link genau einmal sichtbar | MUSS | R | M8 | umgesetzt | `InviteForm` und `PasswordResetForm` als Client-Komponenten — der Token lebt in der Antwort einer Server Action, gespeichert ist nur sein Hash. `tests/architecture/offline.test.ts` verbietet ausgehende Verbindungen |
+| FA-ADM-01 | Getrennte Identitäten: Tabelle, Sitzung, Cookie | MUSS | T | M8 | umgesetzt | `AdminUser`/`AdminSession`, Cookie `faktura_admin_session` mit Pfad `/admin`; `tests/integration/admin-session.test.ts`, `tests/integration/route-protection.test.ts` |
+| FA-ADM-02 | Keine Geschäftsdaten im Adminbereich | MUSS | T | M8 | umgesetzt | `tests/architecture/platform-repository.test.ts` — Erlaubnisliste der Prisma-Delegates **und** der Beziehungsnamen, beide gegen einen absichtlichen Verstoß geprüft; `route-protection.test.ts` prüft das ausgelieferte HTML |
+| FA-ADM-03 | Nur Kennzahlen je Unternehmen | MUSS | T | M8 | umgesetzt | `OrganizationMetrics` — vier Zahlen und ein Name; `tests/integration/platform-admin.test.ts` prüft die Schlüsselmenge der Antwort |
+| FA-ADM-04 | Kein Weg von der Admin- zur Mandantensitzung | MUSS | T | M8 | umgesetzt | Es gibt keine solche Funktion; `tests/architecture/platform-repository.test.ts` hält die Nichtexistenz fest |
+| FA-ADM-05 | Unternehmen anlegen, stilllegen, Konten sperren | MUSS | T | M8 | umgesetzt | `organization-admin.ts`, `/admin/organizations/**`; `tests/integration/platform-admin.test.ts` — einschließlich der Aussperrsicherung gegenüber dem Betreiber |
+| FA-ADM-06 | Erstes Betreiberkonto per Kommando, nicht per Migration | MUSS | R | M8 | umgesetzt | `npm run admin:create`; ein Passwort in einer Migration stünde im Repository (NFA-SEC-21) |
+| FA-ADM-07 | Protokoll unterscheidet Mitglied und Betreiber | MUSS | T | M8 | umgesetzt | `AuditLog.actorKind`; `recordPlatformAuditEntry` schreibt ins Protokoll des betroffenen Unternehmens; `tests/integration/platform-admin.test.ts` |
+| FA-ADM-08 | Zweiter Faktor für Betreiberkonten verpflichtend | MUSS | T | M8 | umgesetzt | `adminLogin` endet immer mit einem Nachweis, nie mit einer Sitzung; `tests/integration/admin-session.test.ts` |
+| NFA-SEC-23 | Sicherung nur mit Adminsitzung | MUSS | T | M8 | umgesetzt | `/admin/api/backup`; `createBackup` verlangt einen `PlatformContext`; `tests/integration/route-protection.test.ts`, `tests/integration/backup.test.ts` |
+| NFA-SEC-24 | Typgeprüfter Nachweis je Anwendungsfall | MUSS | T | M8 | umgesetzt | `Authorized<K>` über 61 Signaturen; `tests/architecture/authorization.test.ts` (vier Wächter, alle gegengeprüft), `tests/integration/permissions.test.ts` |
+| NFA-SEC-25 | Berechtigungen bei jeder Anfrage frisch gelesen | MUSS | T | M8 | umgesetzt | `forSession` in `auth-repository.ts` — nichts im Cookie; `tests/integration/roles.test.ts` |
+| NFA-SEC-26 | Aufrufstellen der Kontexterzeugung aufgezählt | MUSS | T | M8 | umgesetzt | `tests/architecture/authorization.test.ts` — Erlaubnisliste für `organizationContextOf` und `fullyAuthorized`, beide gegen einen absichtlichen Verstoß geprüft |
+
+---
+## Abnahmeszenarien (Katalog §18)
 
 | ID | Szenario | Status |
 |---|---|---|

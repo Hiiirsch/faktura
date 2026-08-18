@@ -107,8 +107,15 @@ COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/prisma ./prisma
 COPY --from=migrator --chown=node:node /migrator/node_modules ./migrator/node_modules
 
-# Gebündeltes Kommando für den Erstbenutzer:
-#   docker compose exec app node dist/create-user.mjs --email <adresse>
+# Gebündelte Kommandos für die Einrichtung (M8):
+#
+#   docker compose exec app node dist/create-admin.mjs --email <adresse>
+#     Das erste Betreiberkonto. Danach entstehen Unternehmen und Konten in der
+#     Oberfläche unter /admin — der Regelweg.
+#
+#   docker compose exec app node dist/create-user.mjs --email <adresse> \
+#     --organization <kennung> [--role <kennung>]
+#     Der Notfallweg, wenn niemand mehr in ein Unternehmen kommt.
 COPY --from=builder --chown=node:node /app/dist ./dist
 
 COPY --chown=node:node scripts/entrypoint.sh ./scripts/entrypoint.sh

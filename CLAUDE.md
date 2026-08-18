@@ -762,7 +762,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M6.1 | Ausführung: Satzmaß, Seitenköpfe, einheitliche Listen | umgesetzt |
 | M6.2 | Anmeldung in zwei Schritten, zweiter Faktor nur wo nötig | umgesetzt |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | umgesetzt |
-| M8 | Mandanten, Rollen, Mitglieder, zentrale Verwaltung | in Arbeit |
+| M8 | Mandanten, Rollen, Mitglieder, zentrale Verwaltung | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

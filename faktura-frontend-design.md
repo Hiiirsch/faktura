@@ -381,22 +381,33 @@ Barrierefreiheit und Druckbarkeit.
 
 ---
 
-## 7. Reservierte Zonen für den Mehrbenutzerbetrieb
+## 7. Zonen des Mehrbenutzerbetriebs
 
-Der spätere Ausbau zu Teams innerhalb mehrerer Organisationen ist Zielbild, wird in V1
-aber **nicht** gebaut. Damit er später nicht das Layout aufbricht, gilt:
+Bis M7 waren die vier Stellen dieses Abschnitts **freigehalten**: Sie hatten
+feste Maße und einen vorläufigen Inhalt, damit der spätere Ausbau das Layout
+nicht aufbricht. Mit M8 sind sie belegt.
 
-| Zone | V1 | Später |
+| Zone | Belegt seit M8 mit | Anmerkung |
 |---|---|---|
-| `[ORG-ZONE]` Sidebar-Kopf | Firmenname, statisch, 56 px hoch | Organisationswechsler gleicher Höhe |
-| `[NUTZER-ZONE]` Sidebar-Fuß | eigener Name + Initialenkreis, statisch | Menü mit Profil, Abmelden, Mitglieder |
-| Listenspalte „Erstellt von" | im Tabellenschema definiert, ausgeblendet | eingeblendet ab zwei Mitgliedern |
-| Einstellungs-Navigation | Gruppe „Organisation" mit Firmendaten darin | Punkt „Mitglieder" reiht sich ein |
+| `[ORG-ZONE]` Sidebar-Kopf | Anwendungsname und Firmenname, 56 px hoch | **Kein Organisationswechsler.** Eine Adresse gehört zu genau einem Unternehmen (FA-ORG-04); es gibt nichts zu wechseln. Wer zwei Unternehmen führt, führt zwei Konten. |
+| `[NUTZER-ZONE]` Sidebar-Fuß | Initialenkreis, Name (oder Adresse) und **Rolle** | Kein aufklappbares Menü: Darin stünden „Sicherheit" und „Abmelden" — beide gibt es schon eine Zeile weiter oben bzw. daneben. |
+| Listenspalte „Erstellt von" | gefüllt, sichtbar **ab zwei Konten** | In einem Einpersonenbetrieb stünde in jeder Zeile derselbe Name. Bestandsbelege zeigen einen Gedankenstrich. |
+| Einstellungs-Navigation | Punkte „Mitglieder" und „Rollen" | Sie erscheinen nur mit dem Recht `organization.administer` — ein Menüpunkt, der mit 404 endet, ist schlechter als keiner. |
 
-**Wichtiger als jede dieser Zonen:** Sichtbarkeit und Aktivierung aller Aktionen laufen
-in V1 bereits über eine einzige Funktion `can(action, subject)`, die durchgängig `true`
-liefert. Ein späteres Rollenmodell füllt diese Funktion — statt jeden Button einzeln
-nachzurüsten und dabei einen zu vergessen.
+**Die Rolle steht in der Fußzone, weil sie die Navigation darüber erklärt.** Ein
+Konto ohne `invoice.read` sieht keinen Eintrag „Rechnungen"; ohne die Angabe
+seiner Rolle müsste es raten, warum.
+
+**Und die zentrale Frage aus V1 hat sich als tragfähig erwiesen.** Sichtbarkeit
+und Aktivierung aller Aktionen liefen von Anfang an über eine einzige Funktion
+`can()`, die durchgängig `true` lieferte. In M8 wurde sie gefüllt — kein Button
+musste einzeln nachgerüstet werden.
+
+Was dabei allerdings sichtbar wurde: `can()` entscheidet, was die Oberfläche
+**zeigt**, und das ist nicht der Schutz. Ein verstecktes Formularfeld lässt sich
+nachbauen, ein fehlender Knopf hält niemanden auf. Durchgesetzt wird
+serverseitig über `Authorized<K>` (FA-ROLE-03, NFA-SEC-24); die Oberfläche ist
+die Zugabe.
 
 ---
 
@@ -438,9 +449,9 @@ Zur Aufnahme in `rechnungs-app-anforderungen.md`.
 | FA-UI-11 | Button-, Dialog- und Toast-Wortlaut derselben Handlung verwenden denselben Verbstamm. | MUSS | R |
 | FA-UI-12 | Jeder Navigationseintrag trägt Symbol **und** Text aus einem einzigen Symbolsatz; der aktive Eintrag ist durch Fläche und Balken markiert, nicht durch Farbe allein. | MUSS | M |
 | FA-UI-13 | Datumsfelder akzeptieren Direkteingabe im Format `TT.MM.JJJJ` zusätzlich zur Kalenderauswahl. | MUSS | T |
-| FA-UI-14 | Sichtbarkeit und Aktivierung aller Aktionen laufen über eine zentrale `can()`-Funktion. | MUSS | R |
-| FA-UI-15 | Die Sidebar-Zonen für Organisation und Nutzer haben feste Höhe, sodass spätere Menüs das Layout nicht verschieben. | SOLL | R |
-| FA-UI-16 | Die Spalte „Erstellt von" ist im Tabellenschema angelegt und in V1 ausgeblendet. | SOLL | R |
+| FA-UI-14 | Sichtbarkeit und Aktivierung aller Aktionen laufen über eine zentrale `can(actor, …)`-Funktion. Die Durchsetzung liegt serverseitig (FA-ROLE-03) — die Sichtbarkeit ist die Zugabe, nicht der Schutz. | MUSS | T |
+| FA-UI-15 | Die Sidebar-Zonen für Organisation und Nutzer haben feste Höhe und sind gefüllt: oben Anwendung und Firmenname, unten Konto und Rolle. | SOLL | M |
+| FA-UI-16 | Die Spalte „Erstellt von" nennt den Urheber des Belegs und erscheint, sobald das Unternehmen mehr als ein Konto führt. | SOLL | T |
 | NFA-UI-01 | Kontrastverhältnis mindestens 4.5:1 für Text und 3:1 für Bedienelemente, geprüft über alle Tokenkombinationen. | MUSS | T |
 | NFA-UI-02 | Jedes fokussierbare Element zeigt einen sichtbaren Fokusring; `outline: none` ohne Ersatz kommt nicht vor. | MUSS | T |
 | NFA-UI-03 | Der gesamte Rechnungseditor inklusive Positionssortierung ist per Tastatur bedienbar. | MUSS | M |

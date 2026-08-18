@@ -234,6 +234,8 @@ export const messages = {
     /** Ersatzname im Sidebar-Kopf, solange keine Firmendaten erfasst sind. */
     organizationFallback: 'Firmendaten fehlen',
     userZone: 'Angemeldetes Konto',
+    /** Konto ohne Rolle — trägt nur die Grundrechte (M8). */
+    roleMissing: 'ohne Rolle',
   },
   common: {
     save: 'Speichern',

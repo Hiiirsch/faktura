@@ -190,8 +190,8 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 
 | ID | Anforderung | Prio | Verif. |
 |---|---|---|---|
-| NFA-SEC-01 | Ohne gültige Session liefert jede Server Action, API- und Download-Route 401 oder 403 — nachgewiesen durch einen Test, der alle Routen automatisiert durchläuft. | MUSS | T |
-| NFA-SEC-02 | Es existiert keine öffentliche Registrierung; der Erstbenutzer wird per CLI angelegt. | MUSS | R |
+| NFA-SEC-01 | Ohne gültige Session liefert jede Server Action, API- und Download-Route 401 oder 403 — nachgewiesen durch einen Test, der alle Routen automatisiert durchläuft. Routen der Verwaltung werden zusätzlich mit einem gültigen **Mandanten**cookie geprüft und mit einem Admincookie auf tatsächliche Erreichbarkeit. | MUSS | T |
+| NFA-SEC-02 | Es existiert keine öffentliche Registrierung. Konten entstehen über Einladungen (FA-MEMB-01); das Kommando auf dem Server bleibt der Notfallweg und verlangt die Angabe des Unternehmens. | MUSS | T |
 | NFA-SEC-03 | Passwörter werden mit Argon2id gehasht (≥64 MB Speicher, ≥3 Iterationen). | MUSS | R |
 | NFA-SEC-04 | Passwörter müssen mindestens 12 Zeichen haben und werden gegen eine Liste bekannter kompromittierter Passwörter geprüft. | MUSS | T |
 | NFA-SEC-05 | TOTP-Zweifaktorauthentifizierung ist aktivierbar, inklusive einmalig anzeigbarer Recovery-Codes. | MUSS | M |
@@ -277,7 +277,71 @@ Aufwand der Nachrüstung. Sie werden per Review und durch Struktur-Tests geprüf
 
 ---
 
-## 16. Zuordnung zu Meilensteinen
+## 16. Mandanten, Rollen und Verwaltung
+
+Mit M8 nutzen mehrere Unternehmen dieselbe Installation. Die Anforderungen
+dieses Abschnitts beschreiben, was das voneinander trennt — und was der
+Betreiber der Installation darf und was nicht.
+
+### 16.1 Unternehmen
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| FA-ORG-01 | Eine Installation führt beliebig viele Unternehmen; kein Datensatz eines Unternehmens ist aus einem anderen erreichbar. | MUSS | T |
+| FA-ORG-02 | Ein Unternehmen entsteht ausschließlich durch den Betreiber. Dabei entstehen in **einem** Vorgang Unternehmen, eine Rolle mit allen Berechtigungen und eine Einladung für das erste Konto. | MUSS | T |
+| FA-ORG-03 | Ein Unternehmen ist stilllegbar. Die Stilllegung beendet alle laufenden Sitzungen sofort und weist die Anmeldung ab, **ohne Daten zu löschen**; die Freigabe stellt den vorigen Zustand wieder her. | MUSS | T |
+| FA-ORG-04 | Eine E-Mail-Adresse gehört zu genau einem Unternehmen. | MUSS | T |
+| FA-ORG-05 | Nummernkreise gelten je Unternehmen: Zwei Unternehmen vergeben unabhängig voneinander dieselbe erste Belegnummer. | MUSS | T |
+
+### 16.2 Rollen und Berechtigungen
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| FA-ROLE-01 | Jedes Unternehmen legt eigene Rollen an und stattet sie aus einem festen Katalog von Berechtigungen aus. | MUSS | T |
+| FA-ROLE-02 | Ein Konto trägt genau eine Rolle. Rollen sind nur innerhalb des eigenen Unternehmens zuweisbar. | MUSS | T |
+| FA-ROLE-03 | Berechtigungen werden **serverseitig** durchgesetzt. Eine fehlende Berechtigung führt zur Ablehnung, auch wenn die Anfrage ohne die Oberfläche gestellt wird. | MUSS | T |
+| FA-ROLE-04 | Je Unternehmen hält zu jedem Zeitpunkt mindestens ein nicht gesperrtes Konto die Berechtigung zur Rechteverwaltung. Die Zusage wird von der Datenbank durchgesetzt, nicht von der Anwendung allein. | MUSS | T |
+| FA-ROLE-05 | Eine Rechteänderung wirkt beim nächsten Aufruf, ohne dass sich das betroffene Konto neu anmelden muss. | MUSS | T |
+| FA-ROLE-06 | Der Berechtigungskatalog ist geschlossen: Ein unbekannter Schlüssel gewährt nichts. | MUSS | T |
+
+### 16.3 Mitglieder
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| FA-MEMB-01 | Ein Konto entsteht ausschließlich über eine Einladung der Rechteverwaltung des Unternehmens. | MUSS | T |
+| FA-MEMB-02 | Eine Einladung gilt sieben Tage und ist genau einmal einlösbar. | MUSS | T |
+| FA-MEMB-03 | Das Passwort setzt der Eingeladene selbst. Kein anderes Konto — auch nicht der Betreiber — erfährt es zu irgendeinem Zeitpunkt. | MUSS | T |
+| FA-MEMB-04 | Die Rechteverwaltung löst eine Passwortzurücksetzung aus. Es entsteht ein Nachweis mit 24 Stunden Frist, der genau einmal einlösbar ist und **alle** Sitzungen des Kontos beendet; ein Passwort wird dabei nicht vergeben. | MUSS | T |
+| FA-MEMB-05 | Unbekannte, abgelaufene, zurückgezogene und bereits eingelöste Links werden **ununterscheidbar** beantwortet. Ohne gültigen Nachweis nennt die Seite weder Adresse noch Unternehmen. | MUSS | T |
+| FA-MEMB-06 | Ein Konto wird gesperrt, nicht gelöscht. Die Sperre beendet alle Sitzungen sofort; Belege und Protokolleinträge bleiben unverändert. | MUSS | T |
+| FA-MEMB-07 | Je E-Mail-Adresse gibt es höchstens eine offene Einladung; eine neue entwertet die vorige. | MUSS | T |
+| FA-MEMB-08 | Die Anwendung versendet keine E-Mail. Einladungs- und Zurücksetzungslinks erscheinen **genau einmal** in der Oberfläche und werden außerhalb weitergereicht. | MUSS | R |
+
+### 16.4 Zentrale Verwaltung
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| FA-ADM-01 | Betreiberkonten sind von Mandantenkonten getrennt: eigene Tabelle, eigene Sitzung, eigenes Cookie. Ein Mandantencookie öffnet keine Adminroute und umgekehrt. | MUSS | T |
+| FA-ADM-02 | Eine Adminsitzung führt keinen Mandantenkontext. Der Adminbereich liefert keine Geschäftsdaten aus — keine Rechnung, keinen Kunden, keinen Betrag. | MUSS | T |
+| FA-ADM-03 | Der Betreiber sieht je Unternehmen ausschließlich **Kennzahlen** (Konten, Belege, Kunden, letzte Anmeldung), nie einzelne Datensätze. | MUSS | T |
+| FA-ADM-04 | Es gibt keinen Weg, aus einer Adminsitzung eine Mandantensitzung zu erzeugen. | MUSS | T |
+| FA-ADM-05 | Der Betreiber legt Unternehmen an, legt sie still, gibt sie frei und sperrt einzelne Konten. Die Aussperrsicherung aus FA-ROLE-04 gilt auch für ihn. | MUSS | T |
+| FA-ADM-06 | Das erste Betreiberkonto entsteht über ein Kommando auf dem Server, nicht über eine Migration. | MUSS | R |
+| FA-ADM-07 | Protokolleinträge unterscheiden, ob ein Mitglied des Unternehmens oder der Betreiber gehandelt hat. Ein Eingriff des Betreibers steht im Protokoll des betroffenen Unternehmens. | MUSS | T |
+| FA-ADM-08 | Betreiberkonten führen den zweiten Faktor **verpflichtend**. | MUSS | T |
+
+### 16.5 Sicherheit der Trennung
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| NFA-SEC-23 | Die Datensicherung ist ausschließlich mit einer Adminsitzung abrufbar: Sie enthält den Bestand aller Unternehmen. | MUSS | T |
+| NFA-SEC-24 | Jeder Anwendungsfall verlangt einen typgeprüften Nachweis, dass die zugehörige Berechtigung geprüft wurde. Ein Aufruf ohne Prüfung ist ein Übersetzungsfehler. | MUSS | T |
+| NFA-SEC-25 | Berechtigungen werden bei jeder Anfrage frisch aus der Datenbank gelesen; sie liegen weder im Cookie noch in einem Zwischenspeicher. | MUSS | T |
+| NFA-SEC-26 | Die Stellen, an denen ein Mandantenkontext entsteht, sind aufgezählt und werden automatisiert überwacht. | MUSS | T |
+
+---
+
+## 17. Zuordnung zu Meilensteinen
 
 | Meilenstein | Abzudeckende Anforderungen |
 |---|---|
@@ -289,10 +353,11 @@ Aufwand der Nachrüstung. Sie werden per Review und durch Struktur-Tests geprüf
 | M5 Vorlagen & PDF | FA-TPL-*, FA-PDF-*, FA-PFL-*, NFA-SEC-12 bis -16, NFA-ARCH-02 bis -07 |
 | M6 Dashboard | FA-DASH-*, NFA-QUAL-04, -05 |
 | M7 Betrieb | NFA-BETR-03 bis -11, NFA-COMP-03 bis -06, NFA-QUAL-02, -06 |
+| M8 Mandanten & Rollen | FA-ORG-*, FA-ROLE-*, FA-MEMB-*, FA-ADM-*, NFA-SEC-23 bis -26 |
 
 ---
 
-## 17. Abnahmeszenarien
+## 18. Abnahmeszenarien
 
 Manuell durchzuspielen, bevor V1 als fertig gilt.
 
