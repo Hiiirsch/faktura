@@ -23,12 +23,18 @@
  * einen `OrganizationContext`. Damit kann aus einer Adminsitzung keine
  * Mandantensitzung werden (FA-ADM-04).
  */
-import type { AdminSession, AdminUser, Organization, Prisma } from '@prisma/client';
+import type {
+  AdminInvitation,
+  AdminSession,
+  AdminUser,
+  Organization,
+  Prisma,
+} from '@prisma/client';
 
 import { clientFor, runInTransaction, type TransactionHandle } from './client';
 import type { PlatformContext } from './platform-context';
 
-export type { AdminSession, AdminUser };
+export type { AdminInvitation, AdminSession, AdminUser };
 
 export type AdminSessionWithUser = Prisma.AdminSessionGetPayload<{
   include: { adminUser: { select: { id: true; email: true; disabledAt: true } } };
@@ -63,6 +69,86 @@ export async function updateAdminUser(
 
 export async function countAdminUsers(): Promise<number> {
   return clientFor(undefined).adminUser.count();
+}
+
+// ─── Einrichtung eines Betreiberkontos (FA-ADM-06, -08) ────────────────────
+//
+// Ohne Kontext, wie die Anmeldung: Wer den Nachweis vorlegt, ist noch niemand.
+
+export async function findAdminInvitationByTokenHash(
+  tokenHash: string,
+): Promise<AdminInvitation | null> {
+  return clientFor(undefined).adminInvitation.findUnique({ where: { tokenHash } });
+}
+
+export async function revokeOpenAdminInvitationsFor(
+  email: string,
+  revokedAt: Date,
+  handle?: TransactionHandle,
+): Promise<number> {
+  const result = await clientFor(handle).adminInvitation.updateMany({
+    where: { email, acceptedAt: null, revokedAt: null },
+    data: { revokedAt },
+  });
+  return result.count;
+}
+
+/**
+ * Stellt einen Einrichtungsnachweis aus.
+ *
+ * Erst zurückziehen, dann ausstellen — der partielle Index
+ * `AdminInvitation_one_open_per_email` kennt die Frist nicht, ein abgelaufener
+ * Nachweis stünde einem neuen sonst im Weg.
+ */
+export async function createAdminInvitation(data: {
+  readonly email: string;
+  readonly tokenHash: string;
+  readonly totpSecret: string;
+  readonly expiresAt: Date;
+}): Promise<AdminInvitation> {
+  return runInTransaction(async (handle) => {
+    await revokeOpenAdminInvitationsFor(data.email, new Date(), handle);
+    return clientFor(handle).adminInvitation.create({ data });
+  });
+}
+
+/**
+ * Löst den Nachweis ein: Betreiberkonto anlegen, Nachweis verbrauchen — **eine
+ * Transaktion**.
+ *
+ * Bräche sie in der Mitte ab, gäbe es entweder ein Konto ohne verbrauchten
+ * Nachweis (der Link funktionierte weiter) oder einen verbrauchten Nachweis ohne
+ * Konto (niemand käme mehr hinein). Beides wäre schlechter als ein
+ * fehlgeschlagener Versuch.
+ *
+ * `totpEnabled: true` steht hier fest und nicht als Parameter: Ein
+ * Betreiberkonto ohne zweiten Faktor gibt es nicht (FA-ADM-08), und ein
+ * Schalter dafür wäre die Einladung, ihn irgendwann auf `false` zu setzen.
+ */
+export async function redeemAdminInvitation(
+  invitationId: string,
+  data: {
+    readonly email: string;
+    readonly name: string | null;
+    readonly passwordHash: string;
+    readonly totpSecret: string;
+  },
+  acceptedAt: Date,
+): Promise<AdminUser> {
+  return runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    const admin = await client.adminUser.create({
+      data: { ...data, totpEnabled: true },
+    });
+
+    await client.adminInvitation.update({
+      where: { id: invitationId },
+      data: { acceptedAt },
+    });
+
+    return admin;
+  });
 }
 
 // ─── Sitzungen der Verwaltung ───────────────────────────────────────────────

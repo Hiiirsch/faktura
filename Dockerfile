@@ -110,8 +110,9 @@ COPY --from=migrator --chown=node:node /migrator/node_modules ./migrator/node_mo
 # Gebündelte Kommandos für die Einrichtung (M8):
 #
 #   docker compose exec app node dist/create-admin.mjs --email <adresse>
-#     Das erste Betreiberkonto. Danach entstehen Unternehmen und Konten in der
-#     Oberfläche unter /admin — der Regelweg.
+#     Gibt einen Einrichtungslink aus; Passwort und zweiter Faktor entstehen im
+#     Browser, das Konto erst beim Absenden. Danach entstehen Unternehmen und
+#     Konten in der Oberfläche unter /admin — der Regelweg.
 #
 #   docker compose exec app node dist/create-user.mjs --email <adresse> \
 #     --organization <kennung> [--role <kennung>]

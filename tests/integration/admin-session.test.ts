@@ -19,6 +19,12 @@ import { Secret, TOTP } from 'otpauth';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { adminLogin, completeAdminSecondFactor } from '@/application/admin/admin-login';
+import {
+  completeAdminSetup,
+  inviteAdmin,
+  loadAdminSetup,
+} from '@/application/admin/admin-setup';
+import { ADMIN_SETUP_TTL_MS } from '@/domain/auth/admin-setup-policy';
 import { resolveAdminSession } from '@/application/admin/admin-session-service';
 import { resolveSession } from '@/application/auth/session-service';
 import { login } from '@/application/auth/login';
@@ -213,5 +219,186 @@ describe('FA-ADM-01 Die beiden Identitäten sind getrennt', () => {
     if (result.ok) return;
     // Ununterscheidbar von einem unbekannten Konto.
     expect(result.error.kind).toBe('INVALID_CREDENTIALS');
+  });
+});
+
+describe('FA-ADM-06 / FA-ADM-08 Die Einrichtung eines Betreiberkontos', () => {
+  /**
+   * Die tragende Zusage: **Es gibt zu keinem Zeitpunkt ein Betreiberkonto ohne
+   * zweiten Faktor.**
+   *
+   * Der naheliegende andere Weg — Konto mit Passwort anlegen, Einrichtung beim
+   * ersten Login erzwingen — hätte sie aufgegeben: Zwischen Anlage und erster
+   * Anmeldung stünde ein Konto, das nur ein Passwort kennt, und wer sich zuerst
+   * anmeldet, richtet seinen Authenticator ein. Deshalb entsteht das Konto erst
+   * beim Einlösen, und dieser Test hält fest, dass vorher **keines** existiert.
+   */
+  it('legt der Nachweis noch kein Konto an', async () => {
+    const result = await inviteAdmin('neu@example.org', NOW);
+
+    expect(result.ok).toBe(true);
+    expect(await prisma.adminUser.count()).toBe(0);
+
+    const stored = await prisma.adminInvitation.findFirstOrThrow();
+    expect(stored.email).toBe('neu@example.org');
+    if (!result.ok) return;
+    // Der Token steht nirgends in der Datenbank.
+    expect(JSON.stringify(stored)).not.toContain(result.value.token);
+    expect(stored.tokenHash).toHaveLength(64);
+  });
+
+  it('entsteht das Konto beim Einlösen — vollständig', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+
+    const offer = await loadAdminSetup(invited.value.token, NOW);
+    expect(offer.ok).toBe(true);
+    if (!offer.ok) return;
+
+    const done = await completeAdminSetup(
+      invited.value.token,
+      { name: 'Tim', password: PASSWORD, code: codeFor(offer.value.secret, NOW) },
+      NOW,
+    );
+    expect(done.ok).toBe(true);
+
+    const admin = await prisma.adminUser.findUniqueOrThrow({
+      where: { email: 'neu@example.org' },
+    });
+    expect(admin.name).toBe('Tim');
+    // Der zweite Faktor ist von der ersten Sekunde an aktiv (FA-ADM-08).
+    expect(admin.totpEnabled).toBe(true);
+    expect(admin.totpSecret).toBe(offer.value.secret);
+
+    // Und die Anmeldung geht auf dem üblichen Weg — zwei Schritte.
+    const first = await adminLogin({ email: 'neu@example.org', password: PASSWORD }, CONTEXT, NOW);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(await prisma.adminSession.count()).toBe(0);
+
+    const second = await completeAdminSecondFactor(
+      first.value.token,
+      codeFor(offer.value.secret, NOW),
+      CONTEXT,
+      NOW,
+    );
+    expect(second.ok).toBe(true);
+  });
+
+  /**
+   * Das Geheimnis bleibt über Neuladen stabil.
+   *
+   * Es steht am Nachweis und nicht in einem versteckten Formularfeld: Läge es
+   * dort, erzeugte jedes Neuladen ein neues, und wer den ersten QR-Code
+   * gescannt hat, bestätigte gegen das zweite — mit einer Fehlermeldung, die
+   * nichts erklärt.
+   */
+  it('bleibt das Geheimnis über mehrere Aufrufe dasselbe', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+
+    const first = await loadAdminSetup(invited.value.token, NOW);
+    const second = await loadAdminSetup(invited.value.token, NOW);
+
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+    expect(first.value.secret).toBe(second.value.secret);
+  });
+
+  it('weist einen falschen Code ab, ohne ein Konto anzulegen', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+
+    const result = await completeAdminSetup(
+      invited.value.token,
+      { name: '', password: PASSWORD, code: '000000' },
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('INVALID_CODE');
+    expect(await prisma.adminUser.count()).toBe(0);
+    // Der Nachweis ist nicht verbraucht — ein Tippfehler kostet nicht den Link.
+    expect((await prisma.adminInvitation.findFirstOrThrow()).acceptedAt).toBeNull();
+  });
+
+  it('weist ein zu kurzes Passwort ab', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+    const offer = await loadAdminSetup(invited.value.token, NOW);
+    if (!offer.ok) return;
+
+    const result = await completeAdminSetup(
+      invited.value.token,
+      { name: '', password: 'kurz', code: codeFor(offer.value.secret, NOW) },
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('PASSWORD');
+    expect(await prisma.adminUser.count()).toBe(0);
+  });
+
+  it('lässt sich ein Nachweis nur einmal einlösen', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+    const offer = await loadAdminSetup(invited.value.token, NOW);
+    if (!offer.ok) return;
+
+    const code = codeFor(offer.value.secret, NOW);
+    expect((await completeAdminSetup(invited.value.token, { name: '', password: PASSWORD, code }, NOW)).ok).toBe(true);
+
+    const again = await completeAdminSetup(
+      invited.value.token,
+      { name: '', password: PASSWORD, code },
+      NOW,
+    );
+
+    expect(again.ok).toBe(false);
+    if (again.ok) return;
+    // Dieselbe Antwort wie ein unbekannter Token — nicht ein Fehler an der
+    // Adresseindeutigkeit.
+    expect(again.error.kind).toBe('INVALID');
+    expect(await prisma.adminUser.count()).toBe(1);
+  });
+
+  it('läuft der Nachweis nach 24 Stunden ab', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+
+    const tooLate = new Date(NOW.getTime() + ADMIN_SETUP_TTL_MS + 1_000);
+
+    expect((await loadAdminSetup(invited.value.token, tooLate)).ok).toBe(false);
+    expect(await prisma.adminUser.count()).toBe(0);
+  });
+
+  it('entwertet ein neuer Nachweis den vorigen', async () => {
+    const first = await inviteAdmin('neu@example.org', NOW);
+    const second = await inviteAdmin('neu@example.org', NOW);
+
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+
+    expect((await loadAdminSetup(first.value.token, NOW)).ok).toBe(false);
+    expect((await loadAdminSetup(second.value.token, NOW)).ok).toBe(true);
+
+    // Der partielle Index hält fest, dass genau einer offen ist.
+    expect(
+      await prisma.adminInvitation.count({
+        where: { email: 'neu@example.org', acceptedAt: null, revokedAt: null },
+      }),
+    ).toBe(1);
+  });
+
+  it('weist eine Adresse ab, die schon ein Betreiberkonto trägt', async () => {
+    await seedAdmin('vorhanden@example.org');
+
+    const result = await inviteAdmin('vorhanden@example.org', NOW);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('EMAIL_TAKEN');
   });
 });

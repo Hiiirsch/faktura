@@ -126,22 +126,34 @@ Beide Verzeichnisse sind Bind-Mounts und gehören in die Sicherung.
 
 Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
 
-1. Betreiberkonto anlegen (einmalig je Installation):
+1. Einrichtungslink für das Betreiberkonto ausstellen (einmalig je
+   Installation):
 
    ```bash
    docker compose exec app node dist/create-admin.mjs --email betreiber@example.org
    ```
 
-   Der zweite Faktor entsteht dabei mit dem Konto; das Geheimnis erscheint genau
-   einmal. Für Betreiberkonten gibt es keine Wiederherstellungscodes.
+   Das Kommando fragt **nichts** ab und legt **kein** Konto an. Es gibt einen
+   Link aus, der 24 Stunden gilt und genau einmal funktioniert. Ein erneuter
+   Aufruf entwertet den vorigen Link.
 
-2. Unter `/admin` anmelden und ein Unternehmen anlegen. Dabei entstehen in
+2. Den Link im Browser öffnen: Name, Passwort und zweiter Faktor werden dort
+   gesetzt — der QR-Code kommt aus dem eigenen Prozess, ohne Anfrage nach außen.
+   **Erst mit dem Absenden entsteht das Konto**, vollständig, in einer
+   Transaktion. Damit gibt es zu keinem Zeitpunkt ein Betreiberkonto ohne
+   zweiten Faktor.
+
+   Für Betreiberkonten gibt es **keine Wiederherstellungscodes**. Geht der
+   Authenticator verloren, richtet ein neuer Einrichtungslink ein neues Konto
+   ein.
+
+3. Unter `/admin` anmelden und ein Unternehmen anlegen. Dabei entstehen in
    **einem** Vorgang: das Unternehmen, die Rolle „Inhaber" mit allen
    Berechtigungen und eine Einladung. Der Einladungslink erscheint **genau
    einmal** und wird von Hand weitergegeben — die Anwendung versendet keine
    E-Mail.
 
-3. Der Inhaber öffnet den Link und **setzt sein Passwort selbst**. Der Betreiber
+4. Der Inhaber öffnet den Link und **setzt sein Passwort selbst**. Der Betreiber
    erfährt es zu keinem Zeitpunkt. Weitere Mitglieder lädt das Unternehmen
    danach unter **Einstellungen → Mitglieder** ein.
 

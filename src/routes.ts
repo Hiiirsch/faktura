@@ -19,6 +19,13 @@ export const ADMIN_LOGIN_CODE_PATH = '/admin/login/code';
 /** Unternehmensverwaltung des Betreibers (M8, B5). */
 export const ADMIN_NEW_ORGANIZATION_PATH = '/admin/organizations/new';
 
+/** Einrichtung eines Betreiberkontos — der Nachweis steht in der Adresse (M8). */
+export const ADMIN_SETUP_PATH = '/admin/setup';
+
+export function adminSetupPath(token: string): string {
+  return `${ADMIN_SETUP_PATH}/${encodeURIComponent(token)}`;
+}
+
 export function adminOrganizationPath(id: string): string {
   return `/admin/organizations/${id}`;
 }
@@ -185,6 +192,17 @@ export const routes: readonly RouteDefinition[] = [
   // ── Zentrale Verwaltung (M8) ──────────────────────────────────────────────
   { path: ADMIN_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_NEW_ORGANIZATION_PATH, kind: 'page', access: 'platformAdmin' },
+  {
+    path: '/admin/setup/[token]',
+    kind: 'page',
+    access: 'public',
+    requiresRedemptionToken: true,
+    probePath: '/admin/setup/unbekannter-token',
+    publicReason:
+      'Wer ein Betreiberkonto einrichtet, hat noch keines — es entsteht erst dabei. ' +
+      'Geschützt ist die Seite durch den Token in der Adresse; ohne gültigen Token ' +
+      'nennt sie weder Adresse noch Geheimnis.',
+  },
   {
     path: '/admin/organizations/[id]',
     kind: 'page',

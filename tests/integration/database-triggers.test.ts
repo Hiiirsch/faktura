@@ -89,6 +89,8 @@ const EXPECTED_TRIGGERS = [
 const EXPECTED_PARTIAL_INDEXES = [
   'Template_one_default_per_organization',
   'Invitation_one_open_per_email',
+  // Und der dritte: ein offener Einrichtungsnachweis je Betreiberadresse.
+  'AdminInvitation_one_open_per_email',
 ] as const;
 
 type SqliteObject = { readonly name: string };

@@ -49,6 +49,29 @@ export const messages = {
       'Die Verwaltung sieht Unternehmen und Konten — keine Rechnung, keinen Kunden, keinen Betrag. Das ist keine Einstellung, sondern eine Eigenschaft des Aufbaus: Eine Adminsitzung führt keinen Mandantenkontext, und jede Abfrage von Geschäftsdaten verlangt einen.',
     logout: 'Abmelden',
 
+    // ── Einrichtung des Betreiberkontos ──────────────────────────────────
+    setupTitle: 'Betreiberkonto einrichten',
+    setupHeading: 'Betreiberkonto einrichten',
+    setupIntro:
+      'Für {email}. Passwort und zweiter Faktor entstehen hier — das Konto gibt es erst danach.',
+    setupName: 'Name',
+    setupNameHint: 'Erscheint im Kopf der Verwaltung.',
+    setupPassword: 'Passwort',
+    setupPasswordRepeat: 'Passwort wiederholen',
+    setupScan:
+      'Code mit der Authenticator-App scannen, dann das angezeigte Einmalkennwort eintragen. Der zweite Faktor ist für Betreiberkonten verpflichtend.',
+    setupManualEntry: 'Ohne Kamera lässt sich dieser Schlüssel von Hand eintragen:',
+    setupNoRecoveryCodes:
+      'Für die Verwaltung gibt es keine Wiederherstellungscodes. Geht der Authenticator verloren, richtet ein neuer Einrichtungslink ein neues Konto ein.',
+    setupCode: 'Einmalkennwort',
+    setupSubmit: 'Konto einrichten',
+    setupDone: 'Das Betreiberkonto ist eingerichtet. Jetzt anmelden.',
+    setupInvalidCode: 'Das Einmalkennwort ist nicht korrekt. Bitte erneut versuchen.',
+    setupEmailTaken: 'Zu dieser Adresse gehört bereits ein Betreiberkonto.',
+    /** Eine Meldung für unbekannt, abgelaufen, zurückgezogen und schon benutzt. */
+    setupInvalid:
+      'Dieser Einrichtungslink gilt nicht. Er kann abgelaufen sein, schon benutzt oder durch einen neueren ersetzt. Ein neuer entsteht auf dem Server mit „admin:create".',
+
     // ── Unternehmensverwaltung (B5) ──────────────────────────────────────
     columnOrganization: 'Unternehmen',
     columnAccounts: 'Konten',

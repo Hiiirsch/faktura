@@ -598,6 +598,38 @@ model AdminUser {
   pendingLogins PendingLogin[]
 }
 
+/// Ein Einrichtungsnachweis für ein Betreiberkonto (M8, FA-ADM-06, -08).
+///
+/// **Das Konto entsteht erst beim Einlösen.** `npm run admin:create` legt keinen
+/// `AdminUser` an, sondern diese Zeile; Passwort und zweiter Faktor werden im
+/// Browser gesetzt. Damit gibt es zu keinem Zeitpunkt ein Betreiberkonto ohne
+/// zweiten Faktor — dieselbe Zusage wie zuvor, nur ohne dass das Geheimnis durch
+/// ein Terminal muss.
+///
+/// **Das TOTP-Geheimnis steht schon hier**, nicht erst beim Absenden des
+/// Formulars. Der Grund ist die Erfahrung aus der Mitgliederverwaltung: Läge es
+/// in einem versteckten Formularfeld, erzeugte jedes Neuladen ein neues — wer
+/// den ersten QR-Code gescannt hat, bestätigte gegen das zweite Geheimnis und
+/// bekäme eine Fehlermeldung, die nichts erklärt.
+///
+/// Ohne den Token ist das Geheimnis wertlos: Es gehört zu keinem Konto, und es
+/// gibt keines, an dem man sich damit anmelden könnte.
+model AdminInvitation {
+  id         String    @id @default(cuid())
+  email      String
+  /// Wie bei jedem Nachweis liegt nur der SHA-256-Hash (NFA-SEC-06).
+  tokenHash  String    @unique
+  /// Wandert beim Einlösen unverändert an den `AdminUser`.
+  totpSecret String
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
 /// Sitzung eines Betreiberkontos — getrennt von `Session`, mit eigenem Cookie
 /// und eigenem Pfad (`/admin`). Das Admintoken liegt damit bei keiner Anfrage
 /// an `/invoices` bei.

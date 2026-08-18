@@ -573,9 +573,24 @@ gültigem **Mandanten**cookie, mit Admincookie. Die mittlere ist die, die ein
 späterer Umbau still kaputtmacht.
 
 Das erste Betreiberkonto entsteht über `npm run admin:create` — nicht in einer
-Migration, denn ein Passwort in einer Migration steht im Repository. Der zweite
-Faktor entsteht dabei mit dem Konto; das Geheimnis erscheint genau einmal.
-Wiederherstellungscodes gibt es für die Verwaltung nicht.
+Migration, denn ein Passwort in einer Migration steht im Repository. Das Kommando
+legt allerdings **kein Konto an**, sondern gibt einen Einrichtungslink aus (24
+Stunden, einmal einlösbar). Passwort und zweiter Faktor entstehen im Browser; der
+`AdminUser` entsteht beim Einlösen, vollständig, in einer Transaktion.
+
+**Warum nicht „Konto anlegen, Einrichtung beim ersten Login erzwingen".** Das
+wäre der bequemere Weg gewesen und hätte die Zusage aus FA-ADM-08 aufgegeben:
+Zwischen Anlage und erster Anmeldung stünde ein Konto, das nur ein Passwort
+kennt, und wer sich zuerst anmeldet, richtet **seinen** Authenticator ein. So
+bleibt es dabei, dass es zu keinem Zeitpunkt ein Betreiberkonto ohne zweiten
+Faktor gibt — nur muss das Geheimnis jetzt nicht mehr durch ein Terminal.
+
+Das TOTP-Geheimnis steht am `AdminInvitation`, nicht in einem versteckten
+Formularfeld. Läge es dort, erzeugte jedes Neuladen ein neues, und wer den ersten
+QR-Code gescannt hat, bestätigte gegen das zweite.
+
+Wiederherstellungscodes gibt es für die Verwaltung nicht: Geht der Authenticator
+verloren, richtet ein neuer Einrichtungslink ein neues Konto ein.
 
 ## Urheber am Beleg (seit M8)
 
