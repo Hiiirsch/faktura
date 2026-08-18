@@ -144,8 +144,7 @@ Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
    zweiten Faktor.
 
    Für Betreiberkonten gibt es **keine Wiederherstellungscodes**. Geht der
-   Authenticator verloren, richtet ein neuer Einrichtungslink ein neues Konto
-   ein.
+   Authenticator verloren, hilft `admin:reset` (siehe unten).
 
 3. Unter `/admin` anmelden und ein Unternehmen anlegen. Dabei entstehen in
    **einem** Vorgang: das Unternehmen, die Rolle „Inhaber" mit allen
@@ -160,6 +159,24 @@ Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
 Ein Passwort muss mindestens zwölf Zeichen haben und darf nicht in der
 mitgelieferten Liste der 100.000 häufigsten geleakten Passwörter stehen; die
 Prüfung läuft vollständig lokal, ohne Netzwerkabfrage.
+
+#### Betreiberkonto zurücksetzen
+
+Ist der Authenticator eines Betreiberkontos verloren:
+
+```bash
+docker compose exec app node dist/reset-admin.mjs --email betreiber@example.org
+```
+
+Das Konto wird **sofort gesperrt**, alle seine Sitzungen enden, und es entsteht
+ein neuer Einrichtungslink. Beim Einlösen bekommt **dasselbe** Konto ein neues
+Passwort und einen neuen zweiten Faktor.
+
+Es wird bewusst nicht gelöscht und neu angelegt: Das Protokoll nennt den
+Betreiber über seine Kennung, und die eines gelöschten Kontos zeigt ins Leere.
+
+Der Preis ist benannt: Zwischen Aufruf und Einlösen kommt niemand in die
+Verwaltung. Wer das vermeiden will, legt vorher ein zweites Betreiberkonto an.
 
 #### Der Notfallweg
 

@@ -93,9 +93,21 @@ export default async function AdminSetupPage({
         <span className="text-label font-semibold uppercase text-ink-faint">
           {messages.app.name}
         </span>
-        <h1 className="text-page font-semibold text-ink">{messages.admin.setupHeading}</h1>
+        {/*
+          Dieselbe Seite, zwei Anlässe: ein Konto entsteht, oder ein vorhandenes
+          bekommt neue Zugangsdaten. Der Unterschied steht in der Überschrift,
+          weil er für den Leser einer ist — der Vorgang selbst ist derselbe.
+        */}
+        <h1 className="text-page font-semibold text-ink">
+          {offer.value.kind === 'RESET'
+            ? messages.admin.resetHeading
+            : messages.admin.setupHeading}
+        </h1>
         <p className="text-ui text-ink-muted">
-          {messages.admin.setupIntro.replace('{email}', offer.value.email)}
+          {(offer.value.kind === 'RESET'
+            ? messages.admin.resetIntro
+            : messages.admin.setupIntro
+          ).replace('{email}', offer.value.email)}
         </p>
       </header>
 

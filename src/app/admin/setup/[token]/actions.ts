@@ -78,15 +78,18 @@ export async function completeAdminSetupAction(
      * `switch` mit Seiteneffekten.
      */
     const code: AdminSetupErrorCode =
-      result.error.kind === 'INVALID'
-        ? 'invalid'
+      result.error.kind === 'PASSWORD'
+        ? result.error.violations[0]?.kind === 'COMPROMISED'
+          ? 'compromised'
+          : 'tooShort'
         : result.error.kind === 'INVALID_CODE'
           ? 'code'
           : result.error.kind === 'EMAIL_TAKEN'
             ? 'taken'
-            : result.error.violations[0]?.kind === 'COMPROMISED'
-              ? 'compromised'
-              : 'tooShort';
+            : // `INVALID` und `NO_ACCOUNT` antworten gleich: Wer einen Link
+              // ausprobiert, soll nicht erfahren, ob es zu der Adresse ein
+              // Konto gibt.
+              'invalid';
 
     fail(token, code);
   }

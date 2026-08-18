@@ -621,6 +621,16 @@ model AdminInvitation {
   tokenHash  String    @unique
   /// Wandert beim Einlösen unverändert an den `AdminUser`.
   totpSecret String
+  /// `CREATE` — es soll ein Konto entstehen. `RESET` — ein vorhandenes bekommt
+  /// neue Zugangsdaten.
+  ///
+  /// Die Unterscheidung ist eine Sicherung, keine Bequemlichkeit: Ohne sie
+  /// könnte ein Nachweis, der für ein **neues** Konto ausgestellt wurde, ein
+  /// Konto überschreiben, das inzwischen auf anderem Weg entstanden ist. Beim
+  /// Einlösen wird geprüft, dass die Lage zur Absicht passt — und ein
+  /// unbekannter Wert lässt beide Zweige leer ausgehen und den Versuch
+  /// scheitern.
+  kind       String    @default("CREATE")
   expiresAt  DateTime
   acceptedAt DateTime?
   revokedAt  DateTime?

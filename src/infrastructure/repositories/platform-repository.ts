@@ -104,6 +104,7 @@ export async function createAdminInvitation(data: {
   readonly email: string;
   readonly tokenHash: string;
   readonly totpSecret: string;
+  readonly kind: 'CREATE' | 'RESET';
   readonly expiresAt: Date;
 }): Promise<AdminInvitation> {
   return runInTransaction(async (handle) => {
@@ -148,6 +149,83 @@ export async function redeemAdminInvitation(
     });
 
     return admin;
+  });
+}
+
+/**
+ * Ersetzt die Zugangsdaten eines vorhandenen Betreiberkontos (`RESET`).
+ *
+ * **Ersetzen statt löschen und neu anlegen.** Das Protokoll nennt den Betreiber
+ * über seine Kennung (`actorKind: 'ADMIN'`); ein gelöschtes Konto ließe jeden
+ * dieser Einträge ins Leere zeigen. Es ist dieselbe Regel wie bei den
+ * Mitgliedern — wer geht, wird gesperrt, damit der Beleg seinen Urheber behält.
+ *
+ * Die Sperre fällt hier, denn sie war der Zweck des Resets: Zwischen dem
+ * Ausstellen des Nachweises und seinem Einlösen ist das Konto gesperrt, damit
+ * niemand mit dem alten Passwort hineinkommt.
+ *
+ * Alle Sitzungen enden — wer sein Konto zurücksetzt, tut das oft, weil etwas
+ * abhandengekommen ist.
+ */
+export async function reenrollAdminUser(
+  invitationId: string,
+  adminUserId: string,
+  data: { readonly name: string | null; readonly passwordHash: string; readonly totpSecret: string },
+  acceptedAt: Date,
+): Promise<void> {
+  await runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    await client.adminUser.update({
+      where: { id: adminUserId },
+      data: {
+        ...data,
+        totpEnabled: true,
+        disabledAt: null,
+        failedLogins: 0,
+        lockedUntil: null,
+      },
+    });
+
+    await client.adminSession.deleteMany({ where: { adminUserId } });
+    await client.adminInvitation.update({
+      where: { id: invitationId },
+      data: { acceptedAt },
+    });
+  });
+}
+
+/**
+ * Sperrt ein Betreiberkonto und stellt in einem Zug einen Nachweis aus.
+ *
+ * **Eine Transaktion**, weil beides zusammengehört: Bräche sie zwischen Sperre
+ * und Nachweis ab, stünde ein gesperrtes Konto ohne Weg zurück da — genau die
+ * Lage, aus der der Reset heraushelfen soll.
+ */
+export async function suspendAdminForReset(
+  adminUserId: string,
+  invitation: {
+    readonly email: string;
+    readonly tokenHash: string;
+    readonly totpSecret: string;
+    readonly expiresAt: Date;
+  },
+  now: Date,
+): Promise<void> {
+  await runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    await client.adminUser.update({
+      where: { id: adminUserId },
+      data: { disabledAt: now },
+    });
+    await client.adminSession.deleteMany({ where: { adminUserId } });
+
+    await client.adminInvitation.updateMany({
+      where: { email: invitation.email, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    await client.adminInvitation.create({ data: { ...invitation, kind: 'RESET' } });
   });
 }
 

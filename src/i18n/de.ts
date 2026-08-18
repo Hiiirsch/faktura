@@ -54,6 +54,10 @@ export const messages = {
     setupHeading: 'Betreiberkonto einrichten',
     setupIntro:
       'Für {email}. Passwort und zweiter Faktor entstehen hier — das Konto gibt es erst danach.',
+    /** Derselbe Weg, anderer Anlass: Das Konto gibt es schon (M8). */
+    resetHeading: 'Betreiberkonto zurücksetzen',
+    resetIntro:
+      'Für {email}. Das Konto bleibt bestehen und bekommt hier ein neues Passwort und einen neuen zweiten Faktor; der bisherige gilt danach nicht mehr.',
     setupName: 'Name',
     setupNameHint: 'Erscheint im Kopf der Verwaltung.',
     setupPassword: 'Passwort',

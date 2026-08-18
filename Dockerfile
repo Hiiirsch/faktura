@@ -114,6 +114,10 @@ COPY --from=migrator --chown=node:node /migrator/node_modules ./migrator/node_mo
 #     Browser, das Konto erst beim Absenden. Danach entstehen Unternehmen und
 #     Konten in der Oberfläche unter /admin — der Regelweg.
 #
+#   docker compose exec app node dist/reset-admin.mjs --email <adresse>
+#     Setzt ein Betreiberkonto zurueck, wenn sein Authenticator verloren ist.
+#     Das Konto bleibt bestehen und bekommt neue Zugangsdaten.
+#
 #   docker compose exec app node dist/create-user.mjs --email <adresse> \
 #     --organization <kennung> [--role <kennung>]
 #     Der Notfallweg, wenn niemand mehr in ein Unternehmen kommt.

@@ -589,8 +589,19 @@ Das TOTP-Geheimnis steht am `AdminInvitation`, nicht in einem versteckten
 Formularfeld. Läge es dort, erzeugte jedes Neuladen ein neues, und wer den ersten
 QR-Code gescannt hat, bestätigte gegen das zweite.
 
-Wiederherstellungscodes gibt es für die Verwaltung nicht: Geht der Authenticator
-verloren, richtet ein neuer Einrichtungslink ein neues Konto ein.
+Wiederherstellungscodes gibt es für die Verwaltung nicht. Geht der Authenticator
+verloren, hilft `npm run admin:reset`: Das Konto wird sofort gesperrt, alle
+Sitzungen enden, und ein neuer Einrichtungslink entsteht — beim Einlösen bekommt
+**dasselbe** Konto neue Zugangsdaten. Löschen und neu anlegen wäre einfacher
+gewesen und hätte das Protokoll beschädigt: Es nennt den Betreiber über seine
+Kennung, und die eines gelöschten Kontos zeigt ins Leere. Es ist dieselbe Regel
+wie bei den Mitgliedern — sperren statt löschen.
+
+Der Nachweis trägt dafür ein Feld `kind` (`CREATE` oder `RESET`). Beim Einlösen
+muss die Lage zur Absicht passen: Ein `CREATE`-Nachweis überschreibt kein Konto,
+das inzwischen auf anderem Weg entstanden ist, und ein `RESET`-Nachweis legt
+keines an. Ein unbekannter Wert fällt durch beide Zweige — die sichere Richtung,
+deshalb braucht es dafür keinen Trigger.
 
 ## Urheber am Beleg (seit M8)
 

@@ -23,6 +23,7 @@ import {
   completeAdminSetup,
   inviteAdmin,
   loadAdminSetup,
+  resetAdmin,
 } from '@/application/admin/admin-setup';
 import { ADMIN_SETUP_TTL_MS } from '@/domain/auth/admin-setup-policy';
 import { resolveAdminSession } from '@/application/admin/admin-session-service';
@@ -45,6 +46,7 @@ import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
 const PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
+const OTHER_PASSWORD = 'Quittenbrot-am-Sonntagmorgen-3';
 const CONTEXT = { ipAddress: '203.0.113.9', userAgent: 'pruefung' };
 /** Die echte Uhr — ein Einmalkennwort ist an sie gebunden. */
 const NOW = new Date();
@@ -396,6 +398,116 @@ describe('FA-ADM-06 / FA-ADM-08 Die Einrichtung eines Betreiberkontos', () => {
     await seedAdmin('vorhanden@example.org');
 
     const result = await inviteAdmin('vorhanden@example.org', NOW);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('EMAIL_TAKEN');
+  });
+});
+
+describe('FA-ADM-06 Ein Betreiberkonto zurücksetzen', () => {
+  /**
+   * Der Anlass: Der Authenticator ist weg, und Wiederherstellungscodes gibt es
+   * für die Verwaltung nicht. Ohne diesen Weg bliebe nur ein Eingriff in die
+   * Datenbank.
+   */
+  it('sperrt sofort und beendet die laufenden Sitzungen', async () => {
+    const { secret } = await seedAdmin();
+    const first = await adminLogin({ email: 'betreiber@example.org', password: PASSWORD }, CONTEXT, NOW);
+    if (!first.ok) throw new Error('kein Nachweis');
+    const issued = await completeAdminSecondFactor(
+      first.value.token,
+      codeFor(secret, NOW),
+      CONTEXT,
+      NOW,
+    );
+    if (!issued.ok) throw new Error('keine Sitzung');
+    expect(await resolveAdminSession(issued.value.token, NOW)).not.toBeNull();
+
+    const reset = await resetAdmin('betreiber@example.org', NOW);
+    expect(reset.ok).toBe(true);
+
+    // Sofort, nicht erst beim Einlösen: Wer zurücksetzt, tut das, weil etwas
+    // abhandengekommen ist.
+    expect(await resolveAdminSession(issued.value.token, NOW)).toBeNull();
+    expect(await prisma.adminSession.count()).toBe(0);
+
+    // Und auch das bekannte Passwort genügt nicht mehr.
+    const again = await adminLogin({ email: 'betreiber@example.org', password: PASSWORD }, CONTEXT, NOW);
+    expect(again.ok).toBe(false);
+  });
+
+  /**
+   * **Das Konto bleibt dasselbe.**
+   *
+   * Es zu löschen und neu anzulegen wäre einfacher gewesen und hätte das
+   * Protokoll beschädigt: Es nennt den Betreiber über seine Kennung
+   * (`actorKind: 'ADMIN'`), und die eines gelöschten Kontos zeigt ins Leere.
+   */
+  it('behält das Konto seine Kennung und damit seine Spuren', async () => {
+    const { id } = await seedAdmin();
+
+    const reset = await resetAdmin('betreiber@example.org', NOW);
+    if (!reset.ok) throw new Error('kein Nachweis');
+
+    const offer = await loadAdminSetup(reset.value.token, NOW);
+    expect(offer.ok).toBe(true);
+    if (!offer.ok) return;
+    expect(offer.value.kind).toBe('RESET');
+
+    const done = await completeAdminSetup(
+      reset.value.token,
+      { name: 'Tim', password: OTHER_PASSWORD, code: codeFor(offer.value.secret, NOW) },
+      NOW,
+    );
+    expect(done.ok).toBe(true);
+
+    // Dieselbe Kennung, neue Zugangsdaten, Sperre aufgehoben.
+    const admin = await prisma.adminUser.findUniqueOrThrow({ where: { id } });
+    expect(admin.disabledAt).toBeNull();
+    expect(admin.totpEnabled).toBe(true);
+    expect(admin.totpSecret).toBe(offer.value.secret);
+    expect(await prisma.adminUser.count()).toBe(1);
+
+    // Das neue Passwort gilt, das alte nicht mehr.
+    expect(
+      (await adminLogin({ email: 'betreiber@example.org', password: OTHER_PASSWORD }, CONTEXT, NOW))
+        .ok,
+    ).toBe(true);
+    expect(
+      (await adminLogin({ email: 'betreiber@example.org', password: PASSWORD }, CONTEXT, NOW)).ok,
+    ).toBe(false);
+  });
+
+  it('weist einen Reset für eine unbekannte Adresse ab', async () => {
+    const result = await resetAdmin('gibtesnicht@example.org', NOW);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('NO_ACCOUNT');
+  });
+
+  /**
+   * Die Absicht des Nachweises muss zur Lage passen.
+   *
+   * Ohne diese Prüfung könnte ein Nachweis, der für ein **neues** Konto
+   * ausgestellt wurde, ein Konto überschreiben, das inzwischen auf anderem Weg
+   * entstanden ist.
+   */
+  it('überschreibt ein `CREATE`-Nachweis kein inzwischen entstandenes Konto', async () => {
+    const invited = await inviteAdmin('neu@example.org', NOW);
+    if (!invited.ok) throw new Error('kein Nachweis');
+    const offer = await loadAdminSetup(invited.value.token, NOW);
+    if (!offer.ok) return;
+
+    // Auf anderem Weg entsteht inzwischen ein Konto mit derselben Adresse.
+    await seedAdmin('neu@example.org');
+
+    const result = await completeAdminSetup(
+      invited.value.token,
+      { name: '', password: OTHER_PASSWORD, code: codeFor(offer.value.secret, NOW) },
+      NOW,
+    );
 
     expect(result.ok).toBe(false);
     if (result.ok) return;

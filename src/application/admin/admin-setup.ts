@@ -35,6 +35,8 @@ import {
   findAdminInvitationByTokenHash,
   findAdminUserByEmail,
   redeemAdminInvitation,
+  reenrollAdminUser,
+  suspendAdminForReset,
 } from '@/infrastructure/repositories/platform-repository';
 
 export type AdminSetupError =
@@ -49,11 +51,15 @@ export type AdminSetupError =
   | { readonly kind: 'PASSWORD'; readonly violations: readonly PasswordViolation[] }
   | { readonly kind: 'INVALID_CODE' }
   /** Die Adresse gehört schon zu einem Betreiberkonto. */
-  | { readonly kind: 'EMAIL_TAKEN' };
+  | { readonly kind: 'EMAIL_TAKEN' }
+  /** Zu dieser Adresse gibt es kein Betreiberkonto, das zurückzusetzen wäre. */
+  | { readonly kind: 'NO_ACCOUNT' };
 
 /** Was die Einrichtungsseite zeigt, bevor sich jemand ausweist. */
 export type AdminSetupOffer = {
   readonly email: string;
+  /** Ob ein Konto entsteht oder ein vorhandenes neue Zugangsdaten bekommt. */
+  readonly kind: 'CREATE' | 'RESET';
   /** Das Geheimnis im Klartext — für die Eingabe von Hand ohne Kamera. */
   readonly secret: string;
   /** `otpauth://`-URI, aus der die Seite den QR-Code erzeugt. */
@@ -87,6 +93,7 @@ export async function inviteAdmin(
     // erzeugte jedes Neuladen ein neues, und wer den ersten QR-Code gescannt
     // hat, bestätigte gegen das zweite.
     totpSecret: generateTotpSecret(),
+    kind: 'CREATE',
     expiresAt,
   });
 
@@ -115,10 +122,57 @@ export async function loadAdminSetup(
     ok: true,
     value: {
       email: invitation.email,
+      kind: invitation.kind === 'RESET' ? 'RESET' : 'CREATE',
       secret: invitation.totpSecret,
       uri: buildTotpUri(invitation.totpSecret, invitation.email, getEnv().APP_NAME),
     },
   };
+}
+
+/**
+ * Setzt ein vorhandenes Betreiberkonto zurück (M8).
+ *
+ * Für den Fall, dass der Authenticator verloren ist: Für Betreiberkonten gibt es
+ * keine Wiederherstellungscodes, und ohne diesen Weg bliebe nur ein Eingriff in
+ * die Datenbank.
+ *
+ * **Das Konto bleibt bestehen.** Es wird gesperrt und bekommt beim Einlösen
+ * neue Zugangsdaten. Es zu löschen und neu anzulegen wäre einfacher gewesen und
+ * hätte das Protokoll beschädigt: Es nennt den Betreiber über seine Kennung, und
+ * die eines gelöschten Kontos zeigt ins Leere.
+ *
+ * **Gesperrt ab sofort**, nicht erst beim Einlösen: Wer den Reset auslöst, tut
+ * das, weil etwas abhandengekommen ist. Bis der Nachweis eingelöst ist, soll
+ * auch ein bekanntes Passwort nicht mehr genügen.
+ */
+export async function resetAdmin(
+  email: string,
+  now: Date = new Date(),
+): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, AdminSetupError>> {
+  const address = email.trim().toLowerCase();
+  const admin = await findAdminUserByEmail(address);
+
+  if (admin === null) {
+    return err({ kind: 'NO_ACCOUNT' });
+  }
+
+  const token = generateRedemptionToken();
+  const expiresAt = adminSetupExpiry(now);
+
+  await suspendAdminForReset(
+    admin.id,
+    {
+      email: address,
+      tokenHash: hashToken(token),
+      totpSecret: generateTotpSecret(),
+      expiresAt,
+    },
+    now,
+  );
+
+  logger.security('admin.reset_started', { adminUserId: admin.id });
+
+  return ok({ token, expiresAt });
 }
 
 /**
@@ -154,26 +208,54 @@ export async function completeAdminSetup(
     return err({ kind: 'INVALID_CODE' });
   }
 
-  // Zwischen dem Ausstellen und dem Einlösen kann ein anderer Weg dieselbe
-  // Adresse belegt haben — der Notfallweg auf der Kommandozeile etwa.
-  if ((await findAdminUserByEmail(invitation.email)) !== null) {
-    return err({ kind: 'EMAIL_TAKEN' });
+  const name = data.name.trim();
+  const passwordHash = await hashPassword(data.password);
+  const existing = await findAdminUserByEmail(invitation.email);
+
+  /*
+   * Die Lage muss zur Absicht passen.
+   *
+   * Ohne diese Prüfung könnte ein Nachweis, der für ein **neues** Konto
+   * ausgestellt wurde, ein Konto überschreiben, das inzwischen auf anderem Weg
+   * entstanden ist — und ein Reset-Nachweis ein Konto anlegen, das jemand
+   * zwischenzeitlich entfernt hat. Ein unbekannter Wert in `kind` fällt durch
+   * beide Zweige und scheitert; das ist die sichere Richtung.
+   */
+  if (invitation.kind === 'CREATE') {
+    if (existing !== null) {
+      return err({ kind: 'EMAIL_TAKEN' });
+    }
+
+    const admin = await redeemAdminInvitation(
+      invitation.id,
+      {
+        email: invitation.email,
+        name: name.length === 0 ? null : name,
+        passwordHash,
+        totpSecret: invitation.totpSecret,
+      },
+      now,
+    );
+
+    logger.security('admin.account_created', { adminUserId: admin.id });
+    return ok(null);
   }
 
-  const name = data.name.trim();
+  if (invitation.kind === 'RESET' && existing !== null) {
+    await reenrollAdminUser(
+      invitation.id,
+      existing.id,
+      {
+        name: name.length === 0 ? existing.name : name,
+        passwordHash,
+        totpSecret: invitation.totpSecret,
+      },
+      now,
+    );
 
-  const admin = await redeemAdminInvitation(
-    invitation.id,
-    {
-      email: invitation.email,
-      name: name.length === 0 ? null : name,
-      passwordHash: await hashPassword(data.password),
-      totpSecret: invitation.totpSecret,
-    },
-    now,
-  );
+    logger.security('admin.reset_completed', { adminUserId: existing.id });
+    return ok(null);
+  }
 
-  logger.security('admin.account_created', { adminUserId: admin.id });
-
-  return ok(null);
+  return err({ kind: 'INVALID' });
 }
