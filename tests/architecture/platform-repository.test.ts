@@ -84,6 +84,56 @@ describe('FA-ADM-02 Das Betreiber-Repository fasst keine Geschäftsdaten an', ()
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * Die Lücke, die B5 aufgedeckt hat.
+   *
+   * Die Prüfung oben sucht nach `client.invoice.<methode>(` — der Form, in der
+   * man ein Delegate direkt anspricht. Es gibt aber eine zweite Form, und sie
+   * sieht harmlos aus:
+   *
+   * ```ts
+   * organization.findMany({ include: { invoices: true } })   // liest Belege!
+   * organization.findMany({ include: { _count: { select: { invoices: true } } } })  // zählt sie
+   * ```
+   *
+   * Beide nennen `invoices`, beide gehen über das Delegate `organization`, und
+   * die erste liefert vollständige Belegzeilen. Der ursprüngliche Wächter hätte
+   * sie durchgelassen — nicht aus Nachlässigkeit, sondern weil er die falsche
+   * Ebene betrachtete.
+   *
+   * Geprüft wird deshalb über die **Beziehungsnamen**: Sie dürfen im Quelltext
+   * nur innerhalb eines `_count`-Blocks vorkommen. Der Block wird vorher
+   * herausgeschnitten; was danach übrig bleibt und einen Beziehungsnamen als
+   * Schlüssel führt, ist ein Lesezugriff.
+   */
+  it('nennt Geschäftsbeziehungen nur innerhalb von `_count`', () => {
+    // Die Beziehungsnamen, wie sie an `Organization` stehen (Plural).
+    const relations = [
+      'invoices',
+      'invoiceLines',
+      'artifacts',
+      'customers',
+      'catalogItems',
+      'payments',
+      'templates',
+      'companyProfile',
+      'numberSequences',
+      'assets',
+    ];
+
+    // `_count: { select: { … } }` entfernen — dort ist die Nennung erlaubt.
+    const withoutCounts = sourceOf(PLATFORM_REPOSITORY).replace(
+      /_count\s*:\s*\{[\s\S]*?\}\s*\}/gu,
+      '',
+    );
+
+    const offenders = relations.filter((relation) =>
+      new RegExp(`\\b${relation}\\s*:`, 'u').test(withoutCounts),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
   it('kennt die Verwaltungsgegenstände, die es benutzen darf', () => {
     const source = sourceOf(PLATFORM_REPOSITORY);
 

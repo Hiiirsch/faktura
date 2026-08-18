@@ -1,14 +1,20 @@
 /**
  * Die Organisationen selbst.
  *
- * Kein Mandantenkontext — hier entsteht er. Aufgerufen wird das ausschließlich
- * beim Einrichten (`user:create`) und aus dem Isolationstest; die laufende
- * Anwendung erhält ihren Kontext aus der Sitzung.
+ * **Kein Mandantenkontext, und seit M8/B5 auch keine Erzeugung eines solchen.**
+ * `defaultOrganizationContext()` ist entfallen: Sie riet die Organisation, wenn
+ * es genau eine gab, und das war die Krücke einer Installation mit einem
+ * Mandanten. Bei mehreren wäre das Raten falsch — `npm run user:create` verlangt
+ * jetzt `--organization`.
+ *
+ * Was hier bleibt, sind Abfragen ohne Kontext, weil sie **über** Organisationen
+ * gehen statt in eine hinein. Aufgerufen werden sie vom Einrichtungskommando und
+ * vom Isolationstest; die laufende Anwendung nimmt ihren Kontext aus der Sitzung
+ * und die Verwaltung ihre Liste aus `platform-repository.ts`.
  */
 import type { Organization } from '@prisma/client';
 
 import { clientFor } from './client';
-import { DEFAULT_ORGANIZATION_ID, type OrganizationContext, organizationContextOf } from './organization-context';
 
 export type { Organization };
 
@@ -22,23 +28,4 @@ export async function listOrganizations(): Promise<readonly Organization[]> {
 
 export async function createOrganization(id: string, name: string): Promise<Organization> {
   return clientFor(undefined).organization.create({ data: { id, name } });
-}
-
-/**
- * Der Kontext der Organisation, die die Migration angelegt hat.
- *
- * Für `user:create`: Ein neues Konto gehört zu dieser einen Organisation,
- * solange es keine Mitgliederverwaltung gibt.
- */
-export async function defaultOrganizationContext(): Promise<OrganizationContext | null> {
-  const organization = await findOrganization(DEFAULT_ORGANIZATION_ID);
-  if (organization !== null) {
-    return organizationContextOf(organization.id);
-  }
-
-  // Eine Datenbank, in der die Standardorganisation umbenannt oder ersetzt
-  // wurde, bleibt benutzbar, solange es genau eine gibt.
-  const all = await listOrganizations();
-  const only = all.length === 1 ? all[0] : undefined;
-  return only === undefined ? null : organizationContextOf(only.id);
 }

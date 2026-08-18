@@ -122,25 +122,51 @@ gefährlicher als ein ausbleibender Start.
 
 Beide Verzeichnisse sind Bind-Mounts und gehören in die Sicherung.
 
-### Erstes Benutzerkonto anlegen
+### Unternehmen und Konten anlegen
 
-Es gibt **keine Selbstregistrierung**. Das erste Konto entsteht ausschließlich
-auf dem Server:
+Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
+
+1. Betreiberkonto anlegen (einmalig je Installation):
+
+   ```bash
+   docker compose exec app node dist/create-admin.mjs --email betreiber@example.org
+   ```
+
+   Der zweite Faktor entsteht dabei mit dem Konto; das Geheimnis erscheint genau
+   einmal. Für Betreiberkonten gibt es keine Wiederherstellungscodes.
+
+2. Unter `/admin` anmelden und ein Unternehmen anlegen. Dabei entstehen in
+   **einem** Vorgang: das Unternehmen, die Rolle „Inhaber" mit allen
+   Berechtigungen und eine Einladung. Der Einladungslink erscheint **genau
+   einmal** und wird von Hand weitergegeben — die Anwendung versendet keine
+   E-Mail.
+
+3. Der Inhaber öffnet den Link und **setzt sein Passwort selbst**. Der Betreiber
+   erfährt es zu keinem Zeitpunkt. Weitere Mitglieder lädt das Unternehmen
+   danach unter **Einstellungen → Mitglieder** ein.
+
+Ein Passwort muss mindestens zwölf Zeichen haben und darf nicht in der
+mitgelieferten Liste der 100.000 häufigsten geleakten Passwörter stehen; die
+Prüfung läuft vollständig lokal, ohne Netzwerkabfrage.
+
+#### Der Notfallweg
+
+Kommt niemand mehr in ein Unternehmen — kein aktives Konto mit
+Rechteverwaltung, keine gültige Einladung —, legt dieses Kommando ein Konto
+unmittelbar an:
 
 ```bash
-docker compose exec app node dist/create-user.mjs --email buchhaltung@example.org
+npm run user:create -- --email buchhaltung@example.org \
+  --organization <kennung> --role <kennung>
 ```
+
+`--organization` ist Pflicht: Bei mehreren Mandanten wäre ein geratenes
+Unternehmen eine stille Zuweisung in ein fremdes. Ohne Argument nennt das
+Kommando die vorhandenen Kennungen. Ohne `--role` trägt das Konto nur die
+Grundrechte und sieht eine Anwendung ohne Inhalt.
 
 Das Passwort wird verdeckt abgefragt — als Argument stünde es in der
-Shell-Historie und in der Prozessliste. Es muss mindestens zwölf Zeichen haben
-und darf nicht in der mitgelieferten Liste der 100.000 häufigsten geleakten
-Passwörter stehen; die Prüfung läuft vollständig lokal, ohne Netzwerkabfrage.
-
-Im lokalen Entwicklungsbetrieb stattdessen:
-
-```bash
-npm run user:create -- --email buchhaltung@example.org
-```
+Shell-Historie und in der Prozessliste.
 
 ### Zweifaktorauthentifizierung
 

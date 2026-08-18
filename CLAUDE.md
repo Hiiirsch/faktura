@@ -577,6 +577,57 @@ Migration, denn ein Passwort in einer Migration steht im Repository. Der zweite
 Faktor entsteht dabei mit dem Konto; das Geheimnis erscheint genau einmal.
 Wiederherstellungscodes gibt es für die Verwaltung nicht.
 
+## Verwaltung (seit M8)
+
+Der Betreiber legt Unternehmen an, legt sie still und sperrt Konten. Mehr nicht
+— und das „mehr nicht" ist keine Einstellung, sondern der Aufbau.
+
+**Anlegen ist eine Transaktion**: Organisation, Rolle „Inhaber" mit allen
+Schlüsseln, Einladung. Bräche sie in der Mitte ab, gäbe es eine Organisation
+ohne Rolle — ein Unternehmen, in das niemand hineinkommt, auch der Betreiber
+nicht. Die Einladung trägt **kein** `invitedById`: Eingeladen hat der Betreiber,
+und der ist kein `User`. Wer es war, steht im Protokoll.
+
+**Der Betreiber erfährt zu keinem Zeitpunkt ein Mandantenpasswort.** Was er
+weitergibt, ist ein Einladungslink; gesetzt wird das Passwort von dem, der es
+danach kennt. Das ist der stärkste Beleg für „keine Geschäftsdaten", den das
+System liefern kann.
+
+**Der Wächter aus B1 hatte eine Lücke, und B5 hat sie aufgedeckt.** Er suchte
+nach `client.invoice.<methode>(` — der Form, in der man ein Delegate direkt
+anspricht. Es gibt aber eine zweite:
+
+```ts
+organization.findMany({ include: { invoices: true } })                     // liest Belege
+organization.findMany({ include: { _count: { select: { invoices: true } } } })  // zählt sie
+```
+
+Beide gehen über `organization`, beide nennen `invoices`, und die erste liefert
+vollständige Belegzeilen. Geprüft wird deshalb zusätzlich über die
+**Beziehungsnamen**: Sie dürfen nur innerhalb eines `_count`-Blocks vorkommen.
+Beide Formen sind gegen einen absichtlichen Verstoß geprüft.
+
+Das Protokoll der Verwaltung läuft über eine **zweite** Funktion
+(`recordPlatformAuditEntry`), nicht über einen optionalen Parameter an der
+ersten. Die Organisationskennung kommt dort als gewöhnliche Zeichenkette, der
+`PlatformContext` ist der Nachweis. Ein optionaler Parameter hätte
+`createAuditEntry` zu einer Funktion gemacht, die manchmal einen Kontext
+braucht.
+
+**Stilllegen verliert nichts.** Keine Löschfunktion für ein Unternehmen: Belege
+sind aufbewahrungspflichtig, und ein Knopf dafür wäre einer, den niemand
+versehentlich finden soll.
+
+`defaultOrganizationContext()` ist entfallen. Sie riet die Organisation, wenn es
+genau eine gab; mit mehreren Mandanten wäre das Raten eine stille Zuweisung in
+ein fremdes Unternehmen. `npm run user:create` verlangt jetzt `--organization`
+und nimmt wahlweise `--role`; ohne Argument nennt es die vorhandenen Kennungen.
+
+Der Zugriffsschutztest prüft Adminrouten seit B5 mit **vier** Anfragen: ohne
+Cookie, mit Mandantencookie, mit Admincookie (die erst zeigt, dass sich die
+Route überhaupt öffnet), und einer Prüfung des ausgelieferten HTML auf
+Belegnummer und Kundenname.
+
 ## Anmeldung (seit M6.2)
 
 Sie läuft in **zwei** Schritten: `/login` nimmt E-Mail und Passwort,

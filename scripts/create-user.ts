@@ -1,10 +1,21 @@
 /**
- * Legt ein Benutzerkonto an (NFA-SEC-02, Spec §11.1).
+ * Legt ein Mandantenkonto an — der **Notfallweg** (NFA-SEC-02, Spec §11.1).
  *
- * Es gibt keine öffentliche Registrierung. Der Erstbenutzer entsteht
- * ausschließlich über dieses Kommando auf dem Server:
+ * Es gibt keine öffentliche Registrierung. Im Regelfall entsteht ein Konto über
+ * eine Einladung (M8, FA-MEMB-01); dieses Kommando bleibt für den Fall, dass
+ * niemand mehr hineinkommt — ein Unternehmen ohne aktive Rechteverwaltung, eine
+ * verlorene Einladung, eine Datenbank ohne Betreiberkonto.
  *
- *     npm run user:create -- --email buchhaltung@example.org
+ *     npm run user:create -- --email buchhaltung@example.org \
+ *       --organization org_default --role role_owner_org_default
+ *
+ * `--organization` ist seit M8 **Pflicht**. Vorher riet das Kommando die
+ * Organisation, wenn es genau eine gab; bei mehreren wäre das Raten falsch, und
+ * die Wahl gehört nicht in eine Heuristik.
+ *
+ * `--role` ist wahlweise. Ohne Rolle trägt das Konto nur die Grundrechte
+ * (`BASE_PERMISSIONS`) und sieht eine Anwendung ohne Inhalt — für ein
+ * Notfallkonto in aller Regel nicht, was gemeint ist.
  *
  * Das Passwort wird verdeckt abgefragt. Als Argument wäre es in der
  * Shell-Historie und in der Prozessliste sichtbar (NFA-BETR-10).
@@ -22,15 +33,23 @@ import { isCompromisedPassword } from '@/infrastructure/auth/compromised-passwor
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { createUser, findUserByEmail } from '@/infrastructure/repositories/auth-repository';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
-import { defaultOrganizationContext } from '@/infrastructure/repositories/organization-repository';
+import {
+  organizationContextOf,
+} from '@/infrastructure/repositories/organization-context';
+import { findOrganization, listOrganizations } from '@/infrastructure/repositories/organization-repository';
+import { findRole } from '@/infrastructure/repositories/role-repository';
 
-function parseEmailArgument(argv: readonly string[]): string | null {
-  const index = argv.indexOf('--email');
+function parseArgument(argv: readonly string[], name: string): string | null {
+  const index = argv.indexOf(name);
   if (index === -1) {
     return null;
   }
   return argv[index + 1] ?? null;
 }
+
+const USAGE =
+  'Aufruf: npm run user:create -- --email <adresse> --organization <kennung> ' +
+  '[--role <kennung>]\n';
 
 function describeViolation(violation: PasswordViolation): string {
   switch (violation.kind) {
@@ -116,25 +135,67 @@ async function readSecret(prompt: string): Promise<string> {
   });
 }
 
+/** Nennt die vorhandenen Organisationen, damit niemand raten muss. */
+async function writeKnownOrganizations(): Promise<void> {
+  const all = await listOrganizations();
+
+  if (all.length === 0) {
+    stdout.write(
+      'Es gibt keine Organisation. Zuerst die Migrationen anwenden (npm run db:deploy) ' +
+        'und ein Unternehmen in der Verwaltung anlegen.\n',
+    );
+    return;
+  }
+
+  stdout.write('Vorhandene Organisationen:\n');
+  for (const organization of all) {
+    stdout.write(`  ${organization.id}  ${organization.name}\n`);
+  }
+}
+
 async function main(): Promise<void> {
-  const email = parseEmailArgument(process.argv)?.trim().toLowerCase();
+  const email = parseArgument(process.argv, '--email')?.trim().toLowerCase();
+  const organizationId = parseArgument(process.argv, '--organization')?.trim();
+  const roleId = parseArgument(process.argv, '--role')?.trim();
 
   if (email === undefined || email === null || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    stdout.write('Aufruf: npm run user:create -- --email <adresse>\n');
+    stdout.write(USAGE);
     process.exitCode = 1;
     return;
   }
 
-  // Ohne Organisation gibt es kein Konto: Sie entsteht in der Migration
-  // `organization_context`. Fehlt sie, ist die Datenbank nicht migriert.
-  const organization = await defaultOrganizationContext();
-  if (organization === null) {
-    stdout.write(
-      'Keine Organisation gefunden. Zuerst die Migrationen anwenden ' +
-        '(npm run db:deploy).\n',
-    );
+  /*
+   * `--organization` ist Pflicht (M8).
+   *
+   * Bis M8 riet das Kommando: die eine Organisation, die es gab. Mit mehreren
+   * Mandanten wäre das Raten eine Zuweisung in ein fremdes Unternehmen — und
+   * zwar eine stille.
+   */
+  if (organizationId === undefined || organizationId === null || organizationId.length === 0) {
+    stdout.write(USAGE);
+    await writeKnownOrganizations();
     process.exitCode = 1;
     return;
+  }
+
+  if ((await findOrganization(organizationId)) === null) {
+    stdout.write(`Unbekannte Organisation: ${organizationId}\n`);
+    await writeKnownOrganizations();
+    process.exitCode = 1;
+    return;
+  }
+
+  const organization = organizationContextOf(organizationId);
+
+  // Eine Rolle aus einem **anderen** Unternehmen wäre ein Konto mit fremden
+  // Rechten. `findRole` sucht mit dem Kontext; der Trigger
+  // `User_role_matches_organization_insert` ist die Ebene darunter.
+  if (roleId !== undefined && roleId !== null && roleId.length > 0) {
+    if ((await findRole(organization, roleId)) === null) {
+      stdout.write(`Unbekannte Rolle in dieser Organisation: ${roleId}\n`);
+      process.exitCode = 1;
+      return;
+    }
   }
 
   const existing = await findUserByEmail(email);
@@ -169,7 +230,8 @@ async function main(): Promise<void> {
   const user = await createUser({
     email,
     passwordHash: await hashPassword(password),
-    organizationId: organization.organizationId,
+    organizationId,
+    ...(roleId === undefined || roleId === null || roleId.length === 0 ? {} : { roleId }),
   });
 
   await recordAuditEntry(organization, {

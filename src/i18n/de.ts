@@ -48,6 +48,62 @@ export const messages = {
     scopeNote:
       'Die Verwaltung sieht Unternehmen und Konten — keine Rechnung, keinen Kunden, keinen Betrag. Das ist keine Einstellung, sondern eine Eigenschaft des Aufbaus: Eine Adminsitzung führt keinen Mandantenkontext, und jede Abfrage von Geschäftsdaten verlangt einen.',
     logout: 'Abmelden',
+
+    // ── Unternehmensverwaltung (B5) ──────────────────────────────────────
+    columnOrganization: 'Unternehmen',
+    columnAccounts: 'Konten',
+    columnInvoices: 'Belege',
+    columnCustomers: 'Kunden',
+    columnLastLogin: 'Letzte Anmeldung',
+    columnState: 'Zustand',
+    stateActive: 'Aktiv',
+    stateSuspended: 'Stillgelegt',
+    neverSignedIn: 'noch nie',
+    createdOn: 'Angelegt am {date}',
+    open: 'Öffnen',
+
+    newOrganization: 'Unternehmen anlegen',
+    newOrganizationHeading: 'Neues Unternehmen',
+    newOrganizationIntro:
+      'Es entstehen Unternehmen, Rolle „Inhaber" mit allen Berechtigungen und eine Einladung — in einem Vorgang. Ein Passwort wird hier nicht vergeben: Das setzt der Inhaber selbst.',
+    organizationName: 'Name des Unternehmens',
+    organizationNameHint:
+      'Der Name für die Verwaltung. Die Firmendaten für den Beleg erfasst das Unternehmen selbst.',
+    ownerEmail: 'E-Mail-Adresse des Inhabers',
+    createSubmit: 'Unternehmen anlegen',
+    createdHeading: 'Einladung für das Inhaberkonto',
+    createdOnceOnly:
+      'Dieser Link wird nur jetzt angezeigt. Er gilt sieben Tage und funktioniert einmal. Ohne ihn kommt niemand in das neue Unternehmen.',
+    nameMissing: 'Bitte einen Namen angeben.',
+    emailInvalid: 'Bitte eine gültige E-Mail-Adresse angeben.',
+    emailTaken: 'Zu dieser Adresse gehört bereits ein Konto.',
+
+    detailHeading: 'Unternehmen',
+    back: 'Zur Verwaltung',
+    metricsHeading: 'Kennzahlen',
+    metricsNote:
+      'Zahlen, keine Zeilen: Die Verwaltung sieht, ob und wie viel ein Unternehmen arbeitet — nicht woran.',
+    accountsHeading: 'Konten',
+    accountsEmpty: 'Es gibt noch kein Konto — die Einladung ist offen.',
+    accountNameMissing: 'ohne Namen',
+    accountRoleMissing: 'ohne Rolle',
+    suspend: 'Stilllegen',
+    resume: 'Freigeben',
+    suspendConfirmTitle: 'Unternehmen stilllegen?',
+    suspendConfirm:
+      'Alle Konten dieses Unternehmens verlieren sofort ihre Sitzungen und können sich nicht mehr anmelden. Es gehen keine Daten verloren; die Freigabe stellt den vorigen Zustand wieder her.',
+    suspended: 'Das Unternehmen ist stillgelegt.',
+    resumed: 'Das Unternehmen ist freigegeben.',
+    disableAccount: 'Sperren',
+    enableAccount: 'Entsperren',
+    disableConfirmTitle: 'Konto sperren?',
+    disableConfirm:
+      'Das Konto verliert sofort seine Sitzungen. Dieser Weg ist für den Fall gedacht, dass die Rechteverwaltung des Unternehmens ausfällt.',
+    accountDisabled: 'Das Konto ist gesperrt.',
+    accountEnabled: 'Das Konto ist entsperrt.',
+    errorNOT_FOUND: 'Nicht gefunden.',
+    errorLAST_ADMINISTRATOR:
+      'Die Datenbank hat die Änderung abgewiesen: Es wäre das letzte aktive Konto mit Rechteverwaltung dieses Unternehmens.',
   },
 
   backup: {

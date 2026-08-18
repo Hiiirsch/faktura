@@ -16,6 +16,12 @@ export const LOGIN_PATH = '/login';
 export const ADMIN_PATH = '/admin';
 export const ADMIN_LOGIN_PATH = '/admin/login';
 export const ADMIN_LOGIN_CODE_PATH = '/admin/login/code';
+/** Unternehmensverwaltung des Betreibers (M8, B5). */
+export const ADMIN_NEW_ORGANIZATION_PATH = '/admin/organizations/new';
+
+export function adminOrganizationPath(id: string): string {
+  return `/admin/organizations/${id}`;
+}
 /** Zweiter Anmeldeschritt — erscheint nur, wenn das Konto einen zweiten Faktor führt. */
 export const LOGIN_CODE_PATH = '/login/code';
 export const DASHBOARD_PATH = '/';
@@ -178,6 +184,13 @@ export const routes: readonly RouteDefinition[] = [
   },
   // ── Zentrale Verwaltung (M8) ──────────────────────────────────────────────
   { path: ADMIN_PATH, kind: 'page', access: 'platformAdmin' },
+  { path: ADMIN_NEW_ORGANIZATION_PATH, kind: 'page', access: 'platformAdmin' },
+  {
+    path: '/admin/organizations/[id]',
+    kind: 'page',
+    access: 'platformAdmin',
+    probePath: '/admin/organizations/probe-kennung',
+  },
   {
     path: ADMIN_LOGIN_PATH,
     kind: 'page',

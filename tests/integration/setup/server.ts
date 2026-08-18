@@ -38,6 +38,27 @@ export const TEST_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
  */
 export const TEST_RESTRICTED_EMAIL = 'nurlesen@example.org';
 
+/**
+ * Betreiberkonto für die Adminrouten (M8, B5).
+ *
+ * Der zweite Faktor ist für Betreiberkonten verpflichtend (FA-ADM-08), das
+ * Geheimnis steht deshalb hier: Ein Test, der sich als Betreiber anmelden will,
+ * braucht ein Einmalkennwort.
+ */
+export const TEST_ADMIN_EMAIL = 'betreiber@example.org';
+
+/**
+ * Ein Kundenname und eine Belegnummer aus dem Bestand (M8, B5).
+ *
+ * Sie stehen hier, damit ein Test **negativ** prüfen kann: Diese beiden
+ * Zeichenketten dürfen im Adminbereich nirgends auftauchen. Der Nachweis, dass
+ * die Verwaltung keine Geschäftsdaten sieht, ist andernfalls nur eine Aussage
+ * über den Quelltext.
+ */
+export const TEST_CUSTOMER_NAME = 'Schulz KG';
+export const TEST_INVOICE_NUMBER_PREFIX = 'RE-';
+export const TEST_ADMIN_TOTP_SECRET = 'KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU';
+
 export const TEST_USER_PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
 const TEST_DB_FILE = path.join(projectRoot, 'data', 'integration-test.db');

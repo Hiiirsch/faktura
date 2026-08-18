@@ -12,8 +12,12 @@
  * Was hier hineingeschrieben wird, unterliegt NFA-BETR-10: keine Passwörter,
  * keine Token, keine vollständigen Kundendatensätze.
  */
-import { createAuditEntry } from '@/infrastructure/repositories/audit-repository';
+import {
+  createAuditEntry,
+  createPlatformAuditEntry,
+} from '@/infrastructure/repositories/audit-repository';
 import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
+import type { PlatformContext } from '@/infrastructure/repositories/platform-context';
 
 export type AuditAction =
   // Stammdaten (FA-STAMM-09, NFA-COMP-01)
@@ -49,7 +53,11 @@ export type AuditAction =
   | 'PASSWORD_RESET_REQUESTED'
   | 'PASSWORD_RESET_COMPLETED'
   | 'DISABLED'
-  | 'ENABLED';
+  | 'ENABLED'
+  // Eingriffe der Verwaltung (M8, FA-ADM-05, -07)
+  | 'ORGANIZATION_CREATED'
+  | 'SUSPENDED'
+  | 'RESUMED';
 
 export type AuditEntry = {
   readonly entityType: string;
@@ -65,6 +73,28 @@ export async function recordAuditEntry(
   entry: AuditEntry,
 ): Promise<void> {
   await createAuditEntry(context, {
+    entityType: entry.entityType,
+    entityId: entry.entityId,
+    action: entry.action,
+    actorId: entry.actorId ?? null,
+    ipAddress: entry.ipAddress ?? null,
+    diffJson: entry.details === undefined ? null : JSON.stringify(entry.details),
+  });
+}
+
+/**
+ * Ein Eintrag, den die **Verwaltung** schreibt (M8, FA-ADM-07).
+ *
+ * Er landet im Protokoll des betroffenen Unternehmens und trägt
+ * `actorKind: 'ADMIN'`. Der Betreiber hat keinen Mandantenkontext; die Kennung
+ * der Organisation kommt aus dem Gegenstand seiner Handlung.
+ */
+export async function recordPlatformAuditEntry(
+  platform: PlatformContext,
+  organizationId: string,
+  entry: AuditEntry,
+): Promise<void> {
+  await createPlatformAuditEntry(platform, organizationId, {
     entityType: entry.entityType,
     entityId: entry.entityId,
     action: entry.action,

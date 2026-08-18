@@ -22,6 +22,10 @@ import { issueInvoice } from '@/application/invoices/issue-invoice';
 import { createDraftInvoice } from '@/application/invoices/invoice-service';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { createUser, findUserByEmail } from '@/infrastructure/repositories/auth-repository';
+import {
+  countAdminUsers,
+  createAdminUser,
+} from '@/infrastructure/repositories/platform-repository';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
 import { fullyAuthorized } from '@/application/auth/authorize';
 import {
@@ -45,6 +49,10 @@ const TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
  * echter Fall und keine Attrappe: Es darf die Rechnungsliste sehen, aber
  * weder Firmendaten ändern noch exportieren.
  */
+const ADMIN_EMAIL = 'betreiber@example.org';
+/** Muss mit `TEST_ADMIN_TOTP_SECRET` in `server.ts` übereinstimmen. */
+const ADMIN_TOTP_SECRET = 'KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU';
+
 const RESTRICTED_EMAIL = 'nurlesen@example.org';
 const RESTRICTED_ROLE_NAME = 'Nur Lesen';
 const PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
@@ -72,6 +80,23 @@ for (const email of [EMAIL, LOCKOUT_EMAIL]) {
       roleId: OWNER_ROLE_ID,
     });
   }
+}
+
+/*
+ * Ein Betreiberkonto (M8, B5).
+ *
+ * Ohne es lässt sich keine Adminroute mit gültigem Nachweis prüfen — der
+ * Zugriffsschutztest sähe nur, dass sie ohne Cookie und mit Mandantencookie
+ * verschlossen ist, aber nie, dass sie mit dem richtigen Cookie überhaupt etwas
+ * ausliefert.
+ */
+if ((await countAdminUsers()) === 0) {
+  await createAdminUser({
+    email: ADMIN_EMAIL,
+    passwordHash,
+    totpSecret: ADMIN_TOTP_SECRET,
+    totpEnabled: true,
+  });
 }
 
 if ((await findUserByEmail(RESTRICTED_EMAIL)) === null) {

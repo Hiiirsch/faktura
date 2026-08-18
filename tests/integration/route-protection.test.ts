@@ -13,7 +13,17 @@
 import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 
+import { Secret, TOTP } from 'otpauth';
+
 import {
+  ADMIN_SESSION_COOKIE_NAME,
+  PENDING_LOGIN_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+} from '@/infrastructure/auth/session-cookie';
+import { getEnv } from '@/infrastructure/config/env';
+import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import {
+  ADMIN_LOGIN_CODE_PATH,
   ADMIN_LOGIN_PATH,
   authenticatedRoutes,
   LOGIN_PATH,
@@ -22,12 +32,14 @@ import {
   publicRoutes,
   routes,
 } from '@/routes';
-import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
-import { SESSION_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 
 import {
+  TEST_ADMIN_EMAIL,
+  TEST_ADMIN_TOTP_SECRET,
   TEST_BASE_URL,
+  TEST_CUSTOMER_NAME,
   TEST_DATABASE_URL,
+  TEST_INVOICE_NUMBER_PREFIX,
   TEST_LOCKOUT_EMAIL,
   TEST_USER_EMAIL,
   TEST_USER_PASSWORD,
@@ -120,6 +132,85 @@ async function attemptLogin(
   });
 
   return { response, sessionCookie: readSetCookie(response, SESSION_COOKIE_NAME) };
+}
+
+/**
+ * Meldet sich als Betreiber an — über **beide** Schritte.
+ *
+ * Der zweite Faktor ist für Betreiberkonten verpflichtend (FA-ADM-08); ein
+ * Helfer, der nur das Passwort schickt, bekäme deshalb nie eine Sitzung. Das
+ * Einmalkennwort entsteht zur **echten** Uhr: `verifyTotpCode` liest die
+ * Systemzeit, und ein Code für einen erfundenen Zeitpunkt gilt nicht.
+ */
+async function signInAsAdmin(): Promise<string> {
+  const first = await fetch(url(ADMIN_LOGIN_PATH), { redirect: 'manual' });
+  const html = await first.text();
+
+  const csrfToken = new RegExp(`name="${CSRF_FIELD_NAME}" value="([^"]*)"`).exec(html)?.[1];
+  const csrfCookie = readSetCookie(first, CSRF_COOKIE_NAME);
+  const actionField = /name="(\$ACTION_ID_[^"]*)"/u.exec(html)?.[1];
+
+  expect(csrfToken, 'Adminanmeldung ohne CSRF-Feld').toBeDefined();
+  expect(csrfCookie, 'Adminanmeldung ohne CSRF-Cookie').toBeDefined();
+  expect(actionField, 'Adminanmeldung ohne Aktionskennung').toBeDefined();
+
+  const csrf = `${CSRF_COOKIE_NAME}=${cookieValue(csrfCookie as string)}`;
+
+  const step1 = new FormData();
+  step1.set(actionField as string, '');
+  step1.set('email', TEST_ADMIN_EMAIL);
+  step1.set('password', TEST_USER_PASSWORD);
+  step1.set(CSRF_FIELD_NAME, csrfToken as string);
+
+  const pending = await fetch(url(ADMIN_LOGIN_PATH), {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { origin: TEST_BASE_URL, cookie: csrf },
+    body: step1,
+  });
+
+  const pendingRaw = pending.headers
+    .getSetCookie()
+    .find((entry) => entry.startsWith(`${PENDING_LOGIN_COOKIE_NAME}=`));
+  expect(pendingRaw, 'Der erste Adminschritt muss einen Nachweis setzen').toBeDefined();
+
+  const withPending = `${csrf}; ${PENDING_LOGIN_COOKIE_NAME}=${cookieValue(pendingRaw as string)}`;
+
+  const codePage = await fetch(url(ADMIN_LOGIN_CODE_PATH), {
+    redirect: 'manual',
+    headers: { cookie: withPending },
+  });
+  const codeHtml = await codePage.text();
+  const codeAction = /name="(\$ACTION_ID_[^"]*)"/u.exec(codeHtml)?.[1];
+  expect(codeAction, 'Die Codeseite muss eine Aktionskennung tragen').toBeDefined();
+
+  const code = new TOTP({
+    issuer: getEnv().APP_NAME,
+    label: 'verify',
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: Secret.fromBase32(TEST_ADMIN_TOTP_SECRET),
+  }).generate();
+
+  const step2 = new FormData();
+  step2.set(codeAction as string, '');
+  step2.set('code', code);
+  step2.set(CSRF_FIELD_NAME, csrfToken as string);
+
+  const done = await fetch(url(ADMIN_LOGIN_CODE_PATH), {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { origin: TEST_BASE_URL, cookie: withPending },
+    body: step2,
+  });
+
+  const sessionRaw = done.headers
+    .getSetCookie()
+    .find((entry) => entry.startsWith(`${ADMIN_SESSION_COOKIE_NAME}=`));
+
+  expect(sessionRaw, 'Der zweite Adminschritt muss eine Sitzung eröffnen').toBeDefined();
+  return `${ADMIN_SESSION_COOKIE_NAME}=${cookieValue(sessionRaw as string)}`;
 }
 
 describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
@@ -244,6 +335,55 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
       expect(body).not.toContain(TEST_USER_EMAIL);
     },
   );
+
+  /**
+   * Die **dritte** Anfrage: mit Admincookie (M8, B5).
+   *
+   * Ohne sie prüfte der Zugriffsschutz nur, dass die Adminrouten verschlossen
+   * sind — nicht, dass sie sich mit dem richtigen Nachweis öffnen. Eine Route,
+   * die für **jeden** verschlossen ist, bestünde die beiden Prüfungen darüber
+   * mühelos und wäre trotzdem kaputt.
+   */
+  it.each(
+    platformAdminRoutes()
+      // Die Sicherung ist ein Download und keine Seite; sie hat ihren eigenen
+      // Test in `backup.test.ts`.
+      .filter((route) => route.kind === 'page')
+      .map((route) => probePathFor(route)),
+  )('öffnet die Adminroute %s mit Adminsitzung', async (pathname) => {
+    const cookie = await signInAsAdmin();
+
+    const response = await fetch(url(pathname), { redirect: 'manual', headers: { cookie } });
+
+    /*
+     * `200` für die echten Seiten, `404` für die Sondierungsadresse einer
+     * dynamischen Route: `/admin/organizations/probe-kennung` gibt es nicht, und
+     * die Seite antwortet mit `notFound()` statt mit 403 — ein 403 bestätigte,
+     * dass es das Unternehmen gibt.
+     */
+    expect([200, 404]).toContain(response.status);
+
+    // Was sie **nicht** tut: zur Anmeldung umleiten.
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  /**
+   * Und die Verwaltung liefert keine Geschäftsdaten aus (FA-ADM-02, H5).
+   *
+   * `platform-repository.test.ts` prüft das am Quelltext — in zwei Formen, weil
+   * ein `include: { invoices: true }` einem `_count` ähnlich sieht. Hier steht
+   * die Prüfung am ausgelieferten HTML: Die Rechnungsnummer des Bestands darf in
+   * der Verwaltung nirgends auftauchen.
+   */
+  it('nennt die Übersicht der Verwaltung keine Belegdaten', async () => {
+    const cookie = await signInAsAdmin();
+
+    const html = await (await fetch(url('/admin'), { headers: { cookie } })).text();
+
+    expect(html).not.toContain(TEST_CUSTOMER_NAME);
+    // Keine Belegnummer irgendeiner Form — nicht einmal ihr Präfix.
+    expect(html).not.toContain(TEST_INVOICE_NUMBER_PREFIX);
+  });
 
   it('gibt auf einem unbekannten Pfad keine Inhalte preis', async () => {
     const response = await fetch(url('/gibt-es-nicht'), { redirect: 'manual' });
