@@ -63,6 +63,15 @@ const ADMINISTRATIVE = [
   'invitation',
   'passwordReset',
   'role',
+  /*
+   * `trustedDevice` seit M9/B2 — aus demselben Grund wie `session`.
+   *
+   * Ein vertrautes Gerät ist ein **Anmeldenachweis** eines Kontos, kein Datum
+   * des Unternehmens. Der Betreiber räumt sie ab, wenn er ein Passwort
+   * zurücksetzt; bliebe eines stehen, käme das Konto am zweiten Faktor vorbei
+   * herein, und die Zurücksetzung wäre an der entscheidenden Stelle wirkungslos.
+   */
+  'trustedDevice',
 ];
 
 /**

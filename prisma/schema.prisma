@@ -456,6 +456,7 @@ model User {
 
   sessions        Session[]
   recoveryCodes   RecoveryCode[]
+  trustedDevices  TrustedDevice[]
   /// Belege, die dieses Konto angelegt hat (M8, FA-UI-16).
   ///
   /// `onDelete: SetNull` an der Gegenseite ist kein Zugeständnis: Ein Konto wird
@@ -776,6 +777,36 @@ model PasswordReset {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Ein Gerät, dem der zweite Faktor eine Zeit lang erlassen wird (M9, FA-TRUST-*).
+///
+/// **Nur für Mandantenkonten.** Betreiberkonten geben ihn jedes Mal ein: Wer
+/// Unternehmen stilllegen kann, sichert sich jedes Mal (FA-ADM-08).
+///
+/// Der Eintrag ist ein **Ersatz für einen Faktor**, also so stark zu behandeln
+/// wie ein Sitzungstoken: 256 Bit Entropie, in der Datenbank nur der
+/// SHA-256-Hash, jederzeit einzeln widerrufbar.
+///
+/// **Gebunden an das Konto, nicht nur an den Token.** Geprüft wird mit `userId`
+/// **und** Hash. Ohne die Bindung wäre ein entwendetes Cookie ein
+/// Universalschlüssel: Es überspränge den zweiten Faktor für jedes Konto, dessen
+/// Passwort der Angreifer kennt.
+model TrustedDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  /// Für die Anzeige unter „Vertraute Geräte" — dieselbe Angabe wie bei den
+  /// Sitzungen, damit man sie einander zuordnen kann.
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  lastUsedAt DateTime
+  createdAt  DateTime @default(now())
 
   @@index([userId])
   @@index([expiresAt])

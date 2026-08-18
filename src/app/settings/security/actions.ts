@@ -7,7 +7,7 @@ import { assertRequestIntegrity } from '@/application/auth/assert-request-integr
 import { readRequestContext } from '@/application/auth/request-context';
 import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
-import { revokeAllSessions, revokeSession } from '@/application/auth/session-service';
+import { revokeAllSessions, revokeSession, revokeTrustedDevice } from '@/application/auth/session-service';
 import {
   confirmTotpSetup,
   disableTotp,
@@ -131,5 +131,25 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
     details: { revokedCount: count },
   });
 
+  revalidatePath(SECURITY_SETTINGS_PATH);
+}
+
+/**
+ * Einem Gerät das Vertrauen entziehen (M9, FA-TRUST-05).
+ *
+ * `security.update` ist ein Grundrecht: Die eigene Sicherheit zu verwalten hängt
+ * an keiner Rolle.
+ */
+export async function revokeTrustedDeviceAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  authorize(session, 'security.update');
+
+  const id = z.string().trim().min(1).max(64).safeParse(formData.get('deviceId'));
+  if (!id.success) {
+    return;
+  }
+
+  await revokeTrustedDevice(session.userId, id.data);
   revalidatePath(SECURITY_SETTINGS_PATH);
 }

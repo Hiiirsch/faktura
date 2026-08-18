@@ -216,6 +216,10 @@ export const messages = {
       'Dieses Konto ist mit einem zweiten Faktor geschützt. Der sechsstellige Code steht in der Authenticator-App; ein Wiederherstellungscode geht ebenso.',
     codeLabel: 'Bestätigungscode',
     codeSubmit: 'Anmelden',
+    /** Ankreuzfeld im zweiten Anmeldeschritt (M9, FA-TRUST-01). */
+    rememberDevice: 'Diesem Gerät vertrauen',
+    rememberDeviceHint:
+      'Auf diesem Gerät entfällt der Bestätigungscode für 30 Tage. Nicht auf fremden Geräten wählen.',
     codeInvalid: 'Der Bestätigungscode stimmt nicht.',
     codeMissing: 'Bitte den Bestätigungscode angeben.',
     codeExpired:
@@ -800,6 +804,18 @@ export const messages = {
     sessionCreated: 'Angemeldet seit',
     sessionRevoke: 'Beenden',
     sessionRevokeAll: 'Alle anderen Sitzungen beenden',
+
+    // ── Vertraute Geräte (M9) ─────────────────────────────────────────────
+    trustedHeading: 'Vertraute Geräte',
+    trustedIntro:
+      'Auf diesen Geräten entfällt der Bestätigungscode für 30 Tage. Das Passwort wird weiterhin verlangt.',
+    trustedEmpty: 'Es ist kein Gerät als vertraut hinterlegt.',
+    trustedLastUsed: 'Zuletzt verwendet',
+    trustedExpires: 'Gilt bis',
+    trustedRevoke: 'Vertrauen entziehen',
+    trustedRevoked: 'Das Gerät ist nicht mehr vertraut.',
+    trustedNote:
+      'Alle vertrauten Geräte verfallen, sobald das Passwort zurückgesetzt, der zweite Faktor abgeschaltet oder „Alle anderen Sitzungen beenden" gewählt wird.',
   },
   members: {
     title: 'Mitglieder',

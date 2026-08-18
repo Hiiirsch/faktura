@@ -29,6 +29,16 @@ export const PENDING_LOGIN_COOKIE_NAME = 'faktura_pending';
  */
 export const ADMIN_SESSION_COOKIE_NAME = 'faktura_admin_session';
 
+/**
+ * Das vertraute Gerät (M9, FA-TRUST-01).
+ *
+ * Pfad `/`, weil es bei der Anmeldung gelesen wird und diese unter `/login`
+ * liegt — anders als der Nachweis des zweiten Schritts, der bewusst nur dort
+ * mitreist. Seine Lebensdauer ist lang, sein Inhalt aber wertlos ohne das
+ * Passwort des Kontos, an das er gebunden ist.
+ */
+export const TRUSTED_DEVICE_COOKIE_NAME = 'faktura_trusted';
+
 export type CookieOptions = {
   readonly httpOnly: true;
   readonly secure: boolean;
@@ -98,6 +108,26 @@ export function clearedAdminSessionCookieOptions(appUrl?: string): CookieOptions
 }
 
 /** Optionen zum Löschen des Cookies beim Abmelden. */
+export function trustedDeviceCookieOptions(expiresAt: Date, appUrl?: string): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isSecureContext(appUrl),
+    sameSite: 'lax',
+    path: '/',
+    expires: expiresAt,
+  };
+}
+
+export function clearedTrustedDeviceCookieOptions(appUrl?: string): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isSecureContext(appUrl),
+    sameSite: 'lax',
+    path: '/',
+    expires: new Date(0),
+  };
+}
+
 export function clearedSessionCookieOptions(appUrl?: string): CookieOptions {
   return {
     httpOnly: true,

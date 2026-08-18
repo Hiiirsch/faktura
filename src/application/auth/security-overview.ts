@@ -9,27 +9,36 @@ import {
   findUserById,
 } from '@/infrastructure/repositories/auth-repository';
 
-import { listSessions, type SessionSummary } from './session-service';
+import {
+  listSessions,
+  listTrustedDevices,
+  type SessionSummary,
+  type TrustedDeviceSummary,
+} from './session-service';
 
 export type SecurityOverview = {
   readonly totpEnabled: boolean;
   readonly unusedRecoveryCodes: number;
   readonly sessions: readonly SessionSummary[];
+  /** Vertraute Geräte (M9, FA-TRUST-05) — sichtbar, damit widerrufbar. */
+  readonly trustedDevices: readonly TrustedDeviceSummary[];
 };
 
 export async function getSecurityOverview(
   userId: string,
   currentSessionId: string,
 ): Promise<SecurityOverview> {
-  const [user, unusedRecoveryCodes, sessions] = await Promise.all([
+  const [user, unusedRecoveryCodes, sessions, trustedDevices] = await Promise.all([
     findUserById(userId),
     countUnusedRecoveryCodes(userId),
     listSessions(userId, currentSessionId),
+    listTrustedDevices(userId),
   ]);
 
   return {
     totpEnabled: user?.totpEnabled ?? false,
     unusedRecoveryCodes,
     sessions,
+    trustedDevices,
   };
 }

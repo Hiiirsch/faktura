@@ -17,6 +17,7 @@ import { getEnv } from '@/infrastructure/config/env';
 import { runInTransaction } from '@/infrastructure/repositories/client';
 import {
   deleteRecoveryCodes,
+  deleteTrustedDevicesForUser,
   findUserById,
   replaceRecoveryCodes as writeRecoveryCodes,
   updateUser,
@@ -110,6 +111,14 @@ export async function disableTotp(
   await runInTransaction(async (handle) => {
     await updateUser(userId, { totpSecret: null, totpEnabled: false }, handle);
     await deleteRecoveryCodes(userId, handle);
+    /*
+     * Und die vertrauten Geräte (M9, FA-TRUST-04).
+     *
+     * Sie sind Nachweise **über** den zweiten Faktor. Ohne ihn haben sie keinen
+     * Gegenstand mehr — und blieben sie stehen, wären sie beim nächsten
+     * Einschalten wieder gültig, ohne dass jemand sie neu bestätigt hätte.
+     */
+    await deleteTrustedDevicesForUser(userId, handle);
   });
 
   await recordAuditEntry(organization, {

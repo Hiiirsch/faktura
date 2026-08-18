@@ -17,7 +17,12 @@ import { formatDateTime } from '@/ui/format';
 
 import { AppShell } from '../../app-shell';
 
-import { disableTotpAction, revokeOtherSessionsAction, revokeSessionAction } from './actions';
+import {
+  disableTotpAction,
+  revokeOtherSessionsAction,
+  revokeSessionAction,
+  revokeTrustedDeviceAction,
+} from './actions';
 import { RecoveryCodesForm } from './recovery-codes-form';
 import { TotpSetupForm } from './totp-setup-form';
 
@@ -200,6 +205,57 @@ export default async function SecuritySettingsPage({
             </button>
           </form>
         ) : null}
+      </section>
+
+      {/*
+        Vertraute Geräte (M9, FA-TRUST-05).
+
+        Neben den Sitzungen und nicht darin: Beides sind Spuren von Geräten, aber
+        sie bedeuten Verschiedenes — eine Sitzung ist ein laufender Zugang, ein
+        vertrautes Gerät ein erlassener Faktor beim **nächsten** Zugang.
+
+        Sie stehen hier, weil ein Nachweis, den man nicht sieht, sich nicht
+        widerrufen lässt.
+      */}
+      <section className="flex flex-col gap-4 border-t border-rule pt-6">
+        <h2 className="text-section font-medium">{messages.security.trustedHeading}</h2>
+        <p className="text-ui text-ink-muted">{messages.security.trustedIntro}</p>
+
+        {overview.trustedDevices.length === 0 ? (
+          <p className="text-ui text-ink-muted">{messages.security.trustedEmpty}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-rule">
+            {overview.trustedDevices.map((device) => (
+              <li
+                key={device.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="text-ui font-medium">
+                    {device.userAgent ?? messages.security.sessionUnknownDevice}
+                  </span>
+                  <span className="text-ui text-ink-muted">
+                    {messages.security.trustedLastUsed}{' '}
+                    {formatDateTime(device.lastUsedAt, timeZone)} ·{' '}
+                    {messages.security.trustedExpires}{' '}
+                    {formatDateTime(device.expiresAt, timeZone)}
+                    {device.ipAddress === null ? '' : ` · ${device.ipAddress}`}
+                  </span>
+                </div>
+
+                <form action={revokeTrustedDeviceAction}>
+                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                  <input type="hidden" name="deviceId" value={device.id} />
+                  <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                    {messages.security.trustedRevoke}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="max-w-form text-small text-ink-muted">{messages.security.trustedNote}</p>
       </section>
     </AppShell>
   );

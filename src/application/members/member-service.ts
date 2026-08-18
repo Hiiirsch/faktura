@@ -23,6 +23,7 @@ import { generateRedemptionToken, hashToken } from '@/infrastructure/auth/tokens
 import {
   createPasswordReset,
   deleteSessionsForUser,
+  deleteTrustedDevicesForUser,
   deleteUnusedPasswordResets,
 } from '@/infrastructure/repositories/auth-repository';
 import { runInTransaction } from '@/infrastructure/repositories/client';
@@ -169,8 +170,9 @@ export async function setMemberDisabled(
       await deleteSessionsForUser(memberId, undefined, handle);
       // Ein offener Zurücksetzungslink wäre ein Weg zurück in ein gesperrtes
       // Konto. Er hilft nicht — die Auflösung weist es ab —, aber er soll auch
-      // nicht herumliegen.
+      // nicht herumliegen. Dasselbe gilt für vertraute Geräte (M9).
       await deleteUnusedPasswordResets(memberId, handle);
+      await deleteTrustedDevicesForUser(memberId, handle);
     }
   });
 

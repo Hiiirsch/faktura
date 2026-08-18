@@ -7,7 +7,12 @@ import { messages } from '@/i18n/de';
 import { PENDING_LOGIN_COOKIE_NAME } from '@/infrastructure/auth/session-cookie';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { DASHBOARD_PATH, LOGIN_PATH } from '@/routes';
-import { INPUT_CLASS, PRIMARY_BUTTON_CLASS, QUIET_BUTTON_CLASS } from '@/ui/components/form';
+import {
+  FOCUS_RING,
+  INPUT_CLASS,
+  PRIMARY_BUTTON_CLASS,
+  QUIET_BUTTON_CLASS,
+} from '@/ui/components/form';
 
 import { abandonSecondFactorAction, secondFactorAction, type SecondFactorErrorCode } from '../actions';
 
@@ -100,6 +105,36 @@ export default async function SecondFactorPage({
             autoFocus
             className={`${INPUT_CLASS} font-mono`}
           />
+        </div>
+
+        {/*
+          „Diesem Gerät vertrauen" (M9, FA-TRUST-01).
+
+          Ein gewöhnliches Kästchen im Formular, kein Zustand: Die Seite bleibt
+          eine Server-Komponente und funktioniert ohne JavaScript — wie der
+          ganze Anmeldeweg.
+
+          Der Hinweis darunter nennt beides, die Dauer und die Grenze. „Nicht
+          auf fremden Geräten" steht dort, weil das die eine Entscheidung ist,
+          die niemand für den Benutzer treffen kann.
+        */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              id="remember"
+              name="remember"
+              type="checkbox"
+              value="on"
+              className={`size-4 rounded-control border border-rule accent-accent ${FOCUS_RING}`}
+              aria-describedby="remember-hint"
+            />
+            <label htmlFor="remember" className="text-ui text-ink">
+              {messages.login.rememberDevice}
+            </label>
+          </div>
+          <p id="remember-hint" className="text-small text-ink-muted">
+            {messages.login.rememberDeviceHint}
+          </p>
         </div>
 
         <button type="submit" className={PRIMARY_BUTTON_CLASS}>

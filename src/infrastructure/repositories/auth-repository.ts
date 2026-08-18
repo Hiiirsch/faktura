@@ -12,11 +12,19 @@
  * Wiederherstellungscodes hängen am Konto, nicht an der Organisation; sie
  * tragen die Spalte deshalb nicht.
  */
-import type { PasswordReset, PendingLogin, Prisma, RecoveryCode, Session, User } from '@prisma/client';
+import type {
+  PasswordReset,
+  PendingLogin,
+  Prisma,
+  RecoveryCode,
+  Session,
+  TrustedDevice,
+  User,
+} from '@prisma/client';
 
 import { clientFor, type TransactionHandle } from './client';
 
-export type { PasswordReset, PendingLogin, RecoveryCode, Session, User };
+export type { PasswordReset, PendingLogin, RecoveryCode, Session, TrustedDevice, User };
 
 /**
  * Die Sitzung mit allem, was die Auflösung braucht (M8).
@@ -290,4 +298,72 @@ export async function deleteUnusedPasswordResets(
   handle?: TransactionHandle,
 ): Promise<void> {
   await clientFor(handle).passwordReset.deleteMany({ where: { userId, usedAt: null } });
+}
+
+// ─── Vertraute Geräte (M9, FA-TRUST-*) ──────────────────────────────────────
+//
+// Hier und nicht in einer eigenen Datei: Ein vertrautes Gerät ist dasselbe wie
+// eine Sitzung und ein `PendingLogin` — ein Nachweis am Konto, der als Hash
+// liegt und über seinen Token gefunden wird.
+
+export async function createTrustedDevice(
+  data: {
+    readonly userId: string;
+    readonly tokenHash: string;
+    readonly userAgent: string | null;
+    readonly ipAddress: string | null;
+    readonly expiresAt: Date;
+    readonly lastUsedAt: Date;
+  },
+  handle?: TransactionHandle,
+): Promise<void> {
+  await clientFor(handle).trustedDevice.create({ data });
+}
+
+/**
+ * Das vertraute Gerät zu einem Tokenhash — **gebunden an das Konto**.
+ *
+ * `userId` steht in der Bedingung, nicht in einer Prüfung danach. Ohne diese
+ * Bindung wäre ein entwendetes Cookie ein Universalschlüssel: Es überspränge den
+ * zweiten Faktor für jedes Konto, dessen Passwort der Angreifer kennt.
+ */
+export async function findTrustedDevice(
+  userId: string,
+  tokenHash: string,
+): Promise<TrustedDevice | null> {
+  return clientFor(undefined).trustedDevice.findFirst({ where: { userId, tokenHash } });
+}
+
+export async function touchTrustedDevice(id: string, lastUsedAt: Date): Promise<void> {
+  await clientFor(undefined).trustedDevice.update({ where: { id }, data: { lastUsedAt } });
+}
+
+export async function listTrustedDevicesForUser(
+  userId: string,
+): Promise<readonly TrustedDevice[]> {
+  return clientFor(undefined).trustedDevice.findMany({
+    where: { userId },
+    orderBy: { lastUsedAt: 'desc' },
+  });
+}
+
+/** Die Einschränkung auf `userId` verhindert, dass ein fremdes Gerät endet. */
+export async function deleteTrustedDevice(userId: string, id: string): Promise<boolean> {
+  const result = await clientFor(undefined).trustedDevice.deleteMany({ where: { id, userId } });
+  return result.count > 0;
+}
+
+/**
+ * Verwirft **alle** vertrauten Geräte eines Kontos.
+ *
+ * Aufgerufen von jedem Ereignis, das den Verdacht auf Verlust begründet:
+ * Passwortzurücksetzung, Abschalten des zweiten Faktors, Sperren des Kontos,
+ * „alle anderen Sitzungen beenden". Ohne diese Aufrufe wäre ein vertrautes Gerät
+ * die Stelle, an der eine Zurücksetzung wirkungslos bleibt.
+ */
+export async function deleteTrustedDevicesForUser(
+  userId: string,
+  handle?: TransactionHandle,
+): Promise<void> {
+  await clientFor(handle).trustedDevice.deleteMany({ where: { userId } });
 }

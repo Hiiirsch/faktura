@@ -44,9 +44,16 @@ import { logger } from '@/infrastructure/logging/logger';
 import { hashPassword, verifyPassword } from '@/infrastructure/auth/password-hasher';
 import { generateSessionToken, hashToken } from '@/infrastructure/auth/tokens';
 import { verifyTotpCode } from '@/infrastructure/auth/totp';
+import {
+  isTrustedDeviceExpired,
+  trustedDeviceExpiry,
+} from '@/domain/auth/trusted-device-policy';
 import { getEnv } from '@/infrastructure/config/env';
 import {
   createPendingLogin,
+  createTrustedDevice,
+  findTrustedDevice,
+  touchTrustedDevice,
   deleteExpiredPendingLogins,
   deletePendingLogin,
   deletePendingLoginsForUser,
@@ -268,6 +275,14 @@ export async function login(
   input: LoginInput,
   context: RequestContext,
   now: Date = new Date(),
+  /**
+   * Der Token des vertrauten Geräts aus dem Cookie, falls eines mitkam (M9).
+   *
+   * Als Parameter und nicht hier gelesen: Die Anwendungsschicht kennt keine
+   * Cookies — das ist Sache der Server Action, die sie ohnehin schon für den
+   * Nachweis des zweiten Schritts anfasst.
+   */
+  trustedToken: string | null = null,
 ): Promise<Result<LoginOutcome, LoginError>> {
   const email = input.email.trim().toLowerCase();
   const user = await findUserByEmail(email);
@@ -307,6 +322,27 @@ export async function login(
   }
 
   if (user.totpEnabled && user.totpSecret !== null) {
+    /*
+     * Vertrautes Gerät (M9, FA-TRUST-03).
+     *
+     * Geprüft **vor** dem Ausstellen des Nachweises: Wer hier durchkommt, soll
+     * die zweite Seite gar nicht erst sehen. Die Abfrage bindet den Token an
+     * `user.id` — ein Cookie eines anderen Kontos findet nichts.
+     */
+    if (trustedToken !== null && trustedToken.length > 0) {
+      const device = await findTrustedDevice(user.id, hashToken(trustedToken));
+
+      if (device !== null && !isTrustedDeviceExpired(device.expiresAt, now)) {
+        await touchTrustedDevice(device.id, now);
+        logger.security('auth.trusted_device_used', { userId: user.id });
+
+        return ok({
+          kind: 'SESSION',
+          session: await completeLogin(user.id, organization, context, now),
+        });
+      }
+    }
+
     // Fehlversuche bleiben stehen, bis der zweite Faktor stimmt: Ein richtiges
     // Passwort allein darf die Sperre nicht zurücksetzen.
     return ok({
@@ -336,12 +372,20 @@ export async function login(
  * bestehen, damit ein Vertipper nicht die ganze Anmeldung kostet — die Sperre
  * begrenzt die Versuche.
  */
+/** Was der zweite Schritt zurückgibt: die Sitzung und wahlweise das Gerät. */
+export type SecondFactorOutcome = {
+  readonly session: IssuedSession;
+  /** Gesetzt, wenn „Diesem Gerät vertrauen" angekreuzt war (M9). */
+  readonly trustedDevice: { readonly token: string; readonly expiresAt: Date } | null;
+};
+
 export async function completeSecondFactor(
   token: string,
   code: string,
   context: RequestContext,
   now: Date = new Date(),
-): Promise<Result<IssuedSession, SecondFactorError>> {
+  remember = false,
+): Promise<Result<SecondFactorOutcome, SecondFactorError>> {
   const pending = await findPendingLoginByHash(hashToken(token));
 
   if (pending === null) {
@@ -393,5 +437,33 @@ export async function completeSecondFactor(
   }
 
   await deletePendingLogin(pending.id);
-  return ok(await completeLogin(user.id, organization, context, now));
+
+  const session = await completeLogin(user.id, organization, context, now);
+
+  /*
+   * „Diesem Gerät vertrauen" — erst **nach** erfolgreichem zweitem Faktor
+   * (M9, FA-TRUST-01).
+   *
+   * Vorher wäre es ein Nachweis, den jemand ohne den zweiten Faktor erhielte,
+   * und damit genau das Gegenteil dessen, wofür er steht.
+   */
+  if (!remember) {
+    return ok({ session, trustedDevice: null });
+  }
+
+  const trustedToken = generateSessionToken();
+  const expiresAt = trustedDeviceExpiry(now);
+
+  await createTrustedDevice({
+    userId: user.id,
+    tokenHash: hashToken(trustedToken),
+    userAgent: context.userAgent,
+    ipAddress: context.ipAddress,
+    expiresAt,
+    lastUsedAt: now,
+  });
+
+  logger.security('auth.trusted_device_created', { userId: user.id });
+
+  return ok({ session, trustedDevice: { token: trustedToken, expiresAt } });
 }

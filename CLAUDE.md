@@ -603,6 +603,39 @@ das inzwischen auf anderem Weg entstanden ist, und ein `RESET`-Nachweis legt
 keines an. Ein unbekannter Wert fällt durch beide Zweige — die sichere Richtung,
 deshalb braucht es dafür keinen Trigger.
 
+## Vertraute Geräte (seit M9)
+
+Nach erfolgreichem zweitem Faktor lässt sich ein Gerät als vertraut hinterlegen;
+dort entfällt der Code für **30 Tage**. Das Passwort wird weiterhin verlangt.
+
+**Das schwächt die Zweifaktorauthentifizierung bewusst**, und es ist nur
+vertretbar, solange vier Dinge gelten:
+
+1. Der Nachweis ist an **ein Konto** gebunden, nicht nur an einen Token —
+   geprüft wird mit `userId` **und** Hash. Ohne die Bindung wäre ein entwendetes
+   Cookie ein Universalschlüssel: Es überspränge den zweiten Faktor für jedes
+   Konto, dessen Passwort der Angreifer kennt.
+2. Er ist sichtbar und einzeln widerrufbar (`/settings/security`). Ein Nachweis,
+   den man nicht sieht, lässt sich nicht widerrufen.
+3. Er endet mit **jedem** Ereignis, das den Verdacht auf Verlust begründet:
+   Passwortzurücksetzung (auch die durch den Betreiber), Abschalten des zweiten
+   Faktors, Sperren des Kontos, „alle anderen Sitzungen beenden". Fehlte einer
+   dieser Wege, bliebe die jeweilige Handlung an genau der Stelle wirkungslos,
+   an der sie gebraucht wird.
+4. Er gilt **nicht** für Betreiberkonten (FA-ADM-08).
+
+Der Token entsteht erst **nach** dem zweiten Faktor. Vorher wäre er ein
+Nachweis, den jemand ohne den zweiten Faktor erhielte — das Gegenteil dessen,
+wofür er steht.
+
+Gelesen wird das Cookie in der Server Action, nicht in der Anwendungsschicht:
+`login()` nimmt den Token als Parameter. Die Schicht kennt keine Cookies, und
+das soll so bleiben.
+
+Auch das aufrufende Gerät verliert seinen Nachweis bei „alle anderen Sitzungen
+beenden". Es kann sich nicht ausnehmen, weil eine Sitzung nicht weiß, welcher
+Gerätenachweis zu ihr gehört — und im Zweifel ist das die sichere Richtung.
+
 ## Wege aus einer Sackgasse (seit M9)
 
 Zwei Zugänge waren unwiederbringlich, und beide hatten dieselbe Form: **Der

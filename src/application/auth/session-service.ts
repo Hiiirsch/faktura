@@ -18,6 +18,9 @@ import {
   deleteSession,
   deleteSessionByTokenHash,
   deleteSessionsForUser,
+  deleteTrustedDevice,
+  deleteTrustedDevicesForUser,
+  listTrustedDevicesForUser,
   findSessionByTokenHash,
   listSessionsForUser,
   revokeSessionForUser,
@@ -179,7 +182,49 @@ export async function revokeAllSessions(
   userId: string,
   exceptSessionId?: string,
 ): Promise<number> {
+  /*
+   * Vertraute Geräte fallen mit (M9, FA-TRUST-04).
+   *
+   * Wer „alle anderen Sitzungen beenden" wählt, tut das, weil ein Gerät
+   * abhandengekommen ist. Bliebe dessen Nachweis stehen, käme es beim nächsten
+   * Mal wieder herein — ohne zweiten Faktor, und der Knopf hätte das Gegenteil
+   * dessen bewirkt, was er verspricht.
+   *
+   * Auch das aufrufende Gerät verliert seinen Nachweis: Es kann sich nicht
+   * selbst ausnehmen, weil die Sitzung nicht weiß, welcher Gerätenachweis zu ihr
+   * gehört — und im Zweifel ist das die sichere Richtung.
+   */
+  await deleteTrustedDevicesForUser(userId);
   return deleteSessionsForUser(userId, exceptSessionId);
+}
+
+// ─── Vertraute Geräte (M9, FA-TRUST-05) ─────────────────────────────────────
+
+export type TrustedDeviceSummary = {
+  readonly id: string;
+  readonly userAgent: string | null;
+  readonly ipAddress: string | null;
+  readonly lastUsedAt: Date;
+  readonly expiresAt: Date;
+};
+
+export async function listTrustedDevices(
+  userId: string,
+): Promise<readonly TrustedDeviceSummary[]> {
+  const devices = await listTrustedDevicesForUser(userId);
+
+  return devices.map((device) => ({
+    id: device.id,
+    userAgent: device.userAgent,
+    ipAddress: device.ipAddress,
+    lastUsedAt: device.lastUsedAt,
+    expiresAt: device.expiresAt,
+  }));
+}
+
+/** Die Einschränkung auf `userId` verhindert, dass ein fremdes Gerät endet. */
+export async function revokeTrustedDevice(userId: string, id: string): Promise<boolean> {
+  return deleteTrustedDevice(userId, id);
 }
 
 export async function deleteSessionByToken(token: string): Promise<void> {

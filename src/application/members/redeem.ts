@@ -43,6 +43,7 @@ import { logger } from '@/infrastructure/logging/logger';
 import {
   createUser,
   deleteSessionsForUser,
+  deleteTrustedDevicesForUser,
   deleteUnusedPasswordResets,
   findPasswordResetByHash,
   findUserById,
@@ -239,6 +240,15 @@ export async function completePasswordReset(
     // Der eingelöste Nachweis bleibt als Spur; nur die noch offenen fallen.
     await deleteUnusedPasswordResets(user.id, handle);
     await deleteSessionsForUser(user.id, undefined, handle);
+    /*
+     * Und die vertrauten Geräte (M9, FA-TRUST-04).
+     *
+     * Ohne diese Zeile bliebe die Zurücksetzung an der entscheidenden Stelle
+     * wirkungslos: Wer das alte Passwort kannte und ein vertrautes Gerät hat,
+     * käme weiterhin ohne zweiten Faktor hinein — und die Zurücksetzung wurde ja
+     * gerade deshalb ausgelöst.
+     */
+    await deleteTrustedDevicesForUser(user.id, handle);
   });
 
   await recordAuditEntry(organizationContextOf(user.organizationId), {

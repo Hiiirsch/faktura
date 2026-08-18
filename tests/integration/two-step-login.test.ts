@@ -16,7 +16,15 @@ import { TOTP, Secret } from 'otpauth';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { completeSecondFactor, login } from '@/application/auth/login';
-import { resolveSession } from '@/application/auth/session-service';
+import { disableTotp } from '@/application/auth/totp-setup';
+import {
+  listTrustedDevices,
+  resolveSession,
+  revokeAllSessions,
+  revokeTrustedDevice,
+} from '@/application/auth/session-service';
+import { completePasswordReset } from '@/application/members/redeem';
+import { TRUSTED_DEVICE_TTL_MS } from '@/domain/auth/trusted-device-policy';
 import { PENDING_LOGIN_TTL_MS } from '@/domain/auth/pending-login-policy';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { generateTotpSecret } from '@/infrastructure/auth/totp';
@@ -31,6 +39,7 @@ import {
 import { DEFAULT_ORGANIZATION_ID } from '@/infrastructure/repositories/organization-context';
 
 import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
@@ -170,7 +179,7 @@ describe('Konto mit zweitem Faktor', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(await resolveSession(result.value.token, NOW)).not.toBeNull();
+    expect(await resolveSession(result.value.session.token, NOW)).not.toBeNull();
 
     // Einmal verwendet, danach weg.
     expect(await prisma.pendingLogin.count()).toBe(0);
@@ -334,5 +343,164 @@ describe('NFA-SEC-08 Die Sperre gilt auch im zweiten Schritt', () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { id } });
     expect(user.failedLogins).toBe(0);
     expect(user.lockedUntil).toBeNull();
+  });
+});
+
+describe('FA-TRUST-01..05 Vertraute Geräte (M9/B2)', () => {
+  const EMAIL = 'mitfaktor@example.org';
+  const OTHER_PASSWORD = 'Holunderbluete-im-Juni-8';
+
+  /** Meldet an, kreuzt „Gerät merken" an und gibt Konto und Token zurück. */
+  async function signInRemembering(): Promise<{
+    readonly userId: string;
+    readonly secret: string;
+    readonly trusted: string;
+  }> {
+    const { id, secret } = await seedUser(EMAIL, { withTotp: true });
+    if (secret === null) throw new Error('kein Geheimnis');
+
+    const first = await login({ email: EMAIL, password: PASSWORD }, CONTEXT, NOW);
+    if (!first.ok || first.value.kind !== 'SECOND_FACTOR_REQUIRED') {
+      throw new Error('kein zweiter Schritt');
+    }
+
+    const done = await completeSecondFactor(
+      first.value.pending.token,
+      totpCodeFor(secret, NOW),
+      CONTEXT,
+      NOW,
+      true,
+    );
+    if (!done.ok || done.value.trustedDevice === null) throw new Error('kein Gerät');
+
+    return { userId: id, secret, trusted: done.value.trustedDevice.token };
+  }
+
+  it('erspart der zweite Schritt beim nächsten Mal den Code', async () => {
+    const { trusted } = await signInRemembering();
+
+    const again = await login({ email: EMAIL, password: PASSWORD }, CONTEXT, NOW, trusted);
+
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    // Direkt eine Sitzung — die zweite Seite erscheint gar nicht.
+    expect(again.value.kind).toBe('SESSION');
+  });
+
+  it('legt ohne Ankreuzen kein Gerät an', async () => {
+    const { secret } = await seedUser(EMAIL, { withTotp: true });
+    if (secret === null) return;
+
+    const first = await login({ email: EMAIL, password: PASSWORD }, CONTEXT, NOW);
+    if (!first.ok || first.value.kind !== 'SECOND_FACTOR_REQUIRED') return;
+
+    const done = await completeSecondFactor(
+      first.value.pending.token,
+      totpCodeFor(secret, NOW),
+      CONTEXT,
+      NOW,
+    );
+
+    expect(done.ok).toBe(true);
+    if (!done.ok) return;
+    expect(done.value.trustedDevice).toBeNull();
+    expect(await prisma.trustedDevice.count()).toBe(0);
+  });
+
+  /**
+   * Der Nachweis ist an **ein Konto** gebunden.
+   *
+   * Ohne diese Bindung wäre ein entwendetes Cookie ein Universalschlüssel: Es
+   * überspränge den zweiten Faktor für jedes Konto, dessen Passwort der
+   * Angreifer kennt.
+   */
+  it('gilt das Gerät nicht für ein anderes Konto', async () => {
+    const { trusted } = await signInRemembering();
+    await seedUser('zweiter@example.org', { withTotp: true });
+
+    const other = await login(
+      { email: 'zweiter@example.org', password: PASSWORD },
+      CONTEXT,
+      NOW,
+      trusted,
+    );
+
+    expect(other.ok).toBe(true);
+    if (!other.ok) return;
+    // Der Code wird verlangt — das fremde Gerät zählt nicht.
+    expect(other.value.kind).toBe('SECOND_FACTOR_REQUIRED');
+  });
+
+  it('gilt ein abgelaufenes Gerät nicht mehr', async () => {
+    const { trusted } = await signInRemembering();
+    const tooLate = new Date(NOW.getTime() + TRUSTED_DEVICE_TTL_MS + 1_000);
+
+    const again = await login({ email: EMAIL, password: PASSWORD }, CONTEXT, tooLate, trusted);
+
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.value.kind).toBe('SECOND_FACTOR_REQUIRED');
+  });
+
+  /**
+   * **Die drei Abräumwege** — jeder einzelne ist der Grund, warum ein vertrautes
+   * Gerät nicht einfach ein langlebiges Cookie sein darf.
+   */
+  it('verfällt das Gerät beim Zurücksetzen des Passworts', async () => {
+    const { userId, trusted } = await signInRemembering();
+
+    await prisma.passwordReset.create({
+      data: {
+        userId,
+        tokenHash: hashToken('zuruecksetzen'),
+        expiresAt: new Date(NOW.getTime() + 60_000),
+      },
+    });
+    expect((await completePasswordReset('zuruecksetzen', OTHER_PASSWORD, null, NOW)).ok).toBe(true);
+
+    expect(await prisma.trustedDevice.count({ where: { userId } })).toBe(0);
+
+    // Und der Beweis, dass es wirkt: Der Code wird wieder verlangt.
+    const again = await login({ email: EMAIL, password: OTHER_PASSWORD }, CONTEXT, NOW, trusted);
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.value.kind).toBe('SECOND_FACTOR_REQUIRED');
+  });
+
+  it('verfällt das Gerät beim Abschalten des zweiten Faktors', async () => {
+    const { userId } = await signInRemembering();
+
+    await disableTotp(testOrganization, userId, null);
+
+    expect(await prisma.trustedDevice.count({ where: { userId } })).toBe(0);
+  });
+
+  it('verfällt das Gerät beim Beenden aller anderen Sitzungen', async () => {
+    const { userId } = await signInRemembering();
+
+    await revokeAllSessions(userId);
+
+    expect(await prisma.trustedDevice.count({ where: { userId } })).toBe(0);
+  });
+
+  it('lässt sich ein Gerät einzeln widerrufen — und nur das eigene', async () => {
+    const { userId, trusted } = await signInRemembering();
+
+    const devices = await listTrustedDevices(userId);
+    expect(devices).toHaveLength(1);
+    const device = devices[0];
+    if (device === undefined) return;
+
+    // Ein fremdes Konto widerruft nichts.
+    expect(await revokeTrustedDevice('user_gibtesnicht', device.id)).toBe(false);
+    expect(await prisma.trustedDevice.count()).toBe(1);
+
+    expect(await revokeTrustedDevice(userId, device.id)).toBe(true);
+    expect(await prisma.trustedDevice.count()).toBe(0);
+
+    const again = await login({ email: EMAIL, password: PASSWORD }, CONTEXT, NOW, trusted);
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.value.kind).toBe('SECOND_FACTOR_REQUIRED');
   });
 });

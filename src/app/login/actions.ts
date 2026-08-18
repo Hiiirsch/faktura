@@ -14,6 +14,8 @@ import {
   pendingLoginCookieOptions,
   sessionCookieOptions,
   SESSION_COOKIE_NAME,
+  TRUSTED_DEVICE_COOKIE_NAME,
+  trustedDeviceCookieOptions,
 } from '@/infrastructure/auth/session-cookie';
 import { DASHBOARD_PATH, LOGIN_CODE_PATH, LOGIN_PATH } from '@/routes';
 
@@ -80,7 +82,13 @@ export async function loginAction(formData: FormData): Promise<void> {
   }
 
   const context = await readRequestContext();
-  const result = await login(parsed.data, context);
+
+  // Das vertraute Gerät reist als Cookie mit (M9). Gelesen wird es hier, weil
+  // die Anwendungsschicht keine Cookies kennt.
+  const cookieStore = await cookies();
+  const trusted = cookieStore.get(TRUSTED_DEVICE_COOKIE_NAME)?.value ?? null;
+
+  const result = await login(parsed.data, context, new Date(), trusted);
 
   if (!result.ok) {
     if (result.error.kind === 'LOCKED') {
@@ -90,7 +98,6 @@ export async function loginAction(formData: FormData): Promise<void> {
   }
 
   if (result.value.kind === 'SECOND_FACTOR_REQUIRED') {
-    const cookieStore = await cookies();
     cookieStore.set(
       PENDING_LOGIN_COOKIE_NAME,
       result.value.pending.token,
@@ -129,7 +136,14 @@ export async function secondFactorAction(formData: FormData): Promise<void> {
   }
 
   const context = await readRequestContext();
-  const result = await completeSecondFactor(token, parsed.data.code, context);
+  const remember = formData.get('remember') === 'on';
+  const result = await completeSecondFactor(
+    token,
+    parsed.data.code,
+    context,
+    new Date(),
+    remember,
+  );
 
   if (!result.ok) {
     switch (result.error.kind) {
@@ -148,7 +162,16 @@ export async function secondFactorAction(formData: FormData): Promise<void> {
     }
   }
 
-  await establishSession(result.value.token, result.value.expiresAt);
+  await establishSession(result.value.session.token, result.value.session.expiresAt);
+
+  if (result.value.trustedDevice !== null) {
+    cookieStore.set(
+      TRUSTED_DEVICE_COOKIE_NAME,
+      result.value.trustedDevice.token,
+      trustedDeviceCookieOptions(result.value.trustedDevice.expiresAt),
+    );
+  }
+
   redirect(DASHBOARD_PATH);
 }
 

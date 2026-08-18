@@ -584,6 +584,10 @@ export async function createTenantPasswordReset(
     await client.passwordReset.deleteMany({ where: { userId, usedAt: null } });
     await client.passwordReset.create({ data: { userId, ...data } });
     await client.session.deleteMany({ where: { userId } });
+    // Und die vertrauten Geräte (M9): Ein Konto, dessen Passwort zurückgesetzt
+    // wird, soll nicht über ein gemerktes Gerät am zweiten Faktor vorbei
+    // erreichbar bleiben.
+    await client.trustedDevice.deleteMany({ where: { userId } });
   });
 }
 
