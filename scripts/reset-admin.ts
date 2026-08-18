@@ -51,9 +51,12 @@ async function main(): Promise<void> {
   const result = await resetAdmin(email);
 
   if (!result.ok) {
+    // Ursache und Ausweg, wie bei `admin:create` — nur in die andere Richtung.
     stdout.write(
-      `Es existiert kein Betreiberkonto mit der Adresse ${email}. ` +
-        'Ein neues entsteht mit "admin:create".\n',
+      `Es existiert kein Betreiberkonto mit der Adresse ${email}.\n\n` +
+        'Ein neues entsteht mit:\n\n' +
+        `  npm run admin:create -- --email ${email}\n` +
+        `  im Container: node dist/create-admin.mjs --email ${email}\n`,
     );
     process.exitCode = 1;
     return;

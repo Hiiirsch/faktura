@@ -64,7 +64,21 @@ async function main(): Promise<void> {
   const result = await inviteAdmin(email);
 
   if (!result.ok) {
-    stdout.write(`Es existiert bereits ein Betreiberkonto mit der Adresse ${email}.\n`);
+    /*
+     * Ursache **und** Ausweg (FA-UI-10 sinngemäß, auch auf der Kommandozeile).
+     *
+     * Die erste Fassung nannte nur die Ursache. Wer davorsteht, will aber nicht
+     * wissen, dass etwas nicht geht, sondern was stattdessen geht — und die
+     * Antwort ist hier ein anderer Befehl, den man nicht erraten kann.
+     */
+    stdout.write(
+      `Es existiert bereits ein Betreiberkonto mit der Adresse ${email}.\n\n` +
+        'Ist der Authenticator verloren, setzt dieser Befehl das Konto zurück:\n\n' +
+        `  npm run admin:reset -- --email ${email}\n` +
+        `  im Container: node dist/reset-admin.mjs --email ${email}\n\n` +
+        'Soll ein zweites Betreiberkonto entstehen, dieses Kommando mit einer ' +
+        'anderen Adresse aufrufen.\n',
+    );
     process.exitCode = 1;
     return;
   }
