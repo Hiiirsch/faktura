@@ -71,6 +71,99 @@ export async function countAdminUsers(): Promise<number> {
   return clientFor(undefined).adminUser.count();
 }
 
+/**
+ * Alle Betreiberkonten (M10, FA-ADM-12).
+ *
+ * **Mit `PlatformContext`**, anders als die drei Funktionen darüber: Die
+ * Anmeldung muss ein Konto auflösen, bevor jemand da ist, und ist deshalb die
+ * dokumentierte Ausnahme. Eine *Liste* zu lesen verlangt dagegen, schon
+ * angemeldet zu sein — hier gilt die Regel, nicht die Ausnahme.
+ *
+ * Ohne Passwortfelder: Die Seite zeigt Adresse, Zustand und Anmeldungen, und was
+ * eine Abfrage nicht mitbringt, kann keine Ansicht versehentlich ausgeben.
+ */
+export async function listAdminUsers(_platform: PlatformContext): Promise<
+  readonly {
+    readonly id: string;
+    readonly email: string;
+    readonly name: string | null;
+    readonly totpEnabled: boolean;
+    readonly disabledAt: Date | null;
+    readonly lastLoginAt: Date | null;
+    readonly createdAt: Date;
+  }[]
+> {
+  return clientFor(undefined).adminUser.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      totpEnabled: true,
+      disabledAt: true,
+      lastLoginAt: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+/**
+ * Sperrt ein Betreiberkonto oder gibt es wieder frei (M10, FA-ADM-12, -13).
+ *
+ * **Sperren beendet alle Sitzungen.** Die Auflösung wiese sie ohnehin ab — aber
+ * erst beim nächsten Aufruf, und dazwischen läge ein Fenster. Dieselbe Regel wie
+ * bei den Mitgliedern.
+ *
+ * **Die Aussperrsicherung steht hier und nicht in einem Trigger**, anders als
+ * ihr Gegenstück auf der Mandantenseite. Der erste Anlauf war ein Trigger, und
+ * er war falsch — er behauptete ein Invariant, das dieses System nicht hat:
+ *
+ * - `resetAdmin` sperrt das Konto **absichtlich** und stellt im selben Zug einen
+ *   Einrichtungslink aus. In einer Anlage mit einem Betreiber führt dieser Weg
+ *   also durch einen Zustand ohne aktives Konto — und das ist genau der Weg, der
+ *   seit M8 die Rettung bei verlorenem Authenticator ist.
+ * - `npm run admin:create` lässt sich mit einer **neuen** Adresse immer
+ *   aufrufen. Wer Serverzugriff hat, kommt herein, gleich wie viele Konten
+ *   gesperrt sind. Eine echte Sackgasse gibt es auf dieser Seite deshalb nicht.
+ *
+ * Was bleibt, ist die **Handlung** aus der Oberfläche: „Sperren" bietet keinen
+ * Rückweg an, also darf es das letzte aktive Konto nicht treffen. Das ist eine
+ * Eigenschaft dieses einen Vorgangs, nicht der Tabelle — und gehört damit
+ * hierher. Der Unterschied zur Mandantenseite ist echt: Dort **kann** niemand
+ * auf den Server, dort ist es ein Invariant.
+ *
+ * Gezählt wird **innerhalb** der Transaktion. SQLite hat genau einen Schreiber
+ * (`connection_limit=1`), zwei gleichzeitige Sperrungen warten also aufeinander
+ * statt beide ein zweites aktives Konto zu sehen.
+ */
+export async function setAdminUserDisabled(
+  _platform: PlatformContext,
+  id: string,
+  disabledAt: Date | null,
+): Promise<'ok' | 'last-administrator'> {
+  return runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    if (disabledAt !== null) {
+      const remaining = await client.adminUser.count({
+        where: { disabledAt: null, id: { not: id } },
+      });
+
+      if (remaining === 0) {
+        return 'last-administrator';
+      }
+    }
+
+    await client.adminUser.update({ where: { id }, data: { disabledAt } });
+
+    if (disabledAt !== null) {
+      await client.adminSession.deleteMany({ where: { adminUserId: id } });
+    }
+
+    return 'ok';
+  });
+}
+
 // ─── Einrichtung eines Betreiberkontos (FA-ADM-06, -08) ────────────────────
 //
 // Ohne Kontext, wie die Anmeldung: Wer den Nachweis vorlegt, ist noch niemand.

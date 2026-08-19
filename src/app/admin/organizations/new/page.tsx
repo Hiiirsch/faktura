@@ -9,6 +9,7 @@ import { NoScriptNotice } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
 
 import { NewOrganizationForm } from './organization-form';
+import { AdminNav } from '../../admin-nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,20 +25,24 @@ export const metadata = { title: `${messages.admin.newOrganization} · ${message
  */
 export default async function NewOrganizationPage(): Promise<ReactNode> {
   // Erste Anweisung: die Sitzungsprüfung der Verwaltung (Spec §11.2).
-  await requireAdminSession();
+  const session = await requireAdminSession();
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-content flex-col gap-6 px-8 pb-12">
-      <PageHeader
-        title={messages.admin.newOrganizationHeading}
-        description={messages.admin.newOrganizationIntro}
-        backHref={ADMIN_PATH}
-        backLabel={messages.admin.back}
-      />
+    <>
+      <AdminNav currentPath={ADMIN_PATH} email={session.email} csrfToken={csrfToken} />
 
-      <NoScriptNotice message={messages.common.noScript} />
-      <NewOrganizationForm csrfToken={csrfToken} />
-    </main>
+      <main className="mx-auto flex w-full max-w-content flex-col gap-6 px-8 pb-12">
+        <PageHeader
+          title={messages.admin.newOrganizationHeading}
+          description={messages.admin.newOrganizationIntro}
+          backHref={ADMIN_PATH}
+          backLabel={messages.admin.back}
+        />
+
+        <NoScriptNotice message={messages.common.noScript} />
+        <NewOrganizationForm csrfToken={csrfToken} />
+      </main>
+    </>
   );
 }

@@ -153,6 +153,48 @@ export const messages = {
       'Dieser Link wird nur jetzt angezeigt. Er gilt bis zum genannten Zeitpunkt und funktioniert genau einmal.',
     errorLAST_ADMINISTRATOR:
       'Die Datenbank hat die Änderung abgewiesen: Es wäre das letzte aktive Konto mit Rechteverwaltung dieses Unternehmens.',
+
+    // ── Navigation des Adminbereichs (M10, B1) ──────────────────────────────
+    scopeIntro: 'Unternehmen, Zugänge und Betrieb dieser Installation.',
+    navLabel: 'Verwaltung',
+    navOrganizations: 'Unternehmen',
+    navAccounts: 'Betreiber',
+    navOperations: 'Betrieb',
+
+    // ── Betreiberkonten (M10, B1, FA-ADM-12, -13) ───────────────────────────
+    accountsTitle: 'Betreiberkonten',
+    accountsPageHeading: 'Betreiberkonten',
+    accountsPageIntro:
+      'Konten mit Zugang zu dieser Verwaltung. Sie sehen keine Geschäftsdaten der Unternehmen und führen den zweiten Faktor verpflichtend.',
+    accountsColumnAccount: 'Konto',
+    accountsColumnSecondFactor: 'Zweiter Faktor',
+    accountsColumnLastLogin: 'Letzte Anmeldung',
+    accountsColumnState: 'Zustand',
+    accountsSecondFactorOn: 'eingerichtet',
+    accountsSecondFactorOff: 'fehlt',
+    accountsStateActive: 'Aktiv',
+    accountsStateDisabled: 'Gesperrt',
+    accountsSelf: 'Das ist dein Konto',
+    accountsDisable: 'Sperren',
+    accountsEnable: 'Entsperren',
+    accountsReset: 'Zugang neu einrichten',
+    accountsDisableConfirmTitle: 'Betreiberkonto sperren',
+    accountsDisableConfirm:
+      'Das Konto kommt nicht mehr in die Verwaltung, und alle seine Sitzungen enden sofort. Entsperren ist jederzeit möglich.',
+    accountsResetConfirmTitle: 'Zugang neu einrichten',
+    accountsResetConfirm:
+      'Das Konto wird sofort gesperrt und alle Sitzungen enden. Es bekommt neue Zugangsdaten erst, wenn der ausgestellte Link eingelöst wird — Passwort und zweiter Faktor entstehen dabei im Browser des Betroffenen.',
+    accountsInviteHeading: 'Weiteren Betreiber einladen',
+    accountsInviteIntro:
+      'Der Link erscheint genau einmal und wird außerhalb der Anwendung weitergegeben. Passwort und zweiter Faktor entstehen beim Einlösen; ein Betreiberkonto ohne zweiten Faktor gibt es zu keinem Zeitpunkt.',
+    accountsInviteSubmit: 'Einladung ausstellen',
+    accountsInvitedHeading: 'Einladungslink',
+    accountsResetLinkHeading: 'Link zur Neueinrichtung',
+    accountsErrorSELF:
+      'Das eigene Konto lässt sich hier nicht ändern. Ein anderer Betreiber kann es sperren oder zurücksetzen.',
+    accountsErrorLAST_ADMINISTRATOR:
+      'Die Datenbank hat die Änderung abgewiesen: Es wäre das letzte aktive Betreiberkonto. Ohne eines käme niemand mehr in die Verwaltung.',
+    accountsErrorNOT_FOUND: 'Dieses Konto gibt es nicht mehr.',
   },
 
   backup: {

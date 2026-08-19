@@ -19,6 +19,9 @@ export const ADMIN_LOGIN_CODE_PATH = '/admin/login/code';
 /** Unternehmensverwaltung des Betreibers (M8, B5). */
 export const ADMIN_NEW_ORGANIZATION_PATH = '/admin/organizations/new';
 
+/** Betreiberkonten — bis M10 nur über die Kommandozeile erreichbar (FA-ADM-12). */
+export const ADMIN_ACCOUNTS_PATH = '/admin/accounts';
+
 /** Einrichtung eines Betreiberkontos — der Nachweis steht in der Adresse (M8). */
 export const ADMIN_SETUP_PATH = '/admin/setup';
 
@@ -214,6 +217,7 @@ export const routes: readonly RouteDefinition[] = [
   // ── Zentrale Verwaltung (M8) ──────────────────────────────────────────────
   { path: ADMIN_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_NEW_ORGANIZATION_PATH, kind: 'page', access: 'platformAdmin' },
+  { path: ADMIN_ACCOUNTS_PATH, kind: 'page', access: 'platformAdmin' },
   {
     path: '/admin/setup/[token]',
     kind: 'page',

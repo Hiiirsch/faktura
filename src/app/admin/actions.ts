@@ -14,6 +14,11 @@ import {
   startTenantPasswordReset,
   withdrawInvitationAsPlatform,
 } from '@/application/admin/organization-admin';
+import {
+  invitePlatformAccount,
+  resetPlatformAccount,
+  setPlatformAccountDisabled,
+} from '@/application/admin/platform-accounts';
 import { requireAdminSessionOrThrow } from '@/application/admin/require-admin-session';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { removePasskey } from '@/application/auth/passkey-registration';
@@ -25,9 +30,11 @@ import {
 } from '@/infrastructure/auth/session-cookie';
 import { getEnv } from '@/infrastructure/config/env';
 import {
+  ADMIN_ACCOUNTS_PATH,
   ADMIN_LOGIN_PATH,
   ADMIN_PATH,
   adminOrganizationPath,
+  adminSetupPath,
   invitationPath,
   passwordResetPath,
 } from '@/routes';
@@ -356,4 +363,112 @@ export async function removeAdminPasskeyAction(formData: FormData): Promise<void
     id.data,
   );
   revalidatePath(ADMIN_PATH);
+}
+
+// ─── Betreiberkonten (M10/B1, FA-ADM-12, -13) ───────────────────────────────
+//
+// Zwei Bauarten in einem Abschnitt, und der Unterschied hat einen Grund:
+//
+// - **Sperren und Entsperren** enden in einer Umleitung mit `?erledigt=…`. Es
+//   gibt nichts mitzunehmen, und eine Meldung, die ein Neuladen überlebt, wäre
+//   falsch: Sie gilt einer Handlung, nicht einem Zustand.
+// - **Einladen und Neueinrichten** geben einen Link zurück, der **genau einmal**
+//   existiert. Über eine Umleitung ließe er sich nur transportieren, indem man
+//   ihn zwischenspeichert — also `useActionState`.
+
+export async function setPlatformAccountDisabledAction(
+  adminUserId: string,
+  disabled: boolean,
+  formData: FormData,
+): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireAdminSessionOrThrow();
+
+  const result = await setPlatformAccountDisabled(session.platform, adminUserId, disabled);
+
+  revalidatePath(ADMIN_ACCOUNTS_PATH);
+
+  redirect(
+    `${ADMIN_ACCOUNTS_PATH}?` +
+      (result.ok
+        ? `erledigt=${disabled ? 'betreiberGesperrt' : 'betreiberEntsperrt'}`
+        : `fehler=${result.error.kind}`),
+  );
+}
+
+/** Übersetzt die Ablehnungen der Kontenverwaltung in einen Satz. */
+function platformAccountMessage(
+  kind: 'EMAIL_TAKEN' | 'NOT_FOUND' | 'SELF' | 'LAST_ADMINISTRATOR',
+): string {
+  return kind === 'EMAIL_TAKEN'
+    ? messages.admin.emailTaken
+    : kind === 'SELF'
+      ? messages.admin.accountsErrorSELF
+      : kind === 'NOT_FOUND'
+        ? messages.admin.accountsErrorNOT_FOUND
+        : messages.admin.accountsErrorLAST_ADMINISTRATOR;
+}
+
+export async function invitePlatformAccountAction(
+  _previous: RecoveryState,
+  formData: FormData,
+): Promise<RecoveryState> {
+  try {
+    await assertRequestIntegrity(formData);
+  } catch {
+    return { status: 'error', message: messages.common.rejected };
+  }
+
+  const session = await requireAdminSessionOrThrow();
+
+  const email = z.string().trim().toLowerCase().pipe(z.email()).safeParse(formData.get('email'));
+
+  if (!email.success) {
+    return { status: 'error', message: messages.admin.emailInvalid };
+  }
+
+  const result = await invitePlatformAccount(session.platform, email.data);
+  if (!result.ok) {
+    return { status: 'error', message: platformAccountMessage(result.error.kind) };
+  }
+
+  revalidatePath(ADMIN_ACCOUNTS_PATH);
+
+  return {
+    status: 'issued',
+    heading: messages.admin.accountsInvitedHeading,
+    link: `${getEnv().APP_URL}${adminSetupPath(result.value.token)}`,
+  };
+}
+
+export async function resetPlatformAccountAction(
+  adminUserId: string,
+  _previous: RecoveryState,
+  formData: FormData,
+): Promise<RecoveryState> {
+  try {
+    await assertRequestIntegrity(formData);
+  } catch {
+    return { status: 'error', message: messages.common.rejected };
+  }
+
+  const session = await requireAdminSessionOrThrow();
+
+  const id = idSchema.safeParse(adminUserId);
+  if (!id.success) {
+    return { status: 'error', message: messages.admin.accountsErrorNOT_FOUND };
+  }
+
+  const result = await resetPlatformAccount(session.platform, id.data);
+  if (!result.ok) {
+    return { status: 'error', message: platformAccountMessage(result.error.kind) };
+  }
+
+  revalidatePath(ADMIN_ACCOUNTS_PATH);
+
+  return {
+    status: 'issued',
+    heading: messages.admin.accountsResetLinkHeading,
+    link: `${getEnv().APP_URL}${adminSetupPath(result.value.token)}`,
+  };
 }

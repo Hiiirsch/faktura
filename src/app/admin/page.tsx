@@ -12,6 +12,7 @@ import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
 import {
   ADMIN_NEW_ORGANIZATION_PATH,
   ADMIN_PASSKEY_PATH,
+  ADMIN_PATH,
   adminOrganizationPath,
 } from '@/routes';
 import {
@@ -23,7 +24,8 @@ import { EmptyState, PageHeader } from '@/ui/components/page';
 import { DataTable } from '@/ui/components/table';
 import { formatDate } from '@/ui/format';
 
-import { adminLogoutAction, removeAdminPasskeyAction } from './actions';
+import { removeAdminPasskeyAction } from './actions';
+import { AdminNav } from './admin-nav';
 import { PasskeyForm } from '../passkey-form';
 
 export const dynamic = 'force-dynamic';
@@ -63,175 +65,171 @@ export default async function AdminPage(): Promise<ReactNode> {
   const passkeysPossible = isPasskeyCapableOrigin();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-content flex-col gap-6 px-8 pb-12">
-      <PageHeader
-        title={messages.admin.heading}
-        description={session.email}
-        actions={
-          <>
+    <>
+      <AdminNav currentPath={ADMIN_PATH} email={session.email} csrfToken={csrfToken} />
+
+      <main className="mx-auto flex w-full max-w-content flex-col gap-6 px-8 pb-12">
+        <PageHeader
+          title={messages.admin.heading}
+          description={messages.admin.scopeIntro}
+          actions={
             <Link href={ADMIN_NEW_ORGANIZATION_PATH} className={PRIMARY_BUTTON_CLASS}>
               {messages.admin.newOrganization}
             </Link>
-            <form action={adminLogoutAction}>
-              <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-              <button type="submit" className={QUIET_BUTTON_CLASS}>
-                {messages.admin.logout}
-              </button>
-            </form>
-          </>
-        }
-      />
+          }
+        />
 
-      <section className="flex flex-col gap-4">
-        {organizations.length === 0 ? (
-          <EmptyState
-            message={messages.admin.organizationsEmpty}
-            action={
-              <Link href={ADMIN_NEW_ORGANIZATION_PATH} className={PRIMARY_BUTTON_CLASS}>
-                {messages.admin.newOrganization}
-              </Link>
-            }
-          />
-        ) : (
-          <DataTable
-            caption={messages.admin.organizationsHeading}
-            rows={organizations}
-            rowKey={(organization) => organization.id}
-            columns={[
-              {
-                key: 'name',
-                header: messages.admin.columnOrganization,
-                cell: (organization) => (
-                  <span className="flex flex-col">
-                    <Link
-                      href={adminOrganizationPath(organization.id)}
-                      className="font-medium text-accent hover:text-accent-hover"
+        <section className="flex flex-col gap-4">
+          {organizations.length === 0 ? (
+            <EmptyState
+              message={messages.admin.organizationsEmpty}
+              action={
+                <Link href={ADMIN_NEW_ORGANIZATION_PATH} className={PRIMARY_BUTTON_CLASS}>
+                  {messages.admin.newOrganization}
+                </Link>
+              }
+            />
+          ) : (
+            <DataTable
+              caption={messages.admin.organizationsHeading}
+              rows={organizations}
+              rowKey={(organization) => organization.id}
+              columns={[
+                {
+                  key: 'name',
+                  header: messages.admin.columnOrganization,
+                  cell: (organization) => (
+                    <span className="flex flex-col">
+                      <Link
+                        href={adminOrganizationPath(organization.id)}
+                        className="font-medium text-accent hover:text-accent-hover"
+                      >
+                        {organization.name}
+                      </Link>
+                      <span className="text-small text-ink-muted">
+                        {messages.admin.createdOn.replace(
+                          '{date}',
+                          formatDate(organization.createdAt, timeZone),
+                        )}
+                      </span>
+                    </span>
+                  ),
+                },
+                {
+                  key: 'accounts',
+                  header: messages.admin.columnAccounts,
+                  numeric: true,
+                  fit: true,
+                  cell: (organization) => organization.userCount,
+                },
+                {
+                  key: 'invoices',
+                  header: messages.admin.columnInvoices,
+                  numeric: true,
+                  fit: true,
+                  cell: (organization) => organization.invoiceCount,
+                },
+                {
+                  key: 'lastLogin',
+                  header: messages.admin.columnLastLogin,
+                  fit: true,
+                  cell: (organization) => (
+                    <span className="text-ink-muted">
+                      {organization.lastLoginAt === null
+                        ? messages.admin.neverSignedIn
+                        : formatDate(organization.lastLoginAt, timeZone)}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'state',
+                  header: messages.admin.columnState,
+                  fit: true,
+                  cell: (organization) => (
+                    <span
+                      className={organization.suspendedAt === null ? 'text-ink' : 'text-ink-muted'}
                     >
-                      {organization.name}
-                    </Link>
-                    <span className="text-small text-ink-muted">
-                      {messages.admin.createdOn.replace(
+                      {organization.suspendedAt === null
+                        ? messages.admin.stateActive
+                        : messages.admin.stateSuspended}
+                    </span>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </section>
+
+        {/*
+          Passkeys des Betreiberkontos (M9, FA-PASS-03).
+
+          Auf der Übersicht und nicht auf einer eigenen Seite: Der Adminbereich hat
+          keine Einstellungen, und eine Seite für einen Abschnitt wäre ein Weg mehr
+          als Inhalt.
+        */}
+        <section className={SECTION_CLASS}>
+          <h2 className="text-section font-semibold text-ink">
+            {messages.security.passkeyHeading}
+          </h2>
+          <p className="max-w-form text-ui text-ink-muted">{messages.security.passkeyIntro}</p>
+
+          {passkeys.length === 0 ? (
+            <p className="text-ui text-ink-muted">{messages.security.passkeyEmpty}</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-rule">
+              {passkeys.map((passkey) => (
+                <li
+                  key={passkey.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="text-ui font-medium">{passkey.label}</span>
+                    <span className="text-ui text-ink-muted">
+                      {messages.security.passkeyCreated.replace(
                         '{date}',
-                        formatDate(organization.createdAt, timeZone),
+                        formatDate(passkey.createdAt, timeZone),
                       )}
                     </span>
-                  </span>
-                ),
-              },
-              {
-                key: 'accounts',
-                header: messages.admin.columnAccounts,
-                numeric: true,
-                fit: true,
-                cell: (organization) => organization.userCount,
-              },
-              {
-                key: 'invoices',
-                header: messages.admin.columnInvoices,
-                numeric: true,
-                fit: true,
-                cell: (organization) => organization.invoiceCount,
-              },
-              {
-                key: 'lastLogin',
-                header: messages.admin.columnLastLogin,
-                fit: true,
-                cell: (organization) => (
-                  <span className="text-ink-muted">
-                    {organization.lastLoginAt === null
-                      ? messages.admin.neverSignedIn
-                      : formatDate(organization.lastLoginAt, timeZone)}
-                  </span>
-                ),
-              },
-              {
-                key: 'state',
-                header: messages.admin.columnState,
-                fit: true,
-                cell: (organization) => (
-                  <span
-                    className={organization.suspendedAt === null ? 'text-ink' : 'text-ink-muted'}
-                  >
-                    {organization.suspendedAt === null
-                      ? messages.admin.stateActive
-                      : messages.admin.stateSuspended}
-                  </span>
-                ),
-              },
-            ]}
-          />
-        )}
-      </section>
-
-      {/*
-        Passkeys des Betreiberkontos (M9, FA-PASS-03).
-
-        Auf der Übersicht und nicht auf einer eigenen Seite: Der Adminbereich hat
-        keine Einstellungen, und eine Seite für einen Abschnitt wäre ein Weg mehr
-        als Inhalt.
-      */}
-      <section className={SECTION_CLASS}>
-        <h2 className="text-section font-semibold text-ink">
-          {messages.security.passkeyHeading}
-        </h2>
-        <p className="max-w-form text-ui text-ink-muted">{messages.security.passkeyIntro}</p>
-
-        {passkeys.length === 0 ? (
-          <p className="text-ui text-ink-muted">{messages.security.passkeyEmpty}</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-rule">
-            {passkeys.map((passkey) => (
-              <li
-                key={passkey.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div className="flex flex-col gap-1">
-                  <span className="text-ui font-medium">{passkey.label}</span>
-                  <span className="text-ui text-ink-muted">
-                    {messages.security.passkeyCreated.replace(
-                      '{date}',
-                      formatDate(passkey.createdAt, timeZone),
-                    )}
-                  </span>
-                  {/*
-                    Die letzte Nutzung gehört dazu (FA-PASS-03): Sie ist die
-                    einzige Angabe, an der auffällt, dass ein Schlüssel benutzt
-                    wird, den man selbst nicht mehr benutzt.
-                  */}
-                  <span className="text-ui text-ink-muted">
-                    {passkey.lastUsedAt === null
-                      ? messages.security.passkeyNeverUsed
-                      : `${messages.security.passkeyLastUsed} ${formatDate(passkey.lastUsedAt, timeZone)}`}
-                  </span>
-                  {passkey.disabled ? (
-                    <span className="text-small text-ink">
-                      {messages.security.passkeyDisabled}
+                    {/*
+                      Die letzte Nutzung gehört dazu (FA-PASS-03): Sie ist die
+                      einzige Angabe, an der auffällt, dass ein Schlüssel benutzt
+                      wird, den man selbst nicht mehr benutzt.
+                    */}
+                    <span className="text-ui text-ink-muted">
+                      {passkey.lastUsedAt === null
+                        ? messages.security.passkeyNeverUsed
+                        : `${messages.security.passkeyLastUsed} ${formatDate(passkey.lastUsedAt, timeZone)}`}
                     </span>
-                  ) : null}
-                </div>
+                    {passkey.disabled ? (
+                      <span className="text-small text-ink">
+                        {messages.security.passkeyDisabled}
+                      </span>
+                    ) : null}
+                  </div>
 
-                <form action={removeAdminPasskeyAction}>
-                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
-                  <input type="hidden" name="passkeyId" value={passkey.id} />
-                  <button type="submit" className={QUIET_BUTTON_CLASS}>
-                    {messages.security.passkeyRemove}
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        )}
+                  <form action={removeAdminPasskeyAction}>
+                    <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                    <input type="hidden" name="passkeyId" value={passkey.id} />
+                    <button type="submit" className={QUIET_BUTTON_CLASS}>
+                      {messages.security.passkeyRemove}
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
 
-        {passkeysPossible ? (
-          <PasskeyForm endpoint={ADMIN_PASSKEY_PATH} csrfToken={csrfToken} />
-        ) : (
-          <p className="max-w-form text-ui text-ink">{messages.security.passkeyUnsupported}</p>
-        )}
-      </section>
+          {passkeysPossible ? (
+            <PasskeyForm endpoint={ADMIN_PASSKEY_PATH} csrfToken={csrfToken} />
+          ) : (
+            <p className="max-w-form text-ui text-ink">{messages.security.passkeyUnsupported}</p>
+          )}
+        </section>
 
-      <section className={SECTION_CLASS}>
-        <p className="max-w-form text-small text-ink-muted">{messages.admin.scopeNote}</p>
-      </section>
-    </main>
+          <section className={SECTION_CLASS}>
+            <p className="max-w-form text-small text-ink-muted">{messages.admin.scopeNote}</p>
+          </section>
+      </main>
+    </>
   );
 }
