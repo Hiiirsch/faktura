@@ -457,19 +457,20 @@ model User {
   sessions        Session[]
   recoveryCodes   RecoveryCode[]
   trustedDevices  TrustedDevice[]
+  passkeys        WebAuthnCredential[]
   /// Belege, die dieses Konto angelegt hat (M8, FA-UI-16).
   ///
   /// `onDelete: SetNull` an der Gegenseite ist kein Zugeständnis: Ein Konto wird
   /// nie gelöscht, sondern gesperrt — gerade damit der Beleg seinen Urheber
   /// behält. Die Regel steht da für den Fall, dass eine ganze Organisation
   /// entfernt wird.
-  createdInvoices Invoice[]       @relation("InvoiceCreatedBy")
+  createdInvoices Invoice[]            @relation("InvoiceCreatedBy")
   pendingLogins   PendingLogin[]
   passwordResets  PasswordReset[]
   /// Von diesem Konto ausgesprochene Einladungen. `onDelete: SetNull` an der
   /// Gegenseite: Ein gesperrtes Konto wird nie gelöscht, aber die Einladung
   /// überdauert ohnehin, wer sie ausgesprochen hat.
-  sentInvitations Invitation[]    @relation("InvitationInvitedBy")
+  sentInvitations Invitation[]         @relation("InvitationInvitedBy")
 
   @@index([organizationId])
   @@index([roleId])
@@ -597,6 +598,7 @@ model AdminUser {
 
   sessions      AdminSession[]
   pendingLogins PendingLogin[]
+  passkeys      WebAuthnCredential[]
 }
 
 /// Ein Einrichtungsnachweis für ein Betreiberkonto (M8, FA-ADM-06, -08).
@@ -809,5 +811,64 @@ model TrustedDevice {
   createdAt  DateTime @default(now())
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Ein registrierter Passkey (M9, FA-PASS-*).
+///
+/// **Ein Faktor, der nicht wandert.** Der private Schlüssel verlässt das Gerät
+/// nie; hier liegt nur der öffentliche. Die Signatur bindet sich an die Herkunft
+/// der aufrufenden Seite — Phishing läuft ins Leere, weil ein Authenticator
+/// einer falschen Domain nichts gibt.
+///
+/// Wie `PendingLogin` gehört der Eintrag zu **genau einem** Konto, Mandant oder
+/// Betreiber; ein CHECK erzwingt das. Beide Identitäten teilen sich die Tabelle,
+/// weil die Zeremonie dieselbe ist — getrennt bleiben sie dort, wo es zählt: in
+/// Sitzung und Cookie.
+model WebAuthnCredential {
+  id          String     @id @default(cuid())
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  /// Die Kennung des Schlüssels, wie der Authenticator sie nennt (base64url).
+  credentialId String  @unique
+  publicKey    String
+  /// Zählt jede Signatur hoch. Ein Rückschritt heißt: der Schlüssel ist kopiert.
+  counter      Int     @default(0)
+  transports   String?
+  /// Frei vergebener Name — „Telefon", „Rechner im Büro".
+  label        String
+
+  /// Gesperrt nach erkanntem Klon. Ein gesperrter Passkey meldet niemanden an.
+  disabledAt DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([adminUserId])
+}
+
+/// Die Aufgabe einer laufenden WebAuthn-Zeremonie (M9).
+///
+/// Sie ist einmal verwendbar und kurzlebig. Der Grund ist derselbe wie beim
+/// Nachweis des zweiten Anmeldeschritts: Was Zugang vorbereitet, soll nicht
+/// herumliegen.
+///
+/// Anders als dort darf **beides** leer sein: Bei der Anmeldung mit einem
+/// auffindbaren Passkey ist zum Zeitpunkt der Aufgabe noch nicht bekannt, wer
+/// sich anmeldet — das nennt erst der Authenticator. Ein CHECK erzwingt
+/// deshalb nur, dass nicht **beide** gesetzt sind.
+model WebAuthnChallenge {
+  id          String   @id @default(cuid())
+  challenge   String
+  /// `REGISTER` oder `AUTHENTICATE`.
+  kind        String
+  userId      String?
+  adminUserId String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
   @@index([expiresAt])
 }

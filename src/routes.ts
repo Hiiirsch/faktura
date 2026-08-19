@@ -105,6 +105,16 @@ export function invoicePdfEmbedPath(id: string): string {
 /** Vorschau einer noch nicht gespeicherten Vorlage (FA-TPL-04). */
 export const TEMPLATE_PREVIEW_PATH = '/api/templates/preview';
 
+/**
+ * Die WebAuthn-Zeremonie zum Anlegen eines Passkeys (M9).
+ *
+ * Je Identität eine eigene Route: Die Trennung liegt in Sitzung und Cookie und
+ * soll auch hier sichtbar bleiben. Eine Route, die je nach mitgesendetem Cookie
+ * das eine oder das andere tut, wäre die erste Stelle, an der sie verschwimmt.
+ */
+export const PASSKEY_PATH = '/api/passkeys';
+export const ADMIN_PASSKEY_PATH = '/admin/api/passkeys';
+
 export type RouteKind = 'page' | 'api';
 
 /**
@@ -307,6 +317,16 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'api',
     access: 'authenticated',
     securityProfile: 'document',
+  },
+  {
+    path: PASSKEY_PATH,
+    kind: 'api',
+    access: 'authenticated',
+  },
+  {
+    path: ADMIN_PASSKEY_PATH,
+    kind: 'api',
+    access: 'platformAdmin',
   },
   {
     path: '/api/assets/[id]',

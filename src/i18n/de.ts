@@ -806,6 +806,26 @@ export const messages = {
     sessionRevokeAll: 'Alle anderen Sitzungen beenden',
 
     // ── Vertraute Geräte (M9) ─────────────────────────────────────────────
+    // ── Passkeys (M9) ─────────────────────────────────────────────────────
+    passkeyHeading: 'Passkeys',
+    passkeyIntro:
+      'Ein Passkey meldet ohne Passwort und ohne Code an. Der Schlüssel verlässt das Gerät nie, und er funktioniert nur auf dieser Adresse — eine nachgebaute Anmeldeseite bekommt nichts.',
+    passkeyEmpty: 'Es ist kein Passkey hinterlegt.',
+    passkeyLabel: 'Bezeichnung',
+    passkeyLabelHint: 'Zum Beispiel „Telefon" oder „Rechner im Büro".',
+    passkeyAdd: 'Passkey anlegen',
+    passkeyRemove: 'Entfernen',
+    passkeyCreated: 'Angelegt am {date}',
+    passkeyLastUsed: 'Zuletzt verwendet',
+    passkeyNeverUsed: 'noch nie verwendet',
+    passkeyDisabled: 'Gesperrt — der Zähler deutete auf eine Kopie hin',
+    passkeyFailed: 'Der Passkey konnte nicht angelegt werden. Bitte erneut versuchen.',
+    passkeyAborted: 'Der Vorgang wurde abgebrochen.',
+    passkeyUnsupported:
+      'Dieser Browser oder diese Adresse unterstützt keine Passkeys. Sie brauchen HTTPS — nur „localhost" geht auch ohne.',
+    passkeyDomainNote:
+      'Ein Passkey gilt nur für die Adresse, unter der er angelegt wurde. Zieht die Anwendung auf eine andere Domain, müssen alle Passkeys neu angelegt werden.',
+
     trustedHeading: 'Vertraute Geräte',
     trustedIntro:
       'Auf diesen Geräten entfällt der Bestätigungscode für 30 Tage. Das Passwort wird weiterhin verlangt.',

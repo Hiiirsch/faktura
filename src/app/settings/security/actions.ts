@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
 import { authorize } from '@/application/auth/authorize';
+import { removePasskey } from '@/application/auth/passkey-registration';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import { revokeAllSessions, revokeSession, revokeTrustedDevice } from '@/application/auth/session-service';
 import {
@@ -151,5 +152,23 @@ export async function revokeTrustedDeviceAction(formData: FormData): Promise<voi
   }
 
   await revokeTrustedDevice(session.userId, id.data);
+  revalidatePath(SECURITY_SETTINGS_PATH);
+}
+
+/** Einen Passkey entfernen (M9, FA-PASS-04). */
+export async function removePasskeyAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  authorize(session, 'security.update');
+
+  const id = z.string().trim().min(1).max(64).safeParse(formData.get('passkeyId'));
+  if (!id.success) {
+    return;
+  }
+
+  await removePasskey(
+    { kind: 'user', id: session.userId, email: session.email, name: session.name },
+    id.data,
+  );
   revalidatePath(SECURITY_SETTINGS_PATH);
 }

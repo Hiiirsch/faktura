@@ -4,10 +4,16 @@ import type { ReactNode } from 'react';
 
 import { listManagedOrganizations } from '@/application/admin/organization-admin';
 import { requireAdminSession } from '@/application/admin/require-admin-session';
+import { listPasskeys } from '@/application/auth/passkey-registration';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { ADMIN_NEW_ORGANIZATION_PATH, adminOrganizationPath } from '@/routes';
+import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
+import {
+  ADMIN_NEW_ORGANIZATION_PATH,
+  ADMIN_PASSKEY_PATH,
+  adminOrganizationPath,
+} from '@/routes';
 import {
   PRIMARY_BUTTON_CLASS,
   QUIET_BUTTON_CLASS,
@@ -17,7 +23,8 @@ import { EmptyState, PageHeader } from '@/ui/components/page';
 import { DataTable } from '@/ui/components/table';
 import { formatDate } from '@/ui/format';
 
-import { adminLogoutAction } from './actions';
+import { adminLogoutAction, removeAdminPasskeyAction } from './actions';
+import { PasskeyForm } from '../passkey-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +53,14 @@ export default async function AdminPage(): Promise<ReactNode> {
 
   const organizations = await listManagedOrganizations(session.platform);
   const timeZone = getAppTimeZone();
+
+  const passkeys = await listPasskeys({
+    kind: 'admin',
+    id: session.adminUserId,
+    email: session.email,
+    name: null,
+  });
+  const passkeysPossible = isPasskeyCapableOrigin();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-content flex-col gap-6 px-8 pb-12">
@@ -145,6 +160,62 @@ export default async function AdminPage(): Promise<ReactNode> {
               },
             ]}
           />
+        )}
+      </section>
+
+      {/*
+        Passkeys des Betreiberkontos (M9, FA-PASS-03).
+
+        Auf der Übersicht und nicht auf einer eigenen Seite: Der Adminbereich hat
+        keine Einstellungen, und eine Seite für einen Abschnitt wäre ein Weg mehr
+        als Inhalt.
+      */}
+      <section className={SECTION_CLASS}>
+        <h2 className="text-section font-semibold text-ink">
+          {messages.security.passkeyHeading}
+        </h2>
+        <p className="max-w-form text-ui text-ink-muted">{messages.security.passkeyIntro}</p>
+
+        {passkeys.length === 0 ? (
+          <p className="text-ui text-ink-muted">{messages.security.passkeyEmpty}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-rule">
+            {passkeys.map((passkey) => (
+              <li
+                key={passkey.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="text-ui font-medium">{passkey.label}</span>
+                  <span className="text-ui text-ink-muted">
+                    {messages.security.passkeyCreated.replace(
+                      '{date}',
+                      formatDate(passkey.createdAt, timeZone),
+                    )}
+                  </span>
+                  {passkey.disabled ? (
+                    <span className="text-small text-ink">
+                      {messages.security.passkeyDisabled}
+                    </span>
+                  ) : null}
+                </div>
+
+                <form action={removeAdminPasskeyAction}>
+                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                  <input type="hidden" name="passkeyId" value={passkey.id} />
+                  <button type="submit" className={QUIET_BUTTON_CLASS}>
+                    {messages.security.passkeyRemove}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {passkeysPossible ? (
+          <PasskeyForm endpoint={ADMIN_PASSKEY_PATH} csrfToken={csrfToken} />
+        ) : (
+          <p className="max-w-form text-ui text-ink">{messages.security.passkeyUnsupported}</p>
         )}
       </section>
 

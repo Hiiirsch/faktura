@@ -14,7 +14,12 @@
 import { cookies, headers } from 'next/headers';
 
 import { getEnv } from '@/infrastructure/config/env';
-import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME, isSameOrigin } from '@/infrastructure/security/csrf';
+import {
+  CSRF_COOKIE_NAME,
+  CSRF_FIELD_NAME,
+  CSRF_HEADER_NAME,
+  isSameOrigin,
+} from '@/infrastructure/security/csrf';
 import { isValidCsrfPair } from '@/infrastructure/security/csrf-verify';
 import { logger } from '@/infrastructure/logging/logger';
 
@@ -60,6 +65,39 @@ export async function assertRequestIntegrity(formData: FormData): Promise<void> 
         'Häufigste Ursache: Die Seite lag lange offen, oder das Cookie wurde zwischenzeitlich ' +
         'gelöscht.',
     }, 'error');
+    throw new RequestIntegrityError('CSRF-Token fehlt oder stimmt nicht überein');
+  }
+}
+
+/**
+ * Dieselbe Prüfung für Anfragen, die **kein Formular** senden (M9, FA-PASS-05).
+ *
+ * Die WebAuthn-Zeremonie tauscht JSON aus: Der Browser bekommt eine Aufgabe und
+ * schickt die Antwort des Authenticators zurück. Ein `FormData` gibt es dabei
+ * nicht, also greift `assertRequestIntegrity` nicht — und ohne Ersatz wären
+ * genau die Routen ungeschützt, über die sich ein Anmeldeverfahren einrichten
+ * lässt.
+ *
+ * Der Token reist deshalb in einer **Kopfzeile** statt in einem Feld. Das ist
+ * für JSON die übliche Form und hier zusätzlich passend: Eine fremde Seite kann
+ * zwar ein Formular abschicken, aber keine eigene Kopfzeile setzen, ohne den
+ * Vorabflug zu bestehen — und den lässt die Herkunftsprüfung nicht durch.
+ */
+export async function assertJsonRequestIntegrity(): Promise<void> {
+  const headerList = await headers();
+  const appUrl = getEnv().APP_URL;
+  const origin = headerList.get('origin');
+
+  if (!isSameOrigin(origin, appUrl)) {
+    logger.security('csrf.origin_rejected', {
+      reason: describeOriginMismatch(origin, appUrl),
+    }, 'error');
+    throw new RequestIntegrityError('Herkunft stimmt nicht überein');
+  }
+
+  const cookieValue = (await cookies()).get(CSRF_COOKIE_NAME)?.value;
+  if (!isValidCsrfPair(cookieValue, headerList.get(CSRF_HEADER_NAME))) {
+    logger.security('csrf.token_rejected', { transport: 'header' }, 'error');
     throw new RequestIntegrityError('CSRF-Token fehlt oder stimmt nicht überein');
   }
 }

@@ -4,21 +4,25 @@ import type { ReactNode } from 'react';
 import QRCode from 'qrcode';
 
 import { requirePermission } from '@/application/auth/authorize';
+import { listPasskeys } from '@/application/auth/passkey-registration';
 import { getSecurityOverview } from '@/application/auth/security-overview';
 import { beginTotpSetup } from '@/application/auth/totp-setup';
 import { checkSystemStatus } from '@/application/system/check-system-status';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { SECURITY_SETTINGS_PATH } from '@/routes';
-import { SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
+import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
+import { PASSKEY_PATH, SECURITY_SETTINGS_PATH } from '@/routes';
+import { Alert, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
-import { formatDateTime } from '@/ui/format';
+import { formatDate, formatDateTime } from '@/ui/format';
 
 import { AppShell } from '../../app-shell';
+import { PasskeyForm } from '../../passkey-form';
 
 import {
   disableTotpAction,
+  removePasskeyAction,
   revokeOtherSessionsAction,
   revokeSessionAction,
   revokeTrustedDeviceAction,
@@ -42,6 +46,15 @@ export default async function SecuritySettingsPage({
   ]);
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
   const timeZone = getAppTimeZone();
+
+  const passkeys = await listPasskeys({
+    kind: 'user',
+    id: session.userId,
+    email: session.email,
+    name: session.name,
+  });
+  // Ohne sicheren Kontext gäbe es nur eine wortlose Ablehnung im Browser.
+  const passkeysPossible = isPasskeyCapableOrigin();
 
   const params = await searchParams;
   const isSettingUp = params.setup === '1' && !overview.totpEnabled;
@@ -205,6 +218,65 @@ export default async function SecuritySettingsPage({
             </button>
           </form>
         ) : null}
+      </section>
+
+      {/*
+        Passkeys (M9, FA-PASS-03, -04).
+
+        Vor den vertrauten Geräten und vor den Sitzungen: Sie sind der stärkste
+        der drei Anmeldewege, und die Reihenfolge auf der Seite soll das sagen.
+      */}
+      <section className="flex flex-col gap-4 border-t border-rule pt-6">
+        <h2 className="text-section font-medium">{messages.security.passkeyHeading}</h2>
+        <p className="max-w-form text-ui text-ink-muted">{messages.security.passkeyIntro}</p>
+
+        {passkeys.length === 0 ? (
+          <p className="text-ui text-ink-muted">{messages.security.passkeyEmpty}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-rule">
+            {passkeys.map((passkey) => (
+              <li
+                key={passkey.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="text-ui font-medium">{passkey.label}</span>
+                  <span className="text-ui text-ink-muted">
+                    {messages.security.passkeyCreated.replace(
+                      '{date}',
+                      formatDate(passkey.createdAt, timeZone),
+                    )}
+                    {' · '}
+                    {passkey.lastUsedAt === null
+                      ? messages.security.passkeyNeverUsed
+                      : `${messages.security.passkeyLastUsed} ${formatDateTime(passkey.lastUsedAt, timeZone)}`}
+                  </span>
+                  {passkey.disabled ? (
+                    <span className="text-small text-ink">{messages.security.passkeyDisabled}</span>
+                  ) : null}
+                </div>
+
+                <form action={removePasskeyAction}>
+                  <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                  <input type="hidden" name="passkeyId" value={passkey.id} />
+                  <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                    {messages.security.passkeyRemove}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {passkeysPossible ? (
+          <PasskeyForm endpoint={PASSKEY_PATH} csrfToken={csrfToken} />
+        ) : (
+          <Alert tone="error">{messages.security.passkeyUnsupported}</Alert>
+        )}
+
+        <p className="max-w-form text-small text-ink-muted">
+          {messages.security.passkeyDomainNote}
+        </p>
       </section>
 
       {/*

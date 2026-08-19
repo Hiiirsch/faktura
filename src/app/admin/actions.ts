@@ -16,6 +16,7 @@ import {
 } from '@/application/admin/organization-admin';
 import { requireAdminSessionOrThrow } from '@/application/admin/require-admin-session';
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
+import { removePasskey } from '@/application/auth/passkey-registration';
 import { readRequestContext } from '@/application/auth/request-context';
 import { messages } from '@/i18n/de';
 import {
@@ -338,4 +339,21 @@ export async function withdrawInvitationAsPlatformAction(
     `${adminOrganizationPath(organizationId)}?` +
       (result.ok ? 'erledigt=zurueckgezogen' : `fehler=${result.error.kind}`),
   );
+}
+
+/** Einen Passkey des Betreiberkontos entfernen (M9, FA-PASS-04). */
+export async function removeAdminPasskeyAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireAdminSessionOrThrow();
+
+  const id = z.string().trim().min(1).max(64).safeParse(formData.get('passkeyId'));
+  if (!id.success) {
+    return;
+  }
+
+  await removePasskey(
+    { kind: 'admin', id: session.adminUserId, email: session.email, name: null },
+    id.data,
+  );
+  revalidatePath(ADMIN_PATH);
 }

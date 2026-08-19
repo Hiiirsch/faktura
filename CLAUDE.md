@@ -603,6 +603,62 @@ das inzwischen auf anderem Weg entstanden ist, und ein `RESET`-Nachweis legt
 keines an. Ein unbekannter Wert fällt durch beide Zweige — die sichere Richtung,
 deshalb braucht es dafür keinen Trigger.
 
+## Passkeys (seit M9)
+
+Ein Faktor, der **nicht wandert**: Der private Schlüssel verlässt das Gerät nie,
+und die Signatur bindet sich an die Herkunft der aufrufenden Seite. Eine
+nachgebaute Anmeldeseite bekommt nichts — das ist der eigentliche Gewinn
+gegenüber TOTP, einem geteilten Geheimnis.
+
+`userVerification: 'required'` ist die Bedingung, unter der ein Passkey **allein**
+anmelden darf: Die Gerätesperre ist der zweite Faktor. Ohne sie wäre er nur ein
+Besitzfaktor, und passwortloses Anmelden eine Einfaktorauthentifizierung.
+
+**Beide Identitäten teilen sich Tabelle und Zeremonie**, weil die Zeremonie
+dieselbe ist; getrennt bleiben sie dort, wo es zählt — in Sitzung, Cookie und
+Route. Ein `WebAuthnCredential` gehört zu genau einem Konto, erzwungen durch
+denselben CHECK wie bei `PendingLogin`. Die Routen sind bewusst zwei: Eine, die
+je nach mitgesendetem Cookie das eine oder das andere täte, wäre die erste
+Stelle, an der die Trennung verschwimmt.
+
+**Die Herkunft wird an genau einer Stelle abgeleitet**
+(`infrastructure/auth/webauthn.ts`). Ein falsches `rpID` ist ein stiller
+Totalausfall: Passkeys lassen sich anlegen, aber nie benutzen, und der Fehler
+zeigt sich als wortlose Ablehnung im Browser. Ein Domainwechsel entwertet **alle**
+Passkeys — das lässt sich nicht abfangen, die Bindung ist der Zweck.
+
+Der `userHandle` trägt die Kennung des Kontos mit Präfix (`user:` / `admin:`),
+nicht die E-Mail-Adresse: Er liegt unverschlüsselt im Authenticator und reist bei
+jeder Anmeldung mit. Eine Kennung sagt nichts über den Menschen dahinter, eine
+Adresse schon. Das Präfix trennt die beiden Identitäten — ohne es könnte ein
+Passkey ins falsche Konto führen.
+
+**Die Aufgabe wird vor der Prüfung verbraucht**, nicht danach: Eine zweite
+Antwort darauf ist ein Wiedereinspielversuch und soll nichts mehr vorfinden,
+gleich ob die erste gelang.
+
+**Der Zähler ist die Klonerkennung.** Ein Rückschritt heißt: Den Schlüssel gibt
+es zweimal. Die Folge ist eine Sperre, nicht nur ein Protokolleintrag — ein Wert,
+den man nur aufschreibt, ist eine Warnung, die niemand liest. Ausgenommen sind
+Authenticator, die gar nicht zählen und immer 0 melden.
+
+**Ohne JavaScript geht es nicht**, und das ist die einzige Stelle der Anwendung,
+für die das gilt. Verkraftbar, weil ein Passkey eine Ergänzung ist: Passwort und
+zweiter Faktor bleiben, und die Anmeldung selbst funktioniert weiterhin ohne. Wo
+die Adresse kein sicherer Kontext ist, erscheint der Knopf gar nicht erst,
+sondern der Grund.
+
+Der CSRF-Token reist bei der Zeremonie in einer **Kopfzeile**
+(`assertJsonRequestIntegrity`), weil kein Formular hinausgeht. Eine fremde Seite
+kann ein Formular abschicken, aber keine eigene Kopfzeile setzen, ohne den
+Vorabflug zu bestehen — und den lässt die Herkunftsprüfung nicht durch.
+
+Geprüft wird auf **zwei Ebenen**: `tests/support/authenticator.ts` baut einen
+Authenticator aus `node:crypto` nach (ES256, COSE-Key und Signatur von Hand) und
+stellt damit die Fälle her, die ein echtes Gerät nie erzeugt — falsche Herkunft,
+fremde Domain, abgelaufene Aufgabe, zweite Antwort. Der Browsertest daneben
+beweist, dass die Zeremonie im echten Chromium durchläuft.
+
 ## Vertraute Geräte (seit M9)
 
 Nach erfolgreichem zweitem Faktor lässt sich ein Gerät als vertraut hinterlegen;
