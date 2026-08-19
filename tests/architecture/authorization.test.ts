@@ -88,6 +88,12 @@ const MAY_CALL_ORGANIZATION_CONTEXT_OF: readonly string[] = [
   'src/infrastructure/repositories/organization-context.ts',
   'src/application/auth/session-service.ts',
   'src/application/auth/login.ts',
+  // Anmeldung mit einem Passkey (M9). Derselbe Grund wie bei der Anmeldung mit
+  // Passwort: Wer die Signatur vorlegt, ist noch niemand — welches Konto und
+  // welche Organisation gemeint sind, ist das *Ergebnis* der Prüfung. Der
+  // `userHandle` des Authenticators wird dabei nicht geglaubt, sondern gegen den
+  // abgelegten Schlüssel abgeglichen.
+  'src/application/auth/passkey-login.ts',
   // Einlösen einer Einladung und einer Passwortzurücksetzung (M8). Derselbe
   // Grund wie bei der Anmeldung: Wer den Token vorlegt, ist noch niemand — die
   // Organisation ist das *Ergebnis* der Abfrage. Die beiden Vorgänge stehen

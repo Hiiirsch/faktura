@@ -18,7 +18,15 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = fileURLToPath(new URL('../../..', import.meta.url));
 
 export const TEST_PORT = 3987;
-export const TEST_BASE_URL = `http://127.0.0.1:${String(TEST_PORT)}`;
+/**
+ * **`localhost`, nicht `127.0.0.1`** (seit M9).
+ *
+ * Eine IP-Adresse ist als WebAuthn-`rpID` unzulässig — der Browser bricht die
+ * Zeremonie wortlos ab. `localhost` ist der einzige Name, der ohne HTTPS als
+ * sicherer Kontext gilt, und damit der einzige, unter dem sich Passkeys in einem
+ * Test prüfen lassen.
+ */
+export const TEST_BASE_URL = `http://localhost:${String(TEST_PORT)}`;
 export const TEST_USER_EMAIL = 'pruefung@example.org';
 /** Eigenes Konto für den Sperrtest, damit er die übrigen Prüfungen nicht stört. */
 export const TEST_LOCKOUT_EMAIL = 'sperre@example.org';
@@ -88,7 +96,7 @@ const serverEnv = {
   ...process.env,
   NODE_ENV: 'production',
   PORT: String(TEST_PORT),
-  HOSTNAME: '127.0.0.1',
+  HOSTNAME: 'localhost',
   DATABASE_URL: TEST_DATABASE_URL,
   APP_URL: TEST_BASE_URL,
   APP_TIMEZONE: 'Europe/Berlin',
@@ -162,7 +170,7 @@ export async function setup(): Promise<void> {
     stdio: 'pipe',
   });
 
-  server = spawn('npx', ['next', 'start', '--port', String(TEST_PORT), '--hostname', '127.0.0.1'], {
+  server = spawn('npx', ['next', 'start', '--port', String(TEST_PORT), '--hostname', 'localhost'], {
     cwd: projectRoot,
     env: serverEnv,
     // Die Ausgabe des Servers bleibt sichtbar. Ein Fehler in einem

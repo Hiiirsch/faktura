@@ -46,14 +46,30 @@ export function expectedOrigin(appUrl: string = getEnv().APP_URL): string {
  * Ob die Anwendung überhaupt in einem Kontext läuft, in dem Passkeys möglich
  * sind.
  *
- * Der Browser verweigert WebAuthn außerhalb eines sicheren Kontexts. `localhost`
- * gilt als sicher, jede andere Domain braucht HTTPS. Die Oberfläche fragt das
- * ab, um den Knopf nicht anzubieten, wo er nur eine wortlose Fehlermeldung
- * erzeugen könnte.
+ * Zwei Bedingungen, und die zweite hat mich beim Browsertest erwischt:
+ *
+ * 1. **Sicherer Kontext.** Der Browser verweigert WebAuthn sonst. `localhost`
+ *    gilt als sicher, jede andere Adresse braucht HTTPS.
+ * 2. **Ein Domainname, keine IP-Adresse.** Das `rpID` muss ein Domainname sein;
+ *    `127.0.0.1` ist zwar ein sicherer Kontext, aber als `rpID` unzulässig — der
+ *    Browser bricht die Zeremonie wortlos ab. Die erste Fassung dieser Funktion
+ *    ließ IP-Adressen durch, und der Knopf erschien dort, wo er nie funktionieren
+ *    konnte.
+ *
+ * Die Oberfläche fragt das ab, um den Knopf nicht anzubieten, wo er nur eine
+ * wortlose Ablehnung erzeugen könnte.
  */
 export function isPasskeyCapableOrigin(appUrl: string = getEnv().APP_URL): boolean {
   const url = new URL(appUrl);
-  return url.protocol === 'https:' || url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+
+  // Ein Hostname aus lauter Ziffern und Punkten ist eine IPv4-Adresse; eckige
+  // Klammern kennzeichnen IPv6.
+  const isIpAddress = /^\d{1,3}(?:\.\d{1,3}){3}$/u.test(url.hostname) || url.hostname.includes(':');
+  if (isIpAddress) {
+    return false;
+  }
+
+  return url.protocol === 'https:' || url.hostname === 'localhost';
 }
 
 /**

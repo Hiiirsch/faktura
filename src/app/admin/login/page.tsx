@@ -5,9 +5,11 @@ import type { ReactNode } from 'react';
 import { getOptionalAdminSession } from '@/application/admin/require-admin-session';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { ADMIN_PATH } from '@/routes';
+import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
+import { ADMIN_PASSKEY_LOGIN_PATH, ADMIN_PATH } from '@/routes';
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 
+import { PasskeyLoginButton } from '../../passkey-login-button';
 import { adminLoginAction, type AdminLoginErrorCode } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +58,7 @@ export default async function AdminLoginPage({
   const error = errorMessage(rawError as AdminLoginErrorCode | undefined, rawMinutes);
 
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
+  const passkeysPossible = isPasskeyCapableOrigin();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-8 px-6 py-16">
@@ -109,6 +112,30 @@ export default async function AdminLoginPage({
           {messages.login.submit}
         </button>
       </form>
+
+      {/*
+        Auch hier eine Ergänzung neben dem Formular (M9, FA-PASS-06,
+        FA-ADM-08).
+
+        Ein Passkey mit Nutzerverifikation bringt beide Faktoren mit — Besitz des
+        Geräts und Gerätesperre. Deshalb entsteht damit unmittelbar eine
+        Sitzung, während der Passwortweg über den zweiten Schritt führt.
+      */}
+      {passkeysPossible ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-rule" />
+            <span className="text-small text-ink-faint">{messages.login.passkeyOr}</span>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
+
+          <PasskeyLoginButton
+            endpoint={ADMIN_PASSKEY_LOGIN_PATH}
+            redirectTo={ADMIN_PATH}
+            csrfToken={csrfToken}
+          />
+        </div>
+      ) : null}
     </main>
   );
 }

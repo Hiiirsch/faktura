@@ -328,7 +328,7 @@ Betreiber der Installation darf und was nicht.
 | FA-ADM-05 | Der Betreiber legt Unternehmen an, legt sie still, gibt sie frei und sperrt einzelne Konten. Die Aussperrsicherung aus FA-ROLE-04 gilt auch für ihn. | MUSS | T |
 | FA-ADM-06 | Das erste Betreiberkonto entsteht über ein Kommando auf dem Server, nicht über eine Migration. | MUSS | R |
 | FA-ADM-07 | Protokolleinträge unterscheiden, ob ein Mitglied des Unternehmens oder der Betreiber gehandelt hat. Ein Eingriff des Betreibers steht im Protokoll des betroffenen Unternehmens. | MUSS | T |
-| FA-ADM-08 | Betreiberkonten führen den zweiten Faktor **verpflichtend**. | MUSS | T |
+| FA-ADM-08 | Ein Betreiberkonto meldet sich mit **mehr als einem Faktor** an — Passwort und TOTP, oder ein Passkey mit Nutzerverifikation. Ein Passwort allein genügt zu keinem Zeitpunkt. | MUSS | T |
 
 ### 16.5 Sicherheit der Trennung
 

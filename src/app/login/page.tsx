@@ -5,9 +5,11 @@ import type { ReactNode } from 'react';
 import { getOptionalSession } from '@/application/auth/require-session';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { DASHBOARD_PATH } from '@/routes';
+import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
+import { DASHBOARD_PATH, PASSKEY_LOGIN_PATH } from '@/routes';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 
+import { PasskeyLoginButton } from '../passkey-login-button';
 import { loginAction, type LoginErrorCode } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -63,6 +65,8 @@ export default async function LoginPage({
   // Die Middleware reicht den CSRF-Token über eine Kopfzeile durch, weil das
   // zugehörige Cookie beim allerersten Aufruf noch nicht in der Anfrage steht.
   const csrfToken = (await headers()).get(CSRF_HEADER_NAME) ?? '';
+  // Ohne sicheren Kontext gäbe der Knopf nur eine wortlose Ablehnung.
+  const passkeysPossible = isPasskeyCapableOrigin();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-8 px-6 py-16">
@@ -121,6 +125,30 @@ export default async function LoginPage({
           {messages.login.submit}
         </button>
       </form>
+
+      {/*
+        Der Passkey-Weg steht **neben** dem Formular, nicht an seiner Stelle
+        (M9, FA-PASS-06).
+
+        WebAuthn braucht JavaScript; das Formular darüber nicht. Fällt
+        JavaScript aus, fällt dieser Abschnitt weg und der gewohnte Weg bleibt —
+        deshalb ist es eine Ergänzung und kein Ersatz.
+      */}
+      {passkeysPossible ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-rule" />
+            <span className="text-small text-ink-faint">{messages.login.passkeyOr}</span>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
+
+          <PasskeyLoginButton
+            endpoint={PASSKEY_LOGIN_PATH}
+            redirectTo={DASHBOARD_PATH}
+            csrfToken={csrfToken}
+          />
+        </div>
+      ) : null}
 
       <p className="text-ui text-ink-muted">
         {messages.login.noRegistrationHint}

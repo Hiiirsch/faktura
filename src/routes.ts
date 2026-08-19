@@ -115,6 +115,18 @@ export const TEMPLATE_PREVIEW_PATH = '/api/templates/preview';
 export const PASSKEY_PATH = '/api/passkeys';
 export const ADMIN_PASSKEY_PATH = '/admin/api/passkeys';
 
+/**
+ * Die Anmeldung mit einem Passkey — **öffentlich**, weil sie vor der Sitzung
+ * liegt (M9, FA-PASS-06).
+ *
+ * Wieder je Identität eine Route: Die Mandantenroute weist einen Passkey eines
+ * Betreiberkontos ab und umgekehrt. Eine gemeinsame Route öffnete je nach
+ * vorgelegtem Schlüssel die eine oder die andere Sitzung — und die Trennung wäre
+ * an dieser Stelle aufgehoben.
+ */
+export const PASSKEY_LOGIN_PATH = '/api/passkeys/login';
+export const ADMIN_PASSKEY_LOGIN_PATH = '/admin/api/passkeys/login';
+
 export type RouteKind = 'page' | 'api';
 
 /**
@@ -322,6 +334,23 @@ export const routes: readonly RouteDefinition[] = [
     path: PASSKEY_PATH,
     kind: 'api',
     access: 'authenticated',
+  },
+  {
+    path: PASSKEY_LOGIN_PATH,
+    kind: 'api',
+    access: 'public',
+    publicReason:
+      'Die Anmeldung mit einem Passkey liegt vor der Sitzung. Geschützt ist sie nicht ' +
+      'durch ein Cookie, sondern durch die Signatur des Authenticators — ohne gültige ' +
+      'Antwort entsteht keine Sitzung.',
+  },
+  {
+    path: ADMIN_PASSKEY_LOGIN_PATH,
+    kind: 'api',
+    access: 'public',
+    publicReason:
+      'Wie die Mandantenroute: Die Anmeldung liegt vor der Sitzung, geprüft wird die ' +
+      'Signatur. Ein Passkey eines Mandantenkontos wird hier abgewiesen.',
   },
   {
     path: ADMIN_PASSKEY_PATH,

@@ -20,9 +20,11 @@ import {
   type PasskeyOwner,
   removePasskey,
 } from '@/application/auth/passkey-registration';
+import { beginPasskeyLogin, completePasskeyLogin } from '@/application/auth/passkey-login';
+import { resolveSession } from '@/application/auth/session-service';
 import { WEBAUTHN_CHALLENGE_TTL_MS } from '@/domain/auth/webauthn-policy';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
-import { expectedOrigin, relyingPartyId } from '@/infrastructure/auth/webauthn';
+import { expectedOrigin, relyingPartyId, userHandleFor } from '@/infrastructure/auth/webauthn';
 import { createUser } from '@/infrastructure/repositories/auth-repository';
 import { DEFAULT_ORGANIZATION_ID } from '@/infrastructure/repositories/organization-context';
 
@@ -33,6 +35,7 @@ import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
 const NOW = new Date();
+const CONTEXT = { ipAddress: '203.0.113.40', userAgent: 'pruefung' };
 const ORIGIN = expectedOrigin();
 const RP_ID = relyingPartyId();
 
@@ -284,5 +287,308 @@ describe('FA-PASS-04 Passkeys auflisten und entfernen', () => {
 
     expect(await removePasskey(owner, id)).toBe(true);
     expect(await prisma.webAuthnCredential.count()).toBe(0);
+  });
+});
+
+describe('FA-PASS-06..08 Anmeldung mit einem Passkey', () => {
+  /** Ein Konto samt registriertem Passkey. */
+  async function withPasskey(): Promise<{
+    readonly owner: PasskeyOwner;
+    readonly authenticator: ReturnType<typeof createFakeAuthenticator>;
+  }> {
+    const owner = await seedOwner();
+    const authenticator = createFakeAuthenticator();
+    const offer = await beginPasskeyRegistration(owner, NOW);
+
+    const registered = await completePasskeyRegistration(
+      owner,
+      offer.challengeId,
+      authenticator.register(offer.options.challenge, ORIGIN, RP_ID) as never,
+      'Telefon',
+      NOW,
+    );
+    if (!registered.ok) throw new Error('nicht registriert');
+
+    return { owner, authenticator };
+  }
+
+  function handleOf(owner: PasskeyOwner): string {
+    return userHandleFor(owner.kind, owner.id);
+  }
+
+  it('meldet ohne Passwort und ohne Code an', async () => {
+    const { owner, authenticator } = await withPasskey();
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(
+        offer.options.challenge,
+        ORIGIN,
+        RP_ID,
+        handleOf(owner),
+      ) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.kind).toBe('user');
+    if (result.value.kind !== 'user') return;
+
+    // Die Sitzung trägt sofort.
+    expect(await resolveSession(result.value.session.token, NOW)).not.toBeNull();
+
+    // Und der Passkey merkt sich, dass er benutzt wurde.
+    const stored = await prisma.webAuthnCredential.findFirstOrThrow();
+    expect(stored.lastUsedAt).not.toBeNull();
+    expect(stored.counter).toBeGreaterThan(0);
+  });
+
+  /**
+   * **Die Klonerkennung** (FA-PASS-08).
+   *
+   * Ein Authenticator zählt jede Signatur hoch. Kommt ein Wert zurück, der nicht
+   * größer ist als der gespeicherte, gibt es den Schlüssel zweimal. Die Folge ist
+   * eine Sperre, nicht nur ein Protokolleintrag — sonst wäre es eine Warnung,
+   * die niemand liest.
+   */
+  it('sperrt den Passkey, wenn der Zähler einen Klon verrät', async () => {
+    const { owner, authenticator } = await withPasskey();
+
+    // Einmal regulär anmelden, damit der Zähler steht.
+    const first = await beginPasskeyLogin(NOW);
+    await completePasskeyLogin(
+      'user',
+      first.challengeId,
+      authenticator.authenticate(first.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    const before = await prisma.webAuthnCredential.findFirstOrThrow();
+
+    // Ein Klon zählt unabhängig weiter und liegt deshalb zurück.
+    const second = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      second.challengeId,
+      authenticator.authenticate(
+        second.options.challenge,
+        ORIGIN,
+        RP_ID,
+        handleOf(owner),
+        before.counter,
+      ) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+
+    const after = await prisma.webAuthnCredential.findFirstOrThrow();
+    expect(after.disabledAt).not.toBeNull();
+
+    // Und ein gesperrter Passkey meldet niemanden mehr an — auch nicht mit
+    // einem wieder korrekten Zähler.
+    const third = await beginPasskeyLogin(NOW);
+    const again = await completePasskeyLogin(
+      'user',
+      third.challengeId,
+      authenticator.authenticate(third.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      NOW,
+    );
+    expect(again.ok).toBe(false);
+  });
+
+  it('weist ein gesperrtes Konto ab', async () => {
+    const { owner, authenticator } = await withPasskey();
+    await prisma.user.update({ where: { id: owner.id }, data: { disabledAt: NOW } });
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(offer.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.session.count()).toBe(0);
+  });
+
+  it('weist ein stillgelegtes Unternehmen ab', async () => {
+    const { owner, authenticator } = await withPasskey();
+    await prisma.organization.update({
+      where: { id: DEFAULT_ORGANIZATION_ID },
+      data: { suspendedAt: NOW },
+    });
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(offer.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.session.count()).toBe(0);
+  });
+
+  /**
+   * **Die Trennung der beiden Identitäten.**
+   *
+   * Die Anmeldeseite der Mandanten darf mit einem Passkey keine Betreibersitzung
+   * öffnen — und umgekehrt. Die Route sagt, welche Identität sie bedient; ein
+   * Schlüssel der anderen wird abgewiesen.
+   */
+  it('öffnet ein Mandanten-Passkey keine Betreibersitzung', async () => {
+    const { owner, authenticator } = await withPasskey();
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'admin',
+      offer.challengeId,
+      authenticator.authenticate(offer.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.adminSession.count()).toBe(0);
+  });
+
+  /**
+   * Der `userHandle` kommt vom Authenticator, also von der Gegenseite.
+   *
+   * Ihm ohne Abgleich zu folgen hieße, sich das Konto nennen zu lassen, in das
+   * man will.
+   */
+  it('glaubt einem gefälschten `userHandle` nicht', async () => {
+    const { authenticator } = await withPasskey();
+
+    const other = await createUser({
+      email: 'zweiter@example.org',
+      passwordHash: await hashPassword('Zwetschgenkuchen-mit-Streuseln-7'),
+      organizationId: DEFAULT_ORGANIZATION_ID,
+    });
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(
+        offer.options.challenge,
+        ORIGIN,
+        RP_ID,
+        userHandleFor('user', other.id),
+      ) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.session.count()).toBe(0);
+  });
+
+  it('weist eine Antwort mit fremder Herkunft ab', async () => {
+    const { owner, authenticator } = await withPasskey();
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(
+        offer.options.challenge,
+        'https://faktura-anmeldung.example',
+        RP_ID,
+        handleOf(owner),
+      ) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.session.count()).toBe(0);
+  });
+
+  it('lässt sich eine Aufgabe nur einmal beantworten', async () => {
+    const { owner, authenticator } = await withPasskey();
+
+    const offer = await beginPasskeyLogin(NOW);
+    const response = authenticator.authenticate(
+      offer.options.challenge,
+      ORIGIN,
+      RP_ID,
+      handleOf(owner),
+    );
+
+    expect(
+      (await completePasskeyLogin('user', offer.challengeId, response as never, CONTEXT, NOW)).ok,
+    ).toBe(true);
+
+    // Dieselbe Antwort ein zweites Mal ist ein Wiedereinspielversuch.
+    const again = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      response as never,
+      CONTEXT,
+      NOW,
+    );
+    expect(again.ok).toBe(false);
+  });
+
+  it('läuft eine Anmeldeaufgabe nach zwei Minuten ab', async () => {
+    const { owner, authenticator } = await withPasskey();
+
+    const offer = await beginPasskeyLogin(NOW);
+    const tooLate = new Date(NOW.getTime() + WEBAUTHN_CHALLENGE_TTL_MS + 1_000);
+
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(offer.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      tooLate,
+    );
+
+    expect(result.ok).toBe(false);
+  });
+
+  /**
+   * Die Anmeldesperre gilt hier **nicht**.
+   *
+   * Zehn Fehlversuche sperren den Passwortweg; ein Passkey lässt sich nicht
+   * durchprobieren. Eine Sperre, die an ihm hinge, wäre ein Weg, jemanden
+   * auszusperren, ohne sein Passwort zu kennen.
+   */
+  it('meldet auch ein gesperrtes Passwortkonto mit Passkey an', async () => {
+    const { owner, authenticator } = await withPasskey();
+    await prisma.user.update({
+      where: { id: owner.id },
+      data: { failedLogins: 10, lockedUntil: new Date(NOW.getTime() + 15 * 60_000) },
+    });
+
+    const offer = await beginPasskeyLogin(NOW);
+    const result = await completePasskeyLogin(
+      'user',
+      offer.challengeId,
+      authenticator.authenticate(offer.options.challenge, ORIGIN, RP_ID, handleOf(owner)) as never,
+      CONTEXT,
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+
+    // Und die Sperre ist danach aufgehoben: Der Passkey hat bewiesen, wer da ist.
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: owner.id } });
+    expect(user.lockedUntil).toBeNull();
+    expect(user.failedLogins).toBe(0);
   });
 });

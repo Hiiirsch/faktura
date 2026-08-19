@@ -216,6 +216,14 @@ export const messages = {
       'Dieses Konto ist mit einem zweiten Faktor geschützt. Der sechsstellige Code steht in der Authenticator-App; ein Wiederherstellungscode geht ebenso.',
     codeLabel: 'Bestätigungscode',
     codeSubmit: 'Anmelden',
+    // ── Anmeldung mit Passkey (M9) ────────────────────────────────────────
+    passkeySubmit: 'Mit Passkey anmelden',
+    passkeyOr: 'oder',
+    passkeyFailed: 'Die Anmeldung mit Passkey ist gerade nicht möglich.',
+    /** Eine Meldung für jede Ablehnung — sonst ließen sich Konten erkunden. */
+    passkeyRejected: 'Dieser Passkey funktioniert hier nicht.',
+    passkeyAborted: 'Der Vorgang wurde abgebrochen.',
+
     /** Ankreuzfeld im zweiten Anmeldeschritt (M9, FA-TRUST-01). */
     rememberDevice: 'Diesem Gerät vertrauen',
     rememberDeviceHint:

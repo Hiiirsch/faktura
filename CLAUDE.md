@@ -627,6 +627,14 @@ Totalausfall: Passkeys lassen sich anlegen, aber nie benutzen, und der Fehler
 zeigt sich als wortlose Ablehnung im Browser. Ein Domainwechsel entwertet **alle**
 Passkeys — das lässt sich nicht abfangen, die Bindung ist der Zweck.
 
+**Eine IP-Adresse ist als `rpID` unzulässig**, auch die des eigenen Rechners.
+`127.0.0.1` ist ein sicherer Kontext, aber kein Domainname; der Browser bricht
+die Zeremonie wortlos ab. Aufgefallen ist das erst im Browsertest — die
+Anwendungsschicht kann diesen Fehler nicht sehen, weil er im Browser passiert,
+bevor eine Antwort entsteht. Zwei Folgen: `isPasskeyCapableOrigin()` weist
+IP-Adressen ab, damit der Knopf dort nicht erscheint, und der Integrationsserver
+läuft seither unter `localhost` statt `127.0.0.1`.
+
 Der `userHandle` trägt die Kennung des Kontos mit Präfix (`user:` / `admin:`),
 nicht die E-Mail-Adresse: Er liegt unverschlüsselt im Authenticator und reist bei
 jeder Anmeldung mit. Eine Kennung sagt nichts über den Menschen dahinter, eine
@@ -641,6 +649,15 @@ gleich ob die erste gelang.
 es zweimal. Die Folge ist eine Sperre, nicht nur ein Protokolleintrag — ein Wert,
 den man nur aufschreibt, ist eine Warnung, die niemand liest. Ausgenommen sind
 Authenticator, die gar nicht zählen und immer 0 melden.
+
+**Die Reihenfolge dabei ist der Punkt.** `verifyAuthenticationResponse` bekommt
+`counter: 0` übergeben, obwohl der gespeicherte Wert vorliegt — die Prüfung macht
+`passkey-login.ts` selbst, gleich darunter, auf dem **verifizierten** `newCounter`
+und damit **nach** der Signatur. Überließe man sie der Bibliothek, käme der Klon
+als Ausnahme an und ließe sich nicht von einer beliebigen ungültigen Antwort
+unterscheiden — der Passkey würde nicht gesperrt. Läse man den Zähler dagegen
+vorher aus den Rohdaten, ließe sich mit einer **erfundenen** Antwort ein fremder
+Passkey sperren, ohne ihn zu besitzen.
 
 **Ohne JavaScript geht es nicht**, und das ist die einzige Stelle der Anwendung,
 für die das gilt. Verkraftbar, weil ein Passkey eine Ergänzung ist: Passwort und
