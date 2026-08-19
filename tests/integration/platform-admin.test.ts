@@ -25,8 +25,10 @@ import {
   resolveAdminSession,
 } from '@/application/admin/admin-session-service';
 import {
+  anonymizeTenantUser,
   createManagedOrganization,
   getManagedOrganization,
+  getPlatformAuditTrail,
   getOrganizationAccounts,
   listManagedOrganizations,
   OWNER_ROLE_NAME,
@@ -34,6 +36,7 @@ import {
   setOrganizationSuspended,
   setPlatformUserDisabled,
   startTenantPasswordReset,
+  updateManagedOrganization,
 } from '@/application/admin/organization-admin';
 import { fullyAuthorized } from '@/application/auth/authorize';
 import { login } from '@/application/auth/login';
@@ -47,16 +50,20 @@ import { EMPTY_COMPANY_PROFILE, saveCompanyProfile } from '@/application/company
 import { createDraftInvoice } from '@/application/invoices/invoice-service';
 import { issueInvoice } from '@/application/invoices/issue-invoice';
 import { ALL_PERMISSION_KEYS } from '@/domain/policy/can';
+import { exportOrganizationData } from '@/application/export/export-data';
+import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { generateTotpSecret } from '@/infrastructure/auth/totp';
 import { getEnv } from '@/infrastructure/config/env';
+import { createUser } from '@/infrastructure/repositories/auth-repository';
 import { createAdminUser } from '@/infrastructure/repositories/platform-repository';
+import type { platformContextOf } from '@/infrastructure/repositories/platform-context';
 import { organizationContextOf } from '@/infrastructure/repositories/organization-context';
 import { Secret, TOTP } from 'otpauth';
 
 import { freeBuyer } from '../support/buyer';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
@@ -774,5 +781,276 @@ describe('FA-ADM-09 / FA-ADM-10 Wege aus einer Sackgasse (M9/B1)', () => {
     expect(reset).toBeDefined();
     expect(reset?.actorKind).toBe('ADMIN');
     expect(reset?.actorId).toBe(adminUserId);
+  });
+});
+
+/**
+ * Ein Konto unkenntlich machen (M10, B3, FA-ADM-15).
+ *
+ * Die beiden ersten Prüfungen sind die eigentliche Zusage: Der Beleg behält
+ * seinen Urheber, das Protokoll seinen Akteur. Ohne sie wäre „anonymisieren"
+ * nur ein anderes Wort für löschen mit Zusatzschritten.
+ */
+describe('FA-ADM-15 Anonymisieren statt löschen', () => {
+  /** Ein Unternehmen mit zwei Konten: eines mit Rechten, eines ohne. */
+  async function organizationWithTwoAccounts(): Promise<{
+    readonly platform: ReturnType<typeof platformContextOf>;
+    readonly adminUserId: string;
+    readonly organizationId: string;
+    readonly ownerId: string;
+    readonly memberId: string;
+  }> {
+    const { platform, adminUserId } = await platformContext();
+
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+    await acceptInvitation(
+      created.value.token,
+      { name: 'Bosch', password: OWNER_PASSWORD },
+      null,
+      NOW,
+    );
+
+    const owner = await prisma.user.findUniqueOrThrow({ where: { email: 'chef@bosch.example' } });
+
+    // Ein zweites Konto ohne Rolle — es soll die Aussperrsicherung nicht
+    // auslösen, wenn es verschwindet.
+    const member = await createUser({
+      email: 'geselle@bosch.example',
+      passwordHash: await hashPassword(OWNER_PASSWORD),
+      organizationId: created.value.organizationId,
+    });
+
+    return {
+      platform,
+      adminUserId,
+      organizationId: created.value.organizationId,
+      ownerId: owner.id,
+      memberId: member.id,
+    };
+  }
+
+  it('behält der Beleg seinen Urheber', async () => {
+    const { platform, adminUserId, organizationId, memberId } = await organizationWithTwoAccounts();
+
+    const invoice = await prisma.invoice.create({
+      data: {
+        organizationId,
+        documentType: 'INVOICE',
+        status: 'DRAFT',
+        buyerMode: 'FREE',
+        buyerFreeText: 'Kundschaft\nStraße 1\n70000 Ort',
+        createdById: memberId,
+        currency: 'EUR',
+      },
+    });
+
+    const result = await anonymizeTenantUser(platform, memberId, adminUserId, null, NOW);
+    expect(result.ok).toBe(true);
+
+    const after = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } });
+    expect(after.createdById).toBe(memberId);
+
+    // Und die Zeile ist noch da — nur ohne Person.
+    const account = await prisma.user.findUniqueOrThrow({ where: { id: memberId } });
+    expect(account.anonymizedAt).not.toBeNull();
+    expect(account.name).toBeNull();
+    expect(account.email).toBe(`geloescht-${memberId}@invalid`);
+  });
+
+  it('bleibt der Protokolleintrag auflösbar', async () => {
+    const { platform, adminUserId, organizationId, memberId } = await organizationWithTwoAccounts();
+
+    await recordAuditEntry(organizationContextOf(organizationId), {
+      entityType: 'Invoice',
+      entityId: 'RE-2026-0001',
+      action: 'ISSUED',
+      actorId: memberId,
+    });
+
+    await anonymizeTenantUser(platform, memberId, adminUserId, null, NOW);
+
+    const entry = await prisma.auditLog.findFirstOrThrow({ where: { action: 'ISSUED' } });
+    expect(entry.actorId).toBe(memberId);
+    // Die Kennung führt zu einer Zeile — nur zu keiner Person mehr.
+    expect(await prisma.user.count({ where: { id: memberId } })).toBe(1);
+  });
+
+  it('entfernt jede Spur, mit der sich noch anmelden ließe', async () => {
+    const { platform, adminUserId, memberId } = await organizationWithTwoAccounts();
+
+    await anonymizeTenantUser(platform, memberId, adminUserId, null, NOW);
+
+    const account = await prisma.user.findUniqueOrThrow({ where: { id: memberId } });
+    expect(account.totpSecret).toBeNull();
+    expect(account.totpEnabled).toBe(false);
+    expect(account.roleId).toBeNull();
+    expect(account.disabledAt).not.toBeNull();
+
+    expect(await prisma.session.count({ where: { userId: memberId } })).toBe(0);
+    expect(await prisma.trustedDevice.count({ where: { userId: memberId } })).toBe(0);
+    expect(await prisma.webAuthnCredential.count({ where: { userId: memberId } })).toBe(0);
+    expect(await prisma.recoveryCode.count({ where: { userId: memberId } })).toBe(0);
+
+    const signIn = await login(
+      { email: 'geselle@bosch.example', password: OWNER_PASSWORD },
+      CONTEXT,
+      NOW,
+    );
+    expect(signIn.ok).toBe(false);
+  });
+
+  it('weist die Aussperrsicherung das letzte Konto mit Rechteverwaltung ab', async () => {
+    const { platform, adminUserId, ownerId } = await organizationWithTwoAccounts();
+
+    const result = await anonymizeTenantUser(platform, ownerId, adminUserId, null, NOW);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe('LAST_ADMINISTRATOR');
+
+    // Ganz zurückgerollt: Das Konto ist unverändert.
+    const account = await prisma.user.findUniqueOrThrow({ where: { id: ownerId } });
+    expect(account.anonymizedAt).toBeNull();
+    expect(account.email).toBe('chef@bosch.example');
+  });
+
+  it('kollidieren zwei anonymisierte Konten nicht', async () => {
+    // Der eindeutige Index auf `User.email` — die Platzhalteradresse trägt
+    // deshalb die Kennung.
+    const { platform, adminUserId, organizationId, memberId } = await organizationWithTwoAccounts();
+
+    const second = await createUser({
+      email: 'lehrling@bosch.example',
+      passwordHash: await hashPassword(OWNER_PASSWORD),
+      organizationId,
+    });
+
+    expect((await anonymizeTenantUser(platform, memberId, adminUserId, null, NOW)).ok).toBe(true);
+    expect((await anonymizeTenantUser(platform, second.id, adminUserId, null, NOW)).ok).toBe(true);
+
+    expect(await prisma.user.count({ where: { anonymizedAt: { not: null } } })).toBe(2);
+  });
+
+  it('steht der Vorgang im Protokoll beider Seiten', async () => {
+    const { platform, adminUserId, organizationId, memberId } = await organizationWithTwoAccounts();
+
+    await anonymizeTenantUser(platform, memberId, adminUserId, null, NOW);
+
+    const tenantSide = await prisma.auditLog.findFirstOrThrow({
+      where: { action: 'ANONYMIZED', organizationId },
+    });
+    expect(tenantSide.actorKind).toBe('ADMIN');
+
+    const trail = await getPlatformAuditTrail(platform);
+    expect(trail.some((entry) => entry.action === 'ANONYMIZED')).toBe(true);
+  });
+});
+
+/**
+ * Unternehmen bearbeiten (M10, B4, FA-ADM-16).
+ *
+ * Der letzte Test ist der, auf den es ankommt: Die interne Notiz erreicht den
+ * Mandanten nicht — weder in seiner Oberfläche noch in seinem Datenexport.
+ */
+describe('FA-ADM-16 Name und interne Notiz', () => {
+  it('ändert den Namen und protokolliert ihn', async () => {
+    const { platform, adminUserId } = await platformContext();
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+
+    const result = await updateManagedOrganization(
+      platform,
+      created.value.organizationId,
+      { name: 'Schreinerei Bosch GmbH', note: null },
+      adminUserId,
+      null,
+    );
+    expect(result.ok).toBe(true);
+
+    const organization = await prisma.organization.findUniqueOrThrow({
+      where: { id: created.value.organizationId },
+    });
+    expect(organization.name).toBe('Schreinerei Bosch GmbH');
+
+    const entry = await prisma.auditLog.findFirst({
+      where: { action: 'UPDATED', organizationId: created.value.organizationId },
+    });
+    expect(entry?.actorKind).toBe('ADMIN');
+  });
+
+  it('protokolliert die Notiz nicht', async () => {
+    /*
+     * Sie ist eine Aufzeichnung **über** das Unternehmen, keine **an** ihm. Sie
+     * in dessen Protokoll zu schreiben hieße, dem Mandanten mitzuteilen, dass
+     * sich der Betreiber etwas notiert hat, ohne ihm zu sagen, was.
+     */
+    const { platform, adminUserId } = await platformContext();
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+
+    await updateManagedOrganization(
+      platform,
+      created.value.organizationId,
+      { name: 'Schreinerei Bosch', note: 'Zahlt immer pünktlich.' },
+      adminUserId,
+      null,
+    );
+
+    const entries = await prisma.auditLog.findMany({
+      where: { organizationId: created.value.organizationId, action: 'UPDATED' },
+    });
+    expect(entries).toHaveLength(0);
+  });
+
+  it('erreicht die Notiz den Mandanten nicht', async () => {
+    const { platform, adminUserId } = await platformContext();
+    const created = await createManagedOrganization(
+      platform,
+      { name: 'Schreinerei Bosch', ownerEmail: 'chef@bosch.example' },
+      adminUserId,
+      null,
+      NOW,
+    );
+    if (!created.ok) throw new Error('nicht angelegt');
+    await acceptInvitation(
+      created.value.token,
+      { name: 'Bosch', password: OWNER_PASSWORD },
+      null,
+      NOW,
+    );
+
+    await updateManagedOrganization(
+      platform,
+      created.value.organizationId,
+      { name: 'Schreinerei Bosch', note: 'Interner Hinweis: Zahlungsziel verlängert.' },
+      adminUserId,
+      null,
+    );
+
+    // Der Datenexport ist der vollständigste Blick, den ein Mandant auf seine
+    // eigenen Daten hat. Steht sie dort nicht, steht sie nirgends.
+    const context = organizationContextOf(created.value.organizationId);
+    const exported = (await exportOrganizationData(fullyAuthorized(context), TEST_ACTOR_ID)).json;
+
+    expect(exported).not.toContain('Interner Hinweis');
+    expect(exported).not.toContain('Zahlungsziel verlängert');
   });
 });

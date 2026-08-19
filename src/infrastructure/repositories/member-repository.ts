@@ -23,6 +23,10 @@ const forMember = {
   email: true,
   name: true,
   disabledAt: true,
+  // Seit M10: Ein anonymisiertes Konto trägt eine Platzhalteradresse, und die
+  // gehört nicht in eine Liste. Die Anzeige braucht das Merkmal, um „Gelöschtes
+  // Konto" zu setzen (FA-ADM-15).
+  anonymizedAt: true,
   lastLoginAt: true,
   createdAt: true,
   totpEnabled: true,

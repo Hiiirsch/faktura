@@ -78,6 +78,22 @@ const ADMINISTRATIVE = [
    */
   'trustedDevice',
   /*
+   * `webAuthnCredential`, `recoveryCode` und `pendingLogin` seit M10/B3 — aus
+   * demselben Grund wie `session` und `trustedDevice`.
+   *
+   * Alle drei sind **Anmeldespuren** eines Kontos, keine Daten des Unternehmens:
+   * ein öffentlicher Schlüssel, ein Hash, ein halb fertiger Anmeldevorgang. Der
+   * Betreiber räumt sie ab, wenn er ein Konto unkenntlich macht — bliebe eine
+   * davon stehen, hätte ein Konto ohne Person weiterhin einen Weg hinein, und
+   * das Anonymisieren wäre an der entscheidenden Stelle wirkungslos.
+   *
+   * Was sie **nicht** dürfen, deckt die erste Prüfung ab: Aus keiner von ihnen
+   * lässt sich ein Beleg oder ein Betrag lesen.
+   */
+  'webAuthnCredential',
+  'recoveryCode',
+  'pendingLogin',
+  /*
    * `platformAuditEntry` seit M10/B2 — das Protokoll der **Anlage**, nicht das
    * eines Unternehmens. Es entsteht ausschließlich aus Handlungen des
    * Betreibers und enthält keinen Geschäftsvorfall.

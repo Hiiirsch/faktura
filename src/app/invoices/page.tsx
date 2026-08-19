@@ -340,7 +340,15 @@ export default async function InvoicesPage({
       header: messages.invoices.createdBy,
       hidden: memberCount < 2,
       fit: true,
-      cell: (invoice) => invoice.createdByName ?? messages.common.none,
+      cell: (invoice) =>
+        /*
+          Drei Fälle, nicht zwei: ein Name, ein unkenntlich gemachtes Konto, und
+          gar kein Urheber. Der mittlere ist neu (M10) — er darf nicht wie der
+          letzte aussehen, denn der Beleg **hat** einen Urheber.
+        */
+        invoice.createdByAnonymized
+          ? messages.invoices.createdByAnonymized
+          : (invoice.createdByName ?? messages.common.none),
     },
   ];
 

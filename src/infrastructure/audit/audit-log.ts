@@ -59,6 +59,13 @@ export type AuditAction =
   | 'ORGANIZATION_CREATED'
   | 'SUSPENDED'
   | 'RESUMED'
+  /**
+   * Ein Konto unkenntlich gemacht (M10, FA-ADM-15).
+   *
+   * Bewusst nicht `DELETED`: Gelöscht wird nichts. Die Zeile bleibt, damit der
+   * Beleg seinen Urheber und dieser Eintrag seinen Akteur behält.
+   */
+  | 'ANONYMIZED'
   // Betreiberkonten (M10, FA-ADM-12, -14). Sie betreffen kein Unternehmen und
   // stehen deshalb ausschließlich im Protokoll der Anlage.
   | 'ADMIN_INVITED'

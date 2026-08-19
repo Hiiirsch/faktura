@@ -7,10 +7,12 @@ import { z } from 'zod';
 
 import { endAdminSession } from '@/application/admin/admin-session-service';
 import {
+  anonymizeTenantUser,
   createManagedOrganization,
   reissueInvitation,
   setOrganizationSuspended,
   setPlatformUserDisabled,
+  updateManagedOrganization,
   startTenantPasswordReset,
   withdrawInvitationAsPlatform,
 } from '@/application/admin/organization-admin';
@@ -471,4 +473,68 @@ export async function resetPlatformAccountAction(
     heading: messages.admin.accountsResetLinkHeading,
     link: `${getEnv().APP_URL}${adminSetupPath(result.value.token)}`,
   };
+}
+
+// ─── Anonymisieren und Bearbeiten (M10/B3, B4) ──────────────────────────────
+
+/**
+ * Ein Mandantenkonto unkenntlich machen (FA-ADM-15).
+ *
+ * Umleitung statt Rückgabewert: Es gibt nichts mitzunehmen, und die Meldung soll
+ * ein Neuladen nicht überleben — sie gilt einer Handlung, nicht einem Zustand.
+ */
+export async function anonymizeAccountAction(
+  organizationId: string,
+  userId: string,
+  formData: FormData,
+): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireAdminSessionOrThrow();
+
+  const context = await readRequestContext();
+  const result = await anonymizeTenantUser(
+    session.platform,
+    userId,
+    session.adminUserId,
+    context.ipAddress,
+  );
+
+  revalidatePath(adminOrganizationPath(organizationId));
+
+  redirect(
+    `${adminOrganizationPath(organizationId)}?` +
+      (result.ok ? 'erledigt=anonymisiert' : `fehler=${result.error.kind}`),
+  );
+}
+
+/** Name und interne Notiz eines Unternehmens ändern (FA-ADM-16). */
+export async function updateOrganizationAction(
+  organizationId: string,
+  formData: FormData,
+): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireAdminSessionOrThrow();
+
+  const name = z.string().trim().min(1).max(200).safeParse(formData.get('name'));
+  const note = z.string().trim().max(2000).safeParse(formData.get('note') ?? '');
+
+  if (!name.success) {
+    redirect(`${adminOrganizationPath(organizationId)}?fehler=NAME_MISSING`);
+  }
+
+  const context = await readRequestContext();
+  const result = await updateManagedOrganization(
+    session.platform,
+    organizationId,
+    { name: name.data, note: note.success ? note.data : null },
+    session.adminUserId,
+    context.ipAddress,
+  );
+
+  revalidatePath(adminOrganizationPath(organizationId));
+
+  redirect(
+    `${adminOrganizationPath(organizationId)}?` +
+      (result.ok ? 'erledigt=bearbeitet' : `fehler=${result.error.kind}`),
+  );
 }

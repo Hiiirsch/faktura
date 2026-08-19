@@ -118,9 +118,18 @@ export default async function MembersSettingsPage({
             cell: (member) => (
               <span className="flex flex-col">
                 <span className="font-medium text-ink">
-                  {member.name ?? messages.members.nameMissing}
+                  {member.anonymizedAt !== null
+                    ? messages.members.anonymized
+                    : (member.name ?? messages.members.nameMissing)}
                 </span>
-                <span className="font-mono text-data text-ink-muted">{member.email}</span>
+                {/*
+                  Die Platzhalteradresse eines unkenntlich gemachten Kontos
+                  (`geloescht-…@invalid`) steht nirgends in der Oberfläche: Sie
+                  ist eine Eigenschaft der Datenbank, keine Auskunft.
+                */}
+                {member.anonymizedAt === null ? (
+                  <span className="font-mono text-data text-ink-muted">{member.email}</span>
+                ) : null}
                 {member.totpEnabled ? (
                   <span className="text-small text-ink-faint">{messages.members.twoFactorOn}</span>
                 ) : null}

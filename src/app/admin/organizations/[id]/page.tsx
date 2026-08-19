@@ -6,6 +6,7 @@ import {
   getManagedOrganization,
   getOpenInvitations,
   getOrganizationAccounts,
+  getOrganizationNote,
 } from '@/application/admin/organization-admin';
 import { requireAdminSession } from '@/application/admin/require-admin-session';
 import { getAppTimeZone } from '@/application/system/display-settings';
@@ -19,6 +20,8 @@ import {
   QUIET_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
   SECTION_CLASS,
+  TextAreaField,
+  TextField,
 } from '@/ui/components/form';
 import { MetricRow, type Metric } from '@/ui/components/metric';
 import { EmptyState, PageHeader } from '@/ui/components/page';
@@ -27,8 +30,10 @@ import { Toast } from '@/ui/components/toast';
 import { formatDate, formatDateTime } from '@/ui/format';
 
 import {
+  anonymizeAccountAction,
   setAccountDisabledAction,
   setOrganizationSuspendedAction,
+  updateOrganizationAction,
   withdrawInvitationAsPlatformAction,
 } from '../../actions';
 import { ReissueInvitationForm, TenantPasswordResetForm } from './recovery-forms';
@@ -50,6 +55,10 @@ function noticeFor(done: string | undefined): string | null {
       return messages.admin.accountEnabled;
     case 'zurueckgezogen':
       return messages.admin.withdrawn;
+    case 'anonymisiert':
+      return messages.admin.anonymizeDone;
+    case 'bearbeitet':
+      return messages.admin.editDone;
     default:
       return null;
   }
@@ -63,6 +72,8 @@ function errorFor(kind: string | undefined): string | null {
       return messages.admin.errorLAST_ADMINISTRATOR;
     case 'NO_OWNER_ROLE':
       return messages.admin.errorNO_OWNER_ROLE;
+    case 'NAME_MISSING':
+      return messages.admin.nameMissing;
     default:
       return null;
   }
@@ -97,9 +108,12 @@ export default async function AdminOrganizationPage({
     notFound();
   }
 
-  const [accounts, invitations] = await Promise.all([
+  const [accounts, invitations, note] = await Promise.all([
     getOrganizationAccounts(session.platform, id),
     getOpenInvitations(session.platform, id),
+    // Getrennt geladen, nicht Teil der Kennzahlen: Jener Typ trägt Zahlen, und
+    // eine Notiz ist Inhalt (FA-ADM-03).
+    getOrganizationNote(session.platform, id),
   ]);
 
   const params_ = await searchParams;
@@ -264,12 +278,79 @@ export default async function AdminOrganizationPage({
                           </button>
                         </form>
                       )}
+
+                      {/*
+                        Unkenntlich machen (M10, FA-ADM-15).
+
+                        Kein zweiter Knopf an einem bereits anonymisierten Konto:
+                        Der Vorgang ist nicht umkehrbar und nicht wiederholbar,
+                        und ein Knopf, der nichts mehr tut, ist eine Einladung
+                        zum Missverständnis.
+                      */}
+                      {account.anonymizedAt === null ? (
+                        <form action={anonymizeAccountAction.bind(null, id, account.id)}>
+                          <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                          <ConfirmDialog
+                            title={messages.admin.anonymizeConfirmTitle}
+                            message={messages.admin.anonymizeConfirm}
+                            confirmLabel={messages.admin.anonymize}
+                            tone="danger"
+                            trigger={
+                              <button type="submit" className={QUIET_BUTTON_CLASS}>
+                                {messages.admin.anonymize}
+                              </button>
+                            }
+                          />
+                        </form>
+                      ) : (
+                        <span className="text-small text-ink-faint">
+                          {messages.admin.anonymized}
+                        </span>
+                      )}
                     </span>
                   ),
                 },
               ]}
             />
           )}
+        </section>
+
+        {/*
+          Unternehmen bearbeiten (M10/B4, FA-ADM-16).
+
+          Ein Server-Formular ohne `useActionState`: Es hat nichts mitzubringen
+          außer einer Meldung, und die kommt aus der Adresse. Damit funktioniert
+          es auch ohne JavaScript.
+        */}
+        <section className={SECTION_CLASS}>
+          <h2 className="text-section font-semibold text-ink">{messages.admin.editHeading}</h2>
+          <p className="max-w-form text-ui text-ink-muted">{messages.admin.editIntro}</p>
+
+          <form
+            action={updateOrganizationAction.bind(null, id)}
+            className="flex max-w-form flex-col gap-4"
+          >
+            <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+
+            <TextField
+              name="name"
+              label={messages.admin.editName}
+              defaultValue={organization.name}
+              required
+            />
+
+            <TextAreaField
+              name="note"
+              label={messages.admin.editNote}
+              hint={messages.admin.editNoteHint}
+              defaultValue={note}
+              rows={4}
+            />
+
+            <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+              {messages.admin.editSubmit}
+            </button>
+          </form>
         </section>
 
         {/*

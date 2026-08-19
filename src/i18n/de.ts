@@ -212,6 +212,26 @@ export const messages = {
     auditUnknownActor: 'Konto entfernt',
     auditRetentionNote:
       'Einträge lassen sich nicht ändern und nicht löschen; Datenbank-Trigger weisen beides ab. Angezeigt werden die jüngsten 200 Vorgänge — vollständig steht das Protokoll in der Sicherung.',
+    // ── Anonymisieren (M10, B3, FA-ADM-15) ──────────────────────────────────
+    anonymize: 'Konto unkenntlich machen',
+    anonymizeConfirmTitle: 'Konto unkenntlich machen',
+    anonymizeConfirm:
+      'Adresse, Name und alle Zugangsdaten dieses Kontos werden entfernt. Belege und Protokolleinträge bleiben vollständig erhalten und nennen weiterhin diese Kennung — nur führt sie zu niemandem mehr. Der Vorgang lässt sich nicht rückgängig machen.',
+    anonymized: 'Unkenntlich gemacht',
+    anonymizeDone: 'Das Konto wurde unkenntlich gemacht.',
+    errorANONYMIZE_LAST_ADMINISTRATOR:
+      'Die Datenbank hat den Vorgang abgewiesen: Es wäre das letzte aktive Konto mit Rechteverwaltung dieses Unternehmens. Erst ein anderes Konto mit dieser Berechtigung anlegen.',
+
+    // ── Unternehmen bearbeiten (M10, B4, FA-ADM-16) ─────────────────────────
+    editHeading: 'Unternehmen bearbeiten',
+    editIntro:
+      'Der Name erscheint in der Einladung und in der Oberfläche des Unternehmens. Die Notiz sieht ausschließlich die Verwaltung — sie steht in keinem Export und in keiner Ansicht des Mandanten.',
+    editName: 'Name',
+    editNote: 'Interne Notiz',
+    editNoteHint: 'Ansprechpartner, Vereinbarungen, Hinweise zum Betrieb.',
+    editSubmit: 'Änderungen speichern',
+    editDone: 'Die Änderungen wurden gespeichert.',
+
     auditAction: {
       ORGANIZATION_CREATED: 'Unternehmen angelegt',
       SUSPENDED: 'stillgelegt',
@@ -225,6 +245,8 @@ export const messages = {
       ADMIN_DISABLED: 'Betreiberkonto gesperrt',
       ADMIN_ENABLED: 'Betreiberkonto entsperrt',
       ADMIN_RESET: 'Betreiberzugang neu eingerichtet',
+      ANONYMIZED: 'Konto unkenntlich gemacht',
+      UPDATED: 'Unternehmen bearbeitet',
     } as Record<string, string>,
   },
 
@@ -550,6 +572,8 @@ export const messages = {
     draftNotEditable: 'Dieser Entwurf lässt sich mit den Rechten dieses Kontos nicht bearbeiten.',
     /** Im Tabellenschema angelegt, in V1 ausgeblendet (FA-UI-16). */
     createdBy: 'Erstellt von',
+    /** Der Urheber ist noch da, die Person nicht mehr (M10, FA-ADM-15). */
+    createdByAnonymized: 'Gelöschtes Konto',
 
     number: 'Nummer',
     noNumber: 'ohne Nummer',
@@ -965,6 +989,13 @@ export const messages = {
       'Dieser Link wird nur jetzt angezeigt. Er gilt sieben Tage und funktioniert einmal.',
     inviteEmailTaken: 'Zu dieser Adresse gehört bereits ein Konto.',
     inviteEmailInvalid: 'Bitte eine gültige E-Mail-Adresse angeben.',
+    /**
+     * Ein Konto, das der Betreiber unkenntlich gemacht hat (M10, FA-ADM-15).
+     *
+     * Die Zeile bleibt in der Liste: Sie hat Belege erstellt, und die nennen
+     * sie. Was fehlt, ist die Person.
+     */
+    anonymized: 'Gelöschtes Konto',
     inviteRoleMissing: 'Bitte eine Rolle wählen.',
 
     openHeading: 'Offene Einladungen',

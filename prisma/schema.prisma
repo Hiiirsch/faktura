@@ -31,6 +31,13 @@ model Organization {
   name      String
   createdAt DateTime @default(now())
 
+  /// Interne Notiz des Betreibers (M10, FA-ADM-16).
+  ///
+  /// Ansprechpartner, Vereinbarungen, Hinweise zum Betrieb. Sie erreicht den
+  /// Mandanten **nie**: Keine Funktion außerhalb von `platform-repository.ts`
+  /// liest sie, und der Datenexport kennt sie nicht.
+  note      String?
+
   /// Stillgelegt durch den Betreiber (M8, FA-ORG-03). Beendet alle Sitzungen
   /// und weist die Anmeldung ab — ohne Daten zu löschen.
   suspendedAt DateTime?
@@ -446,6 +453,19 @@ model User {
   /// Gesperrt statt gelöscht (M8): Der Beleg behält seinen Urheber, und die
   /// Nachvollziehbarkeit geht vor Wiederverwendbarkeit der Adresse.
   disabledAt     DateTime?
+
+  /// Zeitpunkt der Anonymisierung (M10, FA-ADM-15).
+  ///
+  /// Ein Konto wird **nie gelöscht** — `Invoice.createdById` ist ein echter
+  /// Fremdschlüssel, und er ist es genau deshalb. Anonymisieren hält beide
+  /// Zusagen zugleich: Der Beleg behält seinen Urheber, das Protokoll seinen
+  /// Akteur, nur führt die Kennung zu niemandem mehr.
+  ///
+  /// Gesetzt heißt: Adresse durch einen Platzhalter ersetzt, Name geleert,
+  /// Zugangsdaten unbrauchbar, alle Anmeldespuren entfernt. Die Anzeige zeigt
+  /// dann „Gelöschtes Konto" statt der Platzhalteradresse.
+  anonymizedAt   DateTime?
+
   lastLoginAt    DateTime?
   /// Optional, weil sie beim Anlegen über die Migration erst gesetzt wird und
   /// weil `onDelete: Restrict` eine benutzte Rolle vor dem Löschen schützt.

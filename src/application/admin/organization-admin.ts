@@ -36,6 +36,8 @@ import {
   findOrganizationWithMetrics,
   findOwnerRoleId,
   findUserForPlatform,
+  anonymizeUserForPlatform,
+  findOrganizationNote,
   listOpenInvitationsForPlatform,
   listOrganizationsWithMetrics,
   listPlatformAuditEntries,
@@ -83,7 +85,16 @@ export type OrganizationAdminError =
    * an der Datenbank vorbei, und dann soll die Meldung das sagen statt eine
    * Einladung ohne Rolle auszustellen.
    */
-  | { readonly kind: 'NO_OWNER_ROLE' };
+  | { readonly kind: 'NO_OWNER_ROLE' }
+  /**
+   * Die Aussperrsicherung hat abgewiesen (M10, B3).
+   *
+   * Anonymisieren entzieht die Rolle und sperrt das Konto — beides Spalten, auf
+   * die `Organization_keeps_administrator_on_user_update` hört. Ein Unternehmen
+   * ohne Rechteverwaltung zurückzulassen wäre schlimmer als ein Konto, das
+   * bleibt.
+   */
+  | { readonly kind: 'LAST_ADMINISTRATOR' };
 
 export async function countManagedOrganizations(platform: PlatformContext): Promise<number> {
   return countOrganizations(platform);
@@ -425,6 +436,150 @@ export async function startTenantPasswordReset(
   logger.security('admin.tenant_password_reset', { adminUserId, userId });
 
   return ok({ token, expiresAt });
+}
+
+/**
+ * Die Platzhalteradresse eines anonymisierten Kontos (M10, B3).
+ *
+ * `.invalid` ist nach RFC 2606 reserviert und kann niemandem gehören; die
+ * Kennung darin hält den eindeutigen Index auf `User.email`. Ohne sie liefe die
+ * zweite Anonymisierung in eine Kollision mit der ersten.
+ */
+function anonymizedEmailFor(userId: string): string {
+  return `geloescht-${userId}@invalid`;
+}
+
+/**
+ * Ein Passworthash, mit dem sich niemand anmeldet.
+ *
+ * Kein echtes Argon2id: `verifyPassword` fängt einen unlesbaren Hash ab und
+ * antwortet mit `false`. Ein zufälliges Passwort zu hashen wäre derselbe
+ * Effekt für hundert Millisekunden Rechenzeit — und für eine Zeichenkette, die
+ * niemand kennt und niemand braucht.
+ */
+const ANONYMIZED_PASSWORD_HASH =
+  '$argon2id$v=19$m=65536,t=3,p=1$anonymisiert$anonymisiert';
+
+/**
+ * Ein Mandantenkonto unkenntlich machen (M10, B3, FA-ADM-15).
+ *
+ * **Der Vorgang heißt nicht „löschen", weil er keiner ist.** Belege sind
+ * aufbewahrungspflichtig, und ein Beleg nennt seinen Urheber. Was verschwindet,
+ * ist die Person: Adresse, Name, Zugangsdaten, jede Anmeldespur. Was bleibt, ist
+ * eine Kennung, die zu niemandem mehr führt.
+ *
+ * **Nicht umkehrbar**, und die Oberfläche sagt das. Es gibt keine Gegenfunktion:
+ * Die Daten sind fort, nicht versteckt.
+ *
+ * **Das Protokoll wird nicht angefasst.** `AuditLog_no_update` und `_no_delete`
+ * würden es abwehren, aber der Grund ist inhaltlich: Was geschehen ist, ist
+ * geschehen. Der Eintrag nennt danach eine Kennung ohne Person — genau wie der
+ * Beleg.
+ */
+export async function anonymizeTenantUser(
+  platform: PlatformContext,
+  userId: string,
+  adminUserId: string,
+  ipAddress: string | null,
+  now: Date = new Date(),
+): Promise<Result<null, OrganizationAdminError>> {
+  const user = await findUserForPlatform(platform, userId);
+  if (user === null) {
+    return err({ kind: 'NOT_FOUND' });
+  }
+
+  // Ein zweites Mal ändert nichts und soll auch nichts protokollieren.
+  if (user.anonymizedAt !== null) {
+    return ok(null);
+  }
+
+  try {
+    await anonymizeUserForPlatform(platform, userId, {
+      email: anonymizedEmailFor(userId),
+      passwordHash: ANONYMIZED_PASSWORD_HASH,
+      now,
+    });
+  } catch {
+    /*
+     * Die Aussperrsicherung aus FA-ROLE-04 greift auch hier: Anonymisieren
+     * entzieht die Rolle und sperrt das Konto, und beides sind Spalten, auf die
+     * der Trigger hört. Ein Unternehmen ohne Rechteverwaltung zurückzulassen
+     * wäre schlimmer als ein Konto, das bleibt.
+     */
+    return err({ kind: 'LAST_ADMINISTRATOR' });
+  }
+
+  await recordPlatformAuditEntry(platform, user.organizationId, {
+    entityType: 'User',
+    entityId: userId,
+    action: 'ANONYMIZED',
+    actorId: adminUserId,
+    ipAddress,
+    details: { byPlatform: true },
+  });
+
+  logger.security('admin.user_anonymized', { adminUserId, userId });
+
+  return ok(null);
+}
+
+/** Die interne Notiz eines Unternehmens — nur für die Verwaltung (FA-ADM-16). */
+export async function getOrganizationNote(
+  platform: PlatformContext,
+  id: string,
+): Promise<string | null> {
+  return findOrganizationNote(platform, id);
+}
+
+/**
+ * Name und interne Notiz eines Unternehmens ändern (M10, B4, FA-ADM-16).
+ *
+ * **Die Notiz erreicht den Mandanten nie.** Sie steht an `Organization`, wird
+ * aber von keiner Funktion außerhalb des Betreiber-Repositories gelesen und ist
+ * nicht Teil des Datenexports. Ein Test hält beides fest — eine Spalte, die nur
+ * einer sieht, ist eine Zusage und keine Gewohnheit.
+ *
+ * **Nur die Namensänderung wird protokolliert.** Sie ist eine Änderung an den
+ * Daten des Unternehmens und fällt dort auf. Die Notiz ist eine Aufzeichnung
+ * **über** das Unternehmen, keine **an** ihm; sie in dessen Protokoll zu
+ * schreiben hieße, dem Mandanten mitzuteilen, dass der Betreiber sich etwas
+ * notiert hat, ohne ihm zu sagen, was.
+ */
+export async function updateManagedOrganization(
+  platform: PlatformContext,
+  id: string,
+  data: { readonly name: string; readonly note: string | null },
+  adminUserId: string,
+  ipAddress: string | null,
+): Promise<Result<null, OrganizationAdminError>> {
+  const organization = await findOrganizationWithMetrics(platform, id);
+  if (organization === null) {
+    return err({ kind: 'NOT_FOUND' });
+  }
+
+  const name = data.name.trim();
+  if (name.length === 0) {
+    return err({ kind: 'NAME_MISSING' });
+  }
+
+  const note = data.note === null || data.note.trim().length === 0 ? null : data.note.trim();
+
+  await updateOrganizationForPlatform(platform, id, { name, note });
+
+  if (name !== organization.name) {
+    await recordPlatformAuditEntry(platform, id, {
+      entityType: 'Organization',
+      entityId: id,
+      action: 'UPDATED',
+      actorId: adminUserId,
+      ipAddress,
+      details: { nameVorher: organization.name, nameNachher: name },
+    });
+  }
+
+  logger.security('admin.organization_updated', { adminUserId, organizationId: id });
+
+  return ok(null);
 }
 
 /**

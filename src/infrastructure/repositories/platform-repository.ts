@@ -694,6 +694,7 @@ const forPlatformUser = {
   email: true,
   name: true,
   disabledAt: true,
+  anonymizedAt: true,
   lastLoginAt: true,
   createdAt: true,
   organizationId: true,
@@ -747,6 +748,85 @@ export async function deleteSessionsOfOrganization(
     where: { user: { organizationId } },
   });
   return result.count;
+}
+
+/**
+ * Die interne Notiz eines Unternehmens (M10, B4, FA-ADM-16).
+ *
+ * **Eigene Funktion statt eines Felds an `OrganizationMetrics`.** Der erste
+ * Anlauf hängte sie dort an — und ein bestehender Test hat das abgewiesen, zu
+ * Recht: Jener Typ heißt „Kennzahlen" und trägt Zahlen. Eine Notiz ist Inhalt,
+ * kein Maß, und in der Liste aller Unternehmen hat sie nichts zu suchen.
+ *
+ * Gelesen wird sie deshalb nur dort, wo sie hingehört: auf der Detailseite eines
+ * Unternehmens im Adminbereich.
+ */
+export async function findOrganizationNote(
+  _platform: PlatformContext,
+  id: string,
+): Promise<string | null> {
+  const row = await clientFor(undefined).organization.findUnique({
+    where: { id },
+    select: { note: true },
+  });
+
+  return row?.note ?? null;
+}
+
+/**
+ * Ein Konto unkenntlich machen (M10, B3, FA-ADM-15).
+ *
+ * **Gelöscht wird nichts.** Die Zeile bleibt, damit `Invoice.createdById` nicht
+ * ins Leere zeigt und ein Protokolleintrag seinen Akteur behält. Entfernt wird
+ * die **Person**: Adresse, Name, Zugangsdaten und jede Spur, mit der sich noch
+ * anmelden ließe.
+ *
+ * **Die Platzhalteradresse trägt die Kennung** und endet auf `.invalid` — eine
+ * nach RFC 2606 reservierte Domain, die niemandem gehören kann. Die Kennung
+ * darin hält den eindeutigen Index; ohne sie kollidierte die zweite
+ * Anonymisierung mit der ersten.
+ *
+ * **`disabledAt` wird mitgesetzt**, und `roleId` fällt weg. Ein Zugang ohne
+ * Person wäre ein Zugang ohne Verantwortlichen; Rechte ohne Träger ebenso.
+ * Beides sind Spalten, auf die die Aussperrsicherung hört — trifft es das letzte
+ * Konto mit Rechteverwaltung, bricht der Trigger den Vorgang ab. Das ist kein
+ * Sonderfall, sondern der Beweis, dass die Regel dort liegt, wo sie hingehört.
+ *
+ * **Alles in einer Transaktion.** Eine halb anonymisierte Zeile wäre ein Konto
+ * ohne Namen, das sich noch anmelden kann.
+ */
+export async function anonymizeUserForPlatform(
+  _platform: PlatformContext,
+  userId: string,
+  data: { readonly email: string; readonly passwordHash: string; readonly now: Date },
+): Promise<void> {
+  await runInTransaction(async (handle) => {
+    const client = clientFor(handle);
+
+    await client.user.update({
+      where: { id: userId },
+      data: {
+        email: data.email,
+        name: null,
+        passwordHash: data.passwordHash,
+        totpSecret: null,
+        totpEnabled: false,
+        failedLogins: 0,
+        lockedUntil: null,
+        roleId: null,
+        disabledAt: data.now,
+        anonymizedAt: data.now,
+      },
+    });
+
+    // Jede Spur, mit der sich noch anmelden ließe.
+    await client.session.deleteMany({ where: { userId } });
+    await client.trustedDevice.deleteMany({ where: { userId } });
+    await client.webAuthnCredential.deleteMany({ where: { userId } });
+    await client.recoveryCode.deleteMany({ where: { userId } });
+    await client.pendingLogin.deleteMany({ where: { userId } });
+    await client.passwordReset.deleteMany({ where: { userId, usedAt: null } });
+  });
 }
 
 // ─── Protokoll der Verwaltung (M10, B2, FA-ADM-14) ──────────────────────────

@@ -41,9 +41,16 @@ export type InvoiceListFilter = {
  * ist bekannt — nur sein Name ist es nicht.
  */
 function actorNameOf(
-  actor: { readonly name: string | null; readonly email: string } | null,
+  actor: {
+    readonly name: string | null;
+    readonly email: string;
+    readonly anonymizedAt: Date | null;
+  } | null,
 ): string | null {
-  return actor === null ? null : (actor.name ?? actor.email);
+  if (actor === null || actor.anonymizedAt !== null) {
+    return null;
+  }
+  return actor.name ?? actor.email;
 }
 
 function customerNameOf(
@@ -74,6 +81,16 @@ export type InvoiceListEntry = {
    * Beleg wäre schlimmer als eine leere.
    */
   readonly createdByName: string | null;
+  /**
+   * Ob der Urheber unkenntlich gemacht wurde (M10, FA-ADM-15).
+   *
+   * Getrennt von `createdByName === null`, weil es zwei verschiedene Dinge sind:
+   * Ein Bestandsbeleg **hat** keinen Urheber, ein anonymisierter hat einen, der
+   * zu niemandem mehr führt. Die Liste sagt im ersten Fall nichts und im
+   * zweiten, dass das Konto entfernt wurde — die Platzhalteradresse steht dort
+   * nie.
+   */
+  readonly createdByAnonymized: boolean;
 };
 
 function asStatus(value: string): InvoiceStatus {
@@ -136,6 +153,7 @@ export async function listInvoices(
       // — die Liste soll nicht eine Kennung anzeigen, die niemandem hilft.
       customerName: buyerDisplayName(draftBuyerOf(invoice), customerNameOf(invoice.customer)) ?? '',
       createdByName: actorNameOf(invoice.createdBy),
+      createdByAnonymized: invoice.createdBy?.anonymizedAt != null,
       customerId: invoice.customerId,
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
