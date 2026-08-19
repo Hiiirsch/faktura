@@ -25,6 +25,9 @@ export const ADMIN_ACCOUNTS_PATH = '/admin/accounts';
 /** Protokoll der Verwaltung: was Betreiber getan haben (FA-ADM-14). */
 export const ADMIN_AUDIT_PATH = '/admin/audit';
 
+/** Zustand der Anlage und Sicherung (FA-ADM-17). */
+export const ADMIN_OPERATIONS_PATH = '/admin/operations';
+
 /** Einrichtung eines Betreiberkontos — der Nachweis steht in der Adresse (M8). */
 export const ADMIN_SETUP_PATH = '/admin/setup';
 
@@ -222,6 +225,7 @@ export const routes: readonly RouteDefinition[] = [
   { path: ADMIN_NEW_ORGANIZATION_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_ACCOUNTS_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_AUDIT_PATH, kind: 'page', access: 'platformAdmin' },
+  { path: ADMIN_OPERATIONS_PATH, kind: 'page', access: 'platformAdmin' },
   {
     path: '/admin/setup/[token]',
     kind: 'page',

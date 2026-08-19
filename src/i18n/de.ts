@@ -210,6 +210,26 @@ export const messages = {
     auditColumnSubject: 'Gegenstand',
     auditNoOrganization: '—',
     auditUnknownActor: 'Konto entfernt',
+    // ── Betrieb (M10, B5, FA-ADM-17) ────────────────────────────────────────
+    operationsTitle: 'Betrieb',
+    operationsHeading: 'Betrieb',
+    operationsIntro:
+      'Zustand dieser Anlage und die Sicherung ihres gesamten Bestands.',
+    operationsStateHeading: 'Zustand',
+    operationsComponentDatabase: 'Datenbank',
+    operationsComponentRenderer: 'PDF-Renderer',
+    operationsStateUp: 'erreichbar',
+    operationsStateDown: 'nicht erreichbar',
+    operationsCheckedAt: 'Geprüft am {date}',
+    operationsRendererNote:
+      'Der Renderer wird durch einen echten Browserstart geprüft, nicht durch das Vorhandensein einer Datei: Ein Chromium, das wegen zu enger Rechte nicht hochkommt, liegt trotzdem an seinem Pfad.',
+    operationsBackupHeading: 'Sicherung',
+    operationsBackupIntro:
+      'Datenbankabzug und Dateispeicher als .tar.gz — der Bestand aller Unternehmen. Beides gehört zusammen: Ein festgeschriebener Beleg verweist auf seine PDF-Datei samt Prüfsumme, und eine Sicherung ohne sie ist keine.',
+    operationsBackupSubmit: 'Sicherung herunterladen',
+    operationsBackupNote:
+      'Die Anwendung plant nichts von selbst — ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn sieht. Für den regelmäßigen Lauf gibt es den Betriebsauftrag „npm run backup". Die Wiederherstellung läuft von Hand: Sie überschreibt den gesamten Bestand, und dafür soll niemand versehentlich einen Knopf finden.',
+
     auditRetentionNote:
       'Einträge lassen sich nicht ändern und nicht löschen; Datenbank-Trigger weisen beides ab. Angezeigt werden die jüngsten 200 Vorgänge — vollständig steht das Protokoll in der Sicherung.',
     // ── Anonymisieren (M10, B3, FA-ADM-15) ──────────────────────────────────

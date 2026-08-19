@@ -389,8 +389,11 @@ handgeschrieben (`infrastructure/backup/tar.ts`) — eine Sicherung muss man Jah
 später mit üblichen Werkzeugen lesen können, und ein Paket dafür wäre eine
 weitere Stelle, an der sie scheitern kann.
 
-Ausgelöst wird sie per Knopf (`/settings/backup` → `/api/backup`) oder als
-Betriebsauftrag (`npm run backup`). **Die Anwendung plant nichts von selbst:**
+Ausgelöst wird sie per Knopf (`/admin/operations` → `/admin/api/backup`) oder als
+Betriebsauftrag (`npm run backup`). **Nur mit Adminsitzung** (NFA-SEC-23): Sie
+enthält den Bestand aller Unternehmen. Bis M8 lag sie unter `/api/backup` und war
+jedem angemeldeten Konto zugänglich — bei einem Unternehmen eine Betreiberfunktion
+am falschen Ort, ab dem zweiten ein Datenleck. **Die Anwendung plant nichts von selbst:**
 Ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn sieht.
 Die Wiederherstellung läuft von Hand — sie überschreibt den gesamten Bestand,
 und dafür soll niemand versehentlich einen Knopf finden.
@@ -619,6 +622,72 @@ muss die Lage zur Absicht passen: Ein `CREATE`-Nachweis überschreibt kein Konto
 das inzwischen auf anderem Weg entstanden ist, und ein `RESET`-Nachweis legt
 keines an. Ein unbekannter Wert fällt durch beide Zweige — die sichere Richtung,
 deshalb braucht es dafür keinen Trigger.
+
+## Verwaltung, zweiter Teil (seit M10)
+
+Der Betreiber verwaltet **seinesgleichen** aus der Oberfläche (`/admin/accounts`),
+sieht **was er getan hat** (`/admin/audit`), kann ein Mandantenkonto
+**unkenntlich machen**, Name und interne Notiz eines Unternehmens ändern und
+Zustand wie Sicherung erreichen (`/admin/operations`). Ein
+Navigationsstreifen verbindet die Seiten — bewusst nicht der `AppShell` der
+Mandanten, der Firmendaten lädt.
+
+**Die Aussperrsicherung der Verwaltung ist kein Trigger**, und das ist der
+Unterschied zur Mandantenseite. Der erste Anlauf war einer und hat vier
+bestehende Tests umgeworfen: „Immer mindestens ein aktives Betreiberkonto" ist
+kein Invariant dieses Systems. `resetAdmin` sperrt absichtlich und stellt im
+selben Zug einen Einrichtungslink aus — in einer Anlage mit einem Betreiber führt
+genau der Weg, der bei verlorenem Authenticator hilft, durch einen Zustand ohne
+aktives Konto. Und `npm run admin:create` lässt sich mit einer **neuen** Adresse
+immer aufrufen; wer Serverzugriff hat, kommt herein.
+
+Die Sicherung sitzt deshalb im **Sperrvorgang**, wo die Absicht unterscheidbar
+ist: „Sperren" bietet keinen Rückweg an und darf das letzte aktive Konto nicht
+treffen, „Zurücksetzen" stellt ihn aus und darf es. Bei den Mandanten ist es
+umgekehrt richtig — dort kann niemand auf den Server, dort ist es ein Invariant
+und gehört in die Datenbank.
+
+**Das Protokoll der Verwaltung ist eine eigene Tabelle** (`PlatformAuditEntry`),
+kein Filter auf `AuditLog`. Zwei Gründe: Vorgänge an Betreiberkonten haben keine
+Organisation und hätten dort keinen Platz — eine Seite mit diesem Titel hätte die
+Hälfte verschwiegen. Und die Verwaltung müsste das Protokoll der Mandanten lesen
+dürfen, wo Rechnungsnummern und Beträge im Klartext stehen; die Zusage aus
+FA-ADM-02 hinge dann an einem `where`. Der Preis ist eine doppelte Aufzeichnung
+für Eingriffe mit Unternehmensbezug — einmal für jede Leserschaft. Beide
+Schreibvorgänge stehen in **einer** Funktion; sechs Aufrufer, und der siebte hätte
+den zweiten vergessen.
+
+**Anonymisieren statt löschen.** `Invoice.createdById` ist ein echter
+Fremdschlüssel, und er ist es genau deshalb: Der Beleg behält seinen Urheber, das
+Protokoll seinen Akteur, nur führt die Kennung zu niemandem mehr. Entfernt werden
+Adresse, Name, Zugangsdaten und **jede** Anmeldespur — Sitzungen, vertraute
+Geräte, Passkeys, Wiederherstellungscodes, offene Zurücksetzungen —, alles in
+einer Transaktion.
+
+Die Platzhalteradresse trägt die Kennung und endet auf `.invalid` (RFC 2606):
+Ohne die Kennung darin kollidierte die zweite Anonymisierung mit der ersten im
+eindeutigen Index. Die Aussperrsicherung aus FA-ROLE-04 greift dabei **ohne
+Zutun**, weil `roleId` und `disabledAt` mitgesetzt werden — genau die Spalten,
+auf die ihr Trigger hört.
+
+Die Anzeige unterscheidet danach **drei** Fälle statt zwei: ein Name, ein
+entferntes Konto, gar kein Urheber. Der mittlere darf nicht wie der letzte
+aussehen — ein Bestandsbeleg *hat* keinen Urheber, ein anonymisierter hat einen.
+
+**Die vierte Lücke des Adminwächters** war grundsätzlicher als die ersten drei:
+Alle lasen **eine** Datei. `createPlatformAuditEntry` nahm einen
+`PlatformContext` und stand in `audit-repository.ts` — dort hätte sich eine
+Lesefunktion auf `auditLog` anlegen lassen, ungeprüft. Sie ist umgezogen, und der
+Wächter verlangt jetzt, dass es außerhalb von `platform-repository.ts` keine
+solche Datei gibt.
+
+**Ein Fallstrick der Integrationstests**, zweimal aufgetreten und beide Male wie
+ein Fachlogikfehler aussehend: `resetDatabase()` tauscht die Datenbankdatei und
+trennt dafür den Prisma-Client der **Anwendung**; den eines Testmoduls kennt es
+nicht. Bleibt der offen, hängt er an der abgehängten alten Datei — Lesezugriffe
+liefern veraltete oder gar keine Zeilen, Schreibzugriffe scheitern an
+Fremdschlüsseln auf Zeilen, die es dort nie gab. Jede Testdatei mit eigenem
+Client trennt ihn deshalb **vor** dem Reset.
 
 ## Passkeys (seit M9)
 
@@ -964,6 +1033,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | umgesetzt |
 | M8 | Mandanten, Rollen, Mitglieder, zentrale Verwaltung | umgesetzt |
 | M9 | Passkeys, vertraute Geräte, Wege aus einer Sackgasse | umgesetzt |
+| M10 | Handlungsfähigkeit der Verwaltung: Betreiberkonten, Protokoll, Anonymisieren | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

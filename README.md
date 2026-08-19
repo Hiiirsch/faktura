@@ -303,7 +303,7 @@ Die Datenbank wird über `VACUUM INTO` abgezogen, nicht kopiert: Eine Kopie
 mitten in einer Transaktion ergibt eine Datei, die aussieht wie eine Datenbank
 und beim Öffnen scheitert.
 
-**Von Hand, aus der Verwaltung:** `/admin` → *Sicherung herunterladen*. Seit M8
+**Von Hand, aus der Verwaltung:** `/admin/operations` → *Sicherung herunterladen*. Seit M8
 liegt sie dort und **nicht** in der Oberfläche eines Unternehmens: Eine
 Sicherung umfasst die Datenbankdatei als Ganzes, also alle Unternehmen.
 
@@ -502,6 +502,42 @@ Beim Anlegen eines Unternehmens entstehen in **einem** Vorgang das Unternehmen,
 die Rolle „Inhaber" mit allen Berechtigungen und eine Einladung. Der Betreiber
 kennt damit zu keinem Zeitpunkt ein Passwort innerhalb eines Unternehmens — der
 stärkste Beleg für die Trennung, den das System liefern kann.
+
+### Was der Betreiber sonst noch kann
+
+**Weitere Betreiber.** Unter **Betreiber** lässt sich ein zweites Konto einladen,
+sperren, entsperren und mit neuen Zugangsdaten versehen. Der Link erscheint genau
+einmal; Passwort und zweiter Faktor entstehen beim Einlösen. Ein Betreiberkonto
+ohne zweiten Faktor gibt es zu keinem Zeitpunkt.
+
+Das **letzte aktive** Konto lässt sich nicht sperren — dann käme niemand mehr in
+die Verwaltung. Zurücksetzen geht trotzdem: Dabei entsteht im selben Zug ein
+Einrichtungslink, also ein Rückweg. Geht auch der verloren, hilft
+`npm run admin:create` mit einer neuen Adresse; wer Zugriff auf den Server hat,
+kommt immer herein.
+
+**Protokoll.** Unter **Protokoll** steht, was Betreiber getan haben — Unternehmen
+angelegt, stillgelegt, Nachweise ausgestellt, Konten gesperrt. Geschäftsvorfälle
+der Unternehmen stehen dort nicht: Sie werden im Protokoll des jeweiligen
+Unternehmens geführt, und die Verwaltung liest es nicht. Einträge lassen sich
+nicht ändern und nicht löschen.
+
+**Konten unkenntlich machen.** Ein Mandantenkonto lässt sich nicht löschen — aber
+seine Person entfernen. Adresse, Name, Zugangsdaten und alle Anmeldespuren
+verschwinden, die Zeile bleibt. Der Grund ist die Aufbewahrungspflicht: Ein Beleg
+nennt seinen Urheber, und ein Verweis ins Leere wäre schlimmer als ein Verweis
+ohne Person. In der Oberfläche steht danach „Gelöschtes Konto". Der Vorgang ist
+**nicht umkehrbar**.
+
+Trifft es das letzte Konto mit Rechteverwaltung, weist die Datenbank ihn ab: Ein
+Unternehmen ohne Rechteverwaltung zurückzulassen wäre der größere Schaden.
+
+**Betrieb.** Unter **Betrieb** stehen der Zustand der Anlage — Datenbank und
+PDF-Renderer, jeweils durch eine echte Prüfung — und der Knopf für die Sicherung.
+Sie umfasst den Bestand **aller** Unternehmen und ist deshalb nur hier
+erreichbar. Zeitplan und Wiederherstellung bleiben Betriebsaufträge: Ein
+eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn sieht, und die
+Wiederherstellung überschreibt alles.
 
 ### Wenn niemand mehr hineinkommt
 

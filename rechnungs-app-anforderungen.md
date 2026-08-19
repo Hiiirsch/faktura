@@ -332,6 +332,12 @@ Betreiber der Installation darf und was nicht.
 | FA-ADM-09 | Der Betreiber sieht die **offenen Einladungen** eines Unternehmens und kann sie zurückziehen. Sichtbar sind Adresse und Ablauf — nie der Token: Er existiert nach dem Ausstellen nirgends mehr, gespeichert liegt nur sein Hash. | MUSS | T |
 | FA-ADM-10 | Der Betreiber kann die Einladung eines Unternehmens **erneut ausstellen**. Der Link erscheint genau einmal; die vorherige Einladung derselben Adresse verliert damit ihre Gültigkeit. | MUSS | T |
 | FA-ADM-11 | Der Betreiber kann für ein Mandantenkonto einen **Zurücksetzungsnachweis** ausstellen. Er vergibt dabei kein Passwort und erfährt keines. Alle Sitzungen und vertrauten Geräte des Kontos enden; der Vorgang steht mit `actorKind: 'ADMIN'` im Protokoll des betroffenen Unternehmens. | MUSS | T |
+| FA-ADM-12 | Betreiberkonten lassen sich **aus der Oberfläche** einladen, sperren, entsperren und mit neuen Zugangsdaten versehen. Der Ausstellungsweg ist derselbe wie auf der Kommandozeile; ein zweiter wäre eine zweite Stelle, an der ein Konto ohne zweiten Faktor entstehen könnte. Das eigene Konto ändert niemand. | MUSS | T |
+| FA-ADM-13 | Das **Sperren** darf nicht das letzte aktive Betreiberkonto treffen. Das **Zurücksetzen** darf es: Es stellt im selben Zug einen Einrichtungslink aus, also einen Rückweg. Die Prüfung sitzt deshalb im Sperrvorgang und nicht als Regel der Tabelle. | MUSS | T |
+| FA-ADM-14 | Ein **Protokoll der Verwaltung** zeigt, was Betreiber getan haben — auch Vorgänge ohne Unternehmensbezug. Es speist sich aus einer eigenen Tabelle; die Verwaltung liest das Protokoll eines Mandanten nicht. Einträge sind unveränderlich. | MUSS | T |
+| FA-ADM-15 | Ein Mandantenkonto lässt sich **unkenntlich machen**, nicht löschen: Adresse, Name, Zugangsdaten und alle Anmeldespuren werden entfernt, die Zeile bleibt. Belege behalten ihren Urheber, Protokolleinträge ihren Akteur. Die Oberfläche zeigt „Gelöschtes Konto", nie die Platzhalteradresse. Der Vorgang ist nicht umkehrbar und steht im Protokoll beider Seiten. | MUSS | T |
+| FA-ADM-16 | Der Betreiber kann Name und eine **interne Notiz** eines Unternehmens ändern. Die Notiz erreicht den Mandanten nicht — weder in seiner Oberfläche noch in seinem Datenexport. Protokolliert wird nur die Namensänderung. | MUSS | T |
+| FA-ADM-17 | Der Betreiber sieht den **Zustand** der Anlage (Datenbank, Renderer, Zeitpunkt der Prüfung) und löst die **Sicherung** aus der Oberfläche aus. Zeitplan und Wiederherstellung bleiben Betriebsaufträge. | SOLL | M |
 
 ### 16.5 Sicherheit der Trennung
 
@@ -341,6 +347,7 @@ Betreiber der Installation darf und was nicht.
 | NFA-SEC-24 | Jeder Anwendungsfall verlangt einen typgeprüften Nachweis, dass die zugehörige Berechtigung geprüft wurde. Ein Aufruf ohne Prüfung ist ein Übersetzungsfehler. | MUSS | T |
 | NFA-SEC-25 | Berechtigungen werden bei jeder Anfrage frisch aus der Datenbank gelesen; sie liegen weder im Cookie noch in einem Zwischenspeicher. | MUSS | T |
 | NFA-SEC-26 | Die Stellen, an denen ein Mandantenkontext entsteht, sind aufgezählt und werden automatisiert überwacht. | MUSS | T |
+| NFA-SEC-30 | Der Wächter des Adminbereichs erfasst **jede** Datei der Repository-Schicht, die einen `PlatformContext` führt — nicht nur eine benannte. Auf dem Protokoll eines Mandanten darf die Verwaltung ausschließlich schreiben. | MUSS | T |
 
 ---
 
@@ -391,6 +398,7 @@ unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
 | M7 Betrieb | NFA-BETR-03 bis -11, NFA-COMP-03 bis -06, NFA-QUAL-02, -06 |
 | M8 Mandanten & Rollen | FA-ORG-*, FA-ROLE-*, FA-MEMB-*, FA-ADM-*, NFA-SEC-23 bis -26 |
 | M9 Anmeldeverfahren | FA-PASS-*, FA-TRUST-*, FA-ADM-09 bis -11, NFA-SEC-27 bis -29 |
+| M10 Verwaltung | FA-ADM-12 bis -17, NFA-SEC-30 |
 
 ---
 
@@ -455,3 +463,21 @@ einlösen. Danach als Inhaber das Passwort „vergessen": im Adminbereich einen
 Zurücksetzungsnachweis ausstellen, einlösen, anmelden. Prüfen, dass beide Eingriffe im
 Protokoll **des Unternehmens** mit Akteursart `ADMIN` stehen und dass alle Sitzungen
 des betroffenen Kontos geendet haben.
+
+**A13 — Zweiter Betreiber**
+Aus der Oberfläche einen zweiten Betreiber einladen, den Link einlösen, mit dem neuen
+Konto anmelden. Danach versuchen, das letzte aktive Betreiberkonto zu sperren — muss
+abgewiesen werden. Anschließend dasselbe Konto zurücksetzen: Das muss gehen, denn der
+Rückweg entsteht im selben Zug.
+
+**A14 — Konto unkenntlich machen**
+Ein Mandantenkonto anonymisieren, das Belege erstellt hat. Prüfen: Die Belege stehen
+unverändert da, die Spalte „Erstellt von" sagt „Gelöschtes Konto", die Mitgliederliste
+zeigt keine Platzhalteradresse, keine der vier Anmeldearten führt noch hinein, und der
+Vorgang steht im Protokoll des Unternehmens **und** in dem der Verwaltung.
+
+**A15 — Was die Verwaltung sieht**
+Im Protokoll der Verwaltung nachsehen, dass keine Zeile eines Mandanten erscheint —
+weder Rechnungsnummer noch Kundenname. Eine interne Notiz an einem Unternehmen
+hinterlegen und den Datenexport dieses Unternehmens herunterladen: Die Notiz steht
+nicht darin.

@@ -14,9 +14,16 @@ zweimal eine Nummer verschoben). Ein `†` markiert IDs, die dort **keinem** Mei
 sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
-Stand: 2026-08-19 · **212 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
-118 umgesetzt, 11 offen. Dazu **32 IDs** aus `faktura-frontend-design.md` §9
+Stand: 2026-08-19 · **219 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
+125 umgesetzt, 11 offen. Dazu **32 IDs** aus `faktura-frontend-design.md` §9
 (Abschnitt 16), alle umgesetzt.
+
+**M10 umgesetzt** — sieben neue IDs in Abschnitt 17 (Katalog §16.4/16.5):
+Betreiberkonten aus der Oberfläche, Protokoll der Verwaltung, Anonymisieren
+statt Löschen, Unternehmen bearbeiten, Zustand und Sicherung. Dabei zwei
+Korrekturen an eigenen Entwürfen, beide von bestehenden Tests erzwungen: Die
+Aussperrsicherung der Verwaltung ist **kein** Trigger geworden, und die interne
+Notiz gehört nicht zu den Kennzahlen.
 
 **M9 umgesetzt** — 19 neue IDs in Abschnitt 18 (Katalog §17 „Anmeldeverfahren"):
 Passkeys, vertraute Geräte und die beiden Wege des Betreibers aus einer
@@ -613,6 +620,7 @@ Auftraggeber vorgegeben hat.
 | NFA-SEC-27 | JSON-Routen prüfen Herkunft und CSRF-Kopfzeile | MUSS | T | M9 | umgesetzt | `assertJsonRequestIntegrity`; `tests/integration/route-protection.test.ts` — fremde Herkunft und fehlende Kopfzeile ergeben 403, eine gültige Anfrage kommt bis zur Inhaltsprüfung (400). Die dritte Prüfung ist der Gegenbeweis: Ohne sie bestünden die beiden ersten auch dann, wenn die Route jede Anfrage abwiese. Genau dieser Test hat aufgedeckt, dass die Prüfung anfangs die falsche Kopfzeile las und damit immer durchging |
 | NFA-SEC-28 | Alle Ablehnungen ununterscheidbar | MUSS | T | M9 | umgesetzt | Ein einziger Fehlertyp `REJECTED` in `passkey-login.ts`; `tests/integration/passkeys.test.ts` (unbekannt, gesperrt, stillgelegt, falsche Identität) |
 | NFA-SEC-29 | Anmeldesperre gilt nicht für Passkeys | MUSS | T | M9 | umgesetzt | `passkey-login.ts` liest `lockedUntil` nicht; `tests/integration/passkeys.test.ts` — Konto mit zehn Fehlversuchen meldet mit Passkey an |
+| NFA-SEC-30 | Der Wächter erfasst jede Datei mit `PlatformContext` | MUSS | T | M10 | umgesetzt | `tests/architecture/platform-repository.test.ts` — die **vierte** Lücke dieses Wächters: Alle drei bisherigen Prüfungen lasen eine Datei, und `createPlatformAuditEntry` stand mit `PlatformContext` daneben. Dazu eine dritte Kategorie: auf `auditLog` darf die Verwaltung nur schreiben. Beide Regeln gegengeprüft |
 | FA-TRUST-01 | Gerät merken, 30 Tage, Passwort bleibt | SOLL | T | M9 | umgesetzt | `src/domain/auth/trusted-device-policy.ts`; `login()` prüft **vor** dem `PendingLogin`; `tests/integration/two-step-login.test.ts` |
 | FA-TRUST-02 | An das Konto gebunden, nicht nur an den Token | MUSS | T | M9 | umgesetzt | Abfrage über `userId` **und** Hash; `tests/integration/two-step-login.test.ts` — der Nachweis eines fremden Kontos überspringt nichts |
 | FA-TRUST-03 | Einsehbar und einzeln widerrufbar | MUSS | M | M9 | umgesetzt | `/settings/security`, Abschnitt „Vertraute Geräte" mit Bezeichnung, letzter Nutzung und Ablauf. Manuell: A11 |
@@ -621,6 +629,12 @@ Auftraggeber vorgegeben hat.
 | FA-ADM-09 | Offene Einladungen sichtbar und zurückziehbar | MUSS | T | M9 | umgesetzt | `listOpenInvitationsForPlatform`, `revokeInvitationForPlatform`; `/admin/organizations/[id]`; `tests/integration/platform-admin.test.ts` |
 | FA-ADM-10 | Einladung erneut ausstellbar | MUSS | T | M9 | umgesetzt | `reissueOwnerInvitation` — zieht erst zurück, stellt dann aus; behebt zugleich den rohen Indexfehler in `createOrganizationWithOwner`; `tests/integration/platform-admin.test.ts` |
 | FA-ADM-11 | Zurücksetzungsnachweis für ein Mandantenkonto | MUSS | T | M9 | umgesetzt | `startTenantPasswordReset` — kein Passwort, keine Sitzung; alle Sitzungen und vertrauten Geräte enden; Eintrag mit `actorKind: 'ADMIN'` im Protokoll des Unternehmens; `tests/integration/platform-admin.test.ts` |
+| FA-ADM-12 | Betreiberkonten aus der Oberfläche verwalten | MUSS | T | M10 | umgesetzt | `src/application/admin/platform-accounts.ts` — dünn über `inviteAdmin`/`resetAdmin`, damit es nur **einen** Ausstellungsweg gibt; `/admin/accounts`; `tests/integration/platform-accounts.test.ts` (Liste ohne Passwortfelder, Einladung nur als Hash, Sitzungen enden beim Sperren, eigenes Konto abgewiesen) |
+| FA-ADM-13 | Sperren trifft nicht das letzte aktive Konto, Zurücksetzen darf es | MUSS | T | M10 | umgesetzt | `setAdminUserDisabled` zählt und schreibt in **einer** Transaktion. **Kein Trigger**, anders als geplant: „immer mindestens ein aktives Betreiberkonto" ist kein Invariant dieses Systems — `resetAdmin` führt absichtlich hindurch, und `admin:create` kommt mit einer neuen Adresse immer herein. Vier bestehende Tests haben den ersten Anlauf umgeworfen; zwei neue halten den Unterschied fest |
+| FA-ADM-14 | Protokoll der Verwaltung, auch ohne Unternehmensbezug | MUSS | T | M10 | umgesetzt | Eigene Tabelle `PlatformAuditEntry` mit zwei Unveränderlichkeitstriggern; `/admin/audit`. **Kein Filter auf `AuditLog`**: Vorgänge an Betreiberkonten hätten dort keinen Platz, und die Verwaltung müsste das Protokoll der Mandanten lesen dürfen. `tests/integration/platform-accounts.test.ts` — ein Geschäftsvorfall erscheint nicht |
+| FA-ADM-15 | Konto unkenntlich machen statt löschen | MUSS | T | M10 | umgesetzt | `anonymizeTenantUser`; Platzhalteradresse `geloescht-<id>@invalid` (RFC 2606) hält den eindeutigen Index. Die Aussperrsicherung aus FA-ROLE-04 greift ohne Zutun, weil `roleId` und `disabledAt` mitgesetzt werden. `tests/integration/platform-admin.test.ts` — Beleg behält Urheber, Protokolleintrag bleibt auflösbar, keine Anmeldung mehr möglich, zwei Anonymisierungen kollidieren nicht |
+| FA-ADM-16 | Name und interne Notiz eines Unternehmens | MUSS | T | M10 | umgesetzt | `updateManagedOrganization`; die Notiz liegt **nicht** an `OrganizationMetrics` — der Test „ausschließlich Kennzahlen" hat den ersten Anlauf abgewiesen, zu Recht. Geprüft gegen den Datenexport des Mandanten, den vollständigsten Blick auf seine eigenen Daten |
+| FA-ADM-17 | Zustand und Sicherung aus der Oberfläche | SOLL | M | M10 | umgesetzt | `/admin/operations` — `checkSystemStatus()` aus M7 und `/admin/api/backup` aus M8; neu ist nur der Weg dorthin. Zeitplan und Wiederherstellung bleiben Betriebsaufträge, mit Begründung auf der Seite. Manuell: A13 |
 
 ---
 ## Abnahmeszenarien (Katalog §19)
@@ -639,3 +653,6 @@ Auftraggeber vorgegeben hat.
 | A10 | Passkey statt Passwort | offen |
 | A11 | Vertrautes Gerät | offen |
 | A12 | Zurück aus der Sackgasse | offen |
+| A13 | Zweiter Betreiber | offen |
+| A14 | Konto unkenntlich machen | offen |
+| A15 | Was die Verwaltung sieht | offen |
