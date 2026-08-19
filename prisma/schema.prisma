@@ -699,6 +699,45 @@ model PendingLogin {
 /// Protokoll aller Änderungen an Rechnungen und Stammdaten (NFA-COMP-01).
 /// Einträge werden ausschließlich angelegt, nie geändert oder gelöscht
 /// (NFA-COMP-02) — die Durchsetzung folgt mit M4.
+/// Protokoll der **Verwaltung** (M10, FA-ADM-14).
+///
+/// Eine zweite Tabelle neben `AuditLog`, und die Trennung ist der Punkt:
+///
+/// - `AuditLog` gehört einem **Unternehmen**. Was der Betreiber dort tut, steht
+///   mit `actorKind: 'ADMIN'` darin, damit die Betroffenen es sehen (FA-ADM-07).
+/// - `PlatformAuditEntry` gehört der **Anlage**. Hier steht, was ein Betreiber
+///   getan hat — auch das, was kein Unternehmen betrifft: ein Betreiberkonto
+///   einladen, sperren, zurücksetzen.
+///
+/// Der Betreiber liest damit **nie** das Protokoll eines Mandanten. Das ist
+/// stärker als ein Filter auf `actorKind`: Ein Filter kann vergessen werden, eine
+/// getrennte Tabelle enthält die fremden Zeilen gar nicht erst. Der Preis ist,
+/// dass ein Eingriff mit Unternehmensbezug zweimal steht — einmal für jede
+/// Leserschaft, mit unterschiedlicher Reichweite.
+///
+/// `actorId` und `organizationId` sind **Text ohne Fremdschlüssel**, wie
+/// `AuditLog.actorId`: Ein Protokoll beschreibt, was war, und muss auch dann
+/// lesbar bleiben, wenn der Gegenstand nicht mehr aufzulösen ist.
+model PlatformAuditEntry {
+  id String @id @default(cuid())
+
+  /// Kennung des handelnden `AdminUser`.
+  actorId String
+
+  /// Das betroffene Unternehmen — leer bei Vorgängen ohne Unternehmensbezug.
+  organizationId String?
+
+  entityType  String
+  entityId    String
+  action      String
+  detailsJson String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+}
+
 model AuditLog {
   id             String       @id @default(cuid())
   organizationId String

@@ -748,3 +748,116 @@ export async function deleteSessionsOfOrganization(
   });
   return result.count;
 }
+
+// ─── Protokoll der Verwaltung (M10, B2, FA-ADM-14) ──────────────────────────
+
+export type PlatformAuditRow = {
+  readonly organizationId: string | null;
+  readonly entityType: string;
+  readonly entityId: string;
+  readonly action: string;
+  readonly detailsJson?: string | null;
+  readonly ipAddress?: string | null;
+};
+
+/**
+ * Ein Eintrag im Protokoll **des Unternehmens** (M8, FA-ADM-07).
+ *
+ * Umgezogen aus `audit-repository.ts` (M10/B2). Dort nahm er einen
+ * `PlatformContext` und lag damit außerhalb der Reichweite des Wächters, der nur
+ * diese Datei liest — eine Lesefunktion auf `auditLog` hätte sich daneben
+ * anlegen lassen, ohne dass jemand die Frage hätte beantworten müssen.
+ *
+ * Die Organisationskennung kommt als gewöhnliche Zeichenkette, der
+ * `PlatformContext` ist der Nachweis. `actorKind: 'ADMIN'` ist die
+ * Unterscheidung, die `actorId` allein nicht trägt: Die Kennungen stammen aus
+ * zwei verschiedenen Tabellen.
+ *
+ * **Auf `auditLog` schreibt der Betreiber, er liest dort nie.** Was er zu sehen
+ * bekommt, steht in `PlatformAuditEntry`.
+ */
+export async function createPlatformAuditEntry(
+  _platform: PlatformContext,
+  organizationId: string,
+  row: {
+    readonly entityType: string;
+    readonly entityId: string;
+    readonly action: string;
+    readonly actorId?: string | null;
+    readonly diffJson?: string | null;
+    readonly ipAddress?: string | null;
+  },
+  handle?: TransactionHandle,
+): Promise<void> {
+  await clientFor(handle).auditLog.create({
+    data: { ...row, organizationId, actorKind: 'ADMIN' },
+  });
+}
+
+/** Ein Eintrag im Protokoll **der Anlage** (M10, FA-ADM-14). */
+export async function createPlatformAuditRow(
+  platform: PlatformContext,
+  row: PlatformAuditRow,
+  handle?: TransactionHandle,
+): Promise<void> {
+  await clientFor(handle).platformAuditEntry.create({
+    data: { ...row, actorId: platform.adminUserId },
+  });
+}
+
+export type PlatformAuditView = {
+  readonly id: string;
+  readonly actorId: string;
+  readonly actorEmail: string | null;
+  readonly organizationId: string | null;
+  readonly organizationName: string | null;
+  readonly entityType: string;
+  readonly entityId: string;
+  readonly action: string;
+  readonly ipAddress: string | null;
+  readonly createdAt: Date;
+};
+
+/**
+ * Das Protokoll der Verwaltung, neueste zuerst (M10, FA-ADM-14).
+ *
+ * **Ohne `include`, mit zwei Nachschlagetabellen.** Ein `include` auf
+ * `organization` wäre bequem, liefe aber genau in die Form, die der Wächter seit
+ * M8/B5 verbietet: eine Beziehung, die vollständige Zeilen mitbringt. Namen
+ * werden deshalb einzeln geholt und im Speicher zugeordnet — bei einem
+ * Protokoll, das seitenweise gelesen wird, kostet das nichts.
+ *
+ * Aufgelöst wird nur, was noch existiert. Ein Eintrag bleibt lesbar, auch wenn
+ * sein Gegenstand es nicht mehr ist — das ist der Zweck eines Protokolls.
+ */
+export async function listPlatformAuditEntries(
+  _platform: PlatformContext,
+  limit = 200,
+): Promise<readonly PlatformAuditView[]> {
+  const entries = await clientFor(undefined).platformAuditEntry.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+
+  const [admins, organizations] = await Promise.all([
+    clientFor(undefined).adminUser.findMany({ select: { id: true, email: true } }),
+    clientFor(undefined).organization.findMany({ select: { id: true, name: true } }),
+  ]);
+
+  const adminById = new Map(admins.map((admin) => [admin.id, admin.email]));
+  const nameById = new Map(organizations.map((organization) => [organization.id, organization.name]));
+
+  return entries.map((entry) => ({
+    id: entry.id,
+    actorId: entry.actorId,
+    actorEmail: adminById.get(entry.actorId) ?? null,
+    organizationId: entry.organizationId,
+    organizationName:
+      entry.organizationId === null ? null : (nameById.get(entry.organizationId) ?? null),
+    entityType: entry.entityType,
+    entityId: entry.entityId,
+    action: entry.action,
+    ipAddress: entry.ipAddress,
+    createdAt: entry.createdAt,
+  }));
+}

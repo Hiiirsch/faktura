@@ -12,10 +12,11 @@
  * Was hier hineingeschrieben wird, unterliegt NFA-BETR-10: keine Passwörter,
  * keine Token, keine vollständigen Kundendatensätze.
  */
+import { createAuditEntry } from '@/infrastructure/repositories/audit-repository';
 import {
-  createAuditEntry,
   createPlatformAuditEntry,
-} from '@/infrastructure/repositories/audit-repository';
+  createPlatformAuditRow,
+} from '@/infrastructure/repositories/platform-repository';
 import type { OrganizationContext } from '@/infrastructure/repositories/organization-context';
 import type { PlatformContext } from '@/infrastructure/repositories/platform-context';
 
@@ -57,7 +58,13 @@ export type AuditAction =
   // Eingriffe der Verwaltung (M8, FA-ADM-05, -07)
   | 'ORGANIZATION_CREATED'
   | 'SUSPENDED'
-  | 'RESUMED';
+  | 'RESUMED'
+  // Betreiberkonten (M10, FA-ADM-12, -14). Sie betreffen kein Unternehmen und
+  // stehen deshalb ausschließlich im Protokoll der Anlage.
+  | 'ADMIN_INVITED'
+  | 'ADMIN_DISABLED'
+  | 'ADMIN_ENABLED'
+  | 'ADMIN_RESET';
 
 export type AuditEntry = {
   readonly entityType: string;
@@ -83,23 +90,67 @@ export async function recordAuditEntry(
 }
 
 /**
- * Ein Eintrag, den die **Verwaltung** schreibt (M8, FA-ADM-07).
+ * Ein Eintrag, den die **Verwaltung** schreibt (M8, FA-ADM-07; M10, FA-ADM-14).
  *
- * Er landet im Protokoll des betroffenen Unternehmens und trägt
- * `actorKind: 'ADMIN'`. Der Betreiber hat keinen Mandantenkontext; die Kennung
- * der Organisation kommt aus dem Gegenstand seiner Handlung.
+ * Er landet an **zwei** Stellen, und beide sind nötig:
+ *
+ * - im Protokoll des betroffenen **Unternehmens**, mit `actorKind: 'ADMIN'` —
+ *   wer dort liest, soll sehen, dass eine Stilllegung von außen kam;
+ * - im Protokoll der **Anlage**, das der Betreiber selbst einsehen kann.
+ *
+ * Doppelt aufgezeichnet, weil es zwei Leserschaften mit zwei Reichweiten sind.
+ * Der Betreiber liest dafür **nie** das Protokoll eines Mandanten: Es enthält
+ * Rechnungsnummern und Beträge, und eine Ansicht, die nur durch ein `where`
+ * davon getrennt wäre, hinge an einem vergessenen Filter.
+ *
+ * Beide Schreibvorgänge stehen hier, nicht bei den Aufrufern: Sechs Stellen
+ * rufen diese Funktion, und die siebte hätte die zweite Aufzeichnung vergessen.
  */
 export async function recordPlatformAuditEntry(
   platform: PlatformContext,
   organizationId: string,
   entry: AuditEntry,
 ): Promise<void> {
+  const detailsJson = entry.details === undefined ? null : JSON.stringify(entry.details);
+
   await createPlatformAuditEntry(platform, organizationId, {
     entityType: entry.entityType,
     entityId: entry.entityId,
     action: entry.action,
     actorId: entry.actorId ?? null,
     ipAddress: entry.ipAddress ?? null,
-    diffJson: entry.details === undefined ? null : JSON.stringify(entry.details),
+    diffJson: detailsJson,
+  });
+
+  await createPlatformAuditRow(platform, {
+    organizationId,
+    entityType: entry.entityType,
+    entityId: entry.entityId,
+    action: entry.action,
+    detailsJson,
+    ipAddress: entry.ipAddress ?? null,
+  });
+}
+
+/**
+ * Ein Vorgang der Verwaltung **ohne Unternehmensbezug** (M10, FA-ADM-14).
+ *
+ * Betreiberkonten einladen, sperren, zurücksetzen: Es gibt kein Unternehmen, in
+ * dessen Protokoll das gehörte, und `AuditLog` verlangt eine Organisation. Genau
+ * diese Vorgänge wären in der ersten Fassung des Protokolls unsichtbar geblieben
+ * — eine Seite mit dem Titel „Protokoll der Verwaltung", die die Hälfte davon
+ * verschweigt.
+ */
+export async function recordPlatformEvent(
+  platform: PlatformContext,
+  entry: Omit<AuditEntry, 'actorId'>,
+): Promise<void> {
+  await createPlatformAuditRow(platform, {
+    organizationId: null,
+    entityType: entry.entityType,
+    entityId: entry.entityId,
+    action: entry.action,
+    detailsJson: entry.details === undefined ? null : JSON.stringify(entry.details),
+    ipAddress: entry.ipAddress ?? null,
   });
 }

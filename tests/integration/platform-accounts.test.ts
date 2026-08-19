@@ -18,6 +18,10 @@ import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { adminLogin } from '@/application/admin/admin-login';
+import {
+  getPlatformAuditTrail,
+  setOrganizationSuspended,
+} from '@/application/admin/organization-admin';
 import { createAdminSession } from '@/application/admin/admin-session-service';
 import {
   invitePlatformAccount,
@@ -25,13 +29,18 @@ import {
   resetPlatformAccount,
   setPlatformAccountDisabled,
 } from '@/application/admin/platform-accounts';
+import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { hashToken } from '@/infrastructure/auth/tokens';
 import { generateTotpSecret } from '@/infrastructure/auth/totp';
+import {
+  DEFAULT_ORGANIZATION_ID,
+  organizationContextOf,
+} from '@/infrastructure/repositories/organization-context';
 import { platformContextOf } from '@/infrastructure/repositories/platform-context';
 import { createAdminUser } from '@/infrastructure/repositories/platform-repository';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
 
@@ -340,5 +349,96 @@ describe('FA-ADM-13 Die Aussperrsicherung der Verwaltung', () => {
     expect(again.ok).toBe(true);
     const stored = await prisma.adminUser.findUnique({ where: { id: target } });
     expect(stored?.disabledAt).not.toBeNull();
+  });
+});
+
+/**
+ * Das Protokoll der Verwaltung (M10, B2, FA-ADM-14).
+ *
+ * Der zweite Test ist der, auf den es ankommt: Ein Unternehmen erzeugt einen
+ * Geschäftsvorfall, und das Protokoll der Verwaltung darf ihn **nicht** zeigen.
+ * Er prüft die Zusage aus FA-ADM-02 an der Stelle, an der sie am ehesten
+ * aufweicht — eine Ansicht, die „nur mal eben" das Protokoll liest.
+ */
+describe('FA-ADM-14 Protokoll der Verwaltung', () => {
+  it('führt Vorgänge an Betreiberkonten, die kein Unternehmen betreffen', async () => {
+    const actor = await seedAdmin('eins@example.org');
+    const target = await seedAdmin('zwei@example.org');
+    const platform = platformContextOf(actor);
+
+    await invitePlatformAccount(platform, 'neu@example.org', NOW);
+    await setPlatformAccountDisabled(platform, target, true, NOW);
+
+    const trail = await getPlatformAuditTrail(platform);
+
+    expect(trail.map((entry) => entry.action)).toEqual(['ADMIN_DISABLED', 'ADMIN_INVITED']);
+    expect(trail.every((entry) => entry.organizationId === null)).toBe(true);
+    expect(trail.every((entry) => entry.actorEmail === 'eins@example.org')).toBe(true);
+  });
+
+  it('zeigt keinen Geschäftsvorfall eines Unternehmens', async () => {
+    const actor = await seedAdmin('eins@example.org');
+    const platform = platformContextOf(actor);
+
+    // Ein gewöhnlicher Vorgang im Protokoll **des Unternehmens** — so, wie ihn
+    // die Fachlogik schreibt.
+    await recordAuditEntry(organizationContextOf(DEFAULT_ORGANIZATION_ID), {
+      entityType: 'Invoice',
+      entityId: 'RE-2026-0001',
+      action: 'ISSUED',
+      actorId: TEST_ACTOR_ID,
+    });
+
+    const trail = await getPlatformAuditTrail(platform);
+
+    expect(trail).toEqual([]);
+    // Und der Eintrag ist da, nur eben nicht hier — sonst prüfte der Test nichts.
+    expect(await prisma.auditLog.count({ where: { action: 'ISSUED' } })).toBe(1);
+  });
+
+  it('steht ein Eingriff im Protokoll beider Seiten', async () => {
+    /*
+     * Doppelt aufgezeichnet, und beide Aufzeichnungen haben eine eigene
+     * Leserschaft: Das Unternehmen sieht, dass etwas von außen kam (FA-ADM-07),
+     * der Betreiber sieht, was er getan hat (FA-ADM-14).
+     */
+    const actor = await seedAdmin('eins@example.org');
+    const platform = platformContextOf(actor);
+
+    const result = await setOrganizationSuspended(
+      platform,
+      DEFAULT_ORGANIZATION_ID,
+      true,
+      actor,
+      null,
+    );
+    expect(result.ok).toBe(true);
+
+    const trail = await getPlatformAuditTrail(platform);
+    expect(trail.map((entry) => entry.action)).toEqual(['SUSPENDED']);
+    expect(trail[0]?.organizationId).toBe(DEFAULT_ORGANIZATION_ID);
+
+    const tenantSide = await prisma.auditLog.findMany({ where: { action: 'SUSPENDED' } });
+    expect(tenantSide).toHaveLength(1);
+    expect(tenantSide[0]?.actorKind).toBe('ADMIN');
+  });
+
+  it('lässt sich ein Eintrag nicht ändern und nicht löschen', async () => {
+    // Dieselbe Zusage wie beim Protokoll der Mandanten (NFA-COMP-02), von
+    // denselben zwei Triggern getragen.
+    const actor = await seedAdmin('eins@example.org');
+    await invitePlatformAccount(platformContextOf(actor), 'neu@example.org', NOW);
+
+    const entry = await prisma.platformAuditEntry.findFirst();
+    expect(entry).not.toBeNull();
+    if (entry === null) return;
+
+    await expect(
+      prisma.platformAuditEntry.update({ where: { id: entry.id }, data: { action: 'ANDERS' } }),
+    ).rejects.toThrow();
+
+    await expect(
+      prisma.platformAuditEntry.delete({ where: { id: entry.id } }),
+    ).rejects.toThrow();
   });
 });

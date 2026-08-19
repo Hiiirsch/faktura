@@ -36,6 +36,7 @@
  * ausführlich an `setAdminUserDisabled`.
  */
 import { err, ok, type Result } from '@/domain/shared/result';
+import { recordPlatformEvent } from '@/infrastructure/audit/audit-log';
 import { logger } from '@/infrastructure/logging/logger';
 import type { PlatformContext } from '@/infrastructure/repositories/platform-context';
 import {
@@ -89,6 +90,15 @@ export async function invitePlatformAccount(
     return err({ kind: 'EMAIL_TAKEN' });
   }
 
+  await recordPlatformEvent(platform, {
+    entityType: 'AdminUser',
+    // Es gibt noch kein Konto — der Gegenstand ist die Adresse, an die der
+    // Nachweis ging. Sie ist das Einzige, was den Vorgang später auffindbar
+    // macht.
+    entityId: email.trim().toLowerCase(),
+    action: 'ADMIN_INVITED',
+  });
+
   logger.security('admin.account_invited', {
     by: platform.adminUserId,
     email: email.trim().toLowerCase(),
@@ -120,6 +130,12 @@ export async function setPlatformAccountDisabled(
   if ((await setAdminUserDisabled(platform, id, disabled ? now : null)) === 'last-administrator') {
     return err({ kind: 'LAST_ADMINISTRATOR' });
   }
+
+  await recordPlatformEvent(platform, {
+    entityType: 'AdminUser',
+    entityId: id,
+    action: disabled ? 'ADMIN_DISABLED' : 'ADMIN_ENABLED',
+  });
 
   logger.security(disabled ? 'admin.account_disabled' : 'admin.account_enabled', {
     by: platform.adminUserId,
@@ -159,6 +175,12 @@ export async function resetPlatformAccount(
   if (!result.ok) {
     return err({ kind: 'NOT_FOUND' });
   }
+
+  await recordPlatformEvent(platform, {
+    entityType: 'AdminUser',
+    entityId: id,
+    action: 'ADMIN_RESET',
+  });
 
   logger.security('admin.account_reset', { by: platform.adminUserId, adminUserId: id });
   return ok(result.value);

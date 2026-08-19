@@ -34,6 +34,17 @@ const BUDGET_MS = 1_000;
 const NOW = new Date('2026-08-15T10:00:00Z');
 
 beforeEach(async () => {
+  /*
+   * **Erst trennen, dann tauschen** (M10).
+   *
+   * `resetDatabase()` ersetzt die Datenbankdatei und trennt dafür den Client der
+   * **Anwendung**; den eines Testmoduls kennt es nicht. Bleibt der offen, hängt
+   * er an der abgehängten alten Datei: Lesezugriffe liefern veraltete oder gar
+   * keine Zeilen, Schreibzugriffe scheitern an Fremdschlüsseln auf Zeilen, die
+   * es dort nie gab. Beides ist aufgetreten, und beides sah nach einem Fehler in
+   * der Fachlogik aus.
+   */
+  await prisma.$disconnect();
   await resetDatabase();
 });
 

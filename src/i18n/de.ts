@@ -159,6 +159,7 @@ export const messages = {
     navLabel: 'Verwaltung',
     navOrganizations: 'Unternehmen',
     navAccounts: 'Betreiber',
+    navAudit: 'Protokoll',
     navOperations: 'Betrieb',
 
     // ── Betreiberkonten (M10, B1, FA-ADM-12, -13) ───────────────────────────
@@ -195,6 +196,36 @@ export const messages = {
     accountsErrorLAST_ADMINISTRATOR:
       'Die Datenbank hat die Änderung abgewiesen: Es wäre das letzte aktive Betreiberkonto. Ohne eines käme niemand mehr in die Verwaltung.',
     accountsErrorNOT_FOUND: 'Dieses Konto gibt es nicht mehr.',
+
+    // ── Protokoll der Verwaltung (M10, B2, FA-ADM-14) ───────────────────────
+    auditTitle: 'Protokoll',
+    auditHeading: 'Protokoll der Verwaltung',
+    auditIntro:
+      'Handlungen von Betreibern, neueste zuerst. Geschäftsvorfälle der Unternehmen stehen hier nicht — sie werden im Protokoll des jeweiligen Unternehmens geführt, das die Verwaltung nicht liest.',
+    auditEmpty: 'Es ist noch nichts geschehen.',
+    auditColumnWhen: 'Zeitpunkt',
+    auditColumnActor: 'Betreiber',
+    auditColumnOrganization: 'Unternehmen',
+    auditColumnAction: 'Handlung',
+    auditColumnSubject: 'Gegenstand',
+    auditNoOrganization: '—',
+    auditUnknownActor: 'Konto entfernt',
+    auditRetentionNote:
+      'Einträge lassen sich nicht ändern und nicht löschen; Datenbank-Trigger weisen beides ab. Angezeigt werden die jüngsten 200 Vorgänge — vollständig steht das Protokoll in der Sicherung.',
+    auditAction: {
+      ORGANIZATION_CREATED: 'Unternehmen angelegt',
+      SUSPENDED: 'stillgelegt',
+      RESUMED: 'freigegeben',
+      DISABLED: 'Konto gesperrt',
+      ENABLED: 'Konto entsperrt',
+      INVITED: 'Einladung ausgestellt',
+      INVITATION_REVOKED: 'Einladung zurückgezogen',
+      PASSWORD_RESET_REQUESTED: 'Zurücksetzung ausgestellt',
+      ADMIN_INVITED: 'Betreiber eingeladen',
+      ADMIN_DISABLED: 'Betreiberkonto gesperrt',
+      ADMIN_ENABLED: 'Betreiberkonto entsperrt',
+      ADMIN_RESET: 'Betreiberzugang neu eingerichtet',
+    } as Record<string, string>,
   },
 
   backup: {

@@ -38,8 +38,10 @@ import {
   findUserForPlatform,
   listOpenInvitationsForPlatform,
   listOrganizationsWithMetrics,
+  listPlatformAuditEntries,
   listUsersForPlatform,
   type OrganizationMetrics,
+  type PlatformAuditView,
   type PlatformUser,
   reissueOwnerInvitation,
   revokeInvitationForPlatform,
@@ -423,4 +425,28 @@ export async function startTenantPasswordReset(
   logger.security('admin.tenant_password_reset', { adminUserId, userId });
 
   return ok({ token, expiresAt });
+}
+
+/**
+ * Das Protokoll der Verwaltung (M10, B2, FA-ADM-14).
+ *
+ * **Was hier steht und was nicht.** Handlungen von Betreibern: Unternehmen
+ * angelegt, stillgelegt, freigegeben, Einladung neu ausgestellt,
+ * Zurücksetzungsnachweis erteilt, Konto gesperrt — und seit B1 auch die
+ * Vorgänge an Betreiberkonten selbst, die kein Unternehmen betreffen.
+ *
+ * **Kein Geschäftsvorfall.** Nicht durch einen Filter, sondern weil die Tabelle
+ * `PlatformAuditEntry` ausschließlich aus Handlungen der Verwaltung entsteht.
+ * Ein Eintrag über eine festgeschriebene Rechnung kommt dort nie an.
+ *
+ * Der eigentliche Zweck ist die Sichtbarkeit des Eingriffs, der ein
+ * Mandantenkonto übernehmen könnte (M9, Plan H6): Er lässt sich nicht
+ * verhindern, solange der Betreiber Nachweise ausstellen darf — aber er soll
+ * niemandem entgehen.
+ */
+export async function getPlatformAuditTrail(
+  platform: PlatformContext,
+  limit?: number,
+): Promise<readonly PlatformAuditView[]> {
+  return listPlatformAuditEntries(platform, limit);
 }

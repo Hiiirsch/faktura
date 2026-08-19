@@ -84,6 +84,11 @@ async function sessionWith(permissions: readonly string[]): Promise<ActiveSessio
 
 describe('FA-ROLE-03 `authorize` stellt den Nachweis nur mit Recht aus', () => {
   beforeEach(async () => {
+    /*
+     * **Erst trennen, dann tauschen** (M10) — siehe `platform-accounts.test.ts`.
+     * Ein Client des Testmoduls hängt sonst an der abgehängten alten Datei.
+     */
+    await prisma.$disconnect();
     await resetDatabase();
   });
 

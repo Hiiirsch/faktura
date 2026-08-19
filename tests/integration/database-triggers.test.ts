@@ -70,6 +70,10 @@ const EXPECTED_TRIGGERS = [
   // Recht nehmen.
   'Organization_keeps_administrator_on_user_update',
   'Organization_keeps_administrator_on_user_delete',
+  // Protokoll der Verwaltung (M10, FA-ADM-14) — unveränderlich wie das der
+  // Mandanten. Ein Protokoll, das sich nachträglich ändern lässt, ist keines.
+  'PlatformAuditEntry_no_update',
+  'PlatformAuditEntry_no_delete',
   'Organization_keeps_administrator_on_permission_delete',
 ] as const;
 

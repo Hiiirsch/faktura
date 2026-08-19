@@ -16,8 +16,14 @@
  * Prisma-Client sehen. Wer dort ein `invoice.findMany()` schreibt, umgeht die
  * Sicherung — kein Typ hält ihn auf. Deshalb wird genau diese Datei am
  * Quelltext geprüft.
+ *
+ * **Und genau das war die vierte Lücke** (M10/B2): „genau diese Datei". Eine
+ * Funktion mit `PlatformContext` ließ sich daneben anlegen —
+ * `createPlatformAuditEntry` stand bis M10 in `audit-repository.ts` und war
+ * damit ungeprüft. Der Wächter sucht jetzt zuerst nach solchen Nachbarn und
+ * verlangt, dass es keine gibt.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,7 +50,6 @@ const ADMINISTRATIVE = [
   'adminSession',
   'adminInvitation',
   'session',
-  'auditLog',
   /*
    * Seit M9/B1 zusätzlich — und die Aufnahme ist eine Entscheidung, keine
    * Formalität.
@@ -72,6 +77,12 @@ const ADMINISTRATIVE = [
    * herein, und die Zurücksetzung wäre an der entscheidenden Stelle wirkungslos.
    */
   'trustedDevice',
+  /*
+   * `platformAuditEntry` seit M10/B2 — das Protokoll der **Anlage**, nicht das
+   * eines Unternehmens. Es entsteht ausschließlich aus Handlungen des
+   * Betreibers und enthält keinen Geschäftsvorfall.
+   */
+  'platformAuditEntry',
 ];
 
 /**
@@ -79,6 +90,22 @@ const ADMINISTRATIVE = [
  * Anzahl lässt sich kein Beleg rekonstruieren, und ohne sie könnte der
  * Betreiber nicht einmal erkennen, ob ein Unternehmen die Anwendung benutzt.
  */
+/**
+ * Auf diese Gegenstände darf die Verwaltung **nur schreiben** (M10, B2).
+ *
+ * `auditLog` ist das Protokoll eines Unternehmens: Rechnungsnummern, Beträge,
+ * Kundennamen stehen dort im Klartext. Der Betreiber trägt seinen Eingriff
+ * hinein, damit die Betroffenen ihn sehen (FA-ADM-07) — lesen darf er dort
+ * nichts.
+ *
+ * Bis M10 stand `auditLog` in `ADMINISTRATIVE`, also unter „alles erlaubt". Das
+ * war nie benutzt worden, aber eine Ansicht der Verwaltung, die es liest, wäre
+ * durchgegangen. Was der Betreiber zu sehen bekommt, steht seit M10 in
+ * `platformAuditEntry` — einer eigenen Tabelle, die die fremden Zeilen gar nicht
+ * erst enthält.
+ */
+const WRITE_ONLY = ['auditLog'];
+
 const BUSINESS = [
   'invoice',
   'invoiceLine',
@@ -91,6 +118,52 @@ const BUSINESS = [
   'numberSequence',
   'asset',
 ];
+
+/**
+ * Der Wächter kennt jede Datei, die mit einem `PlatformContext` arbeitet
+ * (M10, B2, NFA-SEC-30).
+ *
+ * **Die vierte Lücke dieses Wächters.** Die ersten drei — Delegates direkt
+ * angesprochen, über Beziehungsnamen, und Delegates in keiner Liste — stehen in
+ * `CLAUDE.md`. Diese hier ist grundsätzlicher: Alle drei prüfen **eine** Datei.
+ * `createPlatformAuditEntry` nahm einen `PlatformContext` und stand in
+ * `audit-repository.ts`; dort hätte sich eine Lesefunktion auf `auditLog`
+ * anlegen lassen, ohne dass eine der drei Prüfungen sie je gesehen hätte.
+ *
+ * Also zuerst die Frage, die vorher niemand gestellt hat: Gibt es solche
+ * Nachbarn überhaupt? Die Antwort muss „nein" lauten, sonst prüft der Rest
+ * dieser Datei nur die halbe Angriffsfläche.
+ */
+describe('NFA-SEC-30 Der Wächter sieht alles, was einen Betreiberkontext führt', () => {
+  const REPOSITORY_DIR = 'src/infrastructure/repositories';
+
+  /** Die beiden Dateien, die einen `PlatformContext` führen dürfen. */
+  const ALLOWED = new Set(['platform-repository.ts', 'platform-context.ts']);
+
+  it('führt außerhalb der geprüften Datei niemand einen Betreiberkontext', () => {
+    const directory = path.join(projectRoot, REPOSITORY_DIR);
+    const offenders = readdirSync(directory)
+      .filter((file) => file.endsWith('.ts') && !ALLOWED.has(file))
+      .filter((file) => /PlatformContext/u.test(sourceOf(path.join(REPOSITORY_DIR, file))));
+
+    expect(
+      offenders,
+      'Eine Repository-Funktion mit `PlatformContext` gehört in `platform-repository.ts` — ' +
+        'nur diese Datei wird auf Geschäftsdaten geprüft',
+    ).toEqual([]);
+  });
+
+  it('findet die Prüfung überhaupt Dateien', () => {
+    // Gegenprobe: Ohne sie bestünde die Prüfung oben auch dann, wenn das
+    // Verzeichnis leer wäre oder der Pfad nicht stimmte.
+    const files = readdirSync(path.join(projectRoot, REPOSITORY_DIR)).filter((file) =>
+      file.endsWith('.ts'),
+    );
+
+    expect(files.length).toBeGreaterThan(4);
+    expect(files).toContain('platform-repository.ts');
+  });
+});
 
 describe('FA-ADM-02 Das Betreiber-Repository fasst keine Geschäftsdaten an', () => {
   it('fragt Geschäftstabellen höchstens zählend ab', () => {
@@ -178,7 +251,7 @@ describe('FA-ADM-02 Das Betreiber-Repository fasst keine Geschäftsdaten an', ()
    */
   it('benutzt kein Delegate, das in keiner Liste steht', () => {
     const source = sourceOf(PLATFORM_REPOSITORY);
-    const known = new Set([...ADMINISTRATIVE, ...BUSINESS]);
+    const known = new Set([...ADMINISTRATIVE, ...WRITE_ONLY, ...BUSINESS]);
 
     /*
      * Erfasst wird der **Empfänger**, nicht nur der Name.
@@ -204,6 +277,41 @@ describe('FA-ADM-02 Das Betreiber-Repository fasst keine Geschäftsdaten an', ()
     // Gegenprobe: Die Prüfung darf nicht dadurch bestehen, dass sie nichts
     // findet.
     expect(used.size).toBeGreaterThan(5);
+  });
+
+  /**
+   * Auf `auditLog` schreibt der Betreiber, er liest dort nie (M10, B2).
+   *
+   * Das Protokoll eines Unternehmens nennt Rechnungsnummern, Beträge und
+   * Kundennamen. Sein Eingriff gehört hinein (FA-ADM-07) — der Blick hinein
+   * nicht. Was er zu sehen bekommt, steht in `platformAuditEntry`.
+   *
+   * Die Alternative wäre ein `where: { actorKind: 'ADMIN' }` gewesen. Sie hätte
+   * dieselbe Wirkung gehabt, solange niemand den Filter vergisst; eine getrennte
+   * Tabelle enthält die fremden Zeilen gar nicht erst.
+   */
+  it('schreibt in das Protokoll der Mandanten, ohne darin zu lesen', () => {
+    const source = sourceOf(PLATFORM_REPOSITORY);
+    const offenders: string[] = [];
+
+    for (const delegate of WRITE_ONLY) {
+      const pattern = new RegExp(
+        `(?:clientFor\\([^)]*\\)|\\bclient)\\.${delegate}\\.([a-zA-Z]+)\\s*\\(`,
+        'gu',
+      );
+
+      for (const match of source.matchAll(pattern)) {
+        const method = match[1] ?? '';
+        if (method !== 'create' && method !== 'createMany') {
+          offenders.push(`${delegate}.${method}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+
+    // Gegenprobe: Geschrieben wird tatsächlich — sonst prüfte die Regel nichts.
+    expect(/\.auditLog\.create\s*\(/u.test(source)).toBe(true);
   });
 
   it('kennt die Verwaltungsgegenstände, die es benutzen darf', () => {
