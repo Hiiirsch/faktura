@@ -218,6 +218,50 @@ im zweiten Schritt weiter; ein richtiges Passwort allein setzt sie nicht
 zurück. Alle Anmeldeereignisse landen im Audit-Log **und** im Log des
 Containers.
 
+### Passkeys
+
+Ein Passkey meldet **ohne Passwort und ohne Code** an. Unter **Sicherheit**
+anlegen, abmelden, auf der Anmeldeseite „Mit Passkey anmelden" — mehr ist es
+nicht. Betreiberkonten können dasselbe auf ihrer Übersicht.
+
+Warum das trotzdem zwei Faktoren sind: Der private Schlüssel verlässt das Gerät
+nie (Besitz), und die Gerätesperre — PIN, Fingerabdruck, Gesicht — gibt ihn erst
+frei (Wissen oder Merkmal). Die Anwendung verlangt beides und lehnt einen
+Passkey ohne Nutzerverifikation ab.
+
+Der eigentliche Gewinn gegenüber einem Einmalkennwort ist ein anderer: Die
+Signatur ist an die Domain der aufrufenden Seite gebunden. Eine nachgebaute
+Anmeldeseite bekommt nichts — auch dann nicht, wenn jemand alles eingibt, wonach
+sie fragt.
+
+**Zwei Bedingungen an die Adresse.** Passkeys brauchen einen sicheren Kontext,
+also HTTPS oder `localhost`, und einen **Domainnamen**: Unter einer IP-Adresse
+wie `127.0.0.1` funktionieren sie nicht — der Browser bricht die Zeremonie ohne
+Meldung ab. Wo eine der beiden Bedingungen fehlt, erscheint statt des Knopfes
+der Grund.
+
+**Ein Domainwechsel entwertet alle Passkeys.** Die Domain steckt im Schlüssel;
+das ist der Zweck der Bindung und lässt sich nicht abfangen. Nach einem Umzug
+melden sich alle einmal mit Passwort an und legen ihren Passkey neu an — der
+Passwortweg bleibt deshalb bestehen.
+
+Meldet ein Authenticator einen Signaturzähler, der nicht weitergezählt hat, gibt
+es den Schlüssel zweimal. Die Anwendung sperrt ihn dann und protokolliert es;
+angemeldet wird niemand.
+
+### Gerät merken
+
+Nach dem Bestätigungscode lässt sich das Gerät als vertraut hinterlegen — dort
+entfällt der Code für 30 Tage. Das Passwort wird weiterhin verlangt.
+
+Das schwächt die Zweifaktorauthentifizierung, und deshalb endet der Nachweis bei
+jedem Ereignis, das den Verdacht auf Verlust begründet: Passwortzurücksetzung
+(auch die durch den Betreiber), Abschalten des zweiten Faktors, Sperren des
+Kontos und „alle anderen Sitzungen beenden". Unter **Sicherheit** stehen alle
+vertrauten Geräte mit letzter Nutzung und Ablauf, einzeln widerrufbar.
+
+Betreiberkonten haben das nicht: Sie geben jedes Mal den zweiten Faktor ein.
+
 ### Zustand prüfen
 
 ```bash
@@ -458,6 +502,24 @@ Beim Anlegen eines Unternehmens entstehen in **einem** Vorgang das Unternehmen,
 die Rolle „Inhaber" mit allen Berechtigungen und eine Einladung. Der Betreiber
 kennt damit zu keinem Zeitpunkt ein Passwort innerhalb eines Unternehmens — der
 stärkste Beleg für die Trennung, den das System liefern kann.
+
+### Wenn niemand mehr hineinkommt
+
+Zwei Zugänge waren bis dahin unwiederbringlich, und beide hatten dieselbe Form:
+Der einzige, der sie wiederherstellen könnte, ist genau der Verlorene. Geht der
+Einladungslink eines neuen Unternehmens verloren, kommt niemand hinein. Und
+verliert das einzige Konto mit Rechteverwaltung sein Passwort, kann es niemand
+zurücksetzen — dafür braucht es genau dieses Recht.
+
+Der Betreiber kann beides ausstellen: eine neue Einladung und einen
+Zurücksetzungsnachweis für ein einzelnes Konto. Was er dabei **nicht** bekommt,
+ist eine Sitzung, ein Passwort oder Einsicht. Er stellt einen Nachweis aus, den
+ein Mensch im Browser einlöst.
+
+Dass er ihn im Grenzfall selbst einlösen könnte, ist der bewusst in Kauf
+genommene Preis dafür, dass es überhaupt einen Weg zurück gibt. Sichtbar gemacht
+wird er auf zwei Wegen: Der Vorgang steht im Protokoll **des Unternehmens** mit
+der Akteursart `ADMIN`, und alle Sitzungen des betroffenen Kontos enden dabei.
 
 ## Unveränderbarkeit
 

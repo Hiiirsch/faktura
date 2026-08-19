@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
-import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
+import { CSRF_REQUEST_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { Alert, INPUT_CLASS, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 
 /**
@@ -35,17 +35,17 @@ export function PasskeyForm({
   readonly csrfToken: string;
 }): ReactNode {
   const [label, setLabel] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: 'error' | 'note'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function register(): Promise<void> {
-    setError(null);
+    setNotice(null);
     setBusy(true);
 
     try {
       const offerResponse = await fetch(endpoint, { headers: { accept: 'application/json' } });
       if (!offerResponse.ok) {
-        setError(messages.security.passkeyFailed);
+        setNotice({ tone: 'error', text: messages.security.passkeyFailed });
         return;
       }
 
@@ -64,13 +64,13 @@ export function PasskeyForm({
           'content-type': 'application/json',
           // Der CSRF-Token reist als Kopfzeile: Hier geht kein Formular hinaus,
           // und eine fremde Seite kann keine eigene Kopfzeile setzen.
-          [CSRF_HEADER_NAME]: csrfToken,
+          [CSRF_REQUEST_HEADER_NAME]: csrfToken,
         },
         body: JSON.stringify({ challengeId: offer.challengeId, response, label }),
       });
 
       if (!verifyResponse.ok) {
-        setError(messages.security.passkeyFailed);
+        setNotice({ tone: 'error', text: messages.security.passkeyFailed });
         return;
       }
 
@@ -80,7 +80,7 @@ export function PasskeyForm({
     } catch {
       // Wer die Gerätesperre abbricht, landet ebenfalls hier — das ist kein
       // Fehler, sondern eine Entscheidung.
-      setError(messages.security.passkeyAborted);
+      setNotice({ tone: 'note', text: messages.security.passkeyAborted });
     } finally {
       setBusy(false);
     }
@@ -88,7 +88,7 @@ export function PasskeyForm({
 
   return (
     <div className="flex flex-col gap-3">
-      {error === null ? null : <Alert tone="error">{error}</Alert>}
+      {notice === null ? null : <Alert tone={notice.tone}>{notice.text}</Alert>}
 
       <label className="flex flex-col gap-1.5">
         <span className="text-ui font-medium text-ink">{messages.security.passkeyLabel}</span>

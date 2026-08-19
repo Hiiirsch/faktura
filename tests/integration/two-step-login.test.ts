@@ -24,6 +24,7 @@ import {
   revokeTrustedDevice,
 } from '@/application/auth/session-service';
 import { completePasswordReset } from '@/application/members/redeem';
+import { setMemberDisabled } from '@/application/members/member-service';
 import { TRUSTED_DEVICE_TTL_MS } from '@/domain/auth/trusted-device-policy';
 import { PENDING_LOGIN_TTL_MS } from '@/domain/auth/pending-login-policy';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
@@ -38,7 +39,7 @@ import {
 } from '@/infrastructure/repositories/auth-repository';
 import { DEFAULT_ORGANIZATION_ID } from '@/infrastructure/repositories/organization-context';
 
-import { DATA_DATABASE_URL, resetDatabase } from './setup/database';
+import { DATA_DATABASE_URL, resetDatabase, TEST_ACTOR_ID } from './setup/database';
 import { testOrganization } from './setup/organization';
 
 const prisma = new PrismaClient({ datasources: { db: { url: DATA_DATABASE_URL } } });
@@ -471,6 +472,22 @@ describe('FA-TRUST-01..05 Vertraute Geräte (M9/B2)', () => {
     const { userId } = await signInRemembering();
 
     await disableTotp(testOrganization, userId, null);
+
+    expect(await prisma.trustedDevice.count({ where: { userId } })).toBe(0);
+  });
+
+  it('verfällt das Gerät beim Sperren des Kontos', async () => {
+    /*
+     * Der vierte Abräumweg (FA-TRUST-04) — und der, der beim Schreiben des
+     * Katalogs als einziger keinen Test hatte. Ohne ihn bliebe ein Nachweis für
+     * ein Konto gültig, das gerade ausgeschieden ist: Die Anmeldung wiese es zwar
+     * ab, aber der Nachweis läge weiter da und gälte sofort wieder, wenn jemand
+     * die Sperre aufhebt.
+     */
+    const { userId } = await signInRemembering();
+
+    const result = await setMemberDisabled(testOrganization, userId, true, TEST_ACTOR_ID, null);
+    expect(result.ok).toBe(true);
 
     expect(await prisma.trustedDevice.count({ where: { userId } })).toBe(0);
   });

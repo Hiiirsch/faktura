@@ -17,7 +17,7 @@ import { getEnv } from '@/infrastructure/config/env';
 import {
   CSRF_COOKIE_NAME,
   CSRF_FIELD_NAME,
-  CSRF_HEADER_NAME,
+  CSRF_REQUEST_HEADER_NAME,
   isSameOrigin,
 } from '@/infrastructure/security/csrf';
 import { isValidCsrfPair } from '@/infrastructure/security/csrf-verify';
@@ -82,6 +82,11 @@ export async function assertRequestIntegrity(formData: FormData): Promise<void> 
  * für JSON die übliche Form und hier zusätzlich passend: Eine fremde Seite kann
  * zwar ein Formular abschicken, aber keine eigene Kopfzeile setzen, ohne den
  * Vorabflug zu bestehen — und den lässt die Herkunftsprüfung nicht durch.
+ *
+ * **Gelesen wird `CSRF_REQUEST_HEADER_NAME`, nicht `CSRF_HEADER_NAME`.** Die
+ * erste Fassung nahm die zweite — und die setzt der Proxy bei jeder Anfrage
+ * selbst aus dem Cookie. Die Prüfung verglich damit das Cookie mit sich selbst
+ * und ging immer durch. Zwei Richtungen, zwei Namen.
  */
 export async function assertJsonRequestIntegrity(): Promise<void> {
   const headerList = await headers();
@@ -96,7 +101,7 @@ export async function assertJsonRequestIntegrity(): Promise<void> {
   }
 
   const cookieValue = (await cookies()).get(CSRF_COOKIE_NAME)?.value;
-  if (!isValidCsrfPair(cookieValue, headerList.get(CSRF_HEADER_NAME))) {
+  if (!isValidCsrfPair(cookieValue, headerList.get(CSRF_REQUEST_HEADER_NAME))) {
     logger.security('csrf.token_rejected', { transport: 'header' }, 'error');
     throw new RequestIntegrityError('CSRF-Token fehlt oder stimmt nicht überein');
   }

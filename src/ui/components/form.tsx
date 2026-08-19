@@ -297,21 +297,27 @@ export function FormSection({
  * Fehler tragen keine Fläche in `--danger`: Rot bleibt destruktiven Aktionen
  * vorbehalten (§2.1). Ein fehlgeschlagenes Speichern ist kein zerstörerischer
  * Vorgang, sondern eine Auskunft — sie steht in Ocker.
+ *
+ * **`note` ist die dritte Stufe** (seit M9, FA-UI-23): weder gelungen noch
+ * fehlgeschlagen. Sie gibt es, weil ein Vorgang auch enden kann, ohne dass etwas
+ * schiefging — wer die Gerätesperre wegdrückt, hat sich entschieden, und eine
+ * ockerfarbene Meldung mit `role="alert"` behauptete dort eine Störung.
  */
 export function Alert({
   tone,
   children,
 }: {
-  readonly tone: 'error' | 'success';
+  readonly tone: 'error' | 'success' | 'note';
   readonly children: ReactNode;
 }): ReactNode {
-  const className =
-    tone === 'error'
-      ? 'rounded-control border border-rule bg-ocker-wash px-4 py-3 text-ui text-ink'
-      : 'rounded-control border border-rule bg-moss-wash px-4 py-3 text-ui text-ink';
+  const background =
+    tone === 'error' ? 'bg-ocker-wash' : tone === 'success' ? 'bg-moss-wash' : 'bg-surface-sunken';
 
   return (
-    <p role={tone === 'error' ? 'alert' : 'status'} className={className}>
+    <p
+      role={tone === 'error' ? 'alert' : 'status'}
+      className={`rounded-control border border-rule ${background} px-4 py-3 text-ui text-ink`}
+    >
       {children}
     </p>
   );

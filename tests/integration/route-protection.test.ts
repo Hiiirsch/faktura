@@ -21,7 +21,11 @@ import {
   SESSION_COOKIE_NAME,
 } from '@/infrastructure/auth/session-cookie';
 import { getEnv } from '@/infrastructure/config/env';
-import { CSRF_COOKIE_NAME, CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import {
+  CSRF_COOKIE_NAME,
+  CSRF_FIELD_NAME,
+  CSRF_REQUEST_HEADER_NAME,
+} from '@/infrastructure/security/csrf';
 import {
   ADMIN_LOGIN_CODE_PATH,
   ADMIN_LOGIN_PATH,
@@ -607,5 +611,90 @@ describe('Sicherheitsprofil der Antwort (NFA-SEC-17)', () => {
 
     expect(response.headers.get('x-frame-options')).toBe('DENY');
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+  });
+});
+
+/**
+ * Die Zeremonie-Routen prüfen Herkunft und Token über eine **Kopfzeile**
+ * (NFA-SEC-27, M9).
+ *
+ * **Warum das eine eigene Prüfung braucht.** `assertRequestIntegrity` liest den
+ * Token aus einem `FormData`-Feld; hier geht kein Formular hinaus, sondern JSON
+ * aus einem `fetch`. Die Prüfung ist deshalb eine andere Funktion — und eine
+ * zweite Funktion ist eine zweite Stelle, an der sie fehlen kann. Die
+ * Anwendungstests in `passkeys.test.ts` sehen sie nicht: Sie rufen die
+ * Anwendungsschicht auf, und die Kopfzeile gibt es nur über HTTP.
+ *
+ * Geprüft wird an der **Anmelde**route, weil sie öffentlich ist: Was sie abweist,
+ * weist sie wegen der Herkunft ab und nicht wegen einer fehlenden Sitzung.
+ */
+describe('NFA-SEC-27 Die JSON-Routen der Passkey-Zeremonie', () => {
+  async function csrf(): Promise<{ readonly token: string; readonly cookie: string }> {
+    const response = await fetch(url('/login'), { redirect: 'manual' });
+    const html = await response.text();
+
+    const token = new RegExp(`name="${CSRF_FIELD_NAME}" value="([^"]*)"`).exec(html)?.[1];
+    const rawCookie = readSetCookie(response, CSRF_COOKIE_NAME);
+
+    expect(token, 'Die Anmeldeseite muss ein CSRF-Feld enthalten').toBeDefined();
+    expect(rawCookie, 'Die Anmeldeseite muss ein CSRF-Cookie setzen').toBeDefined();
+
+    return {
+      token: token as string,
+      cookie: `${CSRF_COOKIE_NAME}=${cookieValue(rawCookie as string)}`,
+    };
+  }
+
+  it('weist eine Anfrage fremder Herkunft ab', async () => {
+    const { token, cookie } = await csrf();
+
+    const response = await fetch(url('/api/passkeys/login'), {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://angreifer.example',
+        cookie,
+        [CSRF_REQUEST_HEADER_NAME]: token,
+      },
+      body: JSON.stringify({ challengeId: 'egal', response: {} }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it('weist eine Anfrage ohne Kopfzeile ab', async () => {
+    const { cookie } = await csrf();
+
+    const response = await fetch(url('/api/passkeys/login'), {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/json', origin: TEST_BASE_URL, cookie },
+      body: JSON.stringify({ challengeId: 'egal', response: {} }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it('lässt eine Anfrage eigener Herkunft mit Kopfzeile durch', async () => {
+    // Der Gegenbeweis: Ohne ihn bestünden die beiden Prüfungen oben auch dann,
+    // wenn die Route jede Anfrage mit 403 beantwortete.
+    const { token, cookie } = await csrf();
+
+    const response = await fetch(url('/api/passkeys/login'), {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        'content-type': 'application/json',
+        origin: TEST_BASE_URL,
+        cookie,
+        [CSRF_REQUEST_HEADER_NAME]: token,
+      },
+      body: JSON.stringify({ nichts: true }),
+    });
+
+    // 400, nicht 403: Die Herkunftsprüfung ist bestanden, der Inhalt taugt nur
+    // nichts.
+    expect(response.status).toBe(400);
   });
 });

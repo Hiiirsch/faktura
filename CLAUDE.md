@@ -670,6 +670,18 @@ Der CSRF-Token reist bei der Zeremonie in einer **Kopfzeile**
 kann ein Formular abschicken, aber keine eigene Kopfzeile setzen, ohne den
 Vorabflug zu bestehen — und den lässt die Herkunftsprüfung nicht durch.
 
+**Dafür gibt es zwei Kopfzeilennamen, und der Grund ist eine Lücke, die genau
+einmal bestand.** `CSRF_HEADER_NAME` läuft vom Proxy zu den Serverkomponenten,
+damit ein Formular beim allerersten Aufruf ein gültiges Feld rendern kann — der
+Proxy `set`zt sie bei jeder Anfrage und überschreibt dabei, was ein Aufrufer
+mitschickt. Die erste Fassung der JSON-Prüfung las genau diese Kopfzeile und
+verglich damit das Cookie mit einem Wert, den der Proxy aus demselben Cookie
+gebildet hatte. Sie ging immer durch. Der Aufrufer sendet deshalb unter einem
+eigenen Namen (`CSRF_REQUEST_HEADER_NAME`): zwei Richtungen, zwei Namen.
+
+Sichtbar wurde das erst über HTTP. Die Anwendungstests rufen die Schicht darunter
+auf, und dort gibt es keinen Proxy — der Fehler war für sie unerreichbar.
+
 Geprüft wird auf **zwei Ebenen**: `tests/support/authenticator.ts` baut einen
 Authenticator aus `node:crypto` nach (ES256, COSE-Key und Signatur von Hand) und
 stellt damit die Fälle her, die ein echtes Gerät nie erzeugt — falsche Herkunft,
@@ -934,6 +946,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M6.2 | Anmeldung in zwei Schritten, zweiter Faktor nur wo nötig | umgesetzt |
 | M7 | Betrieb: Backup, Restore, Healthcheck, Logging, E2E | umgesetzt |
 | M8 | Mandanten, Rollen, Mitglieder, zentrale Verwaltung | umgesetzt |
+| M9 | Passkeys, vertraute Geräte, Wege aus einer Sackgasse | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
-import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
+import { CSRF_REQUEST_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { Alert, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 
 /**
@@ -31,17 +31,17 @@ export function PasskeyLoginButton({
   readonly redirectTo: string;
   readonly csrfToken: string;
 }): ReactNode {
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: 'error' | 'note'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function signIn(): Promise<void> {
-    setError(null);
+    setNotice(null);
     setBusy(true);
 
     try {
       const offerResponse = await fetch(endpoint, { headers: { accept: 'application/json' } });
       if (!offerResponse.ok) {
-        setError(messages.login.passkeyFailed);
+        setNotice({ tone: 'error', text: messages.login.passkeyFailed });
         return;
       }
 
@@ -68,7 +68,7 @@ export function PasskeyLoginButton({
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          [CSRF_HEADER_NAME]: csrfToken,
+          [CSRF_REQUEST_HEADER_NAME]: csrfToken,
         },
         body: JSON.stringify({ challengeId: offer.challengeId, response }),
       });
@@ -76,7 +76,7 @@ export function PasskeyLoginButton({
       if (!verifyResponse.ok) {
         // Eine Antwort für alles: unbekannter Schlüssel, gesperrtes Konto,
         // stillgelegtes Unternehmen. Der Grund steht im Serverlog.
-        setError(messages.login.passkeyRejected);
+        setNotice({ tone: 'error', text: messages.login.passkeyRejected });
         return;
       }
 
@@ -84,7 +84,7 @@ export function PasskeyLoginButton({
     } catch {
       // Wer die Gerätesperre abbricht, landet ebenfalls hier — das ist kein
       // Fehler, sondern eine Entscheidung.
-      setError(messages.login.passkeyAborted);
+      setNotice({ tone: 'note', text: messages.login.passkeyAborted });
     } finally {
       setBusy(false);
     }
@@ -92,7 +92,7 @@ export function PasskeyLoginButton({
 
   return (
     <div className="flex flex-col gap-3">
-      {error === null ? null : <Alert tone="error">{error}</Alert>}
+      {notice === null ? null : <Alert tone={notice.tone}>{notice.text}</Alert>}
 
       <button
         type="button"

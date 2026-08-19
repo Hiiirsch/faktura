@@ -8,7 +8,7 @@
  * Bestand zeigt sich, ob die Rechnungsliste bei vierzig Zeilen noch lesbar
  * ist, ob das Umsatzdiagramm einen Verlauf zeichnet statt eines einzelnen
  * Balkens und ob die Fristenlisten das Richtige zeigen. Dieselben Daten
- * dienen den Abnahmeszenarien aus §17 des Anforderungskatalogs.
+ * dienen den Abnahmeszenarien aus §19 des Anforderungskatalogs.
  *
  * **Nur außerhalb der Produktion.** Das Kommando bricht ab, wenn
  * `NODE_ENV=production` gesetzt ist: Testdaten in einer echten Buchhaltung

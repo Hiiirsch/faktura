@@ -460,7 +460,12 @@ Zur Aufnahme in `rechnungs-app-anforderungen.md`.
 | FA-UI-18 | Jede Aktion ohne Seitenwechsel wird durch einen Toast bestätigt, dessen Wortlaut den Verbstamm des auslösenden Knopfes trägt. | MUSS | T |
 | FA-UI-19 | Aus der Rechnungsliste heraus lassen sich Belege ohne Umweg über die Detailseite als bezahlt markieren, stornieren, duplizieren und herunterladen. | MUSS | T |
 | FA-UI-20 | Mehrere Belege lassen sich auswählen und gemeinsam als bezahlt markieren bzw. als Entwurf löschen; die Auswahl funktioniert ohne JavaScript. | SOLL | T |
+| FA-UI-21 | Der Passkey-Weg steht **neben** dem Anmeldeformular, nicht an seiner Stelle. Ohne JavaScript fehlt der Knopf und das Formular bleibt vollständig bedienbar. | MUSS | T |
+| FA-UI-22 | Wo die Adresse keine Passkeys zulässt, erscheint statt des Knopfes der **Grund** — nicht ein Knopf, der wortlos nichts tut. | MUSS | R |
+| FA-UI-23 | Ein Abbruch der Gerätesperre wird nicht als Fehler dargestellt: Er ist eine Entscheidung, keine Störung. | SOLL | R |
+| FA-UI-24 | Passkeys und vertraute Geräte stehen unter **Sicherheit** in derselben Form wie die aktiven Sitzungen: Bezeichnung, letzte Nutzung, einzeln widerrufbar. | MUSS | M |
 | NFA-UI-05 | Ein dunkles Farbschema ist verfügbar; die Dokumentvorschau bleibt darin weiß. | KANN | M |
+| NFA-UI-06 | Der **Zugang** zur Anwendung hängt nicht an JavaScript: Anmeldung, zweiter Schritt und Einlöseseiten sind Server-Formulare. Der Passkey-Weg setzt JavaScript voraus und ist deshalb eine Ergänzung daneben — sein Wegfall nimmt niemandem den Zugang. | MUSS | T |
 
 ---
 

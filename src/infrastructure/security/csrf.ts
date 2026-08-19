@@ -16,8 +16,28 @@ export const CSRF_FIELD_NAME = 'csrfToken';
  * weiterreicht. Beim allerersten Aufruf ist das Cookie noch nicht in der
  * Anfrage enthalten — ohne diesen Weg könnte das Formular kein gültiges Feld
  * rendern.
+ *
+ * **Sie läuft nur in diese eine Richtung.** Der Proxy `set`zt sie bei jeder
+ * Anfrage, überschreibt also, was ein Aufrufer mitschickt. Als Nachweis taugt
+ * sie deshalb nicht: Was hier ankommt, hat der Proxy selbst aus dem Cookie
+ * gebildet, und ein Vergleich mit dem Cookie verglich das Cookie mit sich
+ * selbst.
  */
 export const CSRF_HEADER_NAME = 'x-faktura-csrf';
+
+/**
+ * Kopfzeile, in der ein **Aufrufer** den Token mitschickt (M9).
+ *
+ * Zwei Namen für zwei Richtungen, und das ist der Punkt: Die WebAuthn-Zeremonie
+ * schickt JSON statt eines Formulars, der Token muss also in eine Kopfzeile.
+ * Nähme sie `CSRF_HEADER_NAME`, käme er nie an — der Proxy hat den Wert vorher
+ * ersetzt, und die Prüfung ginge unbemerkt immer durch.
+ *
+ * Aufgefallen ist das erst, als ein Test die Route ohne Kopfzeile aufrief und
+ * eine Ablehnung erwartete. Über die Anwendungsschicht ist dieser Fehler
+ * unsichtbar: Dort gibt es keinen Proxy.
+ */
+export const CSRF_REQUEST_HEADER_NAME = 'x-csrf-token';
 
 /**
  * Vergleicht die Herkunft der Anfrage mit der konfigurierten Basis-URL.

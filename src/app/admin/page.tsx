@@ -193,6 +193,16 @@ export default async function AdminPage(): Promise<ReactNode> {
                       formatDate(passkey.createdAt, timeZone),
                     )}
                   </span>
+                  {/*
+                    Die letzte Nutzung gehört dazu (FA-PASS-03): Sie ist die
+                    einzige Angabe, an der auffällt, dass ein Schlüssel benutzt
+                    wird, den man selbst nicht mehr benutzt.
+                  */}
+                  <span className="text-ui text-ink-muted">
+                    {passkey.lastUsedAt === null
+                      ? messages.security.passkeyNeverUsed
+                      : `${messages.security.passkeyLastUsed} ${formatDate(passkey.lastUsedAt, timeZone)}`}
+                  </span>
                   {passkey.disabled ? (
                     <span className="text-small text-ink">
                       {messages.security.passkeyDisabled}

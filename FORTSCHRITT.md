@@ -8,23 +8,41 @@ und durch den genannten Nachweis belegt · `abgenommen` — vom Auftraggeber fre
 **Nachweis:** Pfad zur Testdatei bzw. `Review:` / `Manuell:` bei den
 Verifikationsarten R und M.
 
-**MS:** Meilenstein laut Anforderungskatalog §17 (bis M8: §16 — der Katalog hat
-mit dem neuen Abschnitt „Mandanten, Rollen und Verwaltung" eine Nummer
-verschoben). Ein `†` markiert IDs, die dort **keinem** Meilenstein zugeordnet
+**MS:** Meilenstein laut Anforderungskatalog §18 (bis M8: §16, bis M9: §17 — der
+Katalog hat mit „Mandanten, Rollen und Verwaltung" und „Anmeldeverfahren"
+zweimal eine Nummer verschoben). Ein `†` markiert IDs, die dort **keinem** Meilenstein zugeordnet
 sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
-Stand: 2026-08-18 · 133 von 171 erledigt (93 abgenommen: M0–M4, 40 umgesetzt) ·
-**M8 umgesetzt** — 30 neue IDs in Abschnitt 17 (Katalog §16 „Mandanten, Rollen und Verwaltung"), alle belegt ·
-**M5 umgesetzt, Abnahme offen** · **M5.6 (PDF-Vorschau), M5.7 (Empfänger ohne
-Kunde), M5.8 (überarbeitete Oberfläche), M6 (Übersicht), M6.1 (Ausführung) und
-M6.2 (zweistufige Anmeldung) umgesetzt** — vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08,
-FA-PFL-01) sind durch M5.7 im Wortlaut geändert und stehen erneut zur Abnahme.
+Stand: 2026-08-19 · **212 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
+118 umgesetzt, 11 offen. Dazu **30 IDs** aus `faktura-frontend-design.md` §9
+(Abschnitt 16), alle umgesetzt.
 
-Hinzu kommen 25 IDs aus `faktura-frontend-design.md` §9 (Abschnitt 16), die nicht
-Teil der ursprünglichen 171 sind: alle 25 umgesetzt. FA-UI-07 und FA-UI-13 waren
-bis M5.8 offen; FA-UI-17 bis -20 sind mit der Überarbeitung des Entwurfs
-hinzugekommen.
+**M9 umgesetzt** — 19 neue IDs in Abschnitt 18 (Katalog §17 „Anmeldeverfahren"):
+Passkeys, vertraute Geräte und die beiden Wege des Betreibers aus einer
+Sackgasse. Fünf neue UI-IDs (FA-UI-21 bis -24, NFA-UI-06). Geändert: FA-ADM-04
+und FA-ADM-08 im Wortlaut, NFA-SEC-05 nennt jetzt beide Faktorarten.
+
+**M8 umgesetzt** — 31 IDs in Abschnitt 17 (Katalog §16 „Mandanten, Rollen und
+Verwaltung"), alle belegt · **M5 umgesetzt, Abnahme offen** · **M5.6
+(PDF-Vorschau), M5.7 (Empfänger ohne Kunde), M5.8 (überarbeitete Oberfläche), M6
+(Übersicht), M6.1 (Ausführung) und M6.2 (zweistufige Anmeldung) umgesetzt** —
+vier zuvor abgenommene IDs (FA-RECH-02, -12, FA-NUM-08, FA-PFL-01) sind durch
+M5.7 im Wortlaut geändert und stehen erneut zur Abnahme.
+
+**Drei Lücken, die beim Schreiben des M9-Katalogs herausgefallen sind.** Alle
+drei sind geschlossen, und sie sind der Grund, warum die Nachweisspalte gepflegt
+wird — eine Anforderung ohne Nachweis ist eine Behauptung.
+
+1. **Die CSRF-Prüfung der Zeremonie ging immer durch.** Sie las die Kopfzeile,
+   die der Proxy selbst aus dem Cookie bildet, und verglich damit das Cookie mit
+   sich selbst. Der Aufrufer sendet jetzt unter einem eigenen Namen
+   (`CSRF_REQUEST_HEADER_NAME`). Sichtbar wurde das erst über HTTP: Die
+   Anwendungstests rufen die Schicht darunter auf, und dort gibt es keinen Proxy.
+2. Für diese Routen fehlte überhaupt ein Test der Herkunftsprüfung — der Test,
+   der die erste Lücke fand, existierte vorher nicht.
+3. Von den vier Ereignissen, die einen Gerätenachweis entwerten, war das Sperren
+   des Kontos umgesetzt, aber ungeprüft.
 
 **Verworfene HTML-Vorschau (M5.6).** Die Vorschau zeigte bis dahin eine
 HTML-Nachbildung des Belegs. Sie konnte nie stimmen: `@page`-Ränder gelten nur
@@ -532,6 +550,11 @@ Auftraggeber vorgegeben hat.
 | NFA-UI-03 | Rechnungseditor inklusive Positionssortierung per Tastatur bedienbar | MUSS | M | M5.5b | umgesetzt | `src/app/invoices/invoice-editor.tsx` — `KeyboardSensor` mit `sortableKeyboardCoordinates`, zusätzlich die Knöpfe „Nach oben"/„Nach unten". Verifikationsart M: die Abnahme am Gerät steht aus |
 | NFA-UI-04 | Keine externen Netzwerkanfragen aus dem Frontend | MUSS | T | M5.5b | umgesetzt | `tests/architecture/design-tokens.test.ts`; zusätzlich sperrt die CSP in `src/infrastructure/security/security-headers.ts` |
 | NFA-UI-05 | Dunkles Farbschema verfügbar; Dokumentvorschau bleibt weiß | KANN | M | M5.5b | umgesetzt | `src/app/globals.css` — Tokenüberschreibung unter `prefers-color-scheme: dark`, `--sheet` unverändert; `tests/unit/ui/contrast.test.ts` prüft beide Schemata |
+| FA-UI-21 | Passkey-Knopf neben dem Formular, nicht an seiner Stelle | MUSS | T | M9 | umgesetzt | `src/app/passkey-login-button.tsx` steht neben der Server-Komponente des Anmeldeformulars; `tests/integration/browser-passkey.test.ts` prüft beides auf derselben Seite und meldet anschließend mit dem Formular an |
+| FA-UI-22 | Wo Passkeys nicht möglich sind, erscheint der Grund statt des Knopfes | MUSS | R | M9 | umgesetzt | Review: `isPasskeyCapableOrigin()` entscheidet in `/login`, `/admin/login`, `/settings/security` und `/admin`; im Nein-Fall steht `messages.security.passkeyUnsupported` |
+| FA-UI-23 | Ein Abbruch der Gerätesperre ist kein Fehler | SOLL | R | M9 | umgesetzt | Review: `Alert` hat dafür seit M9 einen dritten Ton `note` — neutrale Fläche, `role="status"` statt `role="alert"`. Wer die Gerätesperre wegdrückt, hat sich entschieden; Ocker behauptete dort eine Störung |
+| FA-UI-24 | Passkeys und vertraute Geräte in derselben Form wie aktive Sitzungen | MUSS | M | M9 | umgesetzt | `/settings/security` — drei Abschnitte gleichen Aufbaus (Bezeichnung, letzte Nutzung, einzeln widerrufbar); `/admin` führt den Passkey-Abschnitt ohne die vertrauten Geräte (FA-TRUST-05). Manuell: A10, A11 |
+| NFA-UI-06 | Der Zugang hängt nicht an JavaScript | MUSS | T | M9 | umgesetzt | `tests/integration/route-protection.test.ts` schickt das Anmeldeformular so ab, wie ein Browser ohne JavaScript es täte (`$ACTION_ID_…`); `tests/integration/browser-passkey.test.ts` prüft, dass der Passwortweg neben dem Passkey-Knopf bestehen bleibt. **Nicht behauptet wird**, dass die ganze Anwendung ohne JavaScript läuft: Formulare mit `useActionState` tun das nicht und tragen dafür einen `<NoScriptNotice>` |
 
 ---
 
@@ -572,7 +595,33 @@ Auftraggeber vorgegeben hat.
 | NFA-SEC-26 | Aufrufstellen der Kontexterzeugung aufgezählt | MUSS | T | M8 | umgesetzt | `tests/architecture/authorization.test.ts` — Erlaubnisliste für `organizationContextOf` und `fullyAuthorized`, beide gegen einen absichtlichen Verstoß geprüft |
 
 ---
-## Abnahmeszenarien (Katalog §18)
+
+## 18. Anmeldeverfahren (Katalog §17)
+
+| ID | Anforderung | Prio | Verif. | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-PASS-01 | Herkunft an einer Stelle abgeleitet, keine IP-Adresse | MUSS | T | M9 | umgesetzt | `src/infrastructure/auth/webauthn.ts` — `relyingPartyId`, `expectedOrigin`, `isPasskeyCapableOrigin`; `tests/unit/infrastructure/webauthn.test.ts`. Die IP-Regel kam aus dem Browsertest: `127.0.0.1` ist ein sicherer Kontext, aber als `rpID` unzulässig, und Chromium bricht wortlos ab |
+| FA-PASS-02 | Ein Passkey gehört zu genau einem Konto | MUSS | T | M9 | umgesetzt | `WebAuthnCredential_exactly_one_account` — derselbe CHECK wie bei `PendingLogin`; `tests/integration/passkeys.test.ts` |
+| FA-PASS-03 | Anlegen mit Bezeichnung, Liste mit Anlage und letzter Nutzung | MUSS | T | M9 | umgesetzt | `beginPasskeyRegistration` / `completePasskeyRegistration`; `/settings/security` und `/admin`; `tests/integration/passkeys.test.ts`, `tests/integration/browser-passkey.test.ts` |
+| FA-PASS-04 | Einzeln entfernbar, wirkt sofort | MUSS | T | M9 | umgesetzt | `removePasskey`; die Anmeldung liest den Schlüssel bei jeder Zeremonie neu; `tests/integration/passkeys.test.ts` |
+| FA-PASS-05 | Aufgabe einmal verwendbar, zwei Minuten, vor der Prüfung verbraucht | MUSS | T | M9 | umgesetzt | `webauthn-policy.ts`; `consumeChallenge` steht **vor** `verifyAuthenticationResponse` — eine zweite Antwort findet nichts mehr vor, gleich ob die erste gelang; `tests/integration/passkeys.test.ts` |
+| FA-PASS-06 | Anmeldung ohne Passwort, ohne Code, ohne Adresse | MUSS | T | M9 | umgesetzt | `completePasskeyLogin`; `residentKey: 'required'`, `allowCredentials` bleibt leer; `tests/integration/browser-passkey.test.ts` meldet im echten Chromium ohne eine einzige Eingabe an |
+| FA-PASS-07 | `userVerification: 'required'` | MUSS | T | M9 | umgesetzt | `requireUserVerification: true` in `passkey-login.ts` — ohne diese Zeile wäre es eine Anmeldung mit einem Faktor; `tests/integration/passkeys.test.ts` |
+| FA-PASS-08 | Zählerrückschritt sperrt den Passkey | MUSS | T | M9 | umgesetzt | `indicatesClonedAuthenticator` auf dem verifizierten `newCounter`, also **nach** der Signatur; `tests/integration/passkeys.test.ts` (Klon erkannt, Passkey danach gesperrt) |
+| NFA-SEC-27 | JSON-Routen prüfen Herkunft und CSRF-Kopfzeile | MUSS | T | M9 | umgesetzt | `assertJsonRequestIntegrity`; `tests/integration/route-protection.test.ts` — fremde Herkunft und fehlende Kopfzeile ergeben 403, eine gültige Anfrage kommt bis zur Inhaltsprüfung (400). Die dritte Prüfung ist der Gegenbeweis: Ohne sie bestünden die beiden ersten auch dann, wenn die Route jede Anfrage abwiese. Genau dieser Test hat aufgedeckt, dass die Prüfung anfangs die falsche Kopfzeile las und damit immer durchging |
+| NFA-SEC-28 | Alle Ablehnungen ununterscheidbar | MUSS | T | M9 | umgesetzt | Ein einziger Fehlertyp `REJECTED` in `passkey-login.ts`; `tests/integration/passkeys.test.ts` (unbekannt, gesperrt, stillgelegt, falsche Identität) |
+| NFA-SEC-29 | Anmeldesperre gilt nicht für Passkeys | MUSS | T | M9 | umgesetzt | `passkey-login.ts` liest `lockedUntil` nicht; `tests/integration/passkeys.test.ts` — Konto mit zehn Fehlversuchen meldet mit Passkey an |
+| FA-TRUST-01 | Gerät merken, 30 Tage, Passwort bleibt | SOLL | T | M9 | umgesetzt | `src/domain/auth/trusted-device-policy.ts`; `login()` prüft **vor** dem `PendingLogin`; `tests/integration/two-step-login.test.ts` |
+| FA-TRUST-02 | An das Konto gebunden, nicht nur an den Token | MUSS | T | M9 | umgesetzt | Abfrage über `userId` **und** Hash; `tests/integration/two-step-login.test.ts` — der Nachweis eines fremden Kontos überspringt nichts |
+| FA-TRUST-03 | Einsehbar und einzeln widerrufbar | MUSS | M | M9 | umgesetzt | `/settings/security`, Abschnitt „Vertraute Geräte" mit Bezeichnung, letzter Nutzung und Ablauf. Manuell: A11 |
+| FA-TRUST-04 | Vier Ereignisse entwerten alle Nachweise | MUSS | T | M9 | umgesetzt | Passwortzurücksetzung (auch die des Betreibers), Abschalten des zweiten Faktors, Sperren, „alle anderen Sitzungen beenden"; `tests/integration/two-step-login.test.ts` — je ein Fall. Der vierte fehlte bis zum Schreiben dieses Katalogs: Der Weg war da, der Test nicht |
+| FA-TRUST-05 | Betreiberkonten führen keine vertrauten Geräte | MUSS | R | M9 | umgesetzt | Review: `TrustedDevice.userId` verweist ausschließlich auf `User` — für ein Betreiberkonto gibt es die Zeile nicht, und `adminLogin` ruft keinen der Wege auf. Eine Eigenschaft des Datenmodells, kein geprüftes Verhalten |
+| FA-ADM-09 | Offene Einladungen sichtbar und zurückziehbar | MUSS | T | M9 | umgesetzt | `listOpenInvitationsForPlatform`, `revokeInvitationForPlatform`; `/admin/organizations/[id]`; `tests/integration/platform-admin.test.ts` |
+| FA-ADM-10 | Einladung erneut ausstellbar | MUSS | T | M9 | umgesetzt | `reissueOwnerInvitation` — zieht erst zurück, stellt dann aus; behebt zugleich den rohen Indexfehler in `createOrganizationWithOwner`; `tests/integration/platform-admin.test.ts` |
+| FA-ADM-11 | Zurücksetzungsnachweis für ein Mandantenkonto | MUSS | T | M9 | umgesetzt | `startTenantPasswordReset` — kein Passwort, keine Sitzung; alle Sitzungen und vertrauten Geräte enden; Eintrag mit `actorKind: 'ADMIN'` im Protokoll des Unternehmens; `tests/integration/platform-admin.test.ts` |
+
+---
+## Abnahmeszenarien (Katalog §19)
 
 | ID | Szenario | Status |
 |---|---|---|
@@ -585,3 +634,6 @@ Auftraggeber vorgegeben hat.
 | A7 | Bösartige Vorlage | offen |
 | A8 | Zugriffsschutz | offen |
 | A9 | Wiederherstellung | offen |
+| A10 | Passkey statt Passwort | offen |
+| A11 | Vertrautes Gerät | offen |
+| A12 | Zurück aus der Sackgasse | offen |

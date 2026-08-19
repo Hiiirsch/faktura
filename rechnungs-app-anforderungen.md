@@ -194,7 +194,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-SEC-02 | Es existiert keine öffentliche Registrierung. Konten entstehen über Einladungen (FA-MEMB-01); das Kommando auf dem Server bleibt der Notfallweg und verlangt die Angabe des Unternehmens. | MUSS | T |
 | NFA-SEC-03 | Passwörter werden mit Argon2id gehasht (≥64 MB Speicher, ≥3 Iterationen). | MUSS | R |
 | NFA-SEC-04 | Passwörter müssen mindestens 12 Zeichen haben und werden gegen eine Liste bekannter kompromittierter Passwörter geprüft. | MUSS | T |
-| NFA-SEC-05 | TOTP-Zweifaktorauthentifizierung ist aktivierbar, inklusive einmalig anzeigbarer Recovery-Codes. | MUSS | M |
+| NFA-SEC-05 | Ein zweiter Faktor ist aktivierbar: TOTP mit einmalig anzeigbaren Wiederherstellungscodes, oder ein Passkey (Abschnitt 17). Für Mandantenkonten wahlweise, für Betreiberkonten verpflichtend (FA-ADM-08). | MUSS | T |
 | NFA-SEC-06 | Session-Token bestehen aus mindestens 256 Bit Entropie; in der Datenbank liegt nur deren Hash. | MUSS | R |
 | NFA-SEC-07 | Session-Cookies sind `HttpOnly`, `Secure` und `SameSite=Lax`; das Token rotiert bei jedem Login. | MUSS | T |
 | NFA-SEC-08 | Nach 10 fehlgeschlagenen Loginversuchen wird der Zugang für 15 Minuten gesperrt; Fehlversuche werden protokolliert. | MUSS | T |
@@ -324,11 +324,14 @@ Betreiber der Installation darf und was nicht.
 | FA-ADM-01 | Betreiberkonten sind von Mandantenkonten getrennt: eigene Tabelle, eigene Sitzung, eigenes Cookie. Ein Mandantencookie öffnet keine Adminroute und umgekehrt. | MUSS | T |
 | FA-ADM-02 | Eine Adminsitzung führt keinen Mandantenkontext. Der Adminbereich liefert keine Geschäftsdaten aus — keine Rechnung, keinen Kunden, keinen Betrag. | MUSS | T |
 | FA-ADM-03 | Der Betreiber sieht je Unternehmen ausschließlich **Kennzahlen** (Konten, Belege, Kunden, letzte Anmeldung), nie einzelne Datensätze. | MUSS | T |
-| FA-ADM-04 | Es gibt keinen Weg, aus einer Adminsitzung eine Mandantensitzung zu erzeugen. | MUSS | T |
+| FA-ADM-04 | Es gibt keinen Weg, aus einer Adminsitzung eine Mandantensitzung zu erzeugen — weder unmittelbar noch über einen Zwischenschritt. Der Betreiber darf Nachweise **ausstellen** (FA-ADM-10, -11); eingelöst werden sie im Browser eines Menschen, und das Einlösen ist ein eigener Vorgang mit eigener Anmeldung. | MUSS | T |
 | FA-ADM-05 | Der Betreiber legt Unternehmen an, legt sie still, gibt sie frei und sperrt einzelne Konten. Die Aussperrsicherung aus FA-ROLE-04 gilt auch für ihn. | MUSS | T |
 | FA-ADM-06 | Das erste Betreiberkonto entsteht über ein Kommando auf dem Server, nicht über eine Migration. | MUSS | R |
 | FA-ADM-07 | Protokolleinträge unterscheiden, ob ein Mitglied des Unternehmens oder der Betreiber gehandelt hat. Ein Eingriff des Betreibers steht im Protokoll des betroffenen Unternehmens. | MUSS | T |
 | FA-ADM-08 | Ein Betreiberkonto meldet sich mit **mehr als einem Faktor** an — Passwort und TOTP, oder ein Passkey mit Nutzerverifikation. Ein Passwort allein genügt zu keinem Zeitpunkt. | MUSS | T |
+| FA-ADM-09 | Der Betreiber sieht die **offenen Einladungen** eines Unternehmens und kann sie zurückziehen. Sichtbar sind Adresse und Ablauf — nie der Token: Er existiert nach dem Ausstellen nirgends mehr, gespeichert liegt nur sein Hash. | MUSS | T |
+| FA-ADM-10 | Der Betreiber kann die Einladung eines Unternehmens **erneut ausstellen**. Der Link erscheint genau einmal; die vorherige Einladung derselben Adresse verliert damit ihre Gültigkeit. | MUSS | T |
+| FA-ADM-11 | Der Betreiber kann für ein Mandantenkonto einen **Zurücksetzungsnachweis** ausstellen. Er vergibt dabei kein Passwort und erfährt keines. Alle Sitzungen und vertrauten Geräte des Kontos enden; der Vorgang steht mit `actorKind: 'ADMIN'` im Protokoll des betroffenen Unternehmens. | MUSS | T |
 
 ### 16.5 Sicherheit der Trennung
 
@@ -341,7 +344,40 @@ Betreiber der Installation darf und was nicht.
 
 ---
 
-## 17. Zuordnung zu Meilensteinen
+## 17. Anmeldeverfahren
+
+Passkeys und vertraute Geräte (M9). Der Passwortweg aus Abschnitt 11 bleibt
+unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
+
+### 17.1 Passkeys
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| FA-PASS-01 | Die Herkunft der Zeremonie (`rpID`, `origin`) wird an genau **einer** Stelle aus `APP_URL` abgeleitet. Eine IP-Adresse ist als `rpID` unzulässig; wo die Adresse keine Passkeys zulässt, erscheint der Grund statt des Knopfes. | MUSS | T |
+| FA-PASS-02 | Ein Passkey gehört zu genau **einem** Konto — einem Mandanten- **oder** einem Betreiberkonto, erzwungen durch die Datenbank. | MUSS | T |
+| FA-PASS-03 | Ein angemeldetes Konto kann einen Passkey mit eigener Bezeichnung anlegen; die Liste zeigt Bezeichnung, Anlage und letzte Nutzung. | MUSS | T |
+| FA-PASS-04 | Ein Passkey ist einzeln entfernbar. Das Entfernen wirkt sofort — der nächste Anmeldeversuch damit wird abgewiesen. | MUSS | T |
+| FA-PASS-05 | Die Aufgabe einer Zeremonie ist **einmal** verwendbar und läuft nach zwei Minuten ab. Sie wird **vor** der Prüfung verbraucht: Eine zweite Antwort findet nichts mehr vor, gleich ob die erste gelang. | MUSS | T |
+| FA-PASS-06 | Ein Passkey meldet **ohne Passwort und ohne Code** an. Die Zeremonie verlangt keine Eingabe einer Adresse: Der Authenticator nennt selbst, zu wem der Schlüssel gehört. | MUSS | T |
+| FA-PASS-07 | Die Anmeldung verlangt `userVerification: 'required'`. Ein Passkey ohne Nutzerverifikation meldet nicht an — sonst wäre es eine Anmeldung mit einem Faktor. | MUSS | T |
+| FA-PASS-08 | Ein Rückschritt des Signaturzählers **sperrt** den Passkey und wird protokolliert. Geprüft wird auf dem verifizierten Zähler, also nach der Signatur. | MUSS | T |
+| NFA-SEC-27 | Die Routen der Zeremonie nehmen JSON und prüfen Herkunft und CSRF-Token über eine **Kopfzeile**. Eine Anfrage fremder Herkunft wird abgewiesen. | MUSS | T |
+| NFA-SEC-28 | Alle Ablehnungen einer Passkey-Anmeldung sind ununterscheidbar: unbekannter Schlüssel, gesperrter Schlüssel, gesperrtes Konto, stillgelegtes Unternehmen, falsche Identität. | MUSS | T |
+| NFA-SEC-29 | Die Anmeldesperre nach Fehlversuchen gilt für den Passwortweg, **nicht** für Passkeys. Ein Passkey lässt sich nicht durchprobieren; eine Sperre daran wäre ein Weg, jemanden ohne Kenntnis seines Passworts auszusperren. | MUSS | T |
+
+### 17.2 Vertraute Geräte
+
+| ID | Anforderung | Prio | Verif. |
+|---|---|---|---|
+| FA-TRUST-01 | Nach erfolgreichem zweitem Faktor lässt sich das Gerät als vertraut hinterlegen. Dort entfällt der Code für 30 Tage; das Passwort wird weiterhin verlangt. | SOLL | T |
+| FA-TRUST-02 | Der Nachweis ist an **ein Konto** gebunden: Geprüft wird mit Kontokennung **und** Hash. Ein Nachweis eines anderen Kontos überspringt nichts. | MUSS | T |
+| FA-TRUST-03 | Vertraute Geräte sind einsehbar und einzeln widerrufbar. | MUSS | M |
+| FA-TRUST-04 | Vier Ereignisse entwerten **alle** Nachweise eines Kontos: Passwortzurücksetzung (auch die durch den Betreiber), Abschalten des zweiten Faktors, Sperren des Kontos, „alle anderen Sitzungen beenden". | MUSS | T |
+| FA-TRUST-05 | Betreiberkonten führen keine vertrauten Geräte (FA-ADM-08). | MUSS | R |
+
+---
+
+## 18. Zuordnung zu Meilensteinen
 
 | Meilenstein | Abzudeckende Anforderungen |
 |---|---|
@@ -354,10 +390,11 @@ Betreiber der Installation darf und was nicht.
 | M6 Dashboard | FA-DASH-*, NFA-QUAL-04, -05 |
 | M7 Betrieb | NFA-BETR-03 bis -11, NFA-COMP-03 bis -06, NFA-QUAL-02, -06 |
 | M8 Mandanten & Rollen | FA-ORG-*, FA-ROLE-*, FA-MEMB-*, FA-ADM-*, NFA-SEC-23 bis -26 |
+| M9 Anmeldeverfahren | FA-PASS-*, FA-TRUST-*, FA-ADM-09 bis -11, NFA-SEC-27 bis -29 |
 
 ---
 
-## 18. Abnahmeszenarien
+## 19. Abnahmeszenarien
 
 Manuell durchzuspielen, bevor V1 als fertig gilt.
 
@@ -401,3 +438,20 @@ Alle liefern 401/403 und geben keine Inhalte preis.
 **A9 — Wiederherstellung**
 Backup erzeugen, Container samt Volumes löschen, aus dem Backup wiederherstellen.
 Alle Daten und PDFs sind vollständig vorhanden.
+
+**A10 — Passkey statt Passwort**
+Unter `/settings/security` einen Passkey anlegen, abmelden, mit dem Passkey anmelden —
+ohne Eingabe von Adresse, Passwort oder Code. Dasselbe am Adminzugang. Danach den
+Passkey entfernen und den Anmeldeversuch wiederholen: Er wird abgewiesen.
+
+**A11 — Vertrautes Gerät**
+Mit TOTP anmelden und „diesem Gerät vertrauen" ankreuzen, abmelden, erneut anmelden —
+kein Code. Anschließend das Passwort zurücksetzen und wieder anmelden: Der Code wird
+wieder verlangt. Dasselbe Cookie an einem zweiten Konto vorgelegt überspringt nichts.
+
+**A12 — Zurück aus der Sackgasse**
+Unternehmen anlegen, den Einladungslink wegwerfen, im Adminbereich neu ausstellen und
+einlösen. Danach als Inhaber das Passwort „vergessen": im Adminbereich einen
+Zurücksetzungsnachweis ausstellen, einlösen, anmelden. Prüfen, dass beide Eingriffe im
+Protokoll **des Unternehmens** mit Akteursart `ADMIN` stehen und dass alle Sitzungen
+des betroffenen Kontos geendet haben.
