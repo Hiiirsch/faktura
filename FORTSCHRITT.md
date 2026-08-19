@@ -15,12 +15,12 @@ sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
 Stand: 2026-08-19 · **212 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
-118 umgesetzt, 11 offen. Dazu **30 IDs** aus `faktura-frontend-design.md` §9
+118 umgesetzt, 11 offen. Dazu **32 IDs** aus `faktura-frontend-design.md` §9
 (Abschnitt 16), alle umgesetzt.
 
 **M9 umgesetzt** — 19 neue IDs in Abschnitt 18 (Katalog §17 „Anmeldeverfahren"):
 Passkeys, vertraute Geräte und die beiden Wege des Betreibers aus einer
-Sackgasse. Fünf neue UI-IDs (FA-UI-21 bis -24, NFA-UI-06). Geändert: FA-ADM-04
+Sackgasse. Sieben neue UI-IDs (FA-UI-21 bis -26, NFA-UI-06), davon zwei für die Marke. Geändert: FA-ADM-04
 und FA-ADM-08 im Wortlaut, NFA-SEC-05 nennt jetzt beide Faktorarten.
 
 **M8 umgesetzt** — 31 IDs in Abschnitt 17 (Katalog §16 „Mandanten, Rollen und
@@ -555,6 +555,8 @@ Auftraggeber vorgegeben hat.
 | FA-UI-23 | Ein Abbruch der Gerätesperre ist kein Fehler | SOLL | R | M9 | umgesetzt | Review: `Alert` hat dafür seit M9 einen dritten Ton `note` — neutrale Fläche, `role="status"` statt `role="alert"`. Wer die Gerätesperre wegdrückt, hat sich entschieden; Ocker behauptete dort eine Störung |
 | FA-UI-24 | Passkeys und vertraute Geräte in derselben Form wie aktive Sitzungen | MUSS | M | M9 | umgesetzt | `/settings/security` — drei Abschnitte gleichen Aufbaus (Bezeichnung, letzte Nutzung, einzeln widerrufbar); `/admin` führt den Passkey-Abschnitt ohne die vertrauten Geräte (FA-TRUST-05). Manuell: A10, A11 |
 | NFA-UI-06 | Der Zugang hängt nicht an JavaScript | MUSS | T | M9 | umgesetzt | `tests/integration/route-protection.test.ts` schickt das Anmeldeformular so ab, wie ein Browser ohne JavaScript es täte (`$ACTION_ID_…`); `tests/integration/browser-passkey.test.ts` prüft, dass der Passwortweg neben dem Passkey-Knopf bestehen bleibt. **Nicht behauptet wird**, dass die ganze Anwendung ohne JavaScript läuft: Formulare mit `useActionState` tun das nicht und tragen dafür einen `<NoScriptNotice>` |
+| FA-UI-25 | Marke als Inline-SVG mit `currentColor`, Wortmarke als Text | MUSS | T | M9 | umgesetzt | `src/ui/components/brand.tsx`; Kleinschreibung und Laufweite in `.brand-wordmark` (`globals.css`), damit der Name in `de.ts` „Faktura" bleibt und auch so vorgelesen wird. `tests/architecture/design-tokens.test.ts` — gegen `fill="#2A3EA0"` gegengeprüft |
+| FA-UI-26 | Das Rechnungsdokument trägt nie die Marke der Software | MUSS | T | M9 | umgesetzt | `tests/architecture/design-tokens.test.ts` — kein Bauteil im Weg vom Beleg zur Datei importiert die Marke; gegen einen absichtlichen Import in `render-invoice.ts` gegengeprüft. Auf dem Beleg steht das Logo des Unternehmens (FA-STAMM-05) |
 
 ---
 

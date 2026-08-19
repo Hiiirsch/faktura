@@ -22,3 +22,6 @@ backups/
 *.tsbuildinfo
 .DS_Store
 dist/
+
+# Fremde Dokumente in der Wurzel — nie Teil des Projekts
+/*.pdf

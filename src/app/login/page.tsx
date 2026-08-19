@@ -8,6 +8,7 @@ import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csr
 import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
 import { DASHBOARD_PATH, PASSKEY_LOGIN_PATH } from '@/routes';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { BrandLockup } from '@/ui/components/brand';
 
 import { PasskeyLoginButton } from '../passkey-login-button';
 import { loginAction, type LoginErrorCode } from './actions';
@@ -71,7 +72,7 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-2">
-        <h1 className="text-title font-semibold text-ink">{messages.app.name}</h1>
+        <BrandLockup as="h1" size="page" />
         <p className="text-ink-muted">{messages.login.intro}</p>
       </header>
 

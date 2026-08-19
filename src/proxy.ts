@@ -184,6 +184,16 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Statische Dateien des Frameworks brauchen weder Prüfung noch Header.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  /*
+   * Statische Dateien des Frameworks brauchen weder Prüfung noch Header.
+   *
+   * `icon.svg` und `apple-icon.png` gehören dazu (M9): Next erzeugt sie aus den
+   * Dateien in `src/app/` und liefert sie unter diesen Pfaden aus. Ohne die
+   * Ausnahme fielen sie unter die Regel „was nicht in `routes.ts` steht, gilt
+   * als geschützt" und würden auf die Anmeldung umgeleitet — ausgerechnet auf
+   * der Anmeldeseite, wo sie ein Nichtangemeldeter zuerst sieht. Ein Tabsymbol
+   * ist keine Auskunft: Es steht in jedem Lesezeichen, bevor sich jemand
+   * anmeldet.
+   */
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png).*)'],
 };

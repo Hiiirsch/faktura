@@ -9,6 +9,7 @@ import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { ADMIN_LOGIN_PATH } from '@/routes';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { BrandLockup } from '@/ui/components/brand';
 
 import { type AdminSetupErrorCode, completeAdminSetupAction } from './actions';
 
@@ -70,7 +71,7 @@ export default async function AdminSetupPage({
   if (!offer.ok) {
     return (
       <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-6 px-6 py-16">
-        <h1 className="text-page font-semibold text-ink">{messages.app.name}</h1>
+        <BrandLockup as="h1" size="page" />
         <Alert tone="error">{messages.admin.setupInvalid}</Alert>
         <Link href={ADMIN_LOGIN_PATH} className="text-ui text-accent hover:text-accent-hover">
           {messages.invitation.toLogin}

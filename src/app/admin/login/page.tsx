@@ -8,6 +8,7 @@ import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csr
 import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
 import { ADMIN_PASSKEY_LOGIN_PATH, ADMIN_PATH } from '@/routes';
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { BrandLockup } from '@/ui/components/brand';
 
 import { PasskeyLoginButton } from '../../passkey-login-button';
 import { adminLoginAction, type AdminLoginErrorCode } from './actions';
@@ -63,6 +64,9 @@ export default async function AdminLoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-2">
+        {/* Die Marke steht über der Überschrift, nicht an ihrer Stelle:
+            Die Seite handelt vom zweiten Schritt, nicht von der Anwendung. */}
+        <BrandLockup />
         <h1 className="text-title font-semibold text-ink">{messages.admin.heading}</h1>
         <p className="text-ink-muted">{messages.admin.loginIntro}</p>
       </header>

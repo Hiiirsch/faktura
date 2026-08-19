@@ -119,6 +119,23 @@ Bewegung folgt dem Katalog aus §2.4 des Entwurfs; jede Dauer ist ein Token
 zwei Keyframes, beide in `globals.css`: den Ladebalken und den Stempel beim
 Festschreiben. `prefers-reduced-motion` schaltet alles ab.
 
+Die **Marke** (seit M9) steht in `src/ui/components/brand.tsx` als Inline-SVG mit
+`currentColor` — nur so folgt sie dem Farbschema; eine Bilddatei bliebe nachts in
+einem Blau stehen, das auf dunklem Grund unter 3 : 1 fällt. Die Wortmarke ist
+gewöhnlicher Text aus `de.ts`; Kleinschreibung und Laufweite kommen aus
+`.brand-wordmark`. Quelle der Geometrie ist `faktura-logo-g/LIESMICH.txt`.
+
+**Auf dem Beleg erscheint sie nie.** Dort steht das Logo des ausstellenden
+Unternehmens (FA-STAMM-05). Ein Beleg ist ein Dokument seines Ausstellers; eine
+fremde Marke darauf wäre eine Behauptung über ihn. Der Architekturtest hält fest,
+dass kein Bauteil im Weg vom Beleg zur Datei die Marke importiert.
+
+`icon.svg` und `apple-icon.png` liegen in `src/app/` und werden von Next aus den
+Dateikonventionen ausgeliefert. Sie stehen deshalb in der Ausnahmeliste des
+Proxy-`matcher`: Sonst griffe „was nicht in `routes.ts` steht, gilt als
+geschützt", und das Tabsymbol würde ausgerechnet auf der Anmeldeseite auf die
+Anmeldung umgeleitet.
+
 Symbole kommen aus **einem** Satz (`lucide-react`, gepinnt) mit der Strichstärke
 aus `ICON_STROKE`. Ein Symbol ohne Beschriftung gibt es nicht: In der Navigation
 steht der Text daneben, bei Zeilenaktionen im `sr-only`-Element — ein

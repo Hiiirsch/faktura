@@ -13,6 +13,7 @@ import {
   PRIMARY_BUTTON_CLASS,
   QUIET_BUTTON_CLASS,
 } from '@/ui/components/form';
+import { BrandLockup } from '@/ui/components/brand';
 
 import { abandonSecondFactorAction, secondFactorAction, type SecondFactorErrorCode } from '../actions';
 
@@ -73,6 +74,9 @@ export default async function SecondFactorPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-2">
+        {/* Die Marke steht über der Überschrift, nicht an ihrer Stelle:
+            Die Seite handelt vom zweiten Schritt, nicht von der Anwendung. */}
+        <BrandLockup />
         <h1 className="text-title font-semibold text-ink">{messages.login.codeTitle}</h1>
         <p className="text-ink-muted">{messages.login.codeIntro}</p>
       </header>

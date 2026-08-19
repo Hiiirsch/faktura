@@ -8,6 +8,7 @@ import { PENDING_LOGIN_COOKIE_NAME } from '@/infrastructure/auth/session-cookie'
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { ADMIN_LOGIN_PATH, ADMIN_PATH } from '@/routes';
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS, QUIET_BUTTON_CLASS } from '@/ui/components/form';
+import { BrandLockup } from '@/ui/components/brand';
 
 import { adminSecondFactorAction, type AdminLoginErrorCode } from '../actions';
 
@@ -59,6 +60,9 @@ export default async function AdminSecondFactorPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-login flex-col justify-center gap-8 px-6 py-16">
       <header className="flex flex-col gap-2">
+        {/* Die Marke steht über der Überschrift, nicht an ihrer Stelle:
+            Die Seite handelt vom zweiten Schritt, nicht von der Anwendung. */}
+        <BrandLockup />
         <h1 className="text-title font-semibold text-ink">{messages.admin.codeTitle}</h1>
         <p className="text-ink-muted">{messages.admin.codeIntro}</p>
       </header>

@@ -160,6 +160,52 @@ Katalog; was nicht darin steht, wird nicht bewegt.
   des Stempels und des Ladebalkens — die Nummer erscheint dann schlicht, der Balken
   steht still und bleibt als Fläche sichtbar.
 
+### 2.5 Marke
+
+Quelle ist `faktura-logo-g/` mit `LIESMICH.txt`; die Werte dort sind maßgeblich.
+Was hier steht, ist die Übersetzung in diese Anwendung.
+
+| | |
+|---|---|
+| Bildmarke | 24 × 32 Einheiten, **ein** Pfad, `fill-rule="evenodd"` |
+| Sperrung | Abstand Marke → Wortmarke = ein halbes Markenmaß |
+| Wortmarke | Fira Sans 600, Laufweite −0,015 em, Kleinbuchstaben |
+| Mindestgröße | 16 px Höhe — darunter liegt die Aussparung unter 1,5 px |
+| Primär | `#2A3EA0` auf `#F5F6F3` — beides bereits Tokenwerte (`--accent`, `--surface`) |
+
+**Die Marke steht als Inline-SVG im Bauteil, nicht als Bilddatei.** Sie ist ein
+Pfad; eine eigene Anfrage dafür wäre mehr Aufwand als der Inhalt. Der Grund ist
+aber ein anderer: Nur inline kann sie `currentColor` tragen und damit dem
+Farbschema folgen. Eine Bilddatei bliebe nachts in demselben Blau stehen.
+
+**Die Wortmarke ist Text, kein Pfad.** Dieselbe Schrift liefert die Anwendung
+ohnehin aus, also wird der Name als gewöhnliche Überschrift gesetzt — vorlesbar,
+auswählbar, durchsuchbar. Ein Logo, dessen Name nur als Kurve existiert, ist für
+einen Screenreader ein leeres Bild. Kleinschreibung und Laufweite kommen aus
+`.brand-wordmark` in `globals.css`, nicht aus einem kleingeschriebenen String:
+Der Name bleibt „Faktura" und wird auch so vorgelesen.
+
+**Eine bewusste Abweichung vom Logoblatt.** Dort stehen vier feste Fassungen und
+der Satz „nicht umfärben". Im dunklen Schema trägt die Marke trotzdem den
+aufgehellten Akzent statt `#2A3EA0`. Das Verbot soll willkürliches Einfärben
+verhindern; es kann keine Marke erzwingen, die auf ihrem Grund unter 3 : 1 fällt
+(NFA-UI-01). Gelöst wird das nicht im Bauteil, sondern durch `currentColor` — der
+Wert kommt aus demselben Token wie jede andere Akzentfläche.
+
+**Wo sie erscheint** — und wo nicht:
+
+| Ort | Fassung |
+|---|---|
+| Organisationszone der Sidebar | Sperrung, 20 px |
+| Anmeldung, zweiter Schritt, Einladung, Zurücksetzung, Einrichtung | Sperrung, 32 px |
+| Browser-Tab | `icon.svg` (Negativ), `apple-icon.png` 256 px |
+| **Rechnungsdokument** | **gar nicht** |
+
+Die letzte Zeile ist die wichtigste. Auf dem Beleg steht das Logo des
+**Unternehmens** (FA-STAMM-05), nicht das der Software. Ein Beleg ist ein
+Dokument seines Ausstellers; eine fremde Marke darauf wäre eine Behauptung über
+den Aussteller.
+
 ---
 
 ## 3. Layout
@@ -466,6 +512,8 @@ Zur Aufnahme in `rechnungs-app-anforderungen.md`.
 | FA-UI-24 | Passkeys und vertraute Geräte stehen unter **Sicherheit** in derselben Form wie die aktiven Sitzungen: Bezeichnung, letzte Nutzung, einzeln widerrufbar. | MUSS | M |
 | NFA-UI-05 | Ein dunkles Farbschema ist verfügbar; die Dokumentvorschau bleibt darin weiß. | KANN | M |
 | NFA-UI-06 | Der **Zugang** zur Anwendung hängt nicht an JavaScript: Anmeldung, zweiter Schritt und Einlöseseiten sind Server-Formulare. Der Passkey-Weg setzt JavaScript voraus und ist deshalb eine Ergänzung daneben — sein Wegfall nimmt niemandem den Zugang. | MUSS | T |
+| FA-UI-25 | Die Marke erscheint als Inline-SVG mit `currentColor` und Text-Wortmarke; im Komponentencode steht kein Farbwert der Marke. Geometrie und Sperrung nach §2.5. | MUSS | T |
+| FA-UI-26 | Das Rechnungsdokument trägt **nie** die Marke der Software, sondern ausschließlich das Logo des ausstellenden Unternehmens (FA-STAMM-05). | MUSS | T |
 
 ---
 

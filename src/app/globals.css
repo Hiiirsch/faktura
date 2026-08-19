@@ -253,6 +253,23 @@ table {
 }
 
 /*
+ * Die Wortmarke (FA-UI-25).
+ *
+ * Zwei Werte aus dem Logoblatt, die kein Utility trägt: Laufweite −0,015 em und
+ * Kleinschreibung. Sie stehen hier und nicht im Bauteil, weil `globals.css` die
+ * einzige Stelle mit Zahlenwerten ist (FA-UI-01) — dieselbe Begründung wie bei
+ * `.metric-figure` darüber.
+ *
+ * `text-transform` statt eines kleingeschriebenen Strings: Der Name bleibt in
+ * `de.ts` „Faktura" und wird auch so vorgelesen. Nur die Marke setzt ihn klein,
+ * und das ist eine Frage der Darstellung, keine des Namens.
+ */
+.brand-wordmark {
+  letter-spacing: -0.015em;
+  text-transform: lowercase;
+}
+
+/*
  * Der Dialog erscheint (§2.4, FA-UI-17).
  *
  * Als Übergang statt als Keyframe: Ein `<dialog>` wechselt beim `showModal()`

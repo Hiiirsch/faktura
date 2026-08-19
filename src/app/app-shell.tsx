@@ -36,6 +36,7 @@ import {
 } from '@/routes';
 import { FOCUS_RING } from '@/ui/components/form';
 import { ICON_STROKE } from '@/ui/components/icon';
+import { BrandLockup } from '@/ui/components/brand';
 
 import { logoutAction } from './auth-actions';
 
@@ -222,7 +223,7 @@ export async function AppShell({
           Platz, unabhängig davon, wie lang der Unternehmensname ist.
         */}
         <div className="flex h-zone shrink-0 flex-col justify-center border-b border-rule px-4">
-          <span className="text-ui font-semibold text-ink">{messages.app.name}</span>
+          <BrandLockup />
           <span className="truncate text-small text-ink-muted">{organizationName}</span>
         </div>
 

@@ -463,3 +463,63 @@ describe('FA-UI-08 Bewegung nur aus dem Katalog des Entwurfs', () => {
     expect(frames.sort()).toEqual(['faktura-progress', 'faktura-stamp']);
   });
 });
+
+/**
+ * Die Marke (FA-UI-25, FA-UI-26).
+ *
+ * Der erste Test ist die Ergänzung zum Farbliteral-Wächter oben: Der verbietet
+ * Hexwerte im Komponentencode, sagt aber nicht, dass die Marke stattdessen dem
+ * Token folgen **muss**. Ohne `currentColor` bliebe sie nachts in einem Blau
+ * stehen, das auf dunklem Grund unter 3 : 1 fällt.
+ *
+ * Der zweite ist der wichtigere und hat mit Gestaltung wenig zu tun: Auf einem
+ * Beleg steht das Logo des ausstellenden **Unternehmens**, nie das der Software.
+ * Ein Beleg ist ein Dokument seines Ausstellers; eine fremde Marke darauf wäre
+ * eine Behauptung über ihn. Der Weg dorthin ginge über einen Import — und den
+ * gibt es hier nicht.
+ */
+describe('FA-UI-25 / FA-UI-26 Die Marke', () => {
+  const brandFile = 'src/ui/components/brand.tsx';
+
+  it('färbt die Bildmarke über `currentColor`', () => {
+    const source = readFileSync(path.join(projectRoot, brandFile), 'utf8');
+
+    expect(source).toContain('fill="currentColor"');
+    expect(withoutComments(source)).not.toMatch(/#[0-9a-fA-F]{3,8}\b/u);
+  });
+
+  it('erscheint nicht auf dem Beleg', async () => {
+    // Alles, was am Weg vom Beleg zur Datei beteiligt ist.
+    const documentPaths = [
+      'src/application/documents',
+      'src/infrastructure/templates',
+      'src/infrastructure/rendering',
+      'src/domain/document',
+    ];
+
+    const offenders: string[] = [];
+
+    for (const directory of documentPaths) {
+      let files: readonly string[];
+      try {
+        files = await collect(directory, ['.ts', '.tsx']);
+      } catch {
+        // Ein Verzeichnis, das es nicht (mehr) gibt, ist kein Verstoß.
+        continue;
+      }
+
+      for (const file of files) {
+        const source = withoutComments(readFileSync(path.join(projectRoot, file), 'utf8'));
+        if (/BrandLockup|BrandMark|components\/brand/u.test(source)) {
+          offenders.push(file);
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      'Auf dem Beleg steht das Logo des Unternehmens (FA-STAMM-05), nicht das der Software',
+    ).toEqual([]);
+  });
+});
+
