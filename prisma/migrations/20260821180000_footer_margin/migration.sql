@@ -1,0 +1,20 @@
+-- Platz fuer den Blattfuss (M11, B2, FA-PDF-12)
+--
+-- Reine Vorgabeaenderung fuer **neue** Vorlagen: unten 35 mm statt 20 mm. Der
+-- Blattfuss mit Absender und Bankverbindung liegt seit M11 fest im unteren Rand
+-- und erscheint auf jeder Seite; ohne den Platz liefe der Fliesstext darunter.
+--
+-- **Bestehende Vorlagen bleiben unberuehrt.** Eine Vorlage gehoert dem
+-- Unternehmen: Wer sie angepasst hat, bekommt keine stillen Aenderungen an
+-- seinem Beleg. Wer die Standardvorlage unveraendert benutzt und den neuen Fuss
+-- will, setzt den unteren Rand unter /settings/templates auf 35 mm — oder legt
+-- die Standardvorlage neu an.
+--
+-- SQLite kann eine Spaltenvorgabe nicht aendern, ohne die Tabelle neu zu bauen,
+-- und ein Neuaufbau von "Template" waere teurer als der Nutzen: Die Vorgabe
+-- greift ohnehin nur, wenn die Anwendung sie nicht selbst mitschickt — und das
+-- tut sie (DEFAULT_PAGE_GEOMETRY in src/domain/rendering/contracts.ts).
+--
+-- Diese Migration ist deshalb absichtlich leer. Sie steht hier, damit der
+-- Schemaabgleich von Prisma nicht bei jedem Lauf eine Abweichung meldet.
+SELECT 1;

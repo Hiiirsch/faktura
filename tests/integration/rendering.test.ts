@@ -181,7 +181,8 @@ describe('Vorlagen-Engine (FA-TPL-01, -07)', () => {
     if (!result.ok) return;
 
     expect(result.html).toContain('size: A4');
-    expect(result.html).toContain('margin: 25mm 20mm 20mm 20mm');
+    // Unten 35 mm seit M11: Der Blattfuß liegt in diesem Rand (FA-PDF-12).
+    expect(result.html).toContain('margin: 25mm 20mm 35mm 20mm');
   });
 
   it('meldet einen Syntaxfehler verständlich, statt abzustürzen (FA-TPL-07)', async () => {
@@ -279,6 +280,85 @@ describe('FA-PFL-13 Der Beleg eines Kleinunternehmers', () => {
     expect(headCells).toBe(5);
     // Eine Position im Prüfbeleg, also genau eine Zeile mit fünf Zellen.
     expect(bodyCells).toBe(5);
+  });
+});
+
+/**
+ * Der Blattfuß (M11, B2, FA-PDF-12).
+ *
+ * **Was hier nicht geprüft werden kann**, ist die Lage auf dem Papier — dafür
+ * braucht es ein erzeugtes PDF und ein Auge. Was sich prüfen lässt, ist der
+ * Aufbau, der sie herstellt: der Fuß in einer Fußgruppe, damit der Umbruch ihn
+ * je Seite setzt **und** Platz für ihn lässt.
+ *
+ * Der erste Anlauf war `position: fixed`. Er erschien auf jeder Seite und hielt
+ * keinen Platz frei; auf der zweiten Seite liefen die Positionszeilen mitten
+ * durch den Fuß. Deshalb prüft der erste Test die Fußgruppe und nicht nur, dass
+ * irgendwo ein Fuß steht.
+ */
+describe('FA-PDF-12 Der Blattfuß', () => {
+  const defaultTemplate = {
+    htmlSource: DEFAULT_TEMPLATE_HTML,
+    cssSource: DEFAULT_TEMPLATE_CSS,
+    geometry: DEFAULT_PAGE_GEOMETRY,
+  };
+
+  it('steht in einer Fußgruppe, die der Umbruch freihält', async () => {
+    const result = await liquidTemplateEngine.render(document, defaultTemplate);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const footerGroup = result.html.indexOf('<tfoot>');
+    const imprint = result.html.indexOf('class="imprint"');
+    const bodyGroup = result.html.indexOf('<tbody>');
+
+    expect(footerGroup).toBeGreaterThan(-1);
+    // Der Fuß steht **in** der Fußgruppe, und die steht vor dem Rumpf: So
+    // verlangt es HTML, und so wiederholt Chromium sie.
+    expect(imprint).toBeGreaterThan(footerGroup);
+    expect(imprint).toBeLessThan(bodyGroup);
+    expect(result.html).toContain('table-footer-group');
+  });
+
+  it('trägt die Bankverbindung', async () => {
+    const result = await liquidTemplateEngine.render(document, defaultTemplate);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const footer = result.html.slice(
+      result.html.indexOf('<tfoot>'),
+      result.html.indexOf('</tfoot>'),
+    );
+
+    expect(footer).toContain('Bankverbindung');
+    expect(footer).toContain('IBAN');
+  });
+
+  it('nennt die Steuernummer im Briefkopf, nicht im Fuß', async () => {
+    /*
+     * §14 Abs. 4 Nr. 2 UStG verlangt Steuernummer **oder** USt-IdNr. auf jeder
+     * Rechnung (FA-PFL-02). Sie darf umziehen, aber nicht verschwinden — der
+     * Test hält beide Hälften dieser Aussage fest.
+     */
+    const result = await liquidTemplateEngine.render(document, defaultTemplate);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const head = result.html.slice(
+      result.html.indexOf('class="letterhead"'),
+      result.html.indexOf('class="address-field"'),
+    );
+    const footer = result.html.slice(
+      result.html.indexOf('<tfoot>'),
+      result.html.indexOf('</tfoot>'),
+    );
+
+    expect(head).toContain('USt-IdNr.');
+    expect(footer).not.toContain('Steuernummer');
+    expect(footer).not.toContain('USt-IdNr.');
   });
 });
 

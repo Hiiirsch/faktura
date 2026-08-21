@@ -230,11 +230,22 @@ describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
     expect(shows(html, 'Berlin')).toBe(true);
   });
 
-  it('nennt Steuernummer und USt-IdNr des Ausstellers (FA-PFL-02)', async () => {
+  it('nennt eine Steuerkennung des Ausstellers (FA-PFL-02)', async () => {
+    /*
+     * **Eine von beiden, nicht beide** (seit M11).
+     *
+     * §14 Abs. 4 Nr. 2 UStG verlangt Steuernummer **oder** USt-IdNr.; der
+     * Katalog sagt dasselbe. Wer beides führt, zeigt die USt-IdNr. — sie ist die
+     * für den Empfänger brauchbare Angabe. Zwei Kennungen nebeneinander sind
+     * eine zu viel.
+     *
+     * Der Test prüfte vorher beide und war damit strenger als die Zusage. Das
+     * fiel erst auf, als die Angabe aus dem Blattfuß in den Briefkopf zog.
+     */
     const html = await documentHtmlOf(await seedIssued());
 
-    expect(shows(html, '12/345/67890')).toBe(true);
     expect(shows(html, 'DE123456789')).toBe(true);
+    expect(shows(html, '12/345/67890')).toBe(false);
   });
 
   it('nennt Ausstellungsdatum und Rechnungsnummer (FA-PFL-03, -04)', async () => {

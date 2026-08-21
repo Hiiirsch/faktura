@@ -38,10 +38,83 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
   <div class="mark mark-punch"></div>
   <div class="mark mark-fold-2"></div>
 
+  {%- comment -%}
+    Der ganze Beleg steht in einer Tabelle, damit der Blattfuß eine echte
+    Fußgruppe sein kann (M11, FA-PDF-12).
+
+    Der erste Anlauf war ein festes Element (position: fixed). Es erschien zwar
+    auf jeder Seite, hielt aber **keinen Platz frei** — auf einer vollen Seite
+    liefen die Positionszeilen mitten hindurch. Das sieht man erst am
+    zweiseitigen PDF, nicht im Test und nicht am Bildschirm.
+
+    Eine Fußgruppe (display: table-footer-group) tut beides: Sie wiederholt sich
+    auf jeder Seite und der Umbruch rechnet mit ihr. Dasselbe Verfahren hält
+    weiter unten schon den Tabellenkopf der Positionen auf jeder Seite.
+  {%- endcomment -%}
+  <table class="page">
+    <tfoot>
+      <tr><td>
+      {%- comment -%}
+        Der Blattfuß — seit M11 wirklich am Fuß des Blattes und auf **jeder** Seite
+        (FA-PDF-12).
+
+        Er steht in der Fußgruppe der Seitentabelle: Der Umbruch stellt ihn auf
+        jeder Seite ganz unten hin und hält den Platz dafür frei. Genau das will
+        ein Briefbogen — wer nur Seite 2 vor sich hat, findet die Bankverbindung
+        trotzdem.
+
+        Die Bankverbindung ist aus dem Fließtext hierher gezogen: Sie gilt dem
+        Absender, nicht diesem einen Beleg. Das Zahlungsziel ist geblieben, wo es
+        war (FA-PFL-10).
+
+        Die Steuernummer ist von hier in den Briefkopf gezogen: Pflichtangabe, aber
+        kein Kleingedrucktes. Register und Geschäftsführung bleiben (HGB).
+      {%- endcomment -%}
+      <footer class="imprint">
+        <div class="imprint-column">
+          <div>{{ seller.name }}</div>
+          <div>{{ seller.address.addressLine1 }}</div>
+          <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
+          {%- if seller.registerCourt %}<div>{{ seller.registerCourt }} {{ seller.registerNumber }}</div>{% endif -%}
+          {%- if seller.managingDirector %}<div>{{ seller.managingDirector }}</div>{% endif -%}
+        </div>
+        <div class="imprint-column">
+          {%- if seller.phone %}<div>Telefon {{ seller.phone }}</div>{% endif -%}
+          {%- if seller.email %}<div>{{ seller.email }}</div>{% endif -%}
+          {%- if seller.website %}<div>{{ seller.website }}</div>{% endif -%}
+        </div>
+        {%- if seller.bankAccountHolder %}
+        <div class="imprint-column">
+          <div class="payment-label">Bankverbindung</div>
+          <div>{{ seller.bankAccountHolder }}</div>
+          {%- if seller.iban %}<div class="num">IBAN {{ seller.iban }}</div>{% endif -%}
+          {%- if seller.bic %}<div class="num">BIC {{ seller.bic }} · {{ seller.bankName }}</div>{% endif -%}
+        </div>
+        {%- endif -%}
+      </footer>
+      </td></tr>
+    </tfoot>
+    <tbody>
+      <tr><td>
+
+  {%- comment -%}
+    Briefkopf. Die Steuernummer steht hier und nicht mehr im Blattfuß: Sie ist
+    Pflichtangabe (FA-PFL-02, §14 Abs. 4 Nr. 2 UStG) und gehört zum Absender,
+    nicht zum Kleingedruckten. Genau **eine** von beiden — wer eine USt-IdNr.
+    führt, nennt sie; sonst die Steuernummer. Beide nebeneinander sind eine
+    Angabe zu viel.
+  {%- endcomment -%}
   <header class="letterhead">
-    <div class="letterhead-name">{{ seller.name }}</div>
-    <div class="letterhead-contact">
-      {{ seller.address.addressLine1 }} · {{ seller.address.postalCode }} {{ seller.address.city }}
+    <div>
+      <div class="letterhead-name">{{ seller.name }}</div>
+      <div class="letterhead-contact">
+        {{ seller.address.addressLine1 }} · {{ seller.address.postalCode }} {{ seller.address.city }}
+      </div>
+    </div>
+    <div class="letterhead-tax num">
+      {%- if seller.vatId -%}USt-IdNr. {{ seller.vatId }}
+      {%- elsif seller.taxNumber -%}Steuernummer {{ seller.taxNumber }}
+      {%- endif -%}
     </div>
   </header>
 
@@ -213,20 +286,12 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
   </main>
 
   {%- comment -%}
-    Bankverbindung und Zahlungsangaben, FA-PFL-10. Auf dem Blatt und nicht in
-    der Fußzeile des Renderers: Sie gehören zum Belegtext, nicht zur
-    Seitenzählung.
+    Zahlungsziel im Fließtext (FA-PFL-10). Die **Bankverbindung** steht seit M11
+    im Blattfuß: Sie gehört zum Briefbogen und gilt für jede Seite. Das
+    Zahlungsziel gilt dagegen genau diesem einen Beleg und bleibt deshalb hier.
   {%- endcomment -%}
   <section class="payment">
     <div class="payment-terms">
-      {%- if seller.bankAccountHolder %}
-      <div class="payment-block">
-        <div class="payment-label">Bankverbindung</div>
-        <div>{{ seller.bankAccountHolder }}</div>
-        <div class="num">IBAN {{ seller.iban }}</div>
-        <div class="num">BIC {{ seller.bic }} · {{ seller.bankName }}</div>
-      </div>
-      {%- endif -%}
       <div class="payment-block">
         <div class="payment-label">Zahlung</div>
         {%- for notice in paymentNotices %}<div>{{ notice }}</div>{% endfor -%}
@@ -234,30 +299,12 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
     </div>
   </section>
 
-  {%- comment -%}
-    Absenderangaben als Fuß des Blattes: Steuernummer bzw. USt-IdNr sind
-    Pflicht (FA-PFL-02), Register und Geschäftsführung nach HGB.
-  {%- endcomment -%}
-  <footer class="imprint">
-    <div class="imprint-column">
-      <div>{{ seller.name }}</div>
-      <div>{{ seller.address.addressLine1 }}</div>
-      <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
-    </div>
-    <div class="imprint-column">
-      {%- if seller.phone %}<div>Telefon {{ seller.phone }}</div>{% endif -%}
-      {%- if seller.email %}<div>{{ seller.email }}</div>{% endif -%}
-      {%- if seller.website %}<div>{{ seller.website }}</div>{% endif -%}
-    </div>
-    <div class="imprint-column">
-      {%- if seller.taxNumber %}<div class="num">Steuernummer {{ seller.taxNumber }}</div>{% endif -%}
-      {%- if seller.vatId %}<div class="num">USt-IdNr. {{ seller.vatId }}</div>{% endif -%}
-      {%- if seller.registerCourt %}<div>{{ seller.registerCourt }} {{ seller.registerNumber }}</div>{% endif -%}
-      {%- if seller.managingDirector %}<div>{{ seller.managingDirector }}</div>{% endif -%}
-    </div>
-  </footer>
+
 
   {%- if footerText %}<p class="footer-text">{{ footerText }}</p>{% endif -%}
+      </td></tr>
+    </tbody>
+  </table>
 </div>
 `;
 
@@ -308,6 +355,12 @@ body {
 
 .letterhead-name { font-size: 13pt; font-weight: 700; }
 .letterhead-contact { color: var(--paper-muted); font-size: 8pt; }
+.letterhead-tax {
+  color: var(--paper-muted);
+  font-size: 8pt;
+  text-align: right;
+  white-space: nowrap;
+}
 
 /* ── Falz- und Lochmarken (DIN 5008) ───────────────────────────────────── */
 
@@ -487,17 +540,49 @@ body {
   letter-spacing: 0.06em;
 }
 
+/*
+ * Die Seitentabelle trägt nur die Fußgruppe.
+ *
+ * Sie darf nichts an der Darstellung ändern: keine Abstände, keine Rahmen, volle
+ * Breite. Eine Tabelle ohne eigenes Aussehen, allein für den Seitenumbruch.
+ */
+.page {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.page > tbody > tr > td,
+.page > tfoot > tr > td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.page > tfoot { display: table-footer-group; }
+
 /* ── Absenderfuß ───────────────────────────────────────────────────────── */
 
+/*
+ * Fest am Fuß jeder Seite (M11, FA-PDF-12).
+ *
+ * position: fixed bezieht sich beim Druck auf die Seite, nicht auf das
+ * Dokument — Chromium setzt das Element deshalb auf jeder Seite erneut. Dasselbe
+ * Verfahren trägt schon die Falz- und Lochmarken darüber.
+ *
+ * Er sitzt in der Fußgruppe der Seitentabelle (siehe oben im Markup) und braucht
+ * deshalb **keine** Positionierung: Der Umbruch stellt ihn auf jeder Seite ganz
+ * unten hin und hält den Platz dafür frei.
+ *
+ * Der erste Anlauf war position: fixed. Das erschien zwar auf jeder Seite, hielt
+ * aber keinen Platz frei — auf einer vollen Seite liefen die Positionszeilen
+ * mitten durch den Fuß. Sichtbar wurde das erst am zweiseitigen PDF.
+ */
 .imprint {
   display: flex;
   gap: 8mm;
-  margin-top: 6mm;
   padding-top: 2mm;
   border-top: 0.4pt solid var(--paper-rule);
   color: var(--paper-muted);
   font-size: 7.5pt;
-  break-inside: avoid;
 }
 
 .imprint-column { flex: 1; }
