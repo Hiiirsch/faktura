@@ -16,12 +16,13 @@ import { taxCategoryLabelDe, unitLabelDe } from '@/domain/codes/labels-de';
 import { isTaxCategoryCode, type TaxCategoryCode } from '@/domain/codes/tax-category';
 import { isUnitCode, type UnitCode } from '@/domain/codes/unit-code';
 import type { DocumentType } from '@/domain/document/document-type';
-import type {
-  DocumentBuyer,
-  DocumentLine,
-  DocumentSeller,
-  DocumentTaxGroup,
-  InvoiceDocument,
+import {
+  type DocumentBuyer,
+  type DocumentLine,
+  type DocumentSeller,
+  type DocumentTaxGroup,
+  documentShowsTax,
+  type InvoiceDocument,
 } from '@/domain/document/invoice-document';
 import { buildNotices } from '@/domain/document/notices';
 import { calculateInvoiceTotals } from '@/domain/invoice/totals';
@@ -246,6 +247,7 @@ export async function buildInvoiceDocument(
         precedingInvoiceNumber: invoice.precedingInvoice?.invoiceNumber ?? null,
       }),
       isDraft: invoice.status === 'DRAFT',
+      showsTax: documentShowsTax(seller),
     },
   };
 }

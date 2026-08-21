@@ -103,6 +103,7 @@ const document: InvoiceDocument = {
   footerText: null,
   notices: [],
   isDraft: false,
+  showsTax: true,
 };
 
 /** Läuft einen Punktpfad wie `seller.address.city` durch den Bereich. */

@@ -136,7 +136,7 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
           <th class="col-name">Bezeichnung</th>
           <th class="col-qty">Menge</th>
           <th class="col-price">Einzelpreis</th>
-          <th class="col-tax">USt.</th>
+          {%- if showsTax %}<th class="col-tax">USt.</th>{% endif -%}
           <th class="col-amount">Betrag</th>
         </tr>
       </thead>
@@ -150,7 +150,7 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
           </td>
           <td class="col-qty num">{{ line.quantity | quantity }} {{ line.unitLabel }}</td>
           <td class="col-price num">{{ line.unitPrice | money: invoice.currency }}</td>
-          <td class="col-tax num">{{ line.taxRate | percent }}</td>
+          {%- if showsTax %}<td class="col-tax num">{{ line.taxRate | percent }}</td>{% endif -%}
           <td class="col-amount num">{{ line.lineNet | money: invoice.currency }}</td>
         </tr>
         {%- endfor %}
@@ -161,6 +161,13 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
     <section class="totals">
       <table>
         <tbody>
+          {%- comment -%}
+            Ohne Steuer bleibt genau eine Zeile stehen.
+
+            Netto und Brutto tragen dann denselben Wert; zwei gleiche Zahlen
+            übereinander sind eine Frage, keine Auskunft (M11, FA-PFL-13).
+          {%- endcomment -%}
+          {%- if showsTax %}
           <tr class="totals-net">
             <th scope="row">Nettobetrag</th>
             <td class="num">{{ totals.net | money: invoice.currency }}</td>
@@ -173,6 +180,7 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
             <td class="num">{{ group.tax | money: invoice.currency }}</td>
           </tr>
           {%- endfor %}
+          {%- endif %}
           <tr class="totals-gross">
             <th scope="row">Gesamtbetrag</th>
             <td class="num">{{ totals.gross | money: invoice.currency }}</td>

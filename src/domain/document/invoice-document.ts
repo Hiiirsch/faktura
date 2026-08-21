@@ -175,4 +175,32 @@ export type InvoiceDocument = {
    * aussehen — die Vorlage kennzeichnet ihn sichtbar (FA-PDF-03).
    */
   readonly isDraft: boolean;
+
+  /**
+   * Ob der Beleg überhaupt eine Steuerangabe trägt (M11, FA-PFL-13).
+   *
+   * **Warum das nicht die Vorlage entscheidet.** Ein Kleinunternehmer darf keine
+   * Umsatzsteuer ausweisen (§19 UStG); was ausgewiesen ist, schuldet man nach
+   * §14c, auch wenn es falsch ist. Eine Spalte „USt. 0 %" behauptet eine
+   * Steuerpflicht, die nicht besteht. Diese Regel darf nicht in einer Vorlage
+   * stehen, die jedes Unternehmen ändern kann — sie kommt aus dem Beleg selbst.
+   *
+   * Abgeleitet und nicht gespeichert: Die Quelle ist `seller.isSmallBusiness`,
+   * und die steht bei einem festgeschriebenen Beleg im Snapshot. Ein Beleg, der
+   * als Kleinunternehmer entstand, bleibt so — auch wenn das Unternehmen später
+   * zur Regelbesteuerung wechselt.
+   */
+  readonly showsTax: boolean;
 };
+
+/**
+ * Ob eine Steuerangabe auf den Beleg gehört (M11, FA-PFL-13).
+ *
+ * **Nur die Kleinunternehmerregelung wird ausgenommen**, nicht jeder Beleg mit
+ * Steuersatz null. Bei Reverse Charge und bei Ausfuhr ist die Null selbst die
+ * Auskunft: Sie zeigt zusammen mit dem Pflichthinweis, dass die Steuerschuld
+ * woanders liegt. Sie zu verstecken nähme dem Empfänger die Begründung.
+ */
+export function documentShowsTax(seller: DocumentSeller): boolean {
+  return !seller.isSmallBusiness;
+}

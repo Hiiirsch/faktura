@@ -18,6 +18,10 @@ import {
 } from '@/domain/rendering/contracts';
 import { liquidTemplateEngine } from '@/infrastructure/rendering/liquid-engine';
 import {
+  DEFAULT_TEMPLATE_CSS,
+  DEFAULT_TEMPLATE_HTML,
+} from '@/infrastructure/templates/default-template';
+import {
   closeRenderer,
   playwrightPdfRenderer,
   renderAndReportBlocked,
@@ -115,6 +119,7 @@ const document: InvoiceDocument = {
   footerText: null,
   notices: [],
   isDraft: false,
+  showsTax: true,
 };
 
 function template(htmlSource: string, cssSource = ''): TemplateSource {
@@ -201,6 +206,79 @@ describe('Vorlagen-Engine (FA-TPL-01, -07)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.html).toContain('[]');
+  });
+});
+
+/**
+ * Keine Umsatzsteuer, wo keine ist (M11, B1, FA-PFL-13).
+ *
+ * **Warum das die Standardvorlage prüft und nicht ein Fragment.** Die Regel soll
+ * genau dort greifen, wo sie im Betrieb wirkt — im Beleg, den jedes Unternehmen
+ * ohne Zutun bekommt. Ein eigens gebautes Fragment bewiese nur, dass `{% if %}`
+ * funktioniert.
+ *
+ * Ein Kleinunternehmer darf keine Umsatzsteuer ausweisen (§19 UStG); was
+ * ausgewiesen ist, schuldet man nach §14c, auch wenn es falsch ist. Eine Spalte
+ * „USt. 0 %" behauptet eine Steuerpflicht, die nicht besteht.
+ */
+describe('FA-PFL-13 Der Beleg eines Kleinunternehmers', () => {
+  const defaultTemplate = {
+    htmlSource: DEFAULT_TEMPLATE_HTML,
+    cssSource: DEFAULT_TEMPLATE_CSS,
+    geometry: DEFAULT_PAGE_GEOMETRY,
+  };
+
+  it('zeigt weder Steuerspalte noch Steuerzeile', async () => {
+    const result = await liquidTemplateEngine.render(
+      { ...document, showsTax: false },
+      defaultTemplate,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.html).not.toContain('USt.');
+    expect(result.html).not.toContain('Nettobetrag');
+    // Der Gesamtbetrag bleibt — er ist die einzige Zahl, die zählt.
+    expect(result.html).toContain('Gesamtbetrag');
+  });
+
+  it('zeigt beides beim Regelbesteuerer', async () => {
+    // Die Gegenprobe: Ohne sie bestünde der Test oben auch dann, wenn die
+    // Vorlage die Steuer nie ausgäbe.
+    const result = await liquidTemplateEngine.render(
+      { ...document, showsTax: true },
+      defaultTemplate,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.html).toContain('USt.');
+    expect(result.html).toContain('Nettobetrag');
+    expect(result.html).toContain('19 % auf');
+  });
+
+  it('behält der Beleg die Anzahl seiner Spalten bei', async () => {
+    /*
+     * Kopf und Rumpf müssen gemeinsam schrumpfen. Bliebe eine Kopfzelle stehen,
+     * verschöbe sich jede Zeile um eine Spalte — und das fiele erst am
+     * ausgedruckten Beleg auf.
+     */
+    const result = await liquidTemplateEngine.render(
+      { ...document, showsTax: false },
+      defaultTemplate,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const headCells = (result.html.match(/<th class="col-/gu) ?? []).length;
+    const bodyCells = (result.html.match(/<td class="col-/gu) ?? []).length;
+
+    expect(headCells).toBe(5);
+    // Eine Position im Prüfbeleg, also genau eine Zeile mit fünf Zellen.
+    expect(bodyCells).toBe(5);
   });
 });
 

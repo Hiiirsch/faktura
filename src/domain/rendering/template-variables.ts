@@ -116,6 +116,12 @@ export const TEMPLATE_VARIABLES: readonly TemplateVariable[] = [
 
   // ── Hinweise ──────────────────────────────────────────────────────────────
   { group: 'notices', expression: 'notices', description: 'Pflichthinweise: §19, Reverse Charge, Ausfuhr, Storno' },
+  {
+    group: 'notices',
+    expression: 'showsTax',
+    description:
+      'ob eine Steuerangabe auf den Beleg gehört — bei Kleinunternehmern nein (§19 UStG)',
+  },
   { group: 'notices', expression: 'paymentNotices', description: 'Zahlungsziel' },
   { group: 'notices', expression: 'footerText', description: 'Fußtext aus den Firmendaten' },
 

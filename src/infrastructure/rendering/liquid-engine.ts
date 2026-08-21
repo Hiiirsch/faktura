@@ -190,6 +190,14 @@ export function buildScope(document: InvoiceDocument): Record<string, unknown> {
     },
     notices: document.notices,
     /**
+     * Ob der Beleg eine Steuerangabe trägt (M11, FA-PFL-13).
+     *
+     * Auf der obersten Ebene und nicht unter `invoice`: Es ist keine Eigenschaft
+     * des Vorgangs, sondern eine Anweisung an die Darstellung — und sie soll in
+     * der Vorlage kurz zu lesen sein (`{% if showsTax %}`).
+     */
+    showsTax: document.showsTax,
+    /**
      * Zahlungshinweise getrennt von den Pflichthinweisen (FA-PFL-10).
      *
      * Sie stehen im Beleg an anderer Stelle — beim Zahlungsblock, nicht bei den
