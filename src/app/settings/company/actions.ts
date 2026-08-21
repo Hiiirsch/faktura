@@ -232,7 +232,22 @@ export async function uploadLogoAction(
   const context = await readRequestContext();
   const previous = await getCompanyProfile(authorized);
 
-  await setCompanyLogo(authorized, result.value.id, session.userId, context.ipAddress);
+  /*
+   * **Scheitert die Verknüpfung, verschwindet auch die Datei.**
+   *
+   * Die Datei ist zu diesem Zeitpunkt schon geschrieben und die `Asset`-Zeile
+   * angelegt — anders geht es nicht, denn erst danach gibt es eine Kennung zum
+   * Verknüpfen. Bricht der Vorgang jetzt ab, bliebe beides als Bodensatz liegen:
+   * eine Datei, die niemand mehr erreicht, und eine Zeile, die auf sie zeigt.
+   * Genau das ist hier zweimal passiert, bevor `setCompanyLogo` anlegen statt
+   * nur ändern konnte.
+   */
+  try {
+    await setCompanyLogo(authorized, result.value.id, session.userId, context.ipAddress);
+  } catch {
+    await deleteAsset(authorized, result.value.id);
+    return { status: 'error', message: messages.company.logoNotLinked };
+  }
 
   // Das ersetzte Logo wird entfernt, damit der Speicher nicht mit
   // unerreichbaren Dateien zuwächst.

@@ -24,7 +24,10 @@ export async function findCompanyProfile(
 export async function upsertCompanyProfile(
   context: OrganizationContext,
   create: Omit<Prisma.CompanyProfileUncheckedCreateInput, 'organizationId'>,
-  update: Prisma.CompanyProfileUpdateInput,
+  // Die **unchecked**-Variante, wie beim Anlegen: Sie nimmt Fremdschlüssel als
+  // Skalar (`logoAssetId`) statt als Beziehung. Beide Seiten desselben Aufrufs
+  // sollen dieselbe Form haben.
+  update: Prisma.CompanyProfileUncheckedUpdateInput,
 ): Promise<CompanyProfile> {
   return clientFor(undefined).companyProfile.upsert({
     where: { organizationId: context.organizationId },
@@ -33,12 +36,3 @@ export async function upsertCompanyProfile(
   });
 }
 
-export async function setCompanyLogoAsset(
-  context: OrganizationContext,
-  logoAssetId: string | null,
-): Promise<void> {
-  await clientFor(undefined).companyProfile.update({
-    where: { organizationId: context.organizationId },
-    data: { logoAssetId },
-  });
-}

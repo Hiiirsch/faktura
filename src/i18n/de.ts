@@ -491,6 +491,14 @@ export const messages = {
     sectionLogoHint: 'PNG, JPEG oder SVG, höchstens 2 MB.',
     logoUpload: 'Logodatei',
     logoUploadButton: 'Logo hochladen',
+    /**
+     * Die Verknüpfung scheiterte, die Datei wurde zurückgenommen (M10).
+     *
+     * Ursache **und** Ausweg (FA-UI-10): Der Satz sagt nicht nur, dass es nicht
+     * ging, sondern was stattdessen zu tun ist.
+     */
+    logoNotLinked:
+      'Das Logo konnte nicht mit den Firmendaten verknüpft werden und wurde verworfen. Bitte den Vorgang wiederholen; bleibt es dabei, hilft ein Blick ins Log des Servers.',
     logoRemove: 'Logo entfernen',
     logoNone: 'Es ist kein Logo hinterlegt.',
     logoAlt: 'Firmenlogo',

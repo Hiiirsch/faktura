@@ -11,7 +11,6 @@ import { DEFAULT_CURRENCY_CODE } from '@/domain/codes/currency-code';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import {
   findCompanyProfile,
-  setCompanyLogoAsset,
   upsertCompanyProfile,
 } from '@/infrastructure/repositories/company-repository';
 import type { Authorized } from '@/application/auth/authorize';
@@ -191,7 +190,26 @@ export async function setCompanyLogo(
   actorId: string,
   ipAddress: string | null,
 ): Promise<void> {
-  await setCompanyLogoAsset(context, assetId);
+  /*
+   * **Anlegen oder ändern — nicht nur ändern.**
+   *
+   * Bis hierher war das ein `update`, und das setzte voraus, dass die Zeile
+   * schon existiert. Wer das Logo **vor** den Firmendaten hochlud, bekam eine
+   * Datenbankausnahme statt einer Meldung: Datei und `Asset`-Zeile waren da
+   * bereits geschrieben, die Verknüpfung nie. Zurück blieben eine wortlose
+   * Fehlermeldung und eine verwaiste Datei.
+   *
+   * Eine Reihenfolge, die niemand kennt, ist keine Regel, sondern eine Falle.
+   * Der `upsert` nimmt sie weg: Ein Logo lässt sich zuerst hochladen, die
+   * Firmendaten folgen später. Die leere Zeile, die dabei entsteht, ist
+   * gleichbedeutend mit gar keiner — `requireCompanyProfile()` liefert für beide
+   * `EMPTY_COMPANY_PROFILE`.
+   */
+  await upsertCompanyProfile(
+    context,
+    { ...EMPTY_COMPANY_PROFILE, logoAssetId: assetId },
+    { logoAssetId: assetId },
+  );
 
   await recordAuditEntry(context, {
     entityType: 'CompanyProfile',

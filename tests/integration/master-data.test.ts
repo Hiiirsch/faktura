@@ -23,6 +23,7 @@ import {
   EMPTY_COMPANY_PROFILE,
   getCompanyProfile,
   saveCompanyProfile,
+  setCompanyLogo,
 } from '@/application/company/company-profile';
 import {
   createCustomer,
@@ -299,6 +300,48 @@ describe('Dateiablage (FA-STAMM-05, NFA-SEC-15, NFA-SEC-16)', () => {
   const png = new Uint8Array([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
   ]);
+
+  /**
+   * Ein Logo vor den Firmendaten (M10).
+   *
+   * **Der Fehler, den dieser Test festhält**, lief im Betrieb auf: Die
+   * Verknüpfung war ein `update` und setzte voraus, dass das Firmenprofil schon
+   * existiert. Wer zuerst das Logo hochlud, bekam eine Datenbankausnahme statt
+   * einer Meldung — die Datei war da bereits geschrieben, die Verknüpfung nie.
+   *
+   * Eine Reihenfolge, die nirgends steht, ist keine Regel, sondern eine Falle.
+   */
+  it('verknüpft ein Logo auch ohne vorhandene Firmendaten', async () => {
+    expect(await getCompanyProfile(testOrganization)).toBeNull();
+
+    const uploaded = await storeImageAsset(testOrganization, png, 'image/png', 'logo.png');
+    expect(uploaded.ok).toBe(true);
+    if (!uploaded.ok) return;
+
+    await setCompanyLogo(testOrganization, uploaded.value.id, ACTOR, null);
+
+    const profile = await getCompanyProfile(testOrganization);
+    expect(profile?.logoAssetId).toBe(uploaded.value.id);
+  });
+
+  it('behält das Logo, wenn die Firmendaten danach gespeichert werden', async () => {
+    // Die zweite Hälfte derselben Falle: Das Logo zuerst, die Daten danach —
+    // und das Speichern darf die Verknüpfung nicht wieder abräumen.
+    const uploaded = await storeImageAsset(testOrganization, png, 'image/png', 'logo.png');
+    if (!uploaded.ok) return;
+
+    await setCompanyLogo(testOrganization, uploaded.value.id, ACTOR, null);
+    await saveCompanyProfile(
+      testOrganization,
+      { ...EMPTY_COMPANY_PROFILE, legalName: 'Nach dem Logo GmbH' },
+      ACTOR,
+      null,
+    );
+
+    const profile = await getCompanyProfile(testOrganization);
+    expect(profile?.legalName).toBe('Nach dem Logo GmbH');
+    expect(profile?.logoAssetId).toBe(uploaded.value.id);
+  });
 
   it('legt eine geprüfte Datei ab und liest sie zurück', async () => {
     const result = await storeImageAsset(testOrganization, png, 'image/png', 'logo.png');
