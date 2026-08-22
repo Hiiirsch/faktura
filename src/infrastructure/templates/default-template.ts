@@ -575,8 +575,6 @@ body {
 .payment-block { min-width: 60mm; }
 
 .payment-label,
-.imprint-column { flex: 1 1 0; min-width: 0; }
-
 .imprint-column .payment-label {
   color: var(--paper-muted);
   font-size: 7.5pt;
@@ -640,14 +638,33 @@ body {
 .imprint {
   display: flex;
   justify-content: space-between;
-  gap: 8mm;
+  gap: 5mm;
   padding-top: 2mm;
   border-top: 0.4pt solid var(--paper-rule);
   color: var(--paper-muted);
-  font-size: 7.5pt;
+  /*
+   * 6,2 pt statt 7,5 (M11).
+   *
+   * Die längste Zeile im Blattfuß ist die IBAN: 22 Stellen plus Beschriftung.
+   * Sie darf nicht umbrechen — eine Kontonummer über zwei Zeilen liest niemand
+   * fehlerfrei ab, und genau das soll der Empfänger tun. Die Schriftgröße
+   * richtet sich deshalb nach ihr und nicht nach dem Rest.
+   *
+   * Der Spaltenabstand geht von 8 auf 5 mm mit: Vier Spalten auf 170 mm sind
+   * eng, und jeder Millimeter Abstand fehlt der längsten Zeile.
+   */
+  font-size: 6.2pt;
+  line-height: 1.45;
 }
 
-.imprint-column { flex: 1; }
+.imprint-column { flex: 1 1 0; min-width: 0; }
+
+/*
+ * Die Kontaktspalte trägt die längsten Zeilen — eine Adresse wie
+ * „info@timhirschmiller-fotografie.de" ist länger als jede IBAN. Gleich breite
+ * Spalten ließen genau sie umbrechen, während daneben Platz frei bleibt.
+ */
+.imprint-column:nth-child(2) { flex: 1.45; }
 
 .footer-text {
   margin-top: 2mm;
