@@ -201,7 +201,9 @@ describe('FA-TPL-05 Mitgelieferte Standardvorlage', () => {
 
     expect(template.isDefault).toBe(true);
     expect(template.htmlSource.length).toBeGreaterThan(500);
-    expect(template.marginTopMm).toBe(25);
+    // 15 mm seit M11: Erst damit beginnt das Anschriftfeld auf den 45 mm, die
+    // DIN 5008 Form B verlangt (FA-PDF-08).
+    expect(template.marginTopMm).toBe(15);
     expect(template.marginLeftMm).toBe(20);
     expect(await listTemplates(org)).toHaveLength(1);
   });

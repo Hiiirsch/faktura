@@ -182,8 +182,15 @@ describe('Vorlagen-Engine (FA-TPL-01, -07)', () => {
     if (!result.ok) return;
 
     expect(result.html).toContain('size: A4');
-    // Unten 35 mm seit M11: Der Blattfuß liegt in diesem Rand (FA-PDF-12).
-    expect(result.html).toContain('margin: 25mm 20mm 22mm 20mm');
+    /*
+     * Oben 15 mm, unten 22 mm (M11).
+     *
+     * Oben, damit das Anschriftfeld auf 45 mm liegt — die Position, die DIN 5008
+     * Form B verlangt und an der es im Fenster eines DIN-lang-Umschlags steht.
+     * Unten, damit der Blattfuß dicht an die Kante rückt und der Seitenzahl
+     * darunter Platz lässt.
+     */
+    expect(result.html).toContain('margin: 15mm 20mm 22mm 20mm');
   });
 
   it('meldet einen Syntaxfehler verständlich, statt abzustürzen (FA-TPL-07)', async () => {

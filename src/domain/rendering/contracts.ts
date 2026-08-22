@@ -24,7 +24,14 @@ export type PageGeometry = {
 };
 
 /**
- * DIN 5008: oben 25 mm, seitlich 20 mm (Spec §8.2).
+ * DIN 5008 Form B: oben 15 mm, seitlich 20 mm (Spec §8.2).
+ *
+ * **Oben 15 statt 25 mm** (seit M11): Das Anschriftfeld muss bei Form B genau
+ * 45 mm unter der Blattkante beginnen, damit es im Fenster eines DIN-lang-
+ * Umschlags steht (DIN 680: Fenster 90 × 45 mm, 20 mm von links, 15 mm von
+ * unten). Über dem Feld liegen damit 45 mm, von denen der Rand einen Teil
+ * verbraucht — bei 25 mm blieben für den Briefkopf 20 mm, und ein Logo von
+ * 28 mm passte nicht mehr hinein.
  *
  * **Unten 22 mm statt der 20 mm der Norm** (seit M11). Der Blattfuß steht am
  * Ende des Satzspiegels, also 22 mm über der Blattkante — so dicht am Rand wie
@@ -36,7 +43,7 @@ export type PageGeometry = {
  */
 export const DEFAULT_PAGE_GEOMETRY: PageGeometry = {
   format: 'A4',
-  marginTopMm: 25,
+  marginTopMm: 15,
   marginRightMm: 20,
   marginBottomMm: 22,
   marginLeftMm: 20,

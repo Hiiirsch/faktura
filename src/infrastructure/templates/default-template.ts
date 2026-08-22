@@ -16,9 +16,9 @@
  * - Anschriftfeld 85 × 45 mm, oben links, beginnend 45 mm von der Blattoberkante
  *   — dort steht es im Fenster eines DIN-lang-Umschlags (FA-PDF-08).
  * - Informationsblock rechts daneben auf gleicher Höhe.
- * - Falzmarken bei 87 mm und 192 mm, Lochmarke bei 148,5 mm.
+ * - Falzmarken bei 105 mm und 210 mm, Lochmarke bei 148,5 mm.
  *
- * Die Ränder kommen aus der Geometrie der Vorlage (25/20/20/20 mm) und stehen
+ * Die Ränder kommen aus der Geometrie der Vorlage (15/20/22/20 mm) und stehen
  * in `@page`; die Millimeterangaben hier sind deshalb Abstände **innerhalb**
  * des Satzspiegels.
  */
@@ -356,7 +356,16 @@ body {
 
 /* ── Briefkopf ─────────────────────────────────────────────────────────── */
 
+/*
+ * Feste Höhe, damit das Anschriftfeld darunter auf 45 mm liegt (DIN 5008
+ * Form B). 15 mm oberer Rand + 30 mm Briefkopf = 45 mm.
+ *
+ * Der Inhalt richtet sich unten aus: Ein kleines Logo hängt dann nicht in der
+ * Luft, sondern steht auf derselben Linie wie ein großes.
+ */
 .letterhead {
+  height: 30mm;
+  align-items: flex-end;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -374,13 +383,14 @@ body {
  * hohes Hochformat sprengt den Kopf nicht. Die Breite ist zusätzlich gedeckelt,
  * damit ein sehr breites Logo nicht in den Informationsblock läuft.
  *
- * 32 mm ist die Höhe, nicht die Größe des Zeichens: Ein Logo mit Wortmarke
- * darunter füllt den Kasten anders aus als eine reine Bildmarke. Bei 500 px
- * Vorlage entspricht das rund 400 dpi — die Grenze setzt die Datei, nicht die
- * Vorlage.
+ * **28 mm ist keine Geschmacksfrage, sondern Rechnung.** Das Anschriftfeld
+ * beginnt bei Form B 45 mm unter der Blattkante; darüber liegen der obere Rand
+ * (15 mm) und der Briefkopf. 15 + 28 + 2 mm Abstand ergeben genau 45. Ein
+ * höheres Logo schöbe das Feld nach unten, und die Anschrift stünde nicht mehr
+ * im Fenster des Umschlags.
  */
 .letterhead-logo {
-  max-height: 32mm;
+  max-height: 28mm;
   max-width: 80mm;
   width: auto;
   height: auto;
@@ -395,16 +405,32 @@ body {
   border-top: 0.4pt solid var(--paper-rule);
 }
 
-/* Gemessen ab Blattoberkante, abzüglich des oberen Randes von 25 mm. */
-.mark-fold-1 { top: 62mm; }
-.mark-punch  { top: 123.5mm; width: 7mm; }
-.mark-fold-2 { top: 167mm; }
+/*
+ * Gemessen ab Blattoberkante, abzüglich des oberen Randes von 15 mm.
+ *
+ * Form B falzt bei 105 und 210 mm, gelocht wird bei 148,5 mm. Bis M11 standen
+ * hier 87 und 192 — das sind die Marken von **Form A**, während der Rest der
+ * Vorlage Form B folgte. Zusammen mit dem verschobenen Anschriftfeld lief die
+ * erste Falzmarke dadurch mitten durch die Empfängeranschrift.
+ */
+.mark-fold-1 { top: 90mm; }
+.mark-punch  { top: 133.5mm; width: 7mm; }
+.mark-fold-2 { top: 195mm; }
 
 /* ── Anschriftfeld und Informationsblock ───────────────────────────────── */
 
+/*
+ * Das Anschriftfeld beginnt 45 mm unter der Blattkante (DIN 5008 Form B).
+ *
+ * Es steht ohne eigenen Abstand direkt unter dem Briefkopf — die 45 mm kommen
+ * aus dem oberen Rand (15 mm) und der **festen** Höhe des Briefkopfs (30 mm).
+ *
+ * Vorher hing hier ein Abstand von 15 mm am Briefkopf, und der wuchs mit seinem
+ * Inhalt: Mit dem Logo war das Feld auf 74 mm gewandert, die erste Falzmarke lief
+ * mitten hindurch, und im Fenster eines DIN-lang-Umschlags stand nichts. Ein
+ * Maß, das von der Höhe eines Bildes abhängt, ist kein Maß.
+ */
 .address-field {
-  /* 45 mm ab Blattoberkante, davon 25 mm Rand. */
-  margin-top: 15mm;
   width: 85mm;
   height: 45mm;
 }
@@ -420,9 +446,10 @@ body {
 .recipient { padding-top: 2mm; font-style: normal; }
 .recipient-name { font-weight: 500; }
 
+/* Auf gleicher Höhe wie das Anschriftfeld: 30 mm ab Satzspiegel = 45 mm ab Blatt. */
 .info-block {
   position: absolute;
-  top: 15mm;
+  top: 30mm;
   right: 0;
   width: 60mm;
   font-size: 9pt;
@@ -593,7 +620,7 @@ body {
  * dem Blatt, und genau so sah es vorher aus. Erst wenn die Tabelle die Seite
  * ausfüllt, fällt ihr Fuß mit dem Blattfuß zusammen.
  *
- * 250 mm sind A4 (297) minus die Ränder dieser Vorlage (25 oben, 22 unten). Wer
+ * 260 mm sind A4 (297) minus die Ränder dieser Vorlage (15 oben, 22 unten). Wer
  * die Ränder ändert, ändert diesen Wert mit — deshalb steht die Rechnung hier
  * und nicht als nackte Zahl.
  *
@@ -606,7 +633,7 @@ body {
  */
 .page {
   width: 100%;
-  min-height: 250mm;
+  min-height: 260mm;
   border-collapse: collapse;
 }
 
