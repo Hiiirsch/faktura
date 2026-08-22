@@ -545,9 +545,26 @@ body {
  *
  * Sie darf nichts an der Darstellung ändern: keine Abstände, keine Rahmen, volle
  * Breite. Eine Tabelle ohne eigenes Aussehen, allein für den Seitenumbruch.
+ *
+ * **Die Mindesthöhe ist der Grund, warum der Fuß unten steht.** Eine Fußgruppe
+ * sitzt am Ende ihrer Tabelle — bei einer kurzen Rechnung wäre das mitten auf
+ * dem Blatt, und genau so sah es vorher aus. Erst wenn die Tabelle die Seite
+ * ausfüllt, fällt ihr Fuß mit dem Blattfuß zusammen.
+ *
+ * 237 mm sind A4 (297) minus die Ränder dieser Vorlage (25 oben, 35 unten). Wer
+ * die Ränder ändert, ändert diesen Wert mit — deshalb steht die Rechnung hier
+ * und nicht als nackte Zahl.
+ *
+ * **Was das nicht löst:** Auf der *letzten* Seite eines mehrseitigen Belegs
+ * steht der Fuß weiterhin direkt unter dem Inhalt. Die Mindesthöhe gilt der
+ * ganzen Tabelle, nicht jedem Abschnitt — der letzte Abschnitt endet dort, wo
+ * der Inhalt endet, und CSS kennt keinen Weg, ihn auf volle Seitenhöhe zu
+ * bringen. Wer das will, muss den Fuß in den Randkasten des PDF verlegen
+ * (footerTemplate), und dann gehört er nicht mehr der Vorlage.
  */
 .page {
   width: 100%;
+  min-height: 237mm;
   border-collapse: collapse;
 }
 
