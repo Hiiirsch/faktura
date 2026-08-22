@@ -86,7 +86,19 @@ function rowOffering(page: Page, action: string) {
 describe('FA-UI-19 Zeilenaktionen', () => {
   it('trägt die Aktionen in der Zeile und beschriftet sie für Hilfstechnik', async () => {
     const { page, close } = await openList();
-    const row = page.locator('tbody tr').first();
+
+    /*
+     * Die Zeile wird über ihre Aktion gesucht, nicht über ihre Lage.
+     *
+     * Vorher stand hier `tbody tr` und die erste Zeile — das galt so lange, wie
+     * der Prüfbestand nur festgeschriebene Belege kannte. Seit M11 steht dort
+     * auch ein Entwurf, und der trägt keine Nummer und damit kein PDF. Ein Test,
+     * der von einer Reihenfolge lebt, bricht bei jeder Bestandsänderung.
+     */
+    const row = page
+      .locator('tbody tr')
+      .filter({ has: page.getByRole('link', { name: 'PDF herunterladen' }) })
+      .first();
 
     // Ein Symbol ist für einen Screenreader kein Wort — jede Aktion trägt
     // deshalb eine Beschriftung, über die sie auffindbar ist.
@@ -138,6 +150,51 @@ describe('FA-UI-19 Zeilenaktionen', () => {
 
     // Und irgendein Beleg trägt jetzt den neuen Zustand.
     expect(await page.locator('tbody').textContent()).toContain('Bezahlt');
+
+    await close();
+  }, 90_000);
+});
+
+/**
+ * Der Weg zum Entwurf (M11, B4, FA-UI-27).
+ *
+ * Bearbeiten war nie unmöglich — die Belegseite zeigt für Entwürfe seit M4 den
+ * Editor. Aus der Liste führte nur die Belegnummer dorthin, und **ein Entwurf
+ * hat keine**. Wer weiterschreiben wollte, musste raten, dass die Zeile
+ * anklickbar ist. Ein fehlender Weg ist kein Typfehler und kein fehlgeschlagener
+ * Test; er fällt nur dem auf, der davorsitzt.
+ */
+describe('FA-UI-27 Entwurf aus der Liste bearbeiten', () => {
+  it('bietet die Bearbeiten-Aktion nur an Entwürfen an', async () => {
+    const { page, close } = await openList();
+
+    const draftRow = page
+      .locator('tbody tr')
+      .filter({ has: page.getByRole('link', { name: 'Bearbeiten' }) })
+      .first();
+
+    expect(await draftRow.count()).toBe(1);
+    // Derselbe Beleg trägt keine Herunterladen-Aktion: Er hat keine Nummer.
+    expect(await draftRow.getByRole('link', { name: 'PDF herunterladen' }).count()).toBe(0);
+
+    await close();
+  }, 90_000);
+
+  it('führt in den Editor des Entwurfs', async () => {
+    const { page, close } = await openList();
+
+    await page
+      .locator('tbody tr')
+      .filter({ has: page.getByRole('link', { name: 'Bearbeiten' }) })
+      .first()
+      .getByRole('link', { name: 'Bearbeiten' })
+      .click();
+
+    await page.waitForURL(/\/invoices\/[^/]+$/u, { timeout: 15_000 });
+
+    // Der Editor ist da, nicht nur die Belegseite: Ein Entwurf zeigt Felder,
+    // kein fertiges Dokument.
+    expect(await page.getByRole('button', { name: 'Festschreiben' }).count()).toBeGreaterThan(0);
 
     await close();
   }, 90_000);

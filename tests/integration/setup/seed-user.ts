@@ -272,4 +272,47 @@ if (!secondIssued.ok) {
   throw new Error('Der zweite Beleg für den Browsertest ließ sich nicht festschreiben.');
 }
 
+/*
+ * Ein **Entwurf**, der Entwurf bleibt (M11, B4).
+ *
+ * Die beiden Belege oben werden festgeschrieben; damit trug der Prüfbestand
+ * keinen einzigen Entwurf, und die Bearbeiten-Aktion der Liste war nicht
+ * prüfbar. Ein Bestand, der einen Zustand nicht kennt, prüft ihn auch nicht.
+ */
+const openDraft = await createDraftInvoice(
+  organization,
+  {
+    buyer: customerBuyer(customer.id),
+    taxScheme: 'STANDARD',
+    currency: 'EUR',
+    issueDate: '2026-03-03',
+    serviceDateFrom: '2026-02-01',
+    serviceDateTo: null,
+    dueDate: '2026-03-17',
+    introText: null,
+    outroText: null,
+    purchaseOrderRef: null,
+    templateId: null,
+    lines: [
+      {
+        position: 1,
+        name: 'Entwurf in Arbeit',
+        description: null,
+        quantityScaled: 10_000,
+        unitCode: 'HUR',
+        unitPriceCents: 8_000,
+        taxRateBasisPoints: 1_900,
+        taxCategory: 'S',
+        discountBasisPoints: 0,
+      },
+    ],
+  },
+  ACTOR,
+  null,
+);
+
+if (openDraft.id.length === 0) {
+  throw new Error('Der Entwurf für den Browsertest ließ sich nicht anlegen.');
+}
+
 await disconnectDatabase();

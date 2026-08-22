@@ -709,6 +709,8 @@ export const messages = {
     bulkDeleteDrafts: 'Entwürfe löschen',
     actionMarkPaid: 'Als bezahlt markieren',
     actionDownload: 'PDF herunterladen',
+    /** Nur an Entwürfen: Festgeschriebenes lässt sich nicht bearbeiten (M11). */
+    actionEdit: 'Bearbeiten',
     actionDuplicate: 'Duplizieren',
     actionCancel: 'Stornieren',
 

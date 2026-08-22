@@ -1,4 +1,4 @@
-import { BanknoteArrowUp, Copy, Download, Ban } from 'lucide-react';
+import { BanknoteArrowUp, Ban, Copy, Download, Pencil } from 'lucide-react';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -222,6 +222,24 @@ export default async function InvoicesPage({
 
     return (
       <>
+        {/*
+          Entwurf bearbeiten (M11, B4, FA-UI-27).
+
+          Die Belegseite zeigt für Entwürfe seit M4 den Editor — aus der Liste
+          führte nur die Belegnummer dorthin, und ein Entwurf hat keine. Wer
+          einen Entwurf weiterschreiben wollte, musste raten, dass die Zeile
+          anklickbar ist.
+
+          Ein `IconLink`, kein Knopf: Es wird nichts verändert, nur navigiert.
+        */}
+        {invoice.status === 'DRAFT' && can(session.actor, 'update', 'invoice') ? (
+          <IconLink
+            icon={Pencil}
+            label={messages.invoices.actionEdit}
+            href={invoicePath(invoice.id)}
+          />
+        ) : null}
+
         {isOpen && can(session.actor, 'recordPayment', 'invoice') ? (
           <IconButton
             icon={BanknoteArrowUp}
