@@ -513,7 +513,8 @@ Zur Aufnahme in `rechnungs-app-anforderungen.md`.
 | NFA-UI-05 | Ein dunkles Farbschema ist verfügbar; die Dokumentvorschau bleibt darin weiß. | KANN | M |
 | NFA-UI-06 | Der **Zugang** zur Anwendung hängt nicht an JavaScript: Anmeldung, zweiter Schritt und Einlöseseiten sind Server-Formulare. Der Passkey-Weg setzt JavaScript voraus und ist deshalb eine Ergänzung daneben — sein Wegfall nimmt niemandem den Zugang. | MUSS | T |
 | FA-UI-25 | Die Marke erscheint als Inline-SVG mit `currentColor` und Text-Wortmarke; im Komponentencode steht kein Farbwert der Marke. Geometrie und Sperrung nach §2.5. | MUSS | T |
-| FA-UI-26 | Das Rechnungsdokument trägt **nie** die Marke der Software, sondern ausschließlich das Logo des ausstellenden Unternehmens (FA-STAMM-05). | MUSS | T |
+| FA-UI-26 | Das Rechnungsdokument trägt **nie** die Marke der Software. Was dort erscheint, ist das Logo des ausstellenden Unternehmens (FA-TPL-10). | MUSS | T |
+| FA-UI-27 | Ein Entwurf lässt sich aus der Rechnungsliste heraus bearbeiten. Die Aktion erscheint nur an Entwürfen und nur mit dem Recht, sie zu ändern. | SOLL | T |
 
 ---
 

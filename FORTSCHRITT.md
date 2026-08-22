@@ -14,9 +14,14 @@ zweimal eine Nummer verschoben). Ein `†` markiert IDs, die dort **keinem** Mei
 sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
-Stand: 2026-08-19 · **219 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
-125 umgesetzt, 11 offen. Dazu **32 IDs** aus `faktura-frontend-design.md` §9
+Stand: 2026-08-22 · **223 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
+129 umgesetzt, 11 offen. Dazu **33 IDs** aus `faktura-frontend-design.md` §9
 (Abschnitt 16), alle umgesetzt.
+
+**M11 umgesetzt** — der Beleg selbst: keine Umsatzsteuer bei §19, Blattfuß am
+Blattfuß mit Bankverbindung, Logo im Briefkopf, Entwurf aus der Liste
+bearbeitbar. Fünf neue IDs, dazu FA-UI-26 berichtigt — der Satz sagte seit M9
+etwas zu, das nie gebaut war.
 
 **M10 umgesetzt** — sieben neue IDs in Abschnitt 17 (Katalog §16.4/16.5):
 Betreiberkonten aus der Oberfläche, Protokoll der Verwaltung, Anonymisieren
@@ -386,6 +391,7 @@ Szenario benannt.
 | FA-TPL-07 | Syntaxfehler → verständliche Meldung, kein Absturz | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`, `tests/integration/rendering.test.ts` — Ergebniswert mit Meldung und Zeilenangabe statt Ausnahme |
 | FA-TPL-08 | Seitenränder und -format je Vorlage konfigurierbar | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Ränder der Vorlage landen in den `@page`-Angaben |
 | FA-TPL-09 | Vorlagenänderung verändert erzeugte PDFs nicht | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — nach vollständigem Austausch der Vorlage liefert der Abruf denselben Hash und dieselben Bytes |
+| FA-TPL-10 | Logo des Unternehmens im Briefkopf | MUSS | T | M11 | umgesetzt | `DocumentSeller.logo` als `data:`-URI, aufgelöst in `build-invoice-document.ts`; die Kennung liegt im `SellerSnapshot`. Gelesen über die Repository-Schicht statt über `getAsset()` — jene verlangt `companyProfile.read`, und ein Logo auf dem Beleg ist für jeden sichtbar, der den Beleg sieht. Fehlende Datei: kein Logo, kein Fehler |
 
 ## 8. PDF-Ausgabe
 
@@ -402,6 +408,7 @@ Szenario benannt.
 | FA-PDF-09 | Konfigurierbares Dateinamenmuster | SOLL | T | M5 | umgesetzt | `tests/unit/domain/template-upload.test.ts` (Muster und Filterung); einstellbar unter Einstellungen › Nummernkreis |
 | FA-PDF-10 | Rendering 10 Positionen unter 3 s | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — 10 Positionen unter 3 s bei laufendem Browser |
 | FA-PDF-11 | Fehlgeschlagenes Rendering hinterlässt keine Datei | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — kaputte Vorlage hinterlässt weder Artefakt noch Datei; Schreiben über Zwischendatei und `rename` |
+| FA-PDF-12 | Blattfuß am Fuß jeder Seite, Platz freigehalten | MUSS | T | M11 | umgesetzt | Fußgruppe einer Seitentabelle (`display: table-footer-group`) plus Mindesthöhe von 250 mm. **Zwei Anläufe davor gescheitert:** `position: fixed` erschien auf jeder Seite, hielt aber keinen Platz frei — die Positionszeilen liefen mitten durch den Fuß; ein negatives `bottom` schnitt ihn an der Blattkante ab. Beides erst am zweiseitigen PDF sichtbar. `tests/integration/rendering.test.ts` |
 
 ## 9. Pflichtangaben auf dem Dokument
 
@@ -418,6 +425,8 @@ Szenario benannt.
 | FA-PFL-09 | Reverse Charge: beide USt-IdNr + Hinweis | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — beide USt-IdNr und der Hinweis auf die Steuerschuldnerschaft |
 | FA-PFL-10 | Bankverbindung und Zahlungsziel | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Bankverbindung und Zahlungsziel |
 | FA-PFL-11 | Stornodokument bezeichnet und mit Bezugsnummer | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Stornodokument mit Bezugsnummer |
+| FA-PFL-12 | Steuernummer **oder** USt-IdNr auf dem Beleg | MUSS | T | M11 | umgesetzt | `tests/integration/document-output.test.ts`. Der Bestandstest verlangte **beide** und war damit strenger als §14 Abs. 4 Nr. 2 UStG; er ist auf die Zusage gezogen |
+| FA-PFL-13 | Bei §19 keine Umsatzsteuer auf dem Beleg | MUSS | T | M11 | umgesetzt | `documentShowsTax()` in `invoice-document.ts`, ausgewertet über das Kennzeichen aus dem Snapshot — nicht in der Vorlage, die jedes Unternehmen ändern kann. Ausgenommen ist nur §19: Bei Reverse Charge und Ausfuhr ist die Null selbst die Auskunft. `tests/integration/rendering.test.ts` (ohne Steuer, mit Steuer als Gegenprobe, Spaltenzahl von Kopf und Rumpf) |
 
 ## 10. Dashboard
 
@@ -564,6 +573,7 @@ Auftraggeber vorgegeben hat.
 | NFA-UI-06 | Der Zugang hängt nicht an JavaScript | MUSS | T | M9 | umgesetzt | `tests/integration/route-protection.test.ts` schickt das Anmeldeformular so ab, wie ein Browser ohne JavaScript es täte (`$ACTION_ID_…`); `tests/integration/browser-passkey.test.ts` prüft, dass der Passwortweg neben dem Passkey-Knopf bestehen bleibt. **Nicht behauptet wird**, dass die ganze Anwendung ohne JavaScript läuft: Formulare mit `useActionState` tun das nicht und tragen dafür einen `<NoScriptNotice>` |
 | FA-UI-25 | Marke als Inline-SVG mit `currentColor`, Wortmarke als Text | MUSS | T | M9 | umgesetzt | `src/ui/components/brand.tsx`; Kleinschreibung und Laufweite in `.brand-wordmark` (`globals.css`), damit der Name in `de.ts` „Faktura" bleibt und auch so vorgelesen wird. `tests/architecture/design-tokens.test.ts` — gegen `fill="#2A3EA0"` gegengeprüft |
 | FA-UI-26 | Das Rechnungsdokument trägt nie die Marke der Software | MUSS | T | M9 | umgesetzt | `tests/architecture/design-tokens.test.ts` — kein Bauteil im Weg vom Beleg zur Datei importiert die Marke; gegen einen absichtlichen Import in `render-invoice.ts` gegengeprüft. Auf dem Beleg steht das Logo des Unternehmens (FA-STAMM-05) |
+| FA-UI-27 | Entwurf aus der Liste bearbeiten | SOLL | T | M11 | umgesetzt | Zeilenaktion in `src/app/invoices/page.tsx`, sichtbar unter `invoice.update` und nur an Entwürfen; `tests/integration/browser-invoice-list.test.ts`. Bearbeiten ging seit M4 — es fehlte der Weg dorthin, denn aus der Liste führte nur die Belegnummer, und ein Entwurf hat keine |
 
 ---
 
@@ -656,3 +666,4 @@ Auftraggeber vorgegeben hat.
 | A13 | Zweiter Betreiber | offen |
 | A14 | Konto unkenntlich machen | offen |
 | A15 | Was die Verwaltung sieht | offen |
+| A16 | Beleg eines Kleinunternehmers | offen |

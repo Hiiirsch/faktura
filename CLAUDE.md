@@ -307,6 +307,44 @@ effektiver Menge; erreichbar sind die vier nur über das setuid-Hilfsprogramm
 `outputFileTracingIncludes` stehen — sonst scheitert der Renderer im Container
 schon beim Laden des Moduls.
 
+## Der Beleg (seit M11)
+
+**Bei §19 UStG steht keine Umsatzsteuer auf dem Beleg** — keine Spalte, keine
+Steuerzeile, kein Betrag. Was ausgewiesen ist, schuldet man nach §14c, auch wenn
+es falsch ist; eine Spalte „USt. 0 %" behauptet eine Steuerpflicht, die nicht
+besteht. Die Regel steht in `documentShowsTax()` im Dokumentmodell, **nicht** in
+der Vorlage: Eine Vorlage kann jedes Unternehmen ändern, und diese Entscheidung
+darf nicht davon abhängen. Ausgenommen ist nur §19 — bei Reverse Charge und
+Ausfuhr ist die Null selbst die Auskunft.
+
+Netto und Brutto bleiben trotzdem beide stehen. Dazwischen erklärt der
+§19-Hinweis, warum sie gleich sind.
+
+**Der Blattfuß sitzt in der Fußgruppe einer Seitentabelle**, nicht in einem
+festen Element. Zwei Anläufe davor sind gescheitert, und beide Fehler sieht man
+erst am zweiseitigen PDF: `position: fixed` erscheint auf jeder Seite, hält aber
+**keinen Platz frei** — die Positionszeilen liefen mitten durch den Fuß; ein
+negatives `bottom` schnitt ihn an der Blattkante ab. `display: table-footer-group`
+tut beides, worauf es ankommt, und dieselbe Technik hält schon den Tabellenkopf
+der Positionen fest.
+
+Dazu eine **Mindesthöhe** von 250 mm: Eine Fußgruppe sitzt am Ende ihrer
+Tabelle, und bei einer kurzen Rechnung wäre das mitten auf dem Blatt. Auf der
+**letzten** Seite eines mehrseitigen Belegs bleibt der Fuß am Inhalt kleben —
+die Mindesthöhe gilt der Tabelle, nicht jedem Abschnitt. Der Ausweg wäre der
+Randkasten des PDF, und dann gehörte der Fuß nicht mehr der Vorlage.
+
+**Das Logo reist als `data:`-URI** im Dokument, wie die Schrift: Der Renderer hat
+keinen Netzwerkzugriff. Die Kennung liegt im Snapshot, ein festgeschriebener
+Beleg zeigt also das Logo vom Tag der Ausstellung. Gelesen wird über die
+Repository-Schicht statt über `getAsset()` — jene verlangt `companyProfile.read`,
+und ein Logo auf dem Beleg ist für jeden sichtbar, der den Beleg sieht.
+
+**Die Vorlage gehört dem Unternehmen.** Änderungen an der ausgelieferten
+Standardvorlage erreichen bestehende Installationen **nicht**: `Template` trägt
+eine Kopie, und Faktura schreibt sie nicht um. Wer die Verbesserungen will,
+setzt die Ränder nach oder legt die Standardvorlage neu an.
+
 ## Empfänger (seit M5.7)
 
 Ein Beleg trägt seinen Empfänger in einer von drei Quellen, entschieden durch
@@ -1034,6 +1072,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M8 | Mandanten, Rollen, Mitglieder, zentrale Verwaltung | umgesetzt |
 | M9 | Passkeys, vertraute Geräte, Wege aus einer Sackgasse | umgesetzt |
 | M10 | Handlungsfähigkeit der Verwaltung: Betreiberkonten, Protokoll, Anonymisieren | umgesetzt |
+| M11 | Der Beleg: keine Steuer bei §19, Blattfuß, Logo, Entwurf bearbeiten | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

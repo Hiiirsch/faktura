@@ -135,6 +135,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-TPL-07 | Ein Syntaxfehler in einer Vorlage führt zu einer verständlichen Fehlermeldung, nicht zu einem Absturz oder einem leeren PDF. | MUSS | T |
 | FA-TPL-08 | Seitenränder und Seitenformat sind je Vorlage konfigurierbar. | SOLL | T |
 | FA-TPL-09 | Eine geänderte Vorlage verändert bereits erzeugte PDFs nicht. | MUSS | T |
+| FA-TPL-10 | Das Logo des ausstellenden Unternehmens erscheint im Briefkopf. Es reist als `data:`-URI im Dokument — der Renderer hat keinen Netzwerkzugriff. Die Kennung liegt im Snapshot: Ein festgeschriebener Beleg zeigt das Logo, das beim Festschreiben galt. Fehlt die Datei, erscheint kein Logo und kein Fehler. | MUSS | T |
 
 ## 8. PDF-Ausgabe
 
@@ -151,6 +152,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-PDF-09 | Der Dateiname des Downloads folgt einem konfigurierbaren Muster, standardmäßig `Rechnung_<Nummer>_<Kunde>.pdf`. | SOLL | T |
 | FA-PDF-10 | Das Rendering einer Rechnung mit 10 Positionen dauert im Normalbetrieb unter 3 Sekunden. | SOLL | T |
 | FA-PDF-11 | Ein fehlgeschlagenes Rendering hinterlässt keine unvollständige Datei im Artefaktspeicher. | MUSS | T |
+| FA-PDF-12 | Der Blattfuß mit Absender, Kontakt, Steuerangabe und Bankverbindung steht am Fuß des Blattes und wiederholt sich auf jeder Seite. Der Seitenumbruch hält den Platz dafür frei; kein Inhalt läuft darunter. | MUSS | T |
 
 ## 9. Pflichtangaben auf dem Dokument
 
@@ -159,7 +161,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | ID | Anforderung | Prio | Verif. |
 |---|---|---|---|
 | FA-PFL-01 | Vollständiger Name und Anschrift des eigenen Unternehmens und des Rechnungsempfängers werden ausgegeben. | MUSS | T |
-| FA-PFL-02 | Steuernummer oder USt-IdNr des eigenen Unternehmens wird ausgegeben. | MUSS | T |
+| FA-PFL-02 | Steuernummer oder USt-IdNr des eigenen Unternehmens wird **auf dem Beleg** ausgegeben — wo, ist Sache der Vorlage (FA-PFL-12). | MUSS | T |
 | FA-PFL-03 | Ausstellungsdatum wird ausgegeben. | MUSS | T |
 | FA-PFL-04 | Die fortlaufende Rechnungsnummer wird ausgegeben. | MUSS | T |
 | FA-PFL-05 | Menge und Art bzw. Umfang der Leistung werden je Position ausgegeben. | MUSS | T |
@@ -169,6 +171,8 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | FA-PFL-09 | Bei Reverse Charge werden beide USt-IdNr sowie der Hinweis auf die Steuerschuldnerschaft des Leistungsempfängers ausgegeben. | MUSS | T |
 | FA-PFL-10 | Bankverbindung und Zahlungsziel werden ausgegeben. | MUSS | T |
 | FA-PFL-11 | Ein Stornodokument ist als solches eindeutig bezeichnet und nennt die Nummer der stornierten Rechnung. | MUSS | T |
+| FA-PFL-12 | Der Beleg nennt Steuernummer **oder** USt-IdNr des Ausstellers — nicht zwingend beide. Wo die Angabe steht, entscheidet die Vorlage; die Standardvorlage führt sie im Blattfuß. | MUSS | T |
+| FA-PFL-13 | Führt der Aussteller die Kleinunternehmerregelung, weist der Beleg **keine** Umsatzsteuer aus: keine Steuerspalte, keine Steuerzeile, kein Steuerbetrag. Netto- und Bruttobetrag stehen weiter da; dazwischen erklärt der §19-Hinweis ihre Gleichheit. Die Regel kommt aus dem Beleg, nicht aus der Vorlage. | MUSS | T |
 
 ## 10. Dashboard
 
@@ -399,6 +403,7 @@ unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
 | M8 Mandanten & Rollen | FA-ORG-*, FA-ROLE-*, FA-MEMB-*, FA-ADM-*, NFA-SEC-23 bis -26 |
 | M9 Anmeldeverfahren | FA-PASS-*, FA-TRUST-*, FA-ADM-09 bis -11, NFA-SEC-27 bis -29 |
 | M10 Verwaltung | FA-ADM-12 bis -17, NFA-SEC-30 |
+| M11 Der Beleg | FA-TPL-10, FA-PDF-12, FA-PFL-12, -13, FA-UI-27 |
 
 ---
 
@@ -481,3 +486,11 @@ Im Protokoll der Verwaltung nachsehen, dass keine Zeile eines Mandanten erschein
 weder Rechnungsnummer noch Kundenname. Eine interne Notiz an einem Unternehmen
 hinterlegen und den Datenexport dieses Unternehmens herunterladen: Die Notiz steht
 nicht darin.
+
+**A16 — Beleg eines Kleinunternehmers**
+Logo hochladen, Firmendaten mit Steuernummer und Bankverbindung füllen,
+Kleinunternehmer-Kennzeichen setzen. Rechnung mit drei Positionen anlegen und die
+Vorschau ansehen: Logo im Briefkopf, keine Steuerspalte, Netto und Brutto gleich
+mit dem §19-Hinweis dazwischen, Blattfuß am Fuß mit Bankverbindung und
+Steuernummer. Danach das Kennzeichen abschalten und eine neue Rechnung anlegen —
+Steuerspalte und Steueraufstellung sind wieder da, der Hinweis ist weg.

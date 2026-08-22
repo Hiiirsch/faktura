@@ -557,6 +557,26 @@ genommene Preis dafür, dass es überhaupt einen Weg zurück gibt. Sichtbar gema
 wird er auf zwei Wegen: Der Vorgang steht im Protokoll **des Unternehmens** mit
 der Akteursart `ADMIN`, und alle Sitzungen des betroffenen Kontos enden dabei.
 
+## Der Beleg
+
+**Als Kleinunternehmer nach §19 UStG steht keine Umsatzsteuer auf der Rechnung.**
+Keine Spalte, keine Steuerzeile, kein Betrag — nur der Hinweis zwischen Netto-
+und Bruttobetrag, der erklärt, warum beide gleich sind. Das Kennzeichen dafür
+steht unter **Firmendaten**; es wandert beim Festschreiben in den Beleg, sodass
+eine spätere Umstellung alte Rechnungen nicht verändert.
+
+**Das Logo** aus den Firmendaten erscheint im Briefkopf. Es wird in die
+PDF-Datei eingebettet, nicht verlinkt: Der Renderer hat keinen Netzwerkzugriff.
+Ein festgeschriebener Beleg behält das Logo, das beim Festschreiben galt.
+
+**Der Blattfuß** trägt Anschrift, Kontakt, Steuernummer und Bankverbindung und
+steht am Fuß jeder Seite — der Seitenumbruch hält den Platz dafür frei.
+
+**Die Vorlage gehört dem Unternehmen.** Wird die mitgelieferte Standardvorlage
+verbessert, ändert das **bestehende** Installationen nicht: Jedes Unternehmen
+trägt seine eigene Kopie, und Faktura schreibt sie nicht um. Wer die Änderungen
+übernehmen will, legt die Standardvorlage unter **Vorlagen** neu an.
+
 ## Unveränderbarkeit
 
 Ab dem Festschreiben sind Rechnung und Positionen fest. Durchgesetzt auf zwei
