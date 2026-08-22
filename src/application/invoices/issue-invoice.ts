@@ -116,6 +116,7 @@ export async function issueInvoice(
     email: company.email,
     phone: company.phone,
     vatId: company.vatId,
+    logoAssetId: company.logoAssetId,
     taxNumber: company.taxNumber,
     registerCourt: company.registerCourt,
     registerNumber: company.registerNumber,

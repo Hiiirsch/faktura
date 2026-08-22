@@ -415,8 +415,8 @@ model Template {
   pageFormat     String @default("A4")
   marginTopMm    Int    @default(25)
   marginRightMm  Int    @default(20)
-  /// 35 mm seit M11: Der Blattfuß liegt im unteren Rand (FA-PDF-12).
-  marginBottomMm Int    @default(35)
+  /// 22 mm seit M11: Der Blattfuß steht am Ende des Satzspiegels (FA-PDF-12).
+  marginBottomMm Int    @default(22)
   marginLeftMm   Int    @default(20)
 
   /// Genau eine Vorlage je Organisation trägt die Marke; erzwungen von einem

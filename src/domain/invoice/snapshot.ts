@@ -24,6 +24,17 @@ export type PartySnapshot = {
 };
 
 export type SellerSnapshot = PartySnapshot & {
+  /**
+   * Das Logo, das beim Festschreiben galt (M11, FA-TPL-12).
+   *
+   * Die **Kennung**, nicht die Bytes: Ein festgeschriebener Beleg liegt danach
+   * ohnehin als fertige PDF-Datei vor, und das Bild ein zweites Mal in jeden
+   * Snapshot zu schreiben kostete pro Beleg so viel wie das Logo selbst.
+   *
+   * Bestandsbelege tragen `undefined` — sie sind vor M11 entstanden. Ein
+   * fehlendes Logo ist kein Fehler, nur ein Beleg ohne Logo.
+   */
+  readonly logoAssetId?: string | null;
   readonly taxNumber: string | null;
   readonly registerCourt: string | null;
   readonly registerNumber: string | null;

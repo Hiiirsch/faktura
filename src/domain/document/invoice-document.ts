@@ -53,6 +53,19 @@ export type DocumentSeller = {
   readonly bic: string | null;
   readonly bankName: string | null;
   readonly isSmallBusiness: boolean;
+
+  /**
+   * Das Logo des Ausstellers als `data:`-URI (M11, FA-TPL-12).
+   *
+   * **Eingebettet, nicht verlinkt.** Der Renderer hat keinen Netzwerkzugriff
+   * (NFA-SEC-12) und der Container kein Dateisystem, das eine Vorlage adressieren
+   * könnte — dieselbe Einbettung trägt schon die Schrift.
+   *
+   * `null`, wenn kein Logo hinterlegt ist oder die Datei fehlt. Ein Beleg ohne
+   * Logo ist gültig; ein Beleg, der wegen eines Bildes nicht entsteht, ist es
+   * nicht.
+   */
+  readonly logo: string | null;
 };
 
 export type DocumentBuyer = {

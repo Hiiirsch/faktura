@@ -47,6 +47,7 @@ const document: InvoiceDocument = {
     bic: 'COBADEFFXXX',
     bankName: 'Commerzbank',
     isSmallBusiness: false,
+    logo: null,
   },
   buyer: {
     name: 'Beispiel GmbH',

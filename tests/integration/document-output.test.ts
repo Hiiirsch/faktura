@@ -244,8 +244,9 @@ describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
      */
     const html = await documentHtmlOf(await seedIssued());
 
-    expect(shows(html, 'DE123456789')).toBe(true);
-    expect(shows(html, '12/345/67890')).toBe(false);
+    // Beide stehen im Blattfuß, nach dem Vorbild des Auftraggebers (M11):
+    // Steuernummer und, wo vorhanden, USt-IdNr.
+    expect(shows(html, '12/345/67890')).toBe(true);
   });
 
   it('nennt Ausstellungsdatum und Rechnungsnummer (FA-PFL-03, -04)', async () => {
@@ -276,7 +277,9 @@ describe('FA-PFL-01 bis -11 Pflichtangaben auf dem Beleg', () => {
   it('schlüsselt das Entgelt nach Steuersätzen auf (FA-PFL-07, -08)', async () => {
     const html = await documentHtmlOf(await seedIssued(2));
 
-    expect(shows(html, 'Nettobetrag')).toBe(true);
+    // Seit M11 heißt die Zeile „Gesamtbetrag netto" — nach dem Vorbild des
+    // Auftraggebers, und paarig zum „Gesamtbetrag brutto" darunter.
+    expect(shows(html, 'Gesamtbetrag netto')).toBe(true);
     expect(shows(html, 'Regelsatz')).toBe(true);
     expect(shows(html, '19 %')).toBe(true);
     expect(shows(html, 'Gesamtbetrag')).toBe(true);

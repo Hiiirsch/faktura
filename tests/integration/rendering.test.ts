@@ -63,6 +63,7 @@ const document: InvoiceDocument = {
     bic: 'COBADEFFXXX',
     bankName: 'Commerzbank',
     isSmallBusiness: false,
+    logo: null,
   },
   buyer: {
     name: 'Beispiel GmbH',
@@ -182,7 +183,7 @@ describe('Vorlagen-Engine (FA-TPL-01, -07)', () => {
 
     expect(result.html).toContain('size: A4');
     // Unten 35 mm seit M11: Der Blattfuß liegt in diesem Rand (FA-PDF-12).
-    expect(result.html).toContain('margin: 25mm 20mm 35mm 20mm');
+    expect(result.html).toContain('margin: 25mm 20mm 22mm 20mm');
   });
 
   it('meldet einen Syntaxfehler verständlich, statt abzustürzen (FA-TPL-07)', async () => {
@@ -239,9 +240,11 @@ describe('FA-PFL-13 Der Beleg eines Kleinunternehmers', () => {
     if (!result.ok) return;
 
     expect(result.html).not.toContain('USt.');
-    expect(result.html).not.toContain('Nettobetrag');
-    // Der Gesamtbetrag bleibt — er ist die einzige Zahl, die zählt.
-    expect(result.html).toContain('Gesamtbetrag');
+    // Netto und Brutto bleiben stehen; dazwischen erklärt der §19-Hinweis,
+    // warum sie gleich sind. Was fehlt, ist jede Steuerangabe.
+    expect(result.html).toContain('Gesamtbetrag netto');
+    expect(result.html).toContain('Gesamtbetrag brutto');
+    expect(result.html).not.toContain('Steuerbefreit');
   });
 
   it('zeigt beides beim Regelbesteuerer', async () => {
@@ -256,7 +259,7 @@ describe('FA-PFL-13 Der Beleg eines Kleinunternehmers', () => {
     if (!result.ok) return;
 
     expect(result.html).toContain('USt.');
-    expect(result.html).toContain('Nettobetrag');
+    expect(result.html).toContain('Gesamtbetrag netto');
     expect(result.html).toContain('19 % auf');
   });
 
@@ -332,33 +335,29 @@ describe('FA-PDF-12 Der Blattfuß', () => {
       result.html.indexOf('</tfoot>'),
     );
 
-    expect(footer).toContain('Bankverbindung');
+    // Bankname und Zugangsdaten stehen in der vierten Fußspalte, nach dem
+    // Vorbild des Auftraggebers — ohne eigene Überschrift.
     expect(footer).toContain('IBAN');
+    expect(footer).toContain('BIC');
   });
 
-  it('nennt die Steuernummer im Briefkopf, nicht im Fuß', async () => {
+  it('nennt die Steuerkennung im Fuß', async () => {
     /*
      * §14 Abs. 4 Nr. 2 UStG verlangt Steuernummer **oder** USt-IdNr. auf jeder
-     * Rechnung (FA-PFL-02). Sie darf umziehen, aber nicht verschwinden — der
-     * Test hält beide Hälften dieser Aussage fest.
+     * Rechnung (FA-PFL-02). Wo sie steht, ist frei — der Briefbogen ist der
+     * übliche Ort, und das Vorbild des Auftraggebers führt sie dort.
      */
     const result = await liquidTemplateEngine.render(document, defaultTemplate);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const head = result.html.slice(
-      result.html.indexOf('class="letterhead"'),
-      result.html.indexOf('class="address-field"'),
-    );
     const footer = result.html.slice(
       result.html.indexOf('<tfoot>'),
       result.html.indexOf('</tfoot>'),
     );
 
-    expect(head).toContain('USt-IdNr.');
-    expect(footer).not.toContain('Steuernummer');
-    expect(footer).not.toContain('USt-IdNr.');
+    expect(footer).toContain('Steuer-Nr.');
   });
 });
 

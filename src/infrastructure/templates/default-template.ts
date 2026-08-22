@@ -67,28 +67,32 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
         Absender, nicht diesem einen Beleg. Das Zahlungsziel ist geblieben, wo es
         war (FA-PFL-10).
 
-        Die Steuernummer ist von hier in den Briefkopf gezogen: Pflichtangabe, aber
-        kein Kleingedrucktes. Register und Geschäftsführung bleiben (HGB).
+        Vier Spalten nach dem Vorbild des Auftraggebers: Anschrift, Kontakt,
+        Steuer und Bank. Die Steuernummer steht hier — sie ist Pflichtangabe
+        (FA-PFL-02), und der Briefbogen ist der übliche Ort dafür.
       {%- endcomment -%}
       <footer class="imprint">
         <div class="imprint-column">
           <div>{{ seller.name }}</div>
           <div>{{ seller.address.addressLine1 }}</div>
           <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
-          {%- if seller.registerCourt %}<div>{{ seller.registerCourt }} {{ seller.registerNumber }}</div>{% endif -%}
-          {%- if seller.managingDirector %}<div>{{ seller.managingDirector }}</div>{% endif -%}
         </div>
         <div class="imprint-column">
-          {%- if seller.phone %}<div>Telefon {{ seller.phone }}</div>{% endif -%}
-          {%- if seller.email %}<div>{{ seller.email }}</div>{% endif -%}
-          {%- if seller.website %}<div>{{ seller.website }}</div>{% endif -%}
+          {%- if seller.phone %}<div>Tel.: {{ seller.phone }}</div>{% endif -%}
+          {%- if seller.email %}<div>E-Mail: {{ seller.email }}</div>{% endif -%}
+          {%- if seller.website %}<div>Web: {{ seller.website }}</div>{% endif -%}
+        </div>
+        <div class="imprint-column">
+          {%- if seller.taxNumber %}<div class="num">Steuer-Nr.: {{ seller.taxNumber }}</div>{% endif -%}
+          {%- if seller.vatId %}<div class="num">USt-IdNr.: {{ seller.vatId }}</div>{% endif -%}
+          {%- if seller.managingDirector %}<div>Inhaber/-in: {{ seller.managingDirector }}</div>{% endif -%}
+          {%- if seller.registerCourt %}<div>{{ seller.registerCourt }} {{ seller.registerNumber }}</div>{% endif -%}
         </div>
         {%- if seller.bankAccountHolder %}
         <div class="imprint-column">
-          <div class="payment-label">Bankverbindung</div>
-          <div>{{ seller.bankAccountHolder }}</div>
-          {%- if seller.iban %}<div class="num">IBAN {{ seller.iban }}</div>{% endif -%}
-          {%- if seller.bic %}<div class="num">BIC {{ seller.bic }} · {{ seller.bankName }}</div>{% endif -%}
+          <div>{{ seller.bankName }}</div>
+          {%- if seller.iban %}<div class="num">IBAN: {{ seller.iban }}</div>{% endif -%}
+          {%- if seller.bic %}<div class="num">BIC: {{ seller.bic }}</div>{% endif -%}
         </div>
         {%- endif -%}
       </footer>
@@ -98,24 +102,21 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
       <tr><td>
 
   {%- comment -%}
-    Briefkopf. Die Steuernummer steht hier und nicht mehr im Blattfuß: Sie ist
-    Pflichtangabe (FA-PFL-02, §14 Abs. 4 Nr. 2 UStG) und gehört zum Absender,
-    nicht zum Kleingedruckten. Genau **eine** von beiden — wer eine USt-IdNr.
-    führt, nennt sie; sonst die Steuernummer. Beide nebeneinander sind eine
-    Angabe zu viel.
+    Briefkopf mit dem Logo des ausstellenden Unternehmens (M11, FA-TPL-12).
+
+    Es kommt als data:-URI aus dem Dokumentmodell — der Renderer hat kein Netz.
+    Ohne hinterlegtes Logo steht hier der Name in Auszeichnungsschrift; ein
+    leerer Kopf wäre schlechter als ein gesetzter.
+
+    Die Höhe ist begrenzt und das Seitenverhältnis bleibt erhalten: Ein hohes
+    Hochformat soll den Kopf nicht sprengen.
   {%- endcomment -%}
   <header class="letterhead">
-    <div>
-      <div class="letterhead-name">{{ seller.name }}</div>
-      <div class="letterhead-contact">
-        {{ seller.address.addressLine1 }} · {{ seller.address.postalCode }} {{ seller.address.city }}
-      </div>
-    </div>
-    <div class="letterhead-tax num">
-      {%- if seller.vatId -%}USt-IdNr. {{ seller.vatId }}
-      {%- elsif seller.taxNumber -%}Steuernummer {{ seller.taxNumber }}
-      {%- endif -%}
-    </div>
+    {%- if seller.logo -%}
+    <img class="letterhead-logo" src="{{ seller.logo }}" alt="{{ seller.name }}">
+    {%- else -%}
+    <div class="letterhead-name">{{ seller.name }}</div>
+    {%- endif -%}
   </header>
 
   {%- comment -%}
@@ -235,16 +236,18 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
       <table>
         <tbody>
           {%- comment -%}
-            Ohne Steuer bleibt genau eine Zeile stehen.
+            Aufbau nach dem Vorbild des Auftraggebers (M11):
+            Nettobetrag — Steuerangabe — Gesamtbetrag.
 
-            Netto und Brutto tragen dann denselben Wert; zwei gleiche Zahlen
-            übereinander sind eine Frage, keine Auskunft (M11, FA-PFL-13).
+            Ohne Steuerpflicht entfällt die Steuerzeile, aber **nicht** der
+            Nettobetrag: Zwischen ihm und dem Gesamtbetrag steht dann der
+            §19-Hinweis und erklärt, warum beide gleich sind (FA-PFL-13).
           {%- endcomment -%}
-          {%- if showsTax %}
           <tr class="totals-net">
-            <th scope="row">Nettobetrag</th>
+            <th scope="row">Gesamtbetrag netto</th>
             <td class="num">{{ totals.net | money: invoice.currency }}</td>
           </tr>
+          {%- if showsTax %}
           {%- for group in taxBreakdown %}
           <tr>
             <th scope="row">
@@ -253,9 +256,15 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
             <td class="num">{{ group.tax | money: invoice.currency }}</td>
           </tr>
           {%- endfor %}
+          {%- else -%}
+          {%- for notice in notices %}
+          <tr class="totals-notice">
+            <th scope="row" colspan="2">{{ notice }}</th>
+          </tr>
+          {%- endfor %}
           {%- endif %}
           <tr class="totals-gross">
-            <th scope="row">Gesamtbetrag</th>
+            <th scope="row">Gesamtbetrag brutto</th>
             <td class="num">{{ totals.gross | money: invoice.currency }}</td>
           </tr>
           {%- if totals.paid > 0 %}
@@ -276,7 +285,7 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
       Pflichthinweise: §19, Reverse Charge, Ausfuhr, Storno. Werden aus dem
       Dokumentmodell befüllt (FA-PFL-08, FA-PFL-09, FA-PFL-11).
     {%- endcomment -%}
-    {%- if notices.size > 0 %}
+    {%- if showsTax and notices.size > 0 %}
     <section class="notices">
       {%- for notice in notices %}<p>{{ notice }}</p>{% endfor -%}
     </section>
@@ -319,6 +328,8 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
 export const DEFAULT_TEMPLATE_CSS = `
 :root {
   --paper-ink: #1c1f1c;
+  /* Für Text auf dunkler Fläche — die Kopfleiste der Positionstabelle (M11). */
+  --paper-paper: #ffffff;
   --paper-muted: #5c625c;
   --paper-rule: #c9ccc5;
 }
@@ -355,11 +366,19 @@ body {
 
 .letterhead-name { font-size: 13pt; font-weight: 700; }
 .letterhead-contact { color: var(--paper-muted); font-size: 8pt; }
-.letterhead-tax {
-  color: var(--paper-muted);
-  font-size: 8pt;
-  text-align: right;
-  white-space: nowrap;
+
+/*
+ * Das Logo (M11, FA-TPL-12).
+ *
+ * Höhe begrenzt, Breite frei: So bleibt das Seitenverhältnis erhalten, und ein
+ * hohes Hochformat sprengt den Kopf nicht. Die Breite ist zusätzlich gedeckelt,
+ * damit ein sehr breites Logo nicht in den Informationsblock läuft.
+ */
+.letterhead-logo {
+  max-height: 20mm;
+  max-width: 70mm;
+  width: auto;
+  height: auto;
 }
 
 /* ── Falz- und Lochmarken (DIN 5008) ───────────────────────────────────── */
@@ -450,15 +469,25 @@ body {
 /* Wiederholt den Kopf auf jeder Folgeseite (FA-PDF-05). */
 .lines thead { display: table-header-group; }
 
+/*
+ * Kopfleiste als Fläche, nach dem Vorbild des Auftraggebers (M11).
+ *
+ * Sie trennt die Positionen deutlicher vom Fließtext darüber als eine Linie —
+ * und wiederholt sich auf jeder Folgeseite mit, weil sie im Tabellenkopf sitzt.
+ */
 .lines th {
-  padding: 1.5mm 2mm 1.5mm 0;
-  border-bottom: 0.8pt solid var(--paper-ink);
+  padding: 1.5mm 2mm;
+  background: var(--paper-ink);
+  color: var(--paper-paper);
   font-size: 8pt;
   font-weight: 600;
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+.lines th:first-child { padding-left: 2mm; }
+.lines td:first-child { padding-left: 2mm; }
 
 .lines td {
   padding: 1.8mm 2mm 1.8mm 0;
@@ -485,18 +514,23 @@ body {
 
 /* ── Summen ────────────────────────────────────────────────────────────── */
 
+/*
+ * Summen über die volle Breite, nach dem Vorbild des Auftraggebers (M11).
+ *
+ * Bezeichnung links, Betrag rechts, in der Flucht der Betragsspalte darüber.
+ * Der frühere rechtsbündige Block stand für sich; so liest sich der Abschluss
+ * als Fortsetzung der Tabelle.
+ */
 .totals {
-  display: flex;
-  justify-content: flex-end;
   margin-top: 4mm;
   /* Der Summenblock wird nicht getrennt (FA-PDF-07). */
   break-inside: avoid;
 }
 
-.totals table { border-collapse: collapse; min-width: 80mm; }
+.totals table { width: 100%; border-collapse: collapse; }
 
 .totals th {
-  padding: 1.2mm 4mm 1.2mm 0;
+  padding: 1.2mm 2mm;
   font-weight: 400;
   text-align: left;
 }
@@ -512,6 +546,9 @@ body {
 }
 
 .totals-outstanding th, .totals-outstanding td { font-weight: 700; }
+
+/* Der Pflichthinweis steht zwischen Netto und Brutto und erklärt ihre Gleichheit. */
+.totals-notice th { font-weight: 400; }
 
 /* ── Hinweise und Zahlung ──────────────────────────────────────────────── */
 
@@ -533,6 +570,8 @@ body {
 .payment-block { min-width: 60mm; }
 
 .payment-label,
+.imprint-column { flex: 1 1 0; min-width: 0; }
+
 .imprint-column .payment-label {
   color: var(--paper-muted);
   font-size: 7.5pt;
@@ -551,7 +590,7 @@ body {
  * dem Blatt, und genau so sah es vorher aus. Erst wenn die Tabelle die Seite
  * ausfüllt, fällt ihr Fuß mit dem Blattfuß zusammen.
  *
- * 237 mm sind A4 (297) minus die Ränder dieser Vorlage (25 oben, 35 unten). Wer
+ * 250 mm sind A4 (297) minus die Ränder dieser Vorlage (25 oben, 22 unten). Wer
  * die Ränder ändert, ändert diesen Wert mit — deshalb steht die Rechnung hier
  * und nicht als nackte Zahl.
  *
@@ -564,7 +603,7 @@ body {
  */
 .page {
   width: 100%;
-  min-height: 237mm;
+  min-height: 250mm;
   border-collapse: collapse;
 }
 
@@ -595,6 +634,7 @@ body {
  */
 .imprint {
   display: flex;
+  justify-content: space-between;
   gap: 8mm;
   padding-top: 2mm;
   border-top: 0.4pt solid var(--paper-rule);

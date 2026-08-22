@@ -26,11 +26,10 @@ export type PageGeometry = {
 /**
  * DIN 5008: oben 25 mm, seitlich 20 mm (Spec §8.2).
  *
- * **Unten 35 mm statt der 20 mm der Norm** (seit M11). Der Blattfuß mit
- * Absender und Bankverbindung liegt fest im unteren Rand und erscheint auf jeder
- * Seite (FA-PDF-12); er braucht rund 15 mm, die Seitenzahl darunter den Rest.
- * Ein Rand, der nur so hoch ist wie der Text, ließe den Fließtext unter den Fuß
- * laufen — und das fiele erst auf der zweiten Seite auf.
+ * **Unten 22 mm statt der 20 mm der Norm** (seit M11). Der Blattfuß steht am
+ * Ende des Satzspiegels, also 22 mm über der Blattkante — so dicht am Rand wie
+ * ein Briefbogen ihn setzt. Darunter bleiben 10 mm für die Seitenzahl, die als
+ * Nachbearbeiter aufs Blatt kommt und 12 mm über der Kante sitzt.
  *
  * Der Wert ist je Vorlage einstellbar; wer einen eigenen Fuß baut, setzt ihn
  * zurück.
@@ -39,7 +38,7 @@ export const DEFAULT_PAGE_GEOMETRY: PageGeometry = {
   format: 'A4',
   marginTopMm: 25,
   marginRightMm: 20,
-  marginBottomMm: 35,
+  marginBottomMm: 22,
   marginLeftMm: 20,
 };
 

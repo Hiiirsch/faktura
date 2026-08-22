@@ -33,6 +33,9 @@ import { quantityFromScaled } from '@/domain/quantity/quantity';
 import { isTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
 import { parsePlainDate, type PlainDate } from '@/domain/time/plain-date';
 import { documentBuyerOf } from '@/application/invoices/invoice-buyer';
+import { logger } from '@/infrastructure/logging/logger';
+import { findAsset } from '@/infrastructure/repositories/asset-repository';
+import { readStoredFile } from '@/infrastructure/storage/asset-store';
 import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
 import { findInvoiceForDocument } from '@/infrastructure/repositories/invoice-repository';
 import type { Authorized } from '@/application/auth/authorize';
@@ -62,6 +65,47 @@ function parseSnapshot<T>(raw: string | null, guard: (value: unknown) => value i
   }
 }
 
+/**
+ * Das Logo als `data:`-URI (M11, FA-TPL-12).
+ *
+ * **Eingebettet statt verlinkt**, weil der Renderer kein Netz hat (NFA-SEC-12)
+ * und auch keinen Dateipfad, den eine Vorlage adressieren könnte. Dieselbe
+ * Einbettung trägt schon die Schrift des Belegs.
+ *
+ * Fehlt die Datei — gelöscht, verschoben, nie geschrieben —, gibt es kein Logo
+ * und keinen Fehler. Ein Beleg ohne Logo ist gültig; ein Beleg, der wegen eines
+ * Bildes nicht entsteht, ist es nicht.
+ */
+async function logoDataUri(
+  context: Authorized<'invoice.read'>,
+  assetId: string | null,
+): Promise<string | null> {
+  if (assetId === null) {
+    return null;
+  }
+
+  /*
+   * Über die Repository-Schicht, nicht über `getAsset()`: Jene Funktion verlangt
+   * `companyProfile.read`, und dieses Recht hat ein Konto nicht zwingend, das
+   * einen Beleg lesen darf. Ein Logo ist auf dem Beleg ohnehin für jeden
+   * sichtbar, der ihn sieht — es hinter der Firmendatenberechtigung zu
+   * verstecken hieße, den Beleg vor seinem eigenen Leser zu schützen. Dieselbe
+   * Überlegung trägt schon `findCompanyProfile(context)` weiter oben.
+   */
+  const asset = await findAsset(context, assetId);
+  if (asset === null) {
+    return null;
+  }
+
+  try {
+    const bytes = await readStoredFile(asset.storagePath);
+    return `data:${asset.mimeType};base64,${bytes.toString('base64')}`;
+  } catch {
+    logger.warn('document.logo_unreadable', { assetId });
+    return null;
+  }
+}
+
 export type BuildDocumentError = { readonly kind: 'NOT_FOUND' } | { readonly kind: 'NO_COMPANY_PROFILE' };
 
 export async function buildInvoiceDocument(
@@ -82,6 +126,18 @@ export async function buildInvoiceDocument(
 
   const sellerSnapshot = parseSnapshot(invoice.snapshotSeller, isSellerSnapshot);
   const buyerSnapshot = parseSnapshot(invoice.snapshotBuyer, isBuyerSnapshot);
+
+  /*
+   * Das Logo (M11, FA-TPL-12).
+   *
+   * Ein festgeschriebener Beleg nimmt die Kennung aus seinem Snapshot, ein
+   * Entwurf die aus den Firmendaten — dieselbe Unterscheidung wie bei Name und
+   * Anschrift. Bestandsbelege tragen keine Kennung im Snapshot; sie bekommen
+   * kein Logo, statt das heutige unterzuschieben.
+   */
+  const logoAssetId =
+    sellerSnapshot === null ? company.logoAssetId : (sellerSnapshot.logoAssetId ?? null);
+  const logo = await logoDataUri(context, logoAssetId);
 
   const seller: DocumentSeller =
     sellerSnapshot === null
@@ -107,6 +163,7 @@ export async function buildInvoiceDocument(
           bic: company.bic,
           bankName: company.bankName,
           isSmallBusiness: company.isSmallBusiness,
+          logo,
         }
       : {
           name: sellerSnapshot.name,
@@ -130,6 +187,7 @@ export async function buildInvoiceDocument(
           bic: sellerSnapshot.bic,
           bankName: sellerSnapshot.bankName,
           isSmallBusiness: sellerSnapshot.isSmallBusiness,
+          logo,
         };
 
   const buyer: DocumentBuyer =
