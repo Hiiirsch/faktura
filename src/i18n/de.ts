@@ -623,7 +623,6 @@ export const messages = {
       'Aus Kunden- und Firmendaten vorgeschlagen. Eine Änderung setzt Kategorie und Satz aller Positionen neu.',
     purchaseOrderRef: 'Bestellnummer',
     template: 'Vorlage',
-    templateDefault: 'Standardvorlage',
 
     buyerLegend: 'Empfänger',
     buyerNoSelection: '— kein Kunde gewählt —',

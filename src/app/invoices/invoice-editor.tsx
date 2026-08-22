@@ -356,7 +356,11 @@ export function InvoiceEditor({
   readonly initial: EditorInitialValues;
   readonly customers: readonly CustomerOption[];
   readonly catalog: readonly CatalogItem[];
-  readonly templates: readonly { readonly id: string; readonly label: string }[];
+  readonly templates: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly isDefault: boolean;
+  }[];
   readonly defaultTaxRatePercent: string;
   /** Zahlungsziel der Firmendaten — gilt, wo kein Kunde eines vorgibt. */
   readonly defaultPaymentTerms: number;
@@ -539,8 +543,17 @@ export function InvoiceEditor({
         {/* Abweichende Vorlage je Beleg (FA-TPL-03). */}
         <label className="flex flex-col gap-2">
           <span className="text-ui font-medium">{messages.invoices.template}</span>
-          <select name="templateId" defaultValue={initial.templateId} className={INPUT_CLASS}>
-            <option value="">{messages.invoices.templateDefault}</option>
+          {/*
+            Ohne leere Auswahl (M11): Ein Eintrag „Standardvorlage" verwies auf
+            eine Vorlage, statt eine zu sein. Jetzt stehen nur echte Vorlagen
+            darin, die voreingestellte trägt den Zusatz „Standardvorlage", und
+            ein neuer Beleg hat sie von Anfang an gewählt.
+          */}
+          <select
+            name="templateId"
+            defaultValue={initial.templateId || (templates.find((t) => t.isDefault)?.id ?? '')}
+            className={INPUT_CLASS}
+          >
             {templates.map((template) => (
               <option key={template.id} value={template.id}>
                 {template.label}

@@ -17,6 +17,7 @@ import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 import { resolvePaymentTerms } from '@/domain/customer/payment-terms';
 import { determineTaxScheme, type TaxScheme } from '@/domain/tax/tax-scheme';
 import { addDays, todayIn } from '@/domain/time/plain-date';
+import { messages } from '@/i18n/de';
 
 import type { EditorBuyerValues } from './buyer-fieldset';
 import type { CustomerOption } from './invoice-editor';
@@ -72,7 +73,12 @@ export type EditorContext = {
   readonly customers: readonly CustomerOption[];
   readonly catalog: Awaited<ReturnType<typeof listCatalogItems>>;
   /** Auswahl abweichender Vorlagen je Beleg (FA-TPL-03). */
-  readonly templates: readonly { readonly id: string; readonly label: string }[];
+  readonly templates: readonly {
+    readonly id: string;
+    readonly label: string;
+    /** Die Vorlage, die ein Beleg ohne eigene Wahl bekommt (FA-TPL-03). */
+    readonly isDefault: boolean;
+  }[];
   readonly defaultTaxRatePercent: string;
   readonly defaultCurrency: string;
   readonly today: string;
@@ -132,7 +138,21 @@ export async function loadEditorContext(
   return {
     customers: options,
     catalog,
-    templates: templates.map((template) => ({ id: template.id, label: template.name })),
+    /*
+     * Der Standard wird **benannt**, nicht als leere Auswahl angeboten (M11).
+     *
+     * Vorher stand über der Liste ein Eintrag „Standardvorlage" mit leerem Wert.
+     * Er verwies auf eine Vorlage, statt eine zu sein — und las sich neben
+     * „DIN 5008 (Standard)" wie eine zweite. Jetzt trägt die echte Vorlage den
+     * Zusatz, und ausgewählt ist sie von Anfang an.
+     */
+    templates: templates.map((template) => ({
+      id: template.id,
+      label: template.isDefault
+        ? `${template.name} · ${messages.templates.isDefault}`
+        : template.name,
+      isDefault: template.isDefault,
+    })),
     defaultTaxRatePercent: String(company.defaultTaxRateBasisPoints / PERCENT_BASIS_POINTS),
     defaultCurrency: company.defaultCurrency,
     today,
