@@ -373,10 +373,15 @@ body {
  * Höhe begrenzt, Breite frei: So bleibt das Seitenverhältnis erhalten, und ein
  * hohes Hochformat sprengt den Kopf nicht. Die Breite ist zusätzlich gedeckelt,
  * damit ein sehr breites Logo nicht in den Informationsblock läuft.
+ *
+ * 32 mm ist die Höhe, nicht die Größe des Zeichens: Ein Logo mit Wortmarke
+ * darunter füllt den Kasten anders aus als eine reine Bildmarke. Bei 500 px
+ * Vorlage entspricht das rund 400 dpi — die Grenze setzt die Datei, nicht die
+ * Vorlage.
  */
 .letterhead-logo {
-  max-height: 20mm;
-  max-width: 70mm;
+  max-height: 32mm;
+  max-width: 80mm;
   width: auto;
   height: auto;
 }
