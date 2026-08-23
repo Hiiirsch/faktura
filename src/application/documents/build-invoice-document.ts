@@ -108,10 +108,26 @@ async function logoDataUri(
 
 export type BuildDocumentError = { readonly kind: 'NOT_FOUND' } | { readonly kind: 'NO_COMPANY_PROFILE' };
 
+/**
+ * Das Ergebnis trägt neben dem Dokument die Kennung des Briefpapiers
+ * (M12, FA-TPL-11).
+ *
+ * **Nicht im `InvoiceDocument`**, obwohl es dort bequemer läge. Das
+ * Dokumentmodell ist ausgabeneutral und beschreibt den Beleg — es soll auch die
+ * Grundlage einer E-Rechnung sein, und in einem ZUGFeRD-XML hat der Bogen
+ * nichts zu suchen. Er ist kein Inhalt, sondern der Grund, auf dem der Inhalt
+ * steht. Deshalb daneben statt darin.
+ */
+export type BuiltInvoiceDocument = {
+  readonly ok: true;
+  readonly document: InvoiceDocument;
+  readonly letterheadAssetId: string | null;
+};
+
 export async function buildInvoiceDocument(
   context: Authorized<'invoice.read'>,
   invoiceId: string,
-): Promise<{ ok: true; document: InvoiceDocument } | { ok: false; error: BuildDocumentError }> {
+): Promise<BuiltInvoiceDocument | { ok: false; error: BuildDocumentError }> {
   const [invoice, company] = await Promise.all([
     findInvoiceForDocument(context, invoiceId),
     findCompanyProfile(context),
@@ -138,6 +154,17 @@ export async function buildInvoiceDocument(
   const logoAssetId =
     sellerSnapshot === null ? company.logoAssetId : (sellerSnapshot.logoAssetId ?? null);
   const logo = await logoDataUri(context, logoAssetId);
+
+  /*
+   * Das Briefpapier (M12, FA-TPL-11) folgt derselben Regel wie das Logo: aus
+   * dem Snapshot, sobald es einen gibt. Wer seinen Bogen austauscht, ändert
+   * damit keinen bereits ausgestellten Beleg — und weil dessen PDF seit
+   * FA-PDF-13 ohnehin fertig vorliegt, gilt das zweifach.
+   */
+  const letterheadAssetId =
+    sellerSnapshot === null
+      ? company.letterheadAssetId
+      : (sellerSnapshot.letterheadAssetId ?? null);
 
   const seller: DocumentSeller =
     sellerSnapshot === null
@@ -307,5 +334,6 @@ export async function buildInvoiceDocument(
       isDraft: invoice.status === 'DRAFT',
       showsTax: documentShowsTax(seller),
     },
+    letterheadAssetId,
   };
 }

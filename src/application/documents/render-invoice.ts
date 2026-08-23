@@ -18,6 +18,7 @@ import type { InvoiceDocument } from '@/domain/document/invoice-document';
 import {
   DEFAULT_PAGE_GEOMETRY,
   type PageGeometry,
+  type PdfPostProcessor,
   type PdfRenderOptions,
   type TemplateRenderError,
   type TemplateSource,
@@ -28,6 +29,7 @@ import {
   deleteArtifact,
   findArtifact,
 } from '@/infrastructure/repositories/artifact-repository';
+import { findAsset } from '@/infrastructure/repositories/asset-repository';
 import { findCompanyProfile } from '@/infrastructure/repositories/company-repository';
 import { findInvoice } from '@/infrastructure/repositories/invoice-repository';
 import type { Authorized } from '@/application/auth/authorize';
@@ -39,8 +41,10 @@ import {
   type Template,
 } from '@/infrastructure/repositories/template-repository';
 import { documentFontFaces } from '@/infrastructure/rendering/document-font';
+import { letterheadBackground } from '@/infrastructure/rendering/letterhead';
 import { applyPostProcessors, defaultPipeline } from '@/infrastructure/rendering/pipeline';
 import { readArtifact, storeArtifact } from '@/infrastructure/storage/artifact-store';
+import { readStoredFile } from '@/infrastructure/storage/asset-store';
 import {
   DEFAULT_TEMPLATE_CSS,
   DEFAULT_TEMPLATE_DESCRIPTION,
@@ -169,10 +173,57 @@ function renderOptions(geometry: PageGeometry): PdfRenderOptions {
   return { geometry, timeoutMs: RENDER_TIMEOUT_MS };
 }
 
+/**
+ * Liest das Briefpapier (M12, FA-TPL-11).
+ *
+ * Über die Repository-Schicht statt über `getAsset()` — aus demselben Grund
+ * wie beim Logo: Jene verlangt `companyProfile.read`, und ein Bogen, der auf
+ * jedem Beleg zu sehen ist, darf nicht hinter der Firmendatenberechtigung
+ * liegen.
+ *
+ * Fehlt die Datei, erscheint kein Briefpapier und kein Fehler. Ein Beleg soll
+ * nicht an seiner Gestaltung scheitern.
+ */
+async function letterheadBytes(
+  context: Authorized<'invoice.read'>,
+  assetId: string | null,
+): Promise<Uint8Array | null> {
+  if (assetId === null) {
+    return null;
+  }
+
+  const asset = await findAsset(context, assetId);
+  if (asset === null) {
+    return null;
+  }
+
+  try {
+    return new Uint8Array(await readStoredFile(asset.storagePath));
+  } catch (error) {
+    logger.warn('document.letterhead_unreadable', { assetId, error });
+    return null;
+  }
+}
+
+/**
+ * Die Nachbearbeiterkette für **diesen** Beleg (M12, NFA-ARCH-06).
+ *
+ * Ohne Briefpapier ist es die Kette aus der Pipeline. Mit Briefpapier steht der
+ * Bogen **davor**: Der Seitenstempel schreibt danach auf das fertige Blatt,
+ * sonst läge die Seitenangabe unter einer deckenden Fläche.
+ */
+function postProcessorsFor(letterhead: Uint8Array | null): readonly PdfPostProcessor[] {
+  return letterhead === null
+    ? defaultPipeline.postProcessors
+    : [letterheadBackground(letterhead), ...defaultPipeline.postProcessors];
+}
+
 export type PreparedDocument = {
   readonly document: InvoiceDocument;
   readonly template: Template;
   readonly fileName: string;
+  /** Das Briefpapier als Bytes, sofern eines hinterlegt ist (M12, FA-TPL-11). */
+  readonly letterhead: Uint8Array | null;
 };
 
 async function prepare(
@@ -204,6 +255,7 @@ async function prepare(
   return ok({
     document: built.document,
     template,
+    letterhead: await letterheadBytes(context, built.letterheadAssetId),
     fileName: buildFileName(pattern, {
       invoiceNumber: built.document.invoiceNumber,
       issueDate: built.document.issueDate,
@@ -235,6 +287,9 @@ export async function renderWithSources(
     );
   }
 
+  // Auch die Vorlagenvorschau zeigt den Bogen: Wer eine Vorlage entwirft, muss
+  // sehen, wogegen er sie entwirft.
+  const letterhead = await letterheadBytes(context, built.letterheadAssetId);
   const fontFaces = await documentFontFaces();
   const rendered = await defaultPipeline.templateEngine.render(built.document, {
     htmlSource,
@@ -256,7 +311,7 @@ export async function renderWithSources(
     );
   }
 
-  return ok(await applyPostProcessors(result.pdf, defaultPipeline.postProcessors));
+  return ok(await applyPostProcessors(result.pdf, postProcessorsFor(letterhead)));
 }
 
 /** Erzeugt ein PDF, ohne es abzulegen — für Entwürfe und Vorschauen. */
@@ -289,7 +344,10 @@ export async function renderInvoicePdf(
     );
   }
 
-  const processed = await applyPostProcessors(result.pdf, defaultPipeline.postProcessors);
+  const processed = await applyPostProcessors(
+    result.pdf,
+    postProcessorsFor(prepared.value.letterhead),
+  );
 
   // Kein Original und keins behauptet: Ein Entwurf wird bei jedem Abruf neu
   // gesetzt (M12).
