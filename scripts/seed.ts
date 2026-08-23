@@ -32,6 +32,7 @@ import type { DraftBuyer } from '@/domain/invoice/buyer';
 import { cents } from '@/domain/money/money';
 import { addDays, plainDate, todayIn } from '@/domain/time/plain-date';
 import { logger } from '@/infrastructure/logging/logger';
+import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
 import { listUsersOfDefaultOrganization } from '@/infrastructure/repositories/member-repository';
 import { fullyAuthorized } from '@/application/auth/authorize';
@@ -319,5 +320,8 @@ try {
   logger.error('seed.failed', { error });
   process.exitCode = 1;
 } finally {
+  // Festschreiben setzt seit M12 das PDF (FA-PDF-13) und startet dafür einen
+  // Browser. Bleibt er offen, endet dieses Skript nicht.
+  await closeRenderer();
   await disconnectDatabase();
 }

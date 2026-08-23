@@ -27,6 +27,7 @@ import {
   createAdminUser,
 } from '@/infrastructure/repositories/platform-repository';
 import { disconnectDatabase } from '@/infrastructure/repositories/client';
+import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 import { fullyAuthorized } from '@/application/auth/authorize';
 import {
   DEFAULT_ORGANIZATION_ID,
@@ -315,4 +316,14 @@ if (openDraft.id.length === 0) {
   throw new Error('Der Entwurf für den Browsertest ließ sich nicht anlegen.');
 }
 
+/*
+ * Den Browser schließen, nicht nur die Datenbank (M12).
+ *
+ * **Sonst endet dieses Skript nie.** Seit dem Festschreiben das PDF entsteht
+ * (FA-PDF-13), startet ein Beleg hier einen Chromium — und ein offener Browser
+ * hält den Node-Prozess am Leben. Der Aufrufer wartet mit `execFileSync` auf
+ * sein Ende und wartet dann für immer; die gesamte Integrationssuite kam nicht
+ * über ihre Vorbereitung hinaus.
+ */
+await closeRenderer();
 await disconnectDatabase();

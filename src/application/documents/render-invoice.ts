@@ -66,6 +66,20 @@ export type RenderedPdf = {
   readonly pdf: Uint8Array;
   readonly fileName: string;
   readonly sha256: string | null;
+  /**
+   * Woher die Datei stammt (M12, FA-PDF-13).
+   *
+   * - `stored` — die beim Festschreiben abgelegte Datei. Das Original.
+   * - `draft` — ein Entwurf, bei jedem Abruf neu gesetzt. Kein Original, aber
+   *   auch keins behauptet.
+   * - `substitute` — **die abgelegte Datei fehlt.** Was ausgeliefert wird, ist
+   *   mit der heutigen Vorlage neu gesetzt und sieht dem Original nur ähnlich.
+   *
+   * Der dritte Fall war bis M12 von den anderen nicht zu unterscheiden: Fehlte
+   * die Datei, wurde still neu gesetzt und ausgeliefert. Ein Dokument, das nicht
+   * das Original ist, soll das nicht verschweigen.
+   */
+  readonly origin: 'stored' | 'draft' | 'substitute';
 };
 
 /**
@@ -277,7 +291,9 @@ export async function renderInvoicePdf(
 
   const processed = await applyPostProcessors(result.pdf, defaultPipeline.postProcessors);
 
-  return ok({ pdf: processed, fileName: prepared.value.fileName, sha256: null });
+  // Kein Original und keins behauptet: Ein Entwurf wird bei jedem Abruf neu
+  // gesetzt (M12).
+  return ok({ pdf: processed, fileName: prepared.value.fileName, sha256: null, origin: 'draft' });
 }
 
 /**
@@ -309,10 +325,16 @@ export async function renderInvoiceForDownload(
 /**
  * Das PDF eines festgeschriebenen Belegs (FA-PDF-01, FA-NUM-10).
  *
- * Beim ersten Abruf entsteht es und wird abgelegt, danach wird die abgelegte
- * Datei ausgeliefert. Schlägt das Ablegen fehl, wird der Datenbankeintrag
- * wieder entfernt — ein Eintrag ohne Datei liefe beim nächsten Abruf in einen
- * Lesefehler statt in eine erneute Erzeugung (FA-PDF-11).
+ * Seit M12 liegt es in aller Regel schon vor: Es entsteht beim Festschreiben
+ * (FA-PDF-13). Diese Funktion liefert dann nur noch die abgelegte Datei aus.
+ *
+ * Der erzeugende Zweig bleibt trotzdem, und zwar für genau zwei Fälle: einen
+ * Beleg aus der Zeit vor M12 und einen, bei dem das Setzen beim Festschreiben
+ * fehlschlug. Ihn zu entfernen hieße, diesen Belegen ihr PDF zu nehmen.
+ *
+ * Schlägt das Ablegen fehl, wird der Datenbankeintrag wieder entfernt — ein
+ * Eintrag ohne Datei liefe beim nächsten Abruf in einen Lesefehler statt in
+ * eine erneute Erzeugung (FA-PDF-11).
  */
 export async function getOrCreateInvoicePdf(
   context: Authorized<'invoice.read'>,
@@ -327,13 +349,22 @@ export async function getOrCreateInvoicePdf(
         pdf: new Uint8Array(bytes),
         fileName: existing.fileName,
         sha256: existing.sha256,
+        origin: 'stored',
       });
     } catch (error) {
-      // Die Datei fehlt oder ist unlesbar. Das Artefakt ist unveränderlich und
-      // lässt sich nicht ersetzen — der Beleg wird deshalb neu gesetzt und
-      // ohne Ablage ausgeliefert, damit der Abruf nicht ins Leere läuft.
-      logger.error('artifact.read_failed', { error });
-      return renderInvoicePdf(context, invoiceId);
+      /*
+       * Die Datei fehlt oder ist unlesbar — ein Datenverlust, kein Sonderfall
+       * des Alltags.
+       *
+       * Das Artefakt ist unveränderlich und lässt sich nicht ersetzen. Der Beleg
+       * wird deshalb neu gesetzt und ohne Ablage ausgeliefert, damit der Abruf
+       * nicht ins Leere läuft — aber **gekennzeichnet** (M12): Was hier
+       * herauskommt, trägt die heutige Vorlage und ist nicht mehr das Dokument,
+       * das der Empfänger bekommen hat.
+       */
+      logger.error('artifact.read_failed', { invoiceId, error });
+      const ersatz = await renderInvoicePdf(context, invoiceId);
+      return ersatz.ok ? ok({ ...ersatz.value, origin: 'substitute' as const }) : ersatz;
     }
   }
 
@@ -359,5 +390,6 @@ export async function getOrCreateInvoicePdf(
     return err({ kind: 'RENDER_FAILED', message: 'Artefakt unvollständig abgelegt' });
   }
 
-  return ok({ ...rendered.value, sha256: stored.sha256 });
+  // Frisch abgelegt — ab hier ist es das Original (M12).
+  return ok({ ...rendered.value, sha256: stored.sha256, origin: 'stored' as const });
 }

@@ -19,6 +19,10 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/integration/**/*.test.ts'],
     globalSetup: ['tests/integration/setup/server.ts'],
+    // Schließt den Browser nach jeder Testdatei — seit M12 startet schon das
+    // Festschreiben einen (FA-PDF-13), und ein offener Browser lässt den Lauf
+    // hängen statt fehlschlagen.
+    setupFiles: ['tests/integration/setup/renderer.ts'],
     // Der Testprozess greift für die Fachlogik auf dieselbe Datenbank zu wie
     // der gestartete Server.
     env: {

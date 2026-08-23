@@ -327,7 +327,9 @@ export async function issueInvoiceAction(
   }
 
   const session = await requireSessionOrThrow();
-  const authorized = authorize(session, 'invoice.update', 'invoice.issue');
+  // Lesen kommt seit M12 dazu: Nach dem Festschreiben entsteht das PDF, und das
+  // Setzen verlangt `invoice.read` (FA-PDF-13).
+  const authorized = authorize(session, 'invoice.update', 'invoice.issue', 'invoice.read');
   const context = await readRequestContext();
 
   // Vor dem Festschreiben wird der aktuelle Formularstand gespeichert — sonst

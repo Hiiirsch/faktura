@@ -21,6 +21,9 @@
  * Die Seitenangabe ist am PDF prüfbar, weil `pdf-lib` sie in einer
  * Standardschrift ohne Teilmenge schreibt.
  */
+import { rm } from 'node:fs/promises';
+import path from 'node:path';
+
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -50,6 +53,7 @@ import {
 } from '@/application/templates/template-service';
 import { cents } from '@/domain/money/money';
 import { plainDate } from '@/domain/time/plain-date';
+import { findArtifact } from '@/infrastructure/repositories/artifact-repository';
 import { applyPostProcessors, defaultPipeline } from '@/infrastructure/rendering/pipeline';
 import { closeRenderer } from '@/infrastructure/rendering/playwright-renderer';
 import { verifyArtifact } from '@/infrastructure/storage/artifact-store';
@@ -533,7 +537,7 @@ describe('FA-TPL-08 Seitenränder je Vorlage', () => {
 });
 
 describe('FA-PDF-01, FA-NUM-10 Artefakt mit Hash', () => {
-  it('legt das PDF beim ersten Abruf ab und liefert danach dieselbe Datei', async () => {
+  it('liefert bei jedem Abruf dieselbe abgelegte Datei', async () => {
     const invoiceId = await seedIssued();
 
     const first = await getOrCreateInvoicePdf(org, invoiceId);
@@ -559,7 +563,6 @@ describe('FA-PDF-01, FA-NUM-10 Artefakt mit Hash', () => {
     expect(result.ok).toBe(true);
     if (!result.ok || result.value.sha256 === null) return;
 
-    const { findArtifact } = await import('@/infrastructure/repositories/artifact-repository');
     const artifact = await findArtifact(org, invoiceId, 'pdf');
 
     expect(artifact).not.toBeNull();
@@ -567,6 +570,85 @@ describe('FA-PDF-01, FA-NUM-10 Artefakt mit Hash', () => {
 
     expect(artifact.sha256).toBe(result.value.sha256);
     expect(await verifyArtifact(artifact.filePath, artifact.sha256)).toBe(true);
+  }, 60_000);
+});
+
+/**
+ * Das Aussehen steht ab dem Festschreiben fest (M12, FA-PDF-13).
+ *
+ * **Die Lücke, die diese Tests schließen.** Bis M12 entstand das PDF erst beim
+ * ersten Abruf. Wer dazwischen die Vorlage änderte, änderte den Beleg — bei den
+ * Daten gab es diese Lücke nie, beim Aussehen schon. Der Auftraggeber hat
+ * danach gefragt, und die Antwort stand im Code.
+ */
+describe('FA-PDF-13 Das PDF entsteht beim Festschreiben', () => {
+  it('legt das Artefakt ab, ohne dass jemand es abruft', async () => {
+    const invoiceId = await seedIssued();
+
+    const artifact = await findArtifact(org, invoiceId, 'pdf');
+
+    expect(artifact).not.toBeNull();
+    expect(artifact?.sha256).toMatch(/^[0-9a-f]{64}$/);
+  }, 60_000);
+
+  it('bleibt der Beleg nach einer Vorlagenänderung unverändert — auch ungelesen', async () => {
+    /*
+     * Der Unterschied zu FA-TPL-09 darunter: Dort wird das PDF **vor** der
+     * Änderung einmal abgerufen. Hier nicht — und genau das war der Fall, in
+     * dem die Zusage bisher nicht galt.
+     */
+    const invoiceId = await seedIssued();
+    const beimFestschreiben = await findArtifact(org, invoiceId, 'pdf');
+    expect(beimFestschreiben).not.toBeNull();
+    if (beimFestschreiben === null) return;
+
+    const template = await ensureDefaultTemplate(org);
+    await updateTemplateFrom(
+      org,
+      template.id,
+      {
+        name: template.name,
+        description: template.description,
+        htmlSource: '<p>Vollständig andere Vorlage</p>',
+        cssSource: template.cssSource,
+        marginTopMm: template.marginTopMm,
+        marginRightMm: template.marginRightMm,
+        marginBottomMm: template.marginBottomMm,
+        marginLeftMm: template.marginLeftMm,
+      },
+      ACTOR,
+      null,
+    );
+
+    const pdf = await getOrCreateInvoicePdf(org, invoiceId);
+    expect(pdf.ok).toBe(true);
+    if (!pdf.ok) return;
+
+    expect(pdf.value.origin).toBe('stored');
+    expect(pdf.value.sha256).toBe(beimFestschreiben.sha256);
+    expect(await verifyArtifact(beimFestschreiben.filePath, beimFestschreiben.sha256)).toBe(true);
+  }, 60_000);
+
+  it('kennzeichnet einen Ersatz, statt ihn für das Original auszugeben', async () => {
+    /*
+     * Fehlt die abgelegte Datei, wurde bis M12 **still** neu gesetzt und
+     * ausgeliefert. Was dabei herauskam, sah aus wie das Original und war es
+     * nicht. Jetzt sagt der Rückgabewert es.
+     */
+    const invoiceId = await seedIssued();
+
+    const artifact = await findArtifact(org, invoiceId, 'pdf');
+    expect(artifact).not.toBeNull();
+    if (artifact === null) return;
+
+    await rm(path.resolve(process.env.STORAGE_DIR ?? 'storage', artifact.filePath), { force: true });
+
+    const ersatz = await getOrCreateInvoicePdf(org, invoiceId);
+    expect(ersatz.ok).toBe(true);
+    if (!ersatz.ok) return;
+
+    expect(ersatz.value.origin).toBe('substitute');
+    expect(ersatz.value.sha256).toBeNull();
   }, 60_000);
 });
 
@@ -614,14 +696,20 @@ describe('FA-TPL-09 Vorlagenänderung verändert erzeugte PDFs nicht', () => {
     // Ein Entwurf wird nicht abgelegt: kein Hash, kein Artefakt.
     expect(first.value.sha256).toBeNull();
 
-    const { findArtifact } = await import('@/infrastructure/repositories/artifact-repository');
     expect(await findArtifact(org, invoiceId, 'pdf')).toBeNull();
   }, 60_000);
 });
 
 describe('FA-PDF-11 Fehlgeschlagenes Rendering hinterlässt keine Datei', () => {
   it('legt bei kaputter Vorlage weder Artefakt noch Datei an', async () => {
-    const invoiceId = await seedIssued();
+    /*
+     * Die Vorlage wird **vor** dem Festschreiben zerstört (M12).
+     *
+     * Vorher stand sie danach: Damals entstand das PDF erst beim Abruf, und
+     * das war die Stelle, an der es scheitern konnte. Seit FA-PDF-13 liegt es
+     * schon vor — dieselbe Reihenfolge prüfte den Fehlerfall gar nicht mehr,
+     * sondern lieferte die abgelegte Datei aus.
+     */
     const template = await ensureDefaultTemplate(org);
 
     await updateTemplateFrom(
@@ -641,10 +729,19 @@ describe('FA-PDF-11 Fehlgeschlagenes Rendering hinterlässt keine Datei', () => 
       null,
     );
 
+    /*
+     * Das Festschreiben gelingt trotzdem (M12, H4): Die Nummer ist vergeben,
+     * der Beleg steht. Ein Beleg, den eine kaputte Vorlage verhindert, wäre
+     * der schlechtere Fehler.
+     */
+    const invoiceId = await seedIssued();
+
+    // Nur eben ohne Artefakt — und ohne Leiche im Dateisystem.
+    expect(await findArtifact(org, invoiceId, 'pdf')).toBeNull();
+
     const result = await getOrCreateInvoicePdf(org, invoiceId);
     expect(result.ok).toBe(false);
 
-    const { findArtifact } = await import('@/infrastructure/repositories/artifact-repository');
     expect(await findArtifact(org, invoiceId, 'pdf')).toBeNull();
   }, 60_000);
 });
