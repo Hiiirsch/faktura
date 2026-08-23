@@ -508,6 +508,26 @@ export const messages = {
     logoActiveContent:
       'Die SVG-Datei enthält ausführbare Bestandteile und wurde deshalb abgelehnt.',
     logoEmpty: 'Bitte eine Datei auswählen.',
+
+    sectionLetterhead: 'Briefpapier',
+    sectionLetterheadHint:
+      'Eine einseitige PDF im Format A4, die unter jeden Beleg gelegt wird — höchstens 5 MB. Sie trägt nur die Gestaltung; Anschrift, Bankverbindung und Pflichtangaben setzt Faktura selbst.',
+    letterheadUpload: 'Briefpapierdatei',
+    letterheadUploadButton: 'Briefpapier hochladen',
+    letterheadRemove: 'Briefpapier entfernen',
+    letterheadNone: 'Es ist kein Briefpapier hinterlegt. Belege erscheinen auf weißem Grund.',
+    letterheadPreviewTitle: 'Vorschau des Briefpapiers',
+    letterheadEmpty: 'Bitte eine Datei auswählen.',
+    letterheadTooLarge: 'Die Datei ist größer als 5 MB.',
+    letterheadNotPdf: 'Der Dateiinhalt ist keine PDF-Datei.',
+    letterheadActiveContent:
+      'Die PDF-Datei enthält ausführbare Bestandteile oder eingebettete Dateien und wurde deshalb abgelehnt.',
+    letterheadUnreadable: 'Die PDF-Datei ließ sich nicht lesen. Möglicherweise ist sie beschädigt.',
+    letterheadMultiplePages:
+      'Das Briefpapier muss aus genau einer Seite bestehen. Weitere Seiten erschienen auf keinem Beleg.',
+    letterheadNotA4: 'Das Briefpapier muss das Format A4 haben (210 × 297 mm).',
+    letterheadNotLinked:
+      'Das Briefpapier konnte nicht mit den Firmendaten verknüpft werden und wurde verworfen. Bitte den Vorgang wiederholen; bleibt es dabei, hilft ein Blick ins Log des Servers.',
   },
   customers: {
     title: 'Kunden',

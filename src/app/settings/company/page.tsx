@@ -5,14 +5,15 @@ import { requirePermission } from '@/application/auth/authorize';
 import { getCompanyProfile, getCompanyProfileOrEmpty } from '@/application/company/company-profile';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
-import { assetPath, COMPANY_SETTINGS_PATH } from '@/routes';
+import { assetPath, COMPANY_LETTERHEAD_PATH, COMPANY_SETTINGS_PATH } from '@/routes';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
 
 import { AppShell } from '../../app-shell';
 import { CompanyForm } from './company-form';
+import { LetterheadForm } from './letterhead-form';
 import { LogoForm } from './logo-form';
-import { removeLogoAction } from './actions';
+import { removeLetterheadAction, removeLogoAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,40 @@ export default async function CompanySettingsPage(): Promise<ReactNode> {
           )}
 
           <LogoForm csrfToken={csrfToken} />
+        </section>
+
+        <section className={SECTION_CLASS}>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-section font-medium">{messages.company.sectionLetterhead}</h2>
+            <p className="text-ui text-ink-muted">{messages.company.sectionLetterheadHint}</p>
+          </div>
+
+          {saved?.letterheadAssetId == null ? (
+            <p className="text-ui text-ink-muted">{messages.company.letterheadNone}</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {/*
+                Als PDF eingebettet, nicht als Bild nachgestellt — dieselbe
+                Entscheidung wie bei der Belegvorschau (M5.6): Was der Beleg
+                später trägt, ist diese Datei, und nur sie zeigt sie richtig.
+              */}
+              <div className="bg-sheet shadow-sheet">
+                <iframe
+                  src={COMPANY_LETTERHEAD_PATH}
+                  title={messages.company.letterheadPreviewTitle}
+                  className="h-sheet-view w-full border-0"
+                />
+              </div>
+              <form action={removeLetterheadAction}>
+                <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+                <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                  {messages.company.letterheadRemove}
+                </button>
+              </form>
+            </div>
+          )}
+
+          <LetterheadForm csrfToken={csrfToken} />
         </section>
     </AppShell>
   );

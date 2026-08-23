@@ -115,6 +115,15 @@ export function invoicePdfEmbedPath(id: string): string {
 export const TEMPLATE_PREVIEW_PATH = '/api/templates/preview';
 
 /**
+ * Das hinterlegte Briefpapier zum Ansehen (M12, FA-TPL-11).
+ *
+ * Eine eigene Route statt `assetPath()`: Jene trägt das Profil `document` mit
+ * `sandbox`, und darunter startet der eingebaute PDF-Betrachter des Browsers
+ * nicht — dieselbe Erfahrung wie bei der Belegvorschau (M5.6).
+ */
+export const COMPANY_LETTERHEAD_PATH = '/api/company/letterhead';
+
+/**
  * Die WebAuthn-Zeremonie zum Anlegen eines Passkeys (M9).
  *
  * Je Identität eine eigene Route: Die Trennung liegt in Sitzung und Cookie und
@@ -341,6 +350,14 @@ export const routes: readonly RouteDefinition[] = [
     kind: 'api',
     access: 'authenticated',
     securityProfile: 'document',
+  },
+  {
+    // Wird in den Firmendaten als Vorschau eingebettet — deshalb dasselbe
+    // Profil wie beim Beleg-PDF.
+    path: COMPANY_LETTERHEAD_PATH,
+    kind: 'api',
+    access: 'authenticated',
+    securityProfile: 'pdf',
   },
   {
     path: PASSKEY_PATH,

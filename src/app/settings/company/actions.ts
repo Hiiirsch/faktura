@@ -12,8 +12,10 @@ import {
   type CompanyProfileData,
   getCompanyProfile,
   saveCompanyProfile,
+  setCompanyLetterhead,
   setCompanyLogo,
 } from '@/application/company/company-profile';
+import { storeLetterheadAsset } from '@/application/company/letterhead';
 import { deleteAsset } from '@/application/assets/asset-service';
 import { isCountryCode } from '@/domain/codes/country-code';
 import { isCurrencyCode } from '@/domain/codes/currency-code';
@@ -272,6 +274,92 @@ export async function removeLogoAction(formData: FormData): Promise<void> {
 
   await setCompanyLogo(authorized, null, session.userId, context.ipAddress);
   await deleteAsset(authorized, profile.logoAssetId);
+
+  revalidatePath(COMPANY_SETTINGS_PATH);
+}
+
+export type LetterheadFormState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'saved' }
+  | { readonly status: 'error'; readonly message: string };
+
+const LETTERHEAD_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  EMPTY: messages.company.letterheadEmpty,
+  TOO_LARGE: messages.company.letterheadTooLarge,
+  NOT_A_PDF: messages.company.letterheadNotPdf,
+  ACTIVE_CONTENT: messages.company.letterheadActiveContent,
+  UNREADABLE: messages.company.letterheadUnreadable,
+  MULTIPLE_PAGES: messages.company.letterheadMultiplePages,
+  NOT_A4: messages.company.letterheadNotA4,
+};
+
+/**
+ * Briefpapier hochladen (M12, FA-TPL-11).
+ *
+ * Derselbe Ablauf wie beim Logo, einschließlich der Rücknahme: Scheitert die
+ * Verknüpfung, verschwindet die eben geschriebene Datei wieder. Ein ersetztes
+ * Briefpapier wird entfernt — es steckt danach in keinem neuen Beleg mehr, und
+ * die festgeschriebenen tragen ihr PDF ohnehin fertig bei sich (FA-PDF-13).
+ */
+export async function uploadLetterheadAction(
+  _previous: LetterheadFormState,
+  formData: FormData,
+): Promise<LetterheadFormState> {
+  try {
+    await assertRequestIntegrity(formData);
+  } catch {
+    return { status: 'error', message: messages.common.rejected };
+  }
+
+  const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'companyProfile.read', 'companyProfile.update');
+  const file = formData.get('letterhead');
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: 'error', message: messages.company.letterheadEmpty };
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const result = await storeLetterheadAsset(authorized, bytes, file.type, file.name);
+
+  if (!result.ok) {
+    return {
+      status: 'error',
+      message: LETTERHEAD_ERROR_MESSAGES[result.error.kind] ?? messages.company.letterheadNotPdf,
+    };
+  }
+
+  const context = await readRequestContext();
+  const previous = await getCompanyProfile(authorized);
+
+  try {
+    await setCompanyLetterhead(authorized, result.value.id, session.userId, context.ipAddress);
+  } catch {
+    await deleteAsset(authorized, result.value.id);
+    return { status: 'error', message: messages.company.letterheadNotLinked };
+  }
+
+  if (previous?.letterheadAssetId != null) {
+    await deleteAsset(authorized, previous.letterheadAssetId);
+  }
+
+  revalidatePath(COMPANY_SETTINGS_PATH);
+  return { status: 'saved' };
+}
+
+export async function removeLetterheadAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'companyProfile.read', 'companyProfile.update');
+  const context = await readRequestContext();
+
+  const profile = await getCompanyProfile(authorized);
+  if (profile?.letterheadAssetId == null) {
+    return;
+  }
+
+  await setCompanyLetterhead(authorized, null, session.userId, context.ipAddress);
+  await deleteAsset(authorized, profile.letterheadAssetId);
 
   revalidatePath(COMPANY_SETTINGS_PATH);
 }

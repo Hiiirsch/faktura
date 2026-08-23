@@ -36,7 +36,7 @@ model Organization {
   /// Ansprechpartner, Vereinbarungen, Hinweise zum Betrieb. Sie erreicht den
   /// Mandanten **nie**: Keine Funktion außerhalb von `platform-repository.ts`
   /// liest sie, und der Datenexport kennt sie nicht.
-  note      String?
+  note String?
 
   /// Stillgelegt durch den Betreiber (M8, FA-ORG-03). Beendet alle Sitzungen
   /// und weist die Anmeldung ab — ohne Daten zu löschen.
@@ -93,7 +93,12 @@ model CompanyProfile {
   bankName          String?
 
   logoAssetId String?
-  logoAsset   Asset?  @relation(fields: [logoAssetId], references: [id])
+  logoAsset   Asset?  @relation("CompanyProfileLogo", fields: [logoAssetId], references: [id])
+
+  /// Briefpapier: eine einseitige A4-PDF, die unter jeden Beleg gelegt wird
+  /// (FA-TPL-11). Traegt nur Gestaltung, keine Angaben.
+  letterheadAssetId String?
+  letterheadAsset   Asset?  @relation("CompanyProfileLetterhead", fields: [letterheadAssetId], references: [id])
 
   defaultPaymentTerms       Int      @default(14)
   /// Steuersatz in Basispunkten: 1900 = 19 %. Deckt auch Sätze mit
@@ -172,7 +177,8 @@ model Asset {
   storagePath    String
   createdAt      DateTime     @default(now())
 
-  companyProfiles CompanyProfile[]
+  companyProfilesAsLogo       CompanyProfile[] @relation("CompanyProfileLogo")
+  companyProfilesAsLetterhead CompanyProfile[] @relation("CompanyProfileLetterhead")
 
   @@index([organizationId])
 }
@@ -465,15 +471,15 @@ model User {
   /// Gesetzt heißt: Adresse durch einen Platzhalter ersetzt, Name geleert,
   /// Zugangsdaten unbrauchbar, alle Anmeldespuren entfernt. Die Anzeige zeigt
   /// dann „Gelöschtes Konto" statt der Platzhalteradresse.
-  anonymizedAt   DateTime?
+  anonymizedAt DateTime?
 
-  lastLoginAt    DateTime?
+  lastLoginAt DateTime?
   /// Optional, weil sie beim Anlegen über die Migration erst gesetzt wird und
   /// weil `onDelete: Restrict` eine benutzte Rolle vor dem Löschen schützt.
-  roleId         String?
-  role           Role?        @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  roleId      String?
+  role        Role?     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   sessions        Session[]
   recoveryCodes   RecoveryCode[]

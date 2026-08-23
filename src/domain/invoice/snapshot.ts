@@ -35,6 +35,17 @@ export type SellerSnapshot = PartySnapshot & {
    * fehlendes Logo ist kein Fehler, nur ein Beleg ohne Logo.
    */
   readonly logoAssetId?: string | null;
+
+  /**
+   * Das Briefpapier, das beim Festschreiben galt (M12, FA-TPL-11).
+   *
+   * Aus demselben Grund die Kennung und nicht die Bytes wie beim Logo — und
+   * aus demselben Grund überhaupt im Snapshot: Wer sein Briefpapier später
+   * austauscht, ändert damit keinen bereits ausgestellten Beleg.
+   *
+   * Bestandsbelege tragen `undefined`.
+   */
+  readonly letterheadAssetId?: string | null;
   readonly taxNumber: string | null;
   readonly registerCourt: string | null;
   readonly registerNumber: string | null;

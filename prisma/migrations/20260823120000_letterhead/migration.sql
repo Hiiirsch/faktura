@@ -1,0 +1,13 @@
+-- Briefpapier je Unternehmen (M12, B2, FA-TPL-11)
+--
+-- Eine leere PDF-Seite, die unter jeden Beleg gelegt wird: Das Unternehmen
+-- gestaltet sie im Werkzeug seiner Wahl, Faktura bleibt ein Satzprogramm nach
+-- DIN 5008. Was darauf steht, ist Schmuck -- Logo, Blattfuss und
+-- Pflichtangaben setzt weiterhin die Vorlage.
+--
+-- **Reines ADD COLUMN, kein Neuaufbau.** Ein Neuaufbau von "CompanyProfile"
+-- naehme die beiden Trigger CompanyProfile_organization_matches_* mit, die den
+-- Mandanten der verknuepften Zeilen pruefen. SQLite erlaubt ADD COLUMN mit
+-- REFERENCES, solange die Spalte nullable ist und keine Vorgabe traegt --
+-- beides trifft zu.
+ALTER TABLE "CompanyProfile" ADD COLUMN "letterheadAssetId" TEXT REFERENCES "Asset"("id");

@@ -45,6 +45,8 @@ export type CompanyProfileData = {
 export type CompanyProfile = CompanyProfileData & {
   readonly id: string;
   readonly logoAssetId: string | null;
+  /** Briefpapier: eine einseitige A4-PDF unter dem Beleg (M12, FA-TPL-11). */
+  readonly letterheadAssetId: string | null;
   readonly invoiceNumberFormat: string;
   readonly updatedAt: Date;
 };
@@ -218,5 +220,33 @@ export async function setCompanyLogo(
     actorId,
     ipAddress,
     details: { changedFields: 'logoAssetId' },
+  });
+}
+
+/**
+ * Verknüpft oder entfernt das Briefpapier (M12, FA-TPL-11).
+ *
+ * `upsert` aus demselben Grund wie beim Logo: Wer das Briefpapier hochlädt,
+ * bevor er die Firmendaten erfasst hat, soll keine Datenbankausnahme sehen.
+ */
+export async function setCompanyLetterhead(
+  context: Authorized<'companyProfile.update'>,
+  assetId: string | null,
+  actorId: string,
+  ipAddress: string | null,
+): Promise<void> {
+  await upsertCompanyProfile(
+    context,
+    { ...EMPTY_COMPANY_PROFILE, letterheadAssetId: assetId },
+    { letterheadAssetId: assetId },
+  );
+
+  await recordAuditEntry(context, {
+    entityType: 'CompanyProfile',
+    entityId: context.organizationId,
+    action: 'UPDATED',
+    actorId,
+    ipAddress,
+    details: { changedFields: 'letterheadAssetId' },
   });
 }
