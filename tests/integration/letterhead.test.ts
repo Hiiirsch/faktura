@@ -19,12 +19,14 @@ import {
   setCompanyLetterhead,
 } from '@/application/company/company-profile';
 import { storeLetterheadAsset } from '@/application/company/letterhead';
-import { readAssetContent } from '@/application/assets/asset-service';
+import { deleteAsset, readAssetContent } from '@/application/assets/asset-service';
 import { createCustomer } from '@/application/customers/customer-service';
 import { getOrCreateInvoicePdf, renderInvoicePdf } from '@/application/documents/render-invoice';
 import { createDraftInvoice } from '@/application/invoices/invoice-service';
 import { issueInvoice } from '@/application/invoices/issue-invoice';
 import { MAX_LETTERHEAD_BYTES } from '@/domain/assets/pdf-upload';
+
+import { findAsset } from '@/infrastructure/repositories/asset-repository';
 
 import { customerBuyer } from '../support/buyer';
 
@@ -188,6 +190,44 @@ describe('FA-TPL-11 Das Briefpapier hängt am Unternehmen', () => {
 
     await setCompanyLetterhead(org, null, ACTOR, null);
     expect((await getCompanyProfile(org))?.letterheadAssetId).toBeNull();
+  });
+
+  it('ersetzt beim Austauschen den alten Bogen vollständig', async () => {
+    /*
+     * Der Auftraggeber hat gemeldet, das Löschen habe nicht gewirkt: Nach dem
+     * Hochladen eines neuen Bogens erschien der alte. Die Datenlage war
+     * richtig — es lag am Zwischenspeicher des Browsers unter einer festen
+     * Adresse. Dieser Test hält die Datenlage fest, damit die eine Hälfte der
+     * Antwort belegt ist und nicht behauptet.
+     */
+    const alt = await storeLetterheadAsset(
+      org,
+      await a4Letterhead(),
+      'application/pdf',
+      'alt.pdf',
+    );
+    expect(alt.ok).toBe(true);
+    if (!alt.ok) return;
+    await setCompanyLetterhead(org, alt.value.id, ACTOR, null);
+
+    // Ein anderer Bogen, damit die Prüfsummen sich unterscheiden.
+    const neu = await storeLetterheadAsset(
+      org,
+      await pdfWithPages([[595.276, 841.89]]),
+      'application/pdf',
+      'neu.pdf',
+    );
+    expect(neu.ok).toBe(true);
+    if (!neu.ok) return;
+    await setCompanyLetterhead(org, neu.value.id, ACTOR, null);
+    await deleteAsset(org, alt.value.id);
+
+    // Das Profil zeigt auf den neuen …
+    expect((await getCompanyProfile(org))?.letterheadAssetId).toBe(neu.value.id);
+
+    // … und vom alten ist weder Datensatz noch Datei übrig.
+    expect(await findAsset(org, alt.value.id)).toBeNull();
+    await expect(readAssetContent(alt.value)).rejects.toThrow();
   });
 
   it('lässt sich hinterlegen, bevor die Firmendaten erfasst sind', async () => {

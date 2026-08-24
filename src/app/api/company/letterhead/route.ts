@@ -61,7 +61,22 @@ export async function GET(): Promise<NextResponse> {
       'Content-Length': String(asset.byteSize),
       'X-Content-Type-Options': 'nosniff',
       'Content-Disposition': `inline; filename="${encodeURIComponent(asset.fileName)}"`,
-      'Cache-Control': 'private, max-age=60',
+      /*
+       * **Nicht zwischenspeichern.**
+       *
+       * Diese Adresse ist fest, ihr Inhalt nicht: Wer sein Briefpapier
+       * austauscht, bekommt unter demselben Pfad eine andere Datei. Mit
+       * `max-age=60` zeigte der Browser danach bis zu eine Minute lang den
+       * alten Bogen — für den Benutzer sah es aus, als hätte das Löschen nicht
+       * gewirkt.
+       *
+       * Beim Logo tritt das nicht auf, weil seine Kennung im Pfad steht
+       * (`assetPath(id)`): Ein neues Bild ist eine neue Adresse. Hier ist der
+       * Pfad absichtlich ohne Kennung — es gibt je Unternehmen genau ein
+       * Briefpapier —, und dann muss die Zwischenspeicherung weg. Für **eine**
+       * kleine Datei auf einer Verwaltungsseite ist das kein Verlust.
+       */
+      'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
     },
   });
 }

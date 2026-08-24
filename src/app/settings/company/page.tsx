@@ -98,7 +98,13 @@ export default async function CompanySettingsPage(): Promise<ReactNode> {
               */}
               <div className="bg-sheet shadow-sheet">
                 <iframe
-                  src={COMPANY_LETTERHEAD_PATH}
+                  /*
+                    Die Kennung reist als Version mit. Der Pfad allein ist fest,
+                    sein Inhalt nicht — ein ausgetauschter Bogen bekommt so eine
+                    andere Adresse, und weder Browser noch ein Zwischenspeicher
+                    unterwegs kann den alten liefern.
+                  */
+                  src={`${COMPANY_LETTERHEAD_PATH}?v=${saved.letterheadAssetId}`}
                   title={messages.company.letterheadPreviewTitle}
                   className="h-sheet-view w-full border-0"
                 />

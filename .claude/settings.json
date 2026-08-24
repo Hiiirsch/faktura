@@ -4,7 +4,15 @@
       "Bash(npx tsx *)",
       "Bash(node probe-count.mjs)",
       "Bash(cp /tmp/actions.bak src/app/catalog/actions.ts)",
-      "Bash(rm -f /tmp/actions.bak)"
+      "Bash(rm -f /tmp/actions.bak)",
+      "Bash(curl -sk -o /dev/null -w \"%{http_code} \" https://localhost/settings/company)",
+      "Bash(curl -sk -o /dev/null -w \"%{http_code}\\\\n\" https://localhost/api/health)",
+      "Bash(curl -s -o /dev/null -w \"http/80: %{http_code}\\\\n\" http://localhost/api/health)",
+      "Bash(curl -s http://localhost/api/health)",
+      "Bash(curl -s -o /dev/null -w \"company-Seite: %{http_code} → %{redirect_url}\\\\n\" http://localhost/settings/company)",
+      "Bash(sqlite3 data/faktura.db \"select organizationId, logoAssetId, letterheadAssetId from CompanyProfile;\")",
+      "Bash(sqlite3 data/faktura.db \"select id, fileName, mimeType, byteSize, datetime\\(createdAt\\) from Asset order by createdAt;\")",
+      "Bash(curl -s -o /dev/null -w \"health: %{http_code}\\\\n\" http://localhost/api/health)"
     ],
     "additionalDirectories": [
       "/tmp"
