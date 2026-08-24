@@ -688,18 +688,24 @@ Steuersumme bei gemischten Sätzen (A2) und der nie geprüfte Kundenumzug (A6).
 | A6 | Kundenumzug | belegt, **Lücke geschlossen** | `document-output.test.ts` — der Snapshot war gebaut, aber nie hatte jemand einen Kunden umgezogen und nachgesehen |
 | A7 | Bösartige Vorlage | belegt | `rendering.test.ts` (kein ausgehender Zugriff, kein Skript), `document-output.test.ts` (verständliche Meldung bei Syntaxfehler) |
 | A8 | Zugriffsschutz | belegt | `route-protection.test.ts` — 82 Prüfungen über jede Route in `routes.ts` |
-| A9 | Wiederherstellung | **teilweise** | `backup.test.ts` prüft Erzeugen, Auspacken und Gleichheit von Belegen und PDFs. **Offen bleibt der Ernstfall**: Container und Volumes löschen und aus der Sicherung neu aufsetzen — das kann kein Test tun, ohne die Anlage abzuräumen |
+| A9 | Wiederherstellung | **abgenommen** (2026-08-24) | `backup.test.ts` prüft Erzeugen, Auspacken und Gleichheit von Belegen und PDFs. Den Ernstfall — Container und Volumes löschen, aus der Sicherung neu aufsetzen — hat der Auftraggeber selbst durchgespielt; kein Test kann das tun, ohne die Anlage abzuräumen |
 | A10 | Passkey statt Passwort | belegt | `browser-passkey.test.ts` mit nachgebautem Authenticator; Entfernen und erneuter Versuch in `passkeys.test.ts` |
 | A11 | Vertrautes Gerät | belegt | `two-step-login.test.ts` — ohne Ankreuzen kein Gerät, fremdes Konto, Ablauf, Verfall beim Zurücksetzen |
 | A12 | Zurück aus der Sackgasse | belegt | `platform-admin.test.ts` — Einladung erneut ausstellen, Zurücksetzungsnachweis, `actorKind: ADMIN` im Protokoll des Unternehmens |
 | A13 | Zweiter Betreiber | belegt | `platform-accounts.test.ts` — einladen, letztes aktives Konto nicht sperrbar, Zurücksetzen desselben Kontos erlaubt |
 | A14 | Konto unkenntlich machen | belegt | `platform-admin.test.ts` — Belege unverändert, Protokolleintrag auflösbar, keine Anmeldung mehr möglich, Vorgang in beiden Protokollen |
 | A15 | Was die Verwaltung sieht | belegt | `platform-admin.test.ts` (nur Kennzahlen, Notiz nicht im Export), `tests/architecture/platform-repository.test.ts` (Wächter über die Delegates) |
-| A16 | Beleg eines Kleinunternehmers | **offen — beim Auftraggeber** | Die Bestandteile sind belegt (`document-output.test.ts`, `letterhead.test.ts`), das Aussehen ist eine Sichtprüfung |
+| A16 | Beleg eines Kleinunternehmers | **abgenommen** (2026-08-24) | Die Bestandteile sind belegt (`document-output.test.ts`, `letterhead.test.ts`); das Aussehen hat der Auftraggeber am erzeugten Beleg geprüft |
 | A17 | Eigenes Briefpapier | belegt | `letterhead.test.ts` (eine Seite, A4, Bogen auf **jeder** Seite, Hash nach Austausch unverändert), `browser-letterhead.test.ts` |
 | A18 | Gespeichert heißt gespeichert | belegt | `tests/architecture/save-feedback.test.ts`, `browser-invoice-editor.test.ts` (Fehler im Blickfeld) |
 | A19 | Impressum und Datenschutz | belegt | `legal-notices.test.ts`, `browser-legal.test.ts` — 404 ohne Inhalt, ohne Sitzung erreichbar, Markup bleibt Text |
 
-**Was der Auftraggeber noch selbst tun muss:** A16 (Sichtprüfung des Belegs)
-und der Ernstfall aus A9 (Wiederherstellung nach vollständigem Verlust). Alles
-andere läuft bei jedem Testlauf mit.
+**Stand: alle neunzehn Szenarien durch.** Siebzehn laufen bei jedem Testlauf
+mit; die beiden, die kein Test führen kann — die Sichtprüfung des Belegs (A16)
+und die Wiederherstellung nach vollständigem Verlust (A9) —, hat der
+Auftraggeber am 2026-08-24 selbst durchgespielt und bestätigt.
+
+Damit ist die Bedingung aus Katalog §19 erfüllt: „Manuell durchzuspielen, bevor
+V1 als fertig gilt." Die **Abnahme der Meilensteine M5 bis M13** ist davon
+unberührt und steht weiterhin aus — die Szenarien prüfen das Verhalten, nicht
+die Vollständigkeit der IDs.
