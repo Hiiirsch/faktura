@@ -425,6 +425,8 @@ export const messages = {
     back: 'Zurück',
     saved: 'Die Änderungen wurden gespeichert.',
     chooseFile: 'Datei auswählen',
+    passwordShow: 'Passwort anzeigen',
+    passwordHide: 'Passwort verbergen',
     noFileChosen: 'Keine Datei ausgewählt',
     optional: 'optional',
     required: 'Pflichtfeld',

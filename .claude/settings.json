@@ -42,7 +42,14 @@
       "Bash(git merge *)",
       "Bash(git mv *)",
       "Bash(echo \"VERIFY $?\")",
-      "Bash(awk -F'|' '/^\\\\| NFA-COMP-0[789] \\\\|/ {print NF-2}' FORTSCHRITT.md)"
+      "Bash(awk -F'|' '/^\\\\| NFA-COMP-0[789] \\\\|/ {print NF-2}' FORTSCHRITT.md)",
+      "Bash(curl -s -o /dev/null -w \"impressum ohne Anmeldung: %{http_code}\\\\n\" http://localhost/impressum)",
+      "Bash(curl -s -o /dev/null -w \"datenschutz ohne Anmeldung: %{http_code}\\\\n\" http://localhost/datenschutz)",
+      "Bash(curl -s http://localhost/datenschutz)",
+      "Bash(curl -s -o /dev/null -w \"admin/legal ohne Sitzung: %{http_code} → %{redirect_url}\\\\n\" http://localhost/admin/legal)",
+      "Bash(sqlite3 data/faktura.db \"select email, disabledAt is null as aktiv from AdminUser;\")",
+      "Bash(grep -oE \"^\\\\| [A-Z-]+-[0-9]+ \\\\| [^|]{0,70}\")",
+      "Bash(awk -F'|' '/^\\\\| FA-UI-29 \\\\|/ {print NF-2}' FORTSCHRITT.md faktura-frontend-design.md)"
     ],
     "additionalDirectories": [
       "/tmp"

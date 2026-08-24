@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { loadInvitation } from '@/application/members/redeem';
 import { MIN_PASSWORD_LENGTH } from '@/domain/auth/password-policy';
 import { messages } from '@/i18n/de';
+import { PasswordField } from '@/ui/components/password-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { LOGIN_PATH } from '@/routes';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
@@ -112,31 +113,21 @@ export default async function InvitationPage({
           </span>
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">{messages.invitation.password}</span>
-          <input
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            className={INPUT_CLASS}
-          />
-        </label>
+        <PasswordField
+          name="password"
+          label={messages.invitation.password}
+          autoComplete="new-password"
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+        />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">
-            {messages.invitation.passwordRepeat}
-          </span>
-          <input
-            name="passwordRepeat"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            className={INPUT_CLASS}
-          />
-        </label>
+        <PasswordField
+          name="passwordRepeat"
+          label={messages.invitation.passwordRepeat}
+          autoComplete="new-password"
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+        />
 
         <button type="submit" className={PRIMARY_BUTTON_CLASS}>
           {messages.invitation.submit}
