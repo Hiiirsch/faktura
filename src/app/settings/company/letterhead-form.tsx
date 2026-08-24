@@ -5,7 +5,8 @@ import type { ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
-import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { FileField } from '@/ui/components/file-field';
+import { Alert, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 import { SaveToast } from '@/ui/components/toast';
 
 import { type LetterheadFormState, uploadLetterheadAction } from './actions';
@@ -25,19 +26,12 @@ export function LetterheadForm({ csrfToken }: { readonly csrfToken: string }): R
         message={messages.company.letterheadSaved}
       />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="letterhead" className="text-ui font-medium">
-          {messages.company.letterheadUpload}
-        </label>
-        <input
-          id="letterhead"
-          name="letterhead"
-          type="file"
-          accept="application/pdf"
-          required
-          className={INPUT_CLASS}
-        />
-      </div>
+      <FileField
+        name="letterhead"
+        label={messages.company.letterheadUpload}
+        accept="application/pdf"
+        required
+      />
 
       <div>
         <button type="submit" className={PRIMARY_BUTTON_CLASS}>

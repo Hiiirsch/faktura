@@ -16,6 +16,7 @@ import {
   TEXTAREA_CLASS,
   TextField,
 } from '@/ui/components/form';
+import { FileField } from '@/ui/components/file-field';
 import { SaveToast } from '@/ui/components/toast';
 
 import {
@@ -278,18 +279,11 @@ export function TemplateEditorForm({
           />
 
           <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="file" className="text-ui font-medium text-ink">
-                {messages.templates.uploadFile}
-              </label>
-              <input
-                id="file"
-                name="file"
-                type="file"
-                accept=".html,.htm,.css,.zip"
-                className={INPUT_CLASS}
-              />
-            </div>
+            <FileField
+              name="file"
+              label={messages.templates.uploadFile}
+              accept=".html,.htm,.css,.zip"
+            />
             <button type="submit" className={SECONDARY_BUTTON_CLASS}>
               {messages.templates.upload}
             </button>

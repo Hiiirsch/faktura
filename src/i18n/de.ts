@@ -424,6 +424,8 @@ export const messages = {
     working: 'Wird ausgeführt',
     back: 'Zurück',
     saved: 'Die Änderungen wurden gespeichert.',
+    chooseFile: 'Datei auswählen',
+    noFileChosen: 'Keine Datei ausgewählt',
     optional: 'optional',
     required: 'Pflichtfeld',
     none: '—',

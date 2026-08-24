@@ -5,7 +5,8 @@ import type { ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
-import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { FileField } from '@/ui/components/file-field';
+import { Alert, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 import { SaveToast } from '@/ui/components/toast';
 
 import { type LogoFormState, uploadLogoAction } from './actions';
@@ -25,19 +26,12 @@ export function LogoForm({ csrfToken }: { readonly csrfToken: string }): ReactNo
         message={messages.company.logoSaved}
       />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="logo" className="text-ui font-medium">
-          {messages.company.logoUpload}
-        </label>
-        <input
-          id="logo"
-          name="logo"
-          type="file"
-          accept="image/png,image/jpeg,image/svg+xml"
-          required
-          className={INPUT_CLASS}
-        />
-      </div>
+      <FileField
+        name="logo"
+        label={messages.company.logoUpload}
+        accept="image/png,image/jpeg,image/svg+xml"
+        required
+      />
 
       <div>
         <button type="submit" className={PRIMARY_BUTTON_CLASS}>
