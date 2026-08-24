@@ -425,6 +425,37 @@ Die Vorschau in den Firmendaten ist das PDF selbst, über eine eigene Route mit
 dem Profil `pdf`. Unter `assetPath()` mit `sandbox` startet der eingebaute
 Betrachter des Browsers nicht (M5.6).
 
+## Der tote Knopf im Dialog (seit M12)
+
+**Ein modaler Dialog macht alles hinter sich `inert`.** Ist im Formular ein
+Pflichtfeld leer, will der Browser es beim Absenden anspringen, kann es nicht —
+und bricht das Absenden **wortlos** ab. Keine Meldung, keine Bewegung, ein
+toter Knopf; der einzige Hinweis ist ein Satz in der Konsole:
+`An invalid form control … is not focusable`.
+
+Gemeldet wurde das als „der Klick auf Festschreiben geht nicht", und genau so
+sah es aus. `ConfirmDialog` prüft deshalb **vor** dem Öffnen, solange das
+Formular noch bedienbar ist: Bei einem ungültigen Feld erscheint die Rückfrage
+gar nicht — es gäbe nichts zu bestätigen —, sondern der Browser springt das
+Feld an und sagt, was fehlt.
+
+Dazu die Gegenrichtung: Lehnt der **Server** ab, steht die Meldung oben im
+Formular und der Knopf unten. Der Editor holt den Blick jetzt dorthin
+(`scrollIntoView` + `focus`), sonst sieht auch das aus wie „der Knopf tut
+nichts". Es ist dieselbe Lücke wie bei den Bestätigungen in B4, nur andersherum.
+
+**Zwei Fallen dabei, beide in Tests:**
+
+- `[role="alert"]` trifft auch den **Routenansager von Next**, der den
+  Seitentitel vorliest. Ein Test, der darauf zielt, prüft einen fremden Knoten
+  und ist grün, ohne etwas zu beweisen. Unsere Meldungen tragen deshalb
+  `data-alert`.
+- **Festschreiben speichert zuerst den Formularstand** — sonst schriebe man
+  etwas anderes fest als das Sichtbare. Ein Test, der einen unvollständigen
+  Stand absendet, hinterlässt damit einen unvollständigen Entwurf. Die
+  Browsertests legen sich deshalb ihre Entwürfe selbst an (Duplizieren), statt
+  sich den einen aus dem Ausgangsbestand zu teilen.
+
 ## Die Vorschau gehört der Anwendung (seit M12)
 
 **Der eingebaute Betrachter des Browsers ist raus.** Er war eine eigene

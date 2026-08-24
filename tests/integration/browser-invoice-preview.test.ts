@@ -32,10 +32,22 @@ async function login(page: Page): Promise<void> {
   await page.waitForURL(`${TEST_BASE_URL}/`, { timeout: 15_000 });
 }
 
-/** Die Kennung des offenen Entwurfs aus dem Bestand des Testservers. */
+/**
+ * Öffnet einen **eigenen** Entwurf: eine Kopie eines beliebigen Belegs.
+ *
+ * Nicht den Entwurf aus dem Ausgangsbestand: Den schreibt
+ * `browser-invoice-editor.test.ts` fest, und die Browsertests teilen sich einen
+ * Server. Wer denselben Entwurf erwartet, hängt an der Reihenfolge der Dateien
+ * — ein Fehlschlag, der beim Einzellauf verschwindet und niemandem erklärt,
+ * woran es lag. Das Duplizieren kostet zwei Klicks und nimmt die Frage weg.
+ */
 async function openDraft(page: Page): Promise<void> {
-  await page.goto(`${TEST_BASE_URL}/invoices?status=DRAFT`, { waitUntil: 'networkidle' });
+  await page.goto(`${TEST_BASE_URL}/invoices`, { waitUntil: 'networkidle' });
   await page.click('table a[href^="/invoices/"]');
+  await page.waitForSelector('canvas[aria-label]', { timeout: 30_000 });
+
+  await page.click('button:has-text("Duplizieren")');
+  await page.waitForSelector('textarea[name="introText"]', { timeout: 30_000 });
   await page.waitForSelector('canvas[aria-label]', { timeout: 30_000 });
 }
 

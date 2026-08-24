@@ -18,7 +18,8 @@
       "Bash(awk -F'|' '/^\\\\| FA-CALC-06 \\\\|/ {print NF-2}' FORTSCHRITT.md)",
       "Bash(npm view *)",
       "Bash(npm install *)",
-      "Bash(awk -F'|' '/^\\\\| FA-PDF-02 \\\\|/ {print NF-2}' FORTSCHRITT.md)"
+      "Bash(awk -F'|' '/^\\\\| FA-PDF-02 \\\\|/ {print NF-2}' FORTSCHRITT.md)",
+      "Bash(grep -B 3 -A 12 \"öffnet die Rückfrage und schreibt fest$\" /private/tmp/claude-501/-Users-tim-private-faktura/36c97d69-fd8c-450f-acc5-b10c30f80d1a/scratchpad/bie3.log)"
     ],
     "additionalDirectories": [
       "/tmp"

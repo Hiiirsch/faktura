@@ -90,6 +90,8 @@ export function PdfViewer({
   const rootRef = useRef<HTMLDivElement | null>(null);
   /** Woher der Zug begann: Zeigerposition und Rollstand in diesem Moment. */
   const dragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  /** Die laufende Zeichnung — eine neue bricht sie ab, statt daneben zu laufen. */
+  const renderTaskRef = useRef<PdfRenderTask | null>(null);
   /* Das geladene Dokument überlebt das Blättern; `unknown`, weil der Typ aus
      einem dynamischen Import stammt und die Domain-Regel kein `any` erlaubt. */
   const documentRef = useRef<PdfDocument | null>(null);
@@ -170,7 +172,28 @@ export function PdfViewer({
     // Was tatsächlich gesetzt wurde, steht danach auf dem Knopf.
     setShownFactor(factor);
 
-    await rendered.render({ canvas, canvasContext: context, viewport }).promise;
+    /*
+     * **Erst abbrechen, dann zeichnen.** Zwei Zeichnungen auf derselben
+     * Leinwand weist pdf.js ab, und das trifft im Alltag zu: Wer zweimal schnell
+     * auf „Größer" drückt, löst die zweite aus, während die erste läuft. Der
+     * Abbruch endet in einer Ablehnung, die hier erwartet wird und nichts
+     * bedeutet — die neue Zeichnung ist ja schon unterwegs.
+     */
+    renderTaskRef.current?.cancel();
+
+    const task = rendered.render({ canvas, canvasContext: context, viewport });
+    renderTaskRef.current = task;
+
+    try {
+      await task.promise;
+    } catch {
+      // Abgebrochen oder gescheitert: Beides ist kein Grund, die Ansicht
+      // abzuräumen — auf der Leinwand steht dann eben noch das Vorherige.
+    } finally {
+      if (renderTaskRef.current === task) {
+        renderTaskRef.current = null;
+      }
+    }
   }, []);
 
   // Laden: bei jeder neuen Adresse von vorn.
@@ -227,13 +250,23 @@ export function PdfViewer({
     };
   }, [src]);
 
-  // Zeichnen: nach dem Laden, beim Blättern, beim Zoomen.
+  /*
+   * Zeichnen: nach dem Laden, beim Blättern, beim Zoomen — und beim Wechsel
+   * ins Vollbild, weil dort eine andere Spalte gilt.
+   *
+   * **Ein** Effekt, nicht zwei. Vorher stand der Vollbildfall in einem eigenen
+   * mit fast denselben Abhängigkeiten: Bei jeder Änderung liefen beide, also
+   * zwei Zeichnungen gleichzeitig auf derselben Leinwand. pdf.js weist das mit
+   * einer Ausnahme ab („Cannot use the same canvas during multiple render
+   * operations"), die als unbehandelter Seitenfehler endete. Aufgefallen ist
+   * sie in einer Browserprobe zu einer ganz anderen Frage.
+   */
   useEffect(() => {
     if (state.kind !== 'ready') {
       return;
     }
     void drawPage(pageNumber, zoom);
-  }, [drawPage, pageNumber, state, zoom]);
+  }, [drawPage, fullscreen, pageNumber, state, zoom]);
 
   /*
    * Und bei geänderter Breite erneut: Die Grundgröße ist „passt in die Spalte",
@@ -347,14 +380,6 @@ export function PdfViewer({
       document.removeEventListener('fullscreenchange', handler);
     };
   }, []);
-
-  // Im Vollbild ist die Spalte eine andere: neu einpassen.
-  useEffect(() => {
-    if (state.kind !== 'ready') {
-      return;
-    }
-    void drawPage(pageNumber, zoom);
-  }, [drawPage, fullscreen, pageNumber, state, zoom]);
 
   /**
    * Eine Stufe größer oder kleiner.
@@ -579,11 +604,16 @@ type PdfDocument = {
 
 type PdfViewport = { readonly width: number; readonly height: number };
 
+type PdfRenderTask = {
+  readonly promise: Promise<void>;
+  cancel(): void;
+};
+
 type PdfPage = {
   getViewport(options: { scale: number }): PdfViewport;
   render(options: {
     canvas: HTMLCanvasElement;
     canvasContext: CanvasRenderingContext2D;
     viewport: PdfViewport;
-  }): { promise: Promise<void> };
+  }): PdfRenderTask;
 };

@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useActionState, useEffect, useId, useMemo, useState } from 'react';
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import Link from 'next/link';
@@ -385,6 +385,8 @@ export function InvoiceEditor({
 }): ReactNode {
   const [saveState, saveAction] = useActionState(saveDraftAction, INITIAL_STATE);
   const [issueState, issueAction] = useActionState(issueInvoiceAction, INITIAL_STATE);
+  /** Die Fehlermeldung des Formulars — zum Anfahren nach einem Fehlschlag. */
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
   const [buyerMode, setBuyerMode] = useState<BuyerMode>(initial.buyer.mode);
   const [customerId, setCustomerId] = useState(initial.buyer.customerId);
@@ -525,6 +527,29 @@ export function InvoiceEditor({
         ? saveState.messages
         : [];
 
+  /*
+   * **Eine Meldung, die niemand sieht, ist keine** (M12, FA-UI-10).
+   *
+   * Die Fehler stehen oben im Formular, „Festschreiben" steht unten. Schlug es
+   * fehl, schloss sich der Dialog und im Blickfeld passierte nichts — für den
+   * Benutzer sah das aus, als täte der Knopf nichts. Es ist dieselbe Lücke, die
+   * B4 für die Bestätigungen geschlossen hat, nur andersherum.
+   *
+   * Der Fehler bleibt trotzdem oben und wandert nicht an den Knopf: Er gehört
+   * zum Formular, nicht zur Handlung, und die einzelnen Feldfehler stehen
+   * ohnehin an ihren Feldern. Gebracht wird der Blick, nicht die Meldung.
+   *
+   * `focus()` statt nur `scrollIntoView()`: Ein Screenreader liest die Meldung
+   * dann vor, und die Tastaturbedienung setzt dort auf.
+   */
+  useEffect(() => {
+    if (errors.length === 0) {
+      return;
+    }
+    errorRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    errorRef.current?.focus();
+  }, [errors.length, issueState, saveState]);
+
   return (
     <form className="flex flex-col gap-6" onChange={touch}>
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
@@ -533,7 +558,7 @@ export function InvoiceEditor({
       )}
 
       {errors.length > 0 ? (
-        <Alert tone="error">
+        <Alert tone="error" ref={errorRef}>
           <span className="flex flex-col gap-1">
             {errors.map((message) => (
               <span key={message}>{message}</span>

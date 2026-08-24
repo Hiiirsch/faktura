@@ -72,6 +72,34 @@ export function ConfirmDialog({
           if (element === null) {
             return;
           }
+
+          /*
+           * **Erst prüfen, dann fragen** (M12).
+           *
+           * Ein modaler Dialog macht alles hinter sich `inert`. Ist im Formular
+           * ein Pflichtfeld leer, will der Browser es beim Absenden anspringen,
+           * kann es nicht — und bricht das Absenden **wortlos** ab. Für den
+           * Benutzer tat der Knopf im Dialog dann gar nichts: keine Meldung,
+           * keine Bewegung, nur ein Satz in der Konsole, den niemand sieht
+           * („An invalid form control … is not focusable").
+           *
+           * Gemeldet wurde das als „der Klick auf Festschreiben geht nicht",
+           * und genau so sah es aus.
+           *
+           * Deshalb wird **vor** dem Öffnen geprüft, solange das Formular noch
+           * bedienbar ist: `reportValidity()` springt das erste ungültige Feld
+           * an und sagt, was fehlt. Die Rückfrage erscheint dann gar nicht —
+           * es gäbe ja nichts zu bestätigen.
+           */
+          const button = (event.target as HTMLElement).closest('button');
+          const form = button?.form ?? null;
+
+          if (button?.type === 'submit' && form !== null && !form.checkValidity()) {
+            event.preventDefault();
+            form.reportValidity();
+            return;
+          }
+
           // Mit JavaScript zuerst fragen. Ohne JavaScript läuft der Klick
           // durch und sendet unmittelbar ab — lieber eine Handlung ohne
           // Rückfrage als eine Oberfläche, die nicht reagiert.

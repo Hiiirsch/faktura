@@ -10,7 +10,7 @@
  * keine `dark:`-Variante: Das dunkle Schema tauscht die Tokenwerte, nicht die
  * Klassen.
  */
-import type { ReactNode } from 'react';
+import type { Ref, ReactNode } from 'react';
 
 /**
  * Der Fokusring (NFA-UI-02): 2 px in `--accent` mit 2 px Abstand.
@@ -322,17 +322,32 @@ export function FormSection({
 export function Alert({
   tone,
   children,
+  ref,
 }: {
   readonly tone: 'error' | 'success' | 'note';
   readonly children: ReactNode;
+  /** Zum Anfahren: Eine Meldung, die niemand sieht, ist keine (M12, FA-UI-10). */
+  readonly ref?: Ref<HTMLParagraphElement>;
 }): ReactNode {
   const background =
     tone === 'error' ? 'bg-ocker-wash' : tone === 'success' ? 'bg-moss-wash' : 'bg-surface-sunken';
 
   return (
     <p
+      ref={ref}
       role={tone === 'error' ? 'alert' : 'status'}
-      className={`rounded-control border border-rule ${background} px-4 py-3 text-ui text-ink`}
+      /*
+       * Eine eindeutige Marke für die Browsertests (M12).
+       *
+       * `[role="alert"]` allein trifft auch den **Routenansager von Next**, der
+       * den Seitentitel für Screenreader vorliest. Ein Test, der darauf zielt,
+       * prüft die Sichtbarkeit eines fremden Knotens und ist grün, ohne etwas
+       * zu beweisen — genau das war er, bevor es diese Marke gab.
+       */
+      data-alert={tone}
+      // `-1`: mit der Maus nicht anfahrbar, per Programm schon.
+      tabIndex={-1}
+      className={`rounded-control border border-rule ${background} px-4 py-3 text-ui text-ink ${FOCUS_RING}`}
     >
       {children}
     </p>
