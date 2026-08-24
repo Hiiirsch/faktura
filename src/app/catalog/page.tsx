@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { requirePermission } from '@/application/auth/authorize';
 import { getCatalogItem, listCatalogItems } from '@/application/catalog/catalog-service';
 import { cents } from '@/domain/money/money';
+import { can } from '@/domain/policy/can';
 import { messages, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { CATALOG_PATH } from '@/routes';
@@ -125,7 +126,8 @@ export default async function CatalogPage({
               rowKey={(item) => item.id}
               caption={messages.catalog.heading}
               actionsLabel={messages.catalog.archive}
-              actions={(item) => (
+              actions={(item) =>
+                !can(session.actor, 'archive', 'catalogItem') ? null : (
                 <form action={setCatalogItemArchivedAction}>
                   <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
                   <input type="hidden" name="id" value={item.id} />
@@ -138,7 +140,8 @@ export default async function CatalogPage({
                     {item.isArchived ? messages.catalog.unarchive : messages.catalog.archive}
                   </button>
                 </form>
-              )}
+                )
+              }
             />
           )}
         </section>

@@ -19,6 +19,7 @@ import { daysBetween, plainDate } from '@/domain/time/plain-date';
 import type { CountryCode } from '@/domain/codes/country-code';
 import { resolvePaymentTerms } from '@/domain/customer/payment-terms';
 import { determineTaxScheme } from '@/domain/tax/tax-scheme';
+import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
@@ -200,6 +201,8 @@ export default async function CustomerDetailPage({
           <p className="text-ui text-ink-muted">
             {messages.customers.archiveExplanation}
           </p>
+          {/* Auch das Archivieren verlangt ein Recht (M12, FA-UI-14). */}
+          {!can(session.actor, 'archive', 'customer') ? null : (
           <form action={setCustomerArchivedAction}>
             <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
             <input type="hidden" name="id" value={customer.id} />
@@ -208,6 +211,7 @@ export default async function CustomerDetailPage({
               {customer.isArchived ? messages.customers.unarchive : messages.customers.archive}
             </button>
           </form>
+          )}
         </section>
     </AppShell>
   );

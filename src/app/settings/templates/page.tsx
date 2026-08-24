@@ -74,7 +74,13 @@ export default async function TemplateSettingsPage(): Promise<ReactNode> {
               </button>
             </form>
           )}
-          {template.isDefault ? null : (
+          {/*
+            Die Standardvorlage lässt sich nicht löschen — **und** es braucht
+            das Recht dazu (M12, FA-UI-14). Die Rechteprüfung fehlte hier: Wer
+            Vorlagen nur ändern durfte, sah einen Knopf, der ihn auf eine
+            Fehlerseite führte.
+          */}
+          {template.isDefault || !can(session.actor, 'delete', 'template') ? null : (
             <form action={deleteTemplateAction}>
               <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
               <input type="hidden" name="templateId" value={template.id} />

@@ -491,6 +491,22 @@ jetzt als `canBeCancelled()` und `acceptsPayments()` in der Domäne, wo beide
 Seiten dieselben lesen. Eine Kopie in der Oberfläche wäre die zweite Wahrheit,
 die beim nächsten Sonderfall zurückbleibt.
 
+**Der Durchgang durch alle Aktionen** (M12) fand denselben Fehler noch dreimal
+und einen zweiten dazu:
+
+- Am **stornierten** Beleg stand ein Zahlungsformular. `addPayment` weist
+  Entwurf, Gutschrift **und** stornierten Beleg ab; die Bedingung nannte nur
+  die ersten beiden.
+- **Vorlage löschen**, **Kunde archivieren** und **Katalogposition
+  archivieren** wurden ohne `can()` angeboten. Der Server verlangt
+  `template.delete`, `customer.archive`, `catalogItem.archive` — wer sie nicht
+  hatte, sah den Knopf und landete auf einer Fehlerseite. Das ist die andere
+  Richtung desselben Musters und verletzt FA-UI-14.
+
+Die Regel dahinter, für künftige Aktionen: **Jede Aktion wird unter derselben
+Bedingung angeboten, unter der der Server sie annimmt** — Zustand *und* Recht.
+Steht die Bedingung an mehr als einer Stelle, gehört sie in die Domäne.
+
 **Eine Sammelaktion, die die Auswahl nicht trifft, wird nicht angeboten.**
 Vorher standen „Als bezahlt markieren" und „Entwürfe löschen" immer beide da.
 Wer drei festgeschriebene Belege wählte und löschen drückte, sah nichts

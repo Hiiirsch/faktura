@@ -19,7 +19,7 @@ import { isTaxScheme } from '@/domain/tax/tax-scheme';
 import { todayIn } from '@/domain/time/plain-date';
 import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
-import { canBeCancelled } from '@/domain/invoice/status';
+import { acceptsPayments, canBeCancelled } from '@/domain/invoice/status';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import {
@@ -223,7 +223,16 @@ export default async function InvoiceDetailPage({
           </section>
         </div>
 
-        {isDraft || invoice.documentType === 'CREDIT_NOTE' ? null : (
+        {/*
+          **Auch hier die Regel des Servers** (M12): `addPayment` und
+          `removePayment` weisen Entwurf, Gutschrift **und stornierten Beleg**
+          ab. Die Bedingung nannte nur die ersten beiden — an einer stornierten
+          Rechnung stand deshalb ein Zahlungsformular, das nichts annimmt.
+        */}
+        {!acceptsPayments(
+          invoice.status,
+          invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE',
+        ) ? null : (
           <PaymentSection
             invoiceId={invoice.id}
             csrfToken={csrfToken}
