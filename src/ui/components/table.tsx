@@ -24,6 +24,12 @@ import { FOCUS_RING } from './form';
  * `useState` über die gewählten Kennungen hätte beides gekostet.
  */
 export type Selection<TRow> = {
+  /**
+   * Wofür die Zeile in Frage kommt — frei benannte Art, etwa `'draft'`.
+   * Landet als `data-kind` am Kästchen, damit die Aktionsleiste ihre Knöpfe
+   * danach richten kann (M12).
+   */
+  readonly kindOf?: (row: TRow) => string;
   /** Feldname; alle Kästchen teilen ihn, der Server liest `getAll`. */
   readonly name: string;
   readonly label: string;
@@ -137,6 +143,18 @@ export function DataTable<TRow>({
                         name={selection.name}
                         value={key}
                         aria-label={selection.label}
+                        /*
+                         * Die Art der Zeile wandert ans Kästchen (M12).
+                         *
+                         * Eine Auswahlleiste kann sonst nur zählen, **wie
+                         * viele** gewählt sind, nicht **was**. Sie bot deshalb
+                         * „Entwürfe löschen" auch für lauter festgeschriebene
+                         * Belege an — ein Knopf, der nichts tut, ist schlimmer
+                         * als keiner.
+                         */
+                        {...(selection.kindOf === undefined
+                          ? {}
+                          : { 'data-kind': selection.kindOf(row) })}
                         className={`size-4 accent-accent ${FOCUS_RING}`}
                       />
                     ) : null}

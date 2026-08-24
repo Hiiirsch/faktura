@@ -77,6 +77,19 @@ const LABEL: Readonly<Record<InvoiceStatus, string>> = {
 
 export type InvoiceStatusViewModel = {
   readonly status: InvoiceStatus;
+  /**
+   * Der Belegtyp entscheidet mit (M12).
+   *
+   * **„Offen" heißt: Da steht Geld aus.** Für eine Stornorechnung stimmt das
+   * nicht — sie stellt keine Forderung, sie nimmt eine zurück. Der Beleg ist
+   * ausgestellt und damit fertig; auf ihn wird nichts gezahlt, und deshalb
+   * kann er auch nicht überfällig werden. Ein „Offen" an einer Gutschrift ist
+   * keine Kleinigkeit: Es lässt eine Zahlung erwarten, die niemand leisten
+   * wird, und in einer Liste sieht es aus wie ein unbezahlter Beleg.
+   *
+   * Fehlt die Angabe, gilt der Regelfall — Bestandsaufrufe bleiben gültig.
+   */
+  readonly documentType?: 'INVOICE' | 'CREDIT_NOTE';
   readonly isOverdue: boolean;
   /** Tage seit der Fälligkeit; `null`, sobald der Beleg nicht überfällig ist. */
   readonly daysOverdue: number | null;
@@ -93,6 +106,10 @@ export type InvoiceStatusViewModel = {
  * daneben schauen.
  */
 function detail(view: InvoiceStatusViewModel): string | null {
+  // Eine Stornorechnung wird nicht überfällig — sie fordert nichts.
+  if (view.documentType === 'CREDIT_NOTE') {
+    return null;
+  }
   if (view.isOverdue && view.daysOverdue !== null) {
     return messages.invoices.overdueSince(view.daysOverdue);
   }
@@ -105,8 +122,37 @@ function detail(view: InvoiceStatusViewModel): string | null {
   return null;
 }
 
+/**
+ * Ob der Beleg als überfällig dargestellt wird.
+ *
+ * Als eigene Funktion, weil hier eine Zusage steckt und keine Formatierung:
+ * Eine **Stornorechnung wird nie überfällig** — sie fordert nichts. Ebenso
+ * wenig ein bezahlter oder stornierter Beleg.
+ */
+export function showsOverdue(view: InvoiceStatusViewModel): boolean {
+  return (
+    view.isOverdue &&
+    view.documentType !== 'CREDIT_NOTE' &&
+    view.status !== 'CANCELLED' &&
+    view.status !== 'PAID'
+  );
+}
+
+/**
+ * Die Beschriftung des Status.
+ *
+ * „Offen" heißt: Da steht Geld aus. Eine ausgestellte Stornorechnung ist
+ * deshalb **ausgestellt**, nicht offen.
+ */
+export function statusLabel(view: InvoiceStatusViewModel): string {
+  if (view.documentType === 'CREDIT_NOTE' && view.status === 'ISSUED') {
+    return messages.invoices.statusIssuedCreditNote;
+  }
+  return LABEL[view.status];
+}
+
 export function InvoiceStatusField(view: InvoiceStatusViewModel): ReactNode {
-  const overdue = view.isOverdue && view.status !== 'CANCELLED' && view.status !== 'PAID';
+  const overdue = showsOverdue(view);
   const appearance = overdue ? OVERDUE_APPEARANCE : APPEARANCE[view.status];
   const suffix = detail(view);
 
@@ -119,7 +165,7 @@ export function InvoiceStatusField(view: InvoiceStatusViewModel): ReactNode {
     >
       <StatusDot shape={appearance.shape} />
       <span className="text-ink">
-        {LABEL[view.status]}
+        {statusLabel(view)}
         {suffix === null ? null : <span className="text-ink-muted"> · {suffix}</span>}
       </span>
     </span>

@@ -176,6 +176,7 @@ export default async function CustomerDetailPage({
                       <td className="py-2">
                         <InvoiceStatusField
                           status={invoice.status}
+                          documentType={invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE'}
                           isOverdue={invoice.isOverdue}
                           daysOverdue={daysOverdue(invoice)}
                           paidTotalCents={cents(invoice.paidTotalCents)}

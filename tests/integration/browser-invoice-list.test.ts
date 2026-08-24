@@ -266,4 +266,35 @@ describe('FA-UI-20 Mehrfachauswahl', () => {
 
     await close();
   }, 90_000);
+
+  it('bietet keine Sammelaktion an, die die Auswahl nicht trifft', async () => {
+    /*
+     * Gemeldet als „warum kann ich bei festgeschriebenen Rechnungen Entwurf
+     * löschen auswählen". Der Knopf stand immer da; der Server filterte
+     * anschließend auf Entwürfe, und übrig blieb nichts. Ein Knopf, der nichts
+     * tun kann, ist schlimmer als keiner — man schreibt den Fehlschlag sich
+     * selbst zu.
+     */
+    const { page, close } = await openList();
+
+    try {
+      const kaesten = page.locator('input[name="invoiceIds"][data-kind="payable"]');
+      expect(await kaesten.count()).toBeGreaterThan(0);
+
+      await kaesten.first().check();
+      await page.waitForTimeout(500);
+
+      // Innerhalb der Leiste gesucht: „Als bezahlt markieren" gibt es auch als
+      // Zeilenaktion.
+      const leiste = page.locator('[data-selection-bar]');
+      const loeschen = leiste.locator('button:has-text("Entwürfe löschen")');
+      const bezahlt = leiste.locator('button:has-text("Als bezahlt markieren")');
+
+      // Ein festgeschriebener Beleg lässt sich bezahlen, aber nicht löschen.
+      expect(await bezahlt.isDisabled()).toBe(false);
+      expect(await loeschen.isDisabled()).toBe(true);
+    } finally {
+      await close();
+    }
+  }, 120_000);
 });

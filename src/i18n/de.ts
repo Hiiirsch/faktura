@@ -703,6 +703,13 @@ export const messages = {
 
     statusDRAFT: 'Entwurf',
     statusISSUED: 'Offen',
+    /**
+     * Eine ausgestellte Stornorechnung (M12).
+     *
+     * „Offen" hieße: Da steht Geld aus. Eine Gutschrift stellt aber keine
+     * Forderung, sie nimmt eine zurück — sie ist ausgestellt und damit fertig.
+     */
+    statusIssuedCreditNote: 'Ausgestellt',
     statusPARTIALLY_PAID: 'Teilbezahlt',
     statusPAID: 'Bezahlt',
     statusCANCELLED: 'Storniert',

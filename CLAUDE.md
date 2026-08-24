@@ -472,6 +472,29 @@ ihm der Preflight von Tailwind, der die Ränder aller Elemente auf null setzt.
 Nachgebaut mit `fixed` und `translate` wäre es dieselbe Wirkung mit mehr
 Teilen, und die Fokusfalle des Browsers hinge daran.
 
+## Was der Status verspricht (seit M12)
+
+**„Offen" heißt: Da steht Geld aus.** Für eine Stornorechnung stimmt das nicht
+— sie stellt keine Forderung, sie nimmt eine zurück. Sie trägt deshalb
+„Ausgestellt" und **wird nie überfällig**; ein „12 Tage überfällig" an einer
+Gutschrift wäre eine Mahnung an sich selbst.
+
+Entschieden wird das in zwei reinen Funktionen (`statusLabel`,
+`showsOverdue`), nicht mitten im Markup: Dort steckt eine Zusage, nicht eine
+Formatierung, und Zusagen gehören an eine prüfbare Stelle.
+
+**Eine Sammelaktion, die die Auswahl nicht trifft, wird nicht angeboten.**
+Vorher standen „Als bezahlt markieren" und „Entwürfe löschen" immer beide da.
+Wer drei festgeschriebene Belege wählte und löschen drückte, sah nichts
+geschehen — der Server filtert auf Entwürfe, und übrig blieb nichts. Das ist
+die Sorte Fehlschlag, die man sich selbst zuschreibt.
+
+Dafür trägt jedes Kästchen seine Art (`data-kind`: `draft`, `payable`,
+`credit-note`); die Leiste zählt danach. **Ohne JavaScript bleiben beide Knöpfe
+bedienbar** — dann ist nicht bekannt, was gewählt ist, und ein weggelassener
+Knopf nähme eine Handlung, die es gibt. Dieselbe Regel wie bei der Anzahl seit
+M5.8: Die Verbesserung darf etwas hinzufügen, aber nichts tragen.
+
 ## Der tote Knopf im Dialog (seit M12)
 
 **Ein modaler Dialog macht alles hinter sich `inert`.** Ist im Formular ein

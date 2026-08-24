@@ -114,6 +114,7 @@ export default async function InvoiceDetailPage({
           meta={
             <InvoiceStatusField
               status={invoice.status}
+              documentType={invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE'}
               isOverdue={invoice.isOverdue}
               daysOverdue={daysOverdue}
               paidTotalCents={cents(invoice.paidTotalCents)}

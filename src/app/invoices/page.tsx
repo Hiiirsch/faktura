@@ -335,6 +335,7 @@ export default async function InvoicesPage({
       cell: (invoice) => (
         <InvoiceStatusField
           status={invoice.status}
+          documentType={invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE'}
           isOverdue={invoice.isOverdue}
           daysOverdue={daysOverdue(invoice)}
           paidTotalCents={cents(invoice.paidTotalCents)}
@@ -501,6 +502,19 @@ export default async function InvoicesPage({
               label: messages.invoices.selectRow,
               // Ein stornierter Beleg wird weder bezahlt noch gelöscht.
               selectable: (invoice) => invoice.status !== 'CANCELLED',
+              /*
+               * Wofür die Zeile in Frage kommt (M12).
+               *
+               * `draft` lässt sich löschen, `payable` als bezahlt markieren.
+               * Eine **Stornorechnung** ist beides nicht: Sie ist ausgestellt
+               * und fordert nichts — auf sie wird nicht gezahlt.
+               */
+              kindOf: (invoice) =>
+                invoice.status === 'DRAFT'
+                  ? 'draft'
+                  : invoice.documentType === 'CREDIT_NOTE'
+                    ? 'credit-note'
+                    : 'payable',
             }}
             actions={rowActions}
             actionsLabel={messages.invoices.rowActions}

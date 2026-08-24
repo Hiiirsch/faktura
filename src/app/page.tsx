@@ -281,6 +281,7 @@ export default async function DashboardPage(): Promise<ReactNode> {
                     </span>
                     <InvoiceStatusField
                       status={invoice.status}
+                      documentType={invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE'}
                       isOverdue={invoice.daysOverdue > 0}
                       daysOverdue={invoice.daysOverdue === 0 ? null : invoice.daysOverdue}
                       paidTotalCents={cents(invoice.paidTotalCents)}
