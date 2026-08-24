@@ -8,6 +8,7 @@ import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csr
 import { assetPath, COMPANY_LETTERHEAD_PATH, COMPANY_SETTINGS_PATH } from '@/routes';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
+import { PdfViewer } from '@/ui/components/pdf-viewer';
 
 import { AppShell } from '../../app-shell';
 import { CompanyForm } from './company-form';
@@ -96,17 +97,21 @@ export default async function CompanySettingsPage(): Promise<ReactNode> {
                 Entscheidung wie bei der Belegvorschau (M5.6): Was der Beleg
                 später trägt, ist diese Datei, und nur sie zeigt sie richtig.
               */}
-              <div className="bg-sheet shadow-sheet">
-                <iframe
-                  /*
-                    Die Kennung reist als Version mit. Der Pfad allein ist fest,
-                    sein Inhalt nicht — ein ausgetauschter Bogen bekommt so eine
-                    andere Adresse, und weder Browser noch ein Zwischenspeicher
-                    unterwegs kann den alten liefern.
-                  */
+              {/*
+                Derselbe Betrachter wie beim Beleg (M12): Ein Bogen ist ein
+                Blatt A4, und er soll aussehen wie eines — nicht wie das
+                Fenster eines fremden Programms.
+
+                Die Kennung reist als Version mit. Der Pfad allein ist fest,
+                sein Inhalt nicht — ein ausgetauschter Bogen bekommt so eine
+                andere Adresse, und weder Browser noch ein Zwischenspeicher
+                unterwegs kann den alten liefern.
+              */}
+              <div className="rounded-surface border border-rule bg-surface">
+                <PdfViewer
                   src={`${COMPANY_LETTERHEAD_PATH}?v=${saved.letterheadAssetId}`}
                   title={messages.company.letterheadPreviewTitle}
-                  className="h-sheet-view w-full border-0"
+                  className="flex h-sheet-view w-full flex-col"
                 />
               </div>
               <form action={removeLetterheadAction}>

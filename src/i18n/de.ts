@@ -816,6 +816,17 @@ export const messages = {
     errorNOT_FOUND: 'Der Beleg wurde nicht gefunden.',
     errorNO_COMPANY_PROFILE: 'Bitte zuerst die Firmendaten erfassen.',
   },
+  preview: {
+    page: 'Seite',
+    of: 'von',
+    previousPage: 'Vorige Seite',
+    nextPage: 'Nächste Seite',
+    zoomIn: 'Größer',
+    zoomOut: 'Kleiner',
+    loading: 'Wird gesetzt …',
+    failed: 'Die Vorschau ließ sich nicht laden. Der Beleg selbst ist davon nicht betroffen.',
+  },
+
   templates: {
     title: 'Vorlagen',
     heading: 'Vorlagen',

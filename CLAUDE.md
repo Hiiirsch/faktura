@@ -81,7 +81,8 @@ jeweils neuesten Fassung, beide durch Fehlschläge belegt:
   Nutzen den Aufwand im Container rechtfertigt.
 
 Laufzeit: Node 24.13.0 (`.nvmrc`), Next 16.3.0, React 19.2.8, Tailwind 4.3.3,
-Vitest 4.1.10, Zod 4.4.3, lucide-react 1.31.0.
+Vitest 4.1.10, Zod 4.4.3, lucide-react 1.31.0, pdfjs-dist 6.2.108 (Belegvorschau,
+seit M12 — die größte Abhängigkeit im Browser, bewusst in Kauf genommen).
 
 ## Gestaltung (seit M5.5b, überarbeitet in M5.8)
 
@@ -423,6 +424,46 @@ Bogen und ohne Fehler — dieselbe Regel wie beim Logo.
 Die Vorschau in den Firmendaten ist das PDF selbst, über eine eigene Route mit
 dem Profil `pdf`. Unter `assetPath()` mit `sandbox` startet der eingebaute
 Betrachter des Browsers nicht (M5.6).
+
+## Die Vorschau gehört der Anwendung (seit M12)
+
+**Der eingebaute Betrachter des Browsers ist raus.** Er war eine eigene
+Anwendung mitten in der Oberfläche: eigenes Grau, eigene Werkzeugleiste, eigene
+Schrift, und er kennt weder die Tokens noch das dunkle Schema. `#toolbar=0`
+befolgte Chromium, andere Browser nicht — es ist eine Bitte, keine Zusage.
+
+`src/ui/components/pdf-viewer.tsx` setzt das PDF jetzt selbst auf eine
+Leinwand, mit eigener Leiste (Blättern, Zoom) aus `de.ts` und Tokens.
+`DocumentPreview` liegt darum und erneuert die Ansicht nach dem Speichern.
+
+**Der Preis steht im Kopf der Datei:** `pdfjs-dist` ist mit Abstand die größte
+Abhängigkeit im Browser — Kern und Worker zusammen rund 1,6 MB entpackt. Für
+den Vorlageneditor wurde Monaco aus genau diesem Grund abgelehnt; der
+Unterschied ist die Häufigkeit. Eine Belegvorschau sieht man bei **jedem**
+Beleg.
+
+Drei Dinge, die dabei zu beachten waren:
+
+- **`worker-src 'self' blob:`** steht ausdrücklich in der Richtlinie. Ohne die
+  Angabe fällt der Browser über `child-src` auf `script-src` zurück, und
+  `strict-dynamic` lässt eine Adresse dort nicht gelten — der Worker startete
+  wortlos nicht.
+- **`useWasm: false`.** Sonst lädt pdf.js für die Bilddekodierung eine eigene
+  Datei nach, und die Richtlinie bräuchte `'wasm-unsafe-eval'`.
+- **`data-document`** nennt die gezeigte Datei. Im DOM steht sonst nichts
+  darüber — anders als beim `<iframe>`, dessen `src` sichtbar war; die
+  Browsertests lesen es.
+
+**Die Vorschau erneuert sich nach dem Speichern.** Ein `<iframe>` mit derselben
+Adresse lädt nicht neu, gleich wie oft React rendert; man sah seine Änderungen
+erst nach einem Neuladen der ganzen Seite. Die Version wandert deshalb in die
+Adresse **und** in den `key`. Gemeldet wird über ein Fensterereignis: Der Editor
+ist eine Client-Komponente, die Vorschau steht in einer anderen Spalte
+derselben Server-Komponente — ein gemeinsamer Zustand zwänge die halbe Seite in
+den Client-Baum, damit ein Rahmen von einer Zahl erfährt.
+
+Dieselbe Ansicht zeigt das Briefpapier in den Firmendaten. Ein Bogen ist ein
+Blatt A4 und soll aussehen wie eines.
 
 ## Steuerliche Behandlung im Editor (seit M12)
 

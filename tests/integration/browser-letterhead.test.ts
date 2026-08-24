@@ -71,8 +71,14 @@ async function uploadLetterhead(page: Page, content: Buffer, name: string): Prom
   await page.waitForSelector('[role="status"]', { timeout: 20_000 });
 }
 
+/**
+ * Welches Dokument die Vorschau zeigt.
+ *
+ * Seit M12 setzt die Anwendung das PDF selbst; im DOM steht deshalb kein
+ * `<iframe src>` mehr, sondern `data-document` an der Ansicht.
+ */
 function frameSource(page: Page): Promise<string | null> {
-  return page.getAttribute('iframe[src*="/api/company/letterhead"]', 'src');
+  return page.getAttribute('[data-document*="/api/company/letterhead"]', 'data-document');
 }
 
 /**

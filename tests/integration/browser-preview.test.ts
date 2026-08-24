@@ -12,10 +12,11 @@
  * den Rahmen trotzdem nicht, und man sah eine weiße Fläche. Kein Test, der
  * Antworten prüft, hätte das gefunden; nur einer, der einbettet.
  *
- * Seit M5.6 steht im Rahmen das PDF selbst. Damit hängt noch eine Zusage am
- * Zusammenspiel: Der eingebaute Betrachter des Browsers ist eine eigene
- * gekapselte Anwendung und startet nicht unter jeder Richtlinie. Ob er es tut,
- * wird hier festgestellt, nicht angenommen.
+ * Seit M5.6 steht in der Vorschau das PDF selbst, seit M12 setzt die Anwendung
+ * es mit eigenen Mitteln (`PdfViewer`). Die Zusage hat sich damit verschoben,
+ * nicht erledigt: Früher musste der eingebaute Betrachter des Browsers unter
+ * unserer Richtlinie starten, heute muss es der Worker von pdf.js. Beides kann
+ * nur ein Browser beantworten.
  *
  * Angemeldet wird über das echte Formular. Der Grund ist nicht Gründlichkeit,
  * sondern Notwendigkeit: Der Server arbeitet auf einer anderen Datenbankdatei
@@ -83,16 +84,15 @@ async function openFirstInvoice(): Promise<OpenedInvoice> {
 }
 
 /**
- * Die Adresse, die im Vorschaurahmen steht.
+ * Die Adresse, die die Vorschau zeigt.
  *
- * Gelesen wird das Attribut, nicht `page.frames()`: Ein PDF übergibt der
- * Browser seinem eingebauten Betrachter, und der erscheint nicht als
- * gewöhnlicher Rahmen in der Liste. Sichtbar bleiben das Element und seine
- * Adresse — und ob der Browser sie annimmt, zeigt die Konsole: Eine blockierte
- * Einbettung meldet einen Verstoß gegen die Richtlinie.
+ * **Seit M12 steht sie nicht mehr in einem `<iframe src>`**: Die Anwendung
+ * setzt das PDF selbst und nennt die Datei über `data-document`. Der Rest
+ * dieses Tests bleibt, wie er war — die Frage ist dieselbe geblieben: Kommt
+ * das PDF wirklich an, oder sieht man nur eine weiße Fläche?
  */
 async function previewSource(page: Page): Promise<string> {
-  const source = await page.locator('iframe').first().getAttribute('src');
+  const source = await page.locator('[data-document]').first().getAttribute('data-document');
   return source ?? '';
 }
 
@@ -135,7 +135,12 @@ describe('Belegvorschau im Browser', () => {
 
     expect(response.headers()['x-frame-options']).toBe('SAMEORIGIN');
     expect(policy).toContain("frame-ancestors 'self'");
-    // **Kein** `sandbox`: Darunter startet der Betrachter des Browsers nicht.
+    /*
+     * **Kein** `sandbox`. Der Grund hat sich mit M12 geändert und besteht
+     * fort: Die Vorschau bettet nicht mehr ein, aber dieselbe Adresse wird
+     * weiterhin direkt geöffnet und heruntergeladen — unter `sandbox` startet
+     * der Betrachter des Browsers dann nicht.
+     */
     expect(policy).not.toContain('sandbox');
 
     await close();

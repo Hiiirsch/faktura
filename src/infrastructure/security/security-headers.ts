@@ -96,6 +96,16 @@ function buildContentSecurityPolicy({ nonce, isDevelopment }: SecurityHeaderOpti
     // Die Gegenrichtung regelt `frame-ancestors` im Dokumentprofil; nötig sind
     // **beide**, die des Einbettenden und die des Eingebetteten.
     "frame-src 'self'",
+    /*
+     * Der Worker der Belegvorschau (M12).
+     *
+     * Ohne diese Angabe fällt der Browser über `child-src` auf `script-src`
+     * zurück — und dort steht `strict-dynamic`, das eine Adresse nicht gelten
+     * lässt. Der Worker startete wortlos nicht, und die Vorschau bliebe leer.
+     * `blob:` steht dabei, weil ein gebündelter Worker je nach Ausspielung als
+     * Blob geladen wird; die Quelle ist in beiden Fällen unser eigenes Bündel.
+     */
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'none'",
     "object-src 'none'",

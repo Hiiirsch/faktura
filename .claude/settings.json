@@ -15,7 +15,10 @@
       "Bash(curl -s -o /dev/null -w \"health: %{http_code}\\\\n\" http://localhost/api/health)",
       "Bash(git stash *)",
       "Bash(awk -F'|' '/^\\\\| FA-CALC-0[58] \\\\|/ {print NF-2}' FORTSCHRITT.md)",
-      "Bash(awk -F'|' '/^\\\\| FA-CALC-06 \\\\|/ {print NF-2}' FORTSCHRITT.md)"
+      "Bash(awk -F'|' '/^\\\\| FA-CALC-06 \\\\|/ {print NF-2}' FORTSCHRITT.md)",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(awk -F'|' '/^\\\\| FA-PDF-02 \\\\|/ {print NF-2}' FORTSCHRITT.md)"
     ],
     "additionalDirectories": [
       "/tmp"

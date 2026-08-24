@@ -200,13 +200,15 @@ describe('FA-UI-02 Drei Erhebungsstufen', () => {
   });
 
   it('trägt `shadow-sheet` nur dort, wo wirklich ein Beleg steht', async () => {
-    // Alle drei Stellen zeigen dieselbe Sache: ein Blatt A4. Die erste den
-    // Beleg, die zweite die Vorschau der Vorlage, die ihn setzt, die dritte
-    // (M12) das Briefpapier, das unter ihm liegt.
+    /*
+     * Alle Stellen zeigen dieselbe Sache: ein Blatt A4. Die Belegvorschau
+     * (M12) malt es seit dem eigenen Betrachter selbst — die Belegseite
+     * trägt es deshalb **nicht** mehr, sie stellt nur den Rahmen. Zwei
+     * Erhebungen übereinander wären eine zu viel.
+     */
     const sheets = [
-      'src/app/invoices/[id]/page.tsx',
+      'src/ui/components/pdf-viewer.tsx',
       'src/app/settings/templates/template-forms.tsx',
-      'src/app/settings/company/page.tsx',
     ];
     const offenders: string[] = [];
 

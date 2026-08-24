@@ -108,7 +108,14 @@ export function invoicePdfPath(id: string): string {
  * seine Werkzeugleiste aus. Sie erreichen den Server nie.
  */
 export function invoicePdfEmbedPath(id: string): string {
-  return `${invoicePdfPath(id)}?inline=1#toolbar=0&navpanes=0&view=FitH`;
+  /*
+   * Ohne Anhang hinter dem Rautezeichen (M12).
+   *
+   * Dort standen `toolbar=0&navpanes=0&view=FitH` — Bitten an den eingebauten
+   * Betrachter des Browsers, die Chromium befolgte und andere ignorierten. Die
+   * Vorschau setzt den Beleg jetzt selbst; die Werkzeugleiste ist unsere.
+   */
+  return `${invoicePdfPath(id)}?inline=1`;
 }
 
 /** Vorschau einer noch nicht gespeicherten Vorlage (FA-TPL-04). */

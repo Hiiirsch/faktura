@@ -47,6 +47,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/ui/components/form';
+import { announceInvoiceSaved } from '@/ui/components/document-preview';
 import { SaveToast } from '@/ui/components/toast';
 import { formatMoney, formatPercent, parseGermanDecimal } from '@/ui/format';
 
@@ -411,6 +412,19 @@ export function InvoiceEditor({
       return null;
     }
   }, [lines]);
+
+  /*
+   * Nach dem Speichern erneuert sich die Vorschau (M12, FA-PDF-02).
+   *
+   * Der Zeitstempel ist die Abhängigkeit, nicht der Status: Zweimal
+   * hintereinander speichern ergibt zweimal `'saved'`, und ein Effekt darauf
+   * liefe nur einmal. Es ist derselbe Grund, aus dem der Toast ihn trägt.
+   */
+  useEffect(() => {
+    if (saveState.status === 'saved') {
+      announceInvoiceSaved();
+    }
+  }, [saveState]);
 
   // Ungespeicherte Änderungen beim Verlassen (NFA-QUAL-11).
   useEffect(() => {

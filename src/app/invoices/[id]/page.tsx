@@ -37,6 +37,8 @@ import { AppShell } from '../../app-shell';
 import { cancelInvoiceAction, deleteDraftAction, duplicateInvoiceAction } from '../actions';
 
 import { editorBuyerOf, loadEditorContext } from '../editor-data';
+import { DocumentPreview } from '@/ui/components/document-preview';
+
 import { InvoiceEditor } from '../invoice-editor';
 import { PaymentSection } from './payment-section';
 
@@ -205,11 +207,15 @@ export default async function InvoiceDetailPage({
         */}
           <section className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6">
             <h2 className="text-section font-semibold text-ink">{messages.templates.preview}</h2>
-            <div className="bg-sheet shadow-sheet">
-              <iframe
+            {/*
+              Das Blatt malt die Ansicht selbst — hier steht nur ihr Rahmen.
+              Zwei Erhebungen übereinander wären eine zu viel.
+            */}
+            <div className="rounded-surface border border-rule bg-surface">
+              <DocumentPreview
                 src={invoicePdfEmbedPath(invoice.id)}
                 title={messages.templates.previewFrame}
-                className="h-sheet-view w-full border-0"
+                className="flex h-sheet-view w-full flex-col"
               />
             </div>
           </section>
