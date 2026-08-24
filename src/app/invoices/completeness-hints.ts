@@ -158,6 +158,8 @@ export function fieldOfViolation(violation: CompletenessViolation): string | nul
       return 'customerId';
     case 'NO_BUYER_ADDRESS':
       return 'buyerAddressLine1';
+    case 'FREE_BLOCK_TOO_SHORT':
+      return 'buyerFreeText';
     case 'NO_ISSUE_DATE':
       return 'issueDate';
     case 'NO_DUE_DATE':

@@ -627,6 +627,7 @@ export function InvoiceEditor({
 
       <FormSection title={messages.invoices.viewHeading}>
         <BuyerFieldset
+          flagged={flaggedFields}
           initial={initial.buyer}
           customers={customers}
           mode={buyerMode}

@@ -233,6 +233,8 @@ describe('FA-PFL-01 Name und Anschrift bleiben Pflicht', () => {
     const issued = await issueInvoice(org, created.id, ACTOR, null);
 
     expect(issued.ok).toBe(false);
+    // In den **Feldern** fehlt eine Anschrift, die es als Feld gibt — das ist
+    // etwas anderes als ein zu kurzer freier Block (M12).
     expect(violationKinds(issued)).toContain('NO_BUYER_ADDRESS');
   });
 
@@ -241,7 +243,7 @@ describe('FA-PFL-01 Name und Anschrift bleiben Pflicht', () => {
     const issued = await issueInvoice(org, created.id, ACTOR, null);
 
     expect(issued.ok).toBe(false);
-    expect(violationKinds(issued)).toContain('NO_BUYER_ADDRESS');
+    expect(violationKinds(issued)).toContain('FREE_BLOCK_TOO_SHORT');
   });
 });
 

@@ -42,7 +42,16 @@ async function login(page: Page): Promise<void> {
  * woran es lag. Das Duplizieren kostet zwei Klicks und nimmt die Frage weg.
  */
 async function openDraft(page: Page): Promise<void> {
-  await page.goto(`${TEST_BASE_URL}/invoices`, { waitUntil: 'networkidle' });
+  /*
+   * Kopiert wird ein **festgeschriebener** Beleg, nicht der erste beste.
+   *
+   * Ein Entwurf im Bestand kann unvollständig sein — die Editorprüfungen
+   * hinterlassen absichtlich einen ohne Positionen. Seine Kopie trüge eine
+   * leere Pflichtzeile, und schon das Speichern bliebe am Browser hängen. Ein
+   * festgeschriebener Beleg ist dagegen per Definition vollständig; das ist
+   * hier die einzige Eigenschaft, auf die es ankommt.
+   */
+  await page.goto(`${TEST_BASE_URL}/invoices?status=ISSUED`, { waitUntil: 'networkidle' });
   await page.click('table a[href^="/invoices/"]');
   await page.waitForSelector('canvas[aria-label]', { timeout: 30_000 });
 

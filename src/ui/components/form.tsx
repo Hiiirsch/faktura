@@ -108,6 +108,15 @@ type BaseFieldProps = {
   readonly hint?: string;
   readonly error?: string | undefined;
   readonly required?: boolean;
+  /**
+   * Markiert das Feld, ohne eine eigene Meldung zu setzen (M12, FA-UI-10).
+   *
+   * `error` schreibt einen Satz **unter** das Feld. Wo die Erklärung schon
+   * woanders steht — im Hinweis „Zum Festschreiben fehlt noch" —, wäre das eine
+   * zweite Stimme für dieselbe Sache. Hier wird nur markiert; den Rest erledigt
+   * die Regel auf `aria-invalid` in `globals.css`.
+   */
+  readonly invalid?: boolean;
 };
 
 function FieldShell({
@@ -184,7 +193,7 @@ export function TextField({
         defaultValue={defaultValue ?? ''}
         required={field.required}
         aria-describedby={describedBy(field.name, field.hint, field.error)}
-        aria-invalid={field.error === undefined ? undefined : true}
+        aria-invalid={field.error !== undefined || field.invalid === true ? true : undefined}
         autoComplete={autoComplete}
         inputMode={inputMode}
         placeholder={placeholder}
@@ -210,6 +219,7 @@ export function TextAreaField({
         rows={rows}
         defaultValue={defaultValue ?? ''}
         required={field.required}
+        aria-invalid={field.error !== undefined || field.invalid === true ? true : undefined}
         aria-describedby={describedBy(field.name, field.hint, field.error)}
         className={TEXTAREA_CLASS}
       />

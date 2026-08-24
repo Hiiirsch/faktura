@@ -103,7 +103,17 @@ export function buyerDisplayName(buyer: DraftBuyer, customerName: string | null)
 
 export type BuyerViolation =
   | { readonly kind: 'NO_BUYER' }
-  | { readonly kind: 'NO_BUYER_ADDRESS' };
+  | { readonly kind: 'NO_BUYER_ADDRESS' }
+  /**
+   * Der freie Anschriftenblock hat nur eine Zeile (M12).
+   *
+   * Eigener Fall und nicht `NO_BUYER_ADDRESS`: Dort fehlt ein **Feld**, das man
+   * sieht. Hier steht etwas im Feld, und die Regel dahinter — Name und
+   * Anschrift auf getrennten Zeilen — ist nirgends abzulesen. „Dem Empfänger
+   * fehlt die Anschrift" über einem ausgefüllten Kasten ist ein Widerspruch,
+   * den der Benutzer nicht auflösen kann.
+   */
+  | { readonly kind: 'FREE_BLOCK_TOO_SHORT' };
 
 /**
  * Prüft, ob der Empfänger für das Festschreiben ausreicht (FA-PFL-01).
@@ -133,7 +143,7 @@ export function validateBuyer(buyer: DraftBuyer): readonly BuyerViolation[] {
         return [{ kind: 'NO_BUYER' }];
       }
       // Name **und** Anschrift: Eine einzelne Zeile ist ein Name ohne Adresse.
-      return lines.length >= 2 ? [] : [{ kind: 'NO_BUYER_ADDRESS' }];
+      return lines.length >= 2 ? [] : [{ kind: 'FREE_BLOCK_TOO_SHORT' }];
     }
   }
 }

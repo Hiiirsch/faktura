@@ -672,7 +672,7 @@ export const messages = {
     buyerVatId: 'USt-IdNr.',
     buyerFreeText: 'Anschrift',
     buyerFreeTextHint:
-      'Eine Zeile je Zeile des Anschriftfelds. Die erste Zeile gilt als Name des Empfängers.',
+      'Eine Zeile je Zeile des Anschriftfelds — mindestens zwei: Die erste gilt als Name des Empfängers, darunter steht die Anschrift.',
     buyerNoCustomers:
       'Es sind noch keine Kunden erfasst. Der Empfänger lässt sich trotzdem direkt am Beleg angeben.',
     introText: 'Einleitungstext',
@@ -798,6 +798,8 @@ export const messages = {
     missingHeading: 'Zum Festschreiben fehlt noch',
     violationNO_BUYER: 'Es ist kein Empfänger angegeben.',
     violationNO_BUYER_ADDRESS: 'Dem Empfänger fehlt die Anschrift.',
+    violationFREE_BLOCK_TOO_SHORT:
+      'Der Anschriftenblock braucht mindestens zwei Zeilen: Name und Anschrift.',
     violationNO_LINES: 'Der Beleg enthält keine Position.',
     violationLINE_WITHOUT_NAME: 'Position {position} hat keine Bezeichnung.',
     violationNO_ISSUE_DATE: 'Das Rechnungsdatum fehlt.',

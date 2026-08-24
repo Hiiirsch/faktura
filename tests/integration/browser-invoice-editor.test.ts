@@ -161,6 +161,71 @@ describe('FA-RECH-12 Festschreiben aus dem Editor', () => {
     }
   }, 180_000);
 
+  it('schreibt mit freiem Anschriftenblock fest', async () => {
+    /*
+     * Gemeldet als „warum kann ich nicht festschreiben, obwohl ich das
+     * Textblockfeld genutzt habe". Der Block selbst war nie das Hindernis —
+     * es waren die leeren Datumsfelder einer Kopie, deren Absage oben im
+     * Formular stand. Dieser Fall hält beides fest: Der Block genügt, und die
+     * Kopie bringt ihre Daten mit.
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openFreshDraft(page);
+
+      await page.check('input[name="buyerMode"][value="FREE"]');
+      await page.fill(
+        'textarea[name="buyerFreeText"]',
+        'Max Mustermann\nMusterstraße 1\n12345 Musterstadt',
+      );
+      await page.locator('textarea[name="buyerFreeText"]').blur();
+      await page.waitForTimeout(1_000);
+
+      // Nichts fehlt mehr — auch nicht das Datum, das die Kopie mitbringt.
+      expect(await page.locator('section:has-text("Zum Festschreiben fehlt noch")').count()).toBe(0);
+
+      await page.locator('button:has-text("Festschreiben")').first().click();
+      await page.waitForTimeout(500);
+      await page.locator('dialog[open] button:has-text("Festschreiben")').click();
+      await page.waitForURL(/festgeschrieben=1/, { timeout: 30_000 });
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('nennt beim einzeiligen Anschriftenblock die Regel', async () => {
+    // „Dem Empfänger fehlt die Anschrift" über einem gefüllten Kasten ist ein
+    // Widerspruch, den niemand auflösen kann. Seit M12 sagt der Satz, was er
+    // meint.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openFreshDraft(page);
+
+      await page.check('input[name="buyerMode"][value="FREE"]');
+      await page.fill('textarea[name="buyerFreeText"]', 'Max Mustermann');
+      await page.locator('textarea[name="buyerFreeText"]').blur();
+      await page.waitForTimeout(1_000);
+
+      const hinweis = await page
+        .locator('section:has-text("Zum Festschreiben fehlt noch")')
+        .first()
+        .textContent();
+
+      expect(hinweis).toContain('mindestens zwei Zeilen');
+
+      // Und der Kasten ist markiert — der Hinweis führt schließlich dorthin.
+      expect(await page.getAttribute('textarea[name="buyerFreeText"]', 'aria-invalid')).toBe('true');
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
   it('setzt die Vorschau ohne Seitenfehler, auch bei schnellem Zoomen', async () => {
     /*
      * Zwei Zeichnungen auf derselben Leinwand weist pdf.js ab, und das trifft

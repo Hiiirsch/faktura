@@ -90,7 +90,10 @@ describe('Fehlende Pflichtangaben', () => {
     expect(kinds(candidate({ buyer: free(null) }))).toContain('NO_BUYER');
     expect(kinds(candidate({ buyer: free('   ') }))).toContain('NO_BUYER');
     // Ein Name ohne Anschrift genügt §14 UStG nicht.
-    expect(kinds(candidate({ buyer: free('Beispiel GmbH') }))).toContain('NO_BUYER_ADDRESS');
+    // Eine einzelne Zeile ist ein Name ohne Anschrift — und sagt das seit M12
+    // auch so, statt eine fehlende Anschrift über einem gefüllten Kasten zu
+    // behaupten.
+    expect(kinds(candidate({ buyer: free('Beispiel GmbH') }))).toContain('FREE_BLOCK_TOO_SHORT');
   });
 
   it('verlangt mindestens eine Position', () => {

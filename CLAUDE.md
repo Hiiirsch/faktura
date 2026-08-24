@@ -447,6 +447,19 @@ Screenreader, und zwei Quellen für dieselbe Aussage laufen auseinander. So
 markiert sich jedes Feld, das seinen Zustand ehrlich meldet — auch die
 künftigen.
 
+**Ein zu kurzer freier Anschriftenblock ist ein eigener Fall**
+(`FREE_BLOCK_TOO_SHORT`, seit M12). Vorher meldete er `NO_BUYER_ADDRESS` —
+„Dem Empfänger fehlt die Anschrift" über einem ausgefüllten Kasten, ein
+Widerspruch, den der Benutzer nicht auflösen konnte, weil die Regel (Name und
+Anschrift auf getrennten Zeilen) nirgends stand. Jetzt sagt der Satz, was er
+meint, und der Feldhinweis nennt die Regel.
+
+**Eine Kopie bringt ihre Daten mit.** `duplicateInvoice` lässt Rechnungs- und
+Fälligkeitsdatum bewusst leer — die Kopie ist ein neuer Beleg mit neuem Datum.
+Nur stand der Editor danach mit zwei leeren Pflichtfeldern da, und das
+Festschreiben scheiterte an etwas, das die Anwendung selbst weiß. Er belegt sie
+jetzt vor, wie beim Anlegen. Vorbelegt heißt nicht gespeichert.
+
 Der Hinweis steht **über den Knöpfen**, nicht oben im Formular: Er gehört zu
 der Handlung, die dort beginnt. Und er ist ein Hinweis, kein Fehler — ein
 Entwurf darf unvollständig sein, das ist sein Zweck. Jede Zeile führt zu ihrem

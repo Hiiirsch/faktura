@@ -348,10 +348,22 @@ async function DraftEditor({
           templateId: invoice.templateId ?? '',
           taxScheme: isTaxScheme(invoice.taxScheme) ? invoice.taxScheme : 'STANDARD',
           currency: invoice.currency,
-          issueDate: invoice.issueDate ?? '',
+          /*
+           * **Ein leeres Datum wird vorbelegt, nicht leer gelassen** (M12).
+           *
+           * Eine Kopie kommt ohne Rechnungs- und Fälligkeitsdatum — bewusst,
+           * denn sie ist ein neuer Beleg mit neuem Datum. Nur stand der Editor
+           * danach mit zwei leeren Pflichtfeldern da, und das Festschreiben
+           * scheiterte an etwas, das die Anwendung selbst weiß. Beim Anlegen
+           * einer Rechnung wird ebenso vorbelegt; hier fehlte es.
+           *
+           * Vorbelegt heißt nicht gespeichert: Wer die Kopie nicht anfasst,
+           * hat weiterhin einen Entwurf ohne Datum in der Datenbank.
+           */
+          issueDate: invoice.issueDate ?? context.today,
           serviceDateFrom: invoice.serviceDateFrom ?? '',
           serviceDateTo: invoice.serviceDateTo ?? '',
-          dueDate: invoice.dueDate ?? '',
+          dueDate: invoice.dueDate ?? context.suggestedDueDate,
           introText: invoice.introText ?? '',
           outroText: invoice.outroText ?? '',
           purchaseOrderRef: invoice.purchaseOrderRef ?? '',

@@ -54,6 +54,7 @@ export function BuyerFieldset({
   customerId,
   onModeChange,
   onCustomerChange,
+  flagged,
 }: {
   readonly initial: EditorBuyerValues;
   readonly customers: readonly CustomerOption[];
@@ -61,6 +62,8 @@ export function BuyerFieldset({
   readonly customerId: string;
   readonly onModeChange: (mode: BuyerMode) => void;
   readonly onCustomerChange: (customerId: string) => void;
+  /** Felder, denen zum Festschreiben etwas fehlt (M12). */
+  readonly flagged: ReadonlySet<string>;
 }): ReactNode {
   return (
     <fieldset className="flex flex-col gap-4">
@@ -92,6 +95,7 @@ export function BuyerFieldset({
         <select
           id="customerId"
           name="customerId"
+          aria-invalid={flagged.has('customerId') ? true : undefined}
           value={customerId}
           onChange={(event) => {
             onCustomerChange(event.target.value);
@@ -127,6 +131,7 @@ export function BuyerFieldset({
         </div>
         <TextField
           name="buyerAddressLine1"
+          invalid={flagged.has('buyerAddressLine1')}
           label={messages.invoices.buyerAddressLine1}
           defaultValue={initial.addressLine1}
           autoComplete="street-address"
@@ -187,6 +192,7 @@ export function BuyerFieldset({
       <div hidden={mode !== 'FREE'} className="flex flex-col gap-4">
         <TextAreaField
           name="buyerFreeText"
+          invalid={flagged.has('buyerFreeText')}
           label={messages.invoices.buyerFreeText}
           hint={messages.invoices.buyerFreeTextHint}
           rows={6}
