@@ -745,6 +745,34 @@ model PendingLogin {
 /// `actorId` und `organizationId` sind **Text ohne Fremdschlüssel**, wie
 /// `AuditLog.actorId`: Ein Protokoll beschreibt, was war, und muss auch dann
 /// lesbar bleiben, wenn der Gegenstand nicht mehr aufzulösen ist.
+/// Angaben des **Betreibers** der Installation (M13, NFA-COMP-07, -08).
+///
+/// Impressum und der eigene Teil der Datenschutzhinweise. Beide gehören dem,
+/// der die Installation betreibt — nicht den Mandanten darin: Das Telemedium
+/// bietet er an, und bei drei Unternehmen gäbe es sonst keine Antwort auf die
+/// Frage, wessen Impressum unter `/impressum` steht. Umgekehrt zum Logo und zum
+/// Briefpapier, die dem Mandanten gehören, weil der Beleg sein Dokument ist.
+///
+/// **Genau eine Zeile.** Der Zwang liegt im festen Primärschlüssel `platform`
+/// und nicht in einer CHECK-Bedingung: SQLite verliert die bei jedem
+/// Tabellenneubau, und diese Lehre steht seit M5.5a im Projekt.
+///
+/// Beide Felder sind optional. Solange nichts hinterlegt ist, gibt es die
+/// öffentlichen Seiten nicht — ein leeres Impressum ist schlechter als keins.
+model PlatformSettings {
+  /// Immer `platform`. Der Vorgabewert macht die zweite Zeile unmöglich.
+  id String @id @default("platform")
+
+  /// Impressum nach §5 DDG, wie der Betreiber es hinterlegt.
+  imprint String?
+
+  /// Der Teil der Datenschutzhinweise, den der Betreiber beisteuert. Der Teil
+  /// über die Software entsteht aus den Fristen der Domäne und steht im Code.
+  privacyAddendum String?
+
+  updatedAt DateTime @updatedAt
+}
+
 model PlatformAuditEntry {
   id String @id @default(cuid())
 

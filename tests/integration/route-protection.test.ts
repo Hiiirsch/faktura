@@ -248,12 +248,34 @@ describe('NFA-SEC-01 Zugriffsschutz ohne Sitzung', () => {
   it.each(
     publicRoutes()
       .filter(
-        (route) => route.requiresPendingLogin !== true && route.requiresRedemptionToken !== true,
+        (route) =>
+          route.requiresPendingLogin !== true &&
+          route.requiresRedemptionToken !== true &&
+          route.optionalContent !== true,
       )
       .map((route) => probePathFor(route)),
   )('liefert die öffentliche Route %s aus', async (pathname) => {
     const response = await fetch(url(pathname), { redirect: 'manual' });
     expect(response.status).toBe(200);
+  });
+
+  /**
+   * Öffentlich, aber erst vorhanden, wenn jemand sie füllt (M13).
+   *
+   * Das Impressum antwortet mit `404`, solange der Betreiber keines hinterlegt
+   * hat. Die Frage dieses Tests bleibt dieselbe — ist die Seite geschützt? —,
+   * nur ist „gibt es nicht" hier eine gültige Antwort. **Eine Umleitung zur
+   * Anmeldung wäre es nicht:** Sie hieße, dass ein Impressum eine Sitzung
+   * verlangt.
+   */
+  it.each(
+    publicRoutes()
+      .filter((route) => route.optionalContent === true)
+      .map((route) => probePathFor(route)),
+  )('lässt %s ohne Sitzung zu — vorhanden oder nicht', async (pathname) => {
+    const response = await fetch(url(pathname), { redirect: 'manual' });
+
+    expect([200, 404]).toContain(response.status);
   });
 
   /**

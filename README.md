@@ -592,6 +592,29 @@ die Rechnungsnummer vergeben wird, und liegt danach als Datei mit Prüfsumme.
 Wer später Vorlage, Logo oder Briefpapier ändert, ändert damit **keinen**
 ausgestellten Beleg — auch keinen, den niemand angesehen hat.
 
+## Impressum und Datenschutz
+
+Wer die Anwendung **auch für andere Unternehmen** betreibt, bietet ein
+Telemedium an: Dann sind ein Impressum (§5 DDG) und Datenschutzhinweise
+(Art. 13 DSGVO) fällig. Für eine Anlage, die nur der eigene Betrieb benutzt,
+gilt das nicht.
+
+Beides steht unter **Verwaltung › Rechtliches** und gehört dem **Betreiber der
+Installation**, nicht den Unternehmen darin — angeboten wird die Anwendung von
+dem, der sie betreibt. Deshalb gibt es genau ein Impressum je Anlage.
+
+`/impressum` und `/datenschutz` sind ohne Anmeldung erreichbar. Solange kein
+Impressum hinterlegt ist, gibt es die Seite nicht und nichts verlinkt darauf.
+
+**Die Datenschutzhinweise beschreiben die Anwendung selbst** und stehen immer:
+was gespeichert wird, wozu und wie lange. Die Fristen darin sind keine
+abgeschriebenen Zahlen, sondern kommen aus denselben Konstanten, nach denen die
+Anwendung handelt — wer eine Frist ändert und die Auskunft vergisst, bricht
+einen Test.
+
+Faktura prüft die Angaben des Betreibers nicht und leistet keine
+Rechtsberatung.
+
 ## Unveränderbarkeit
 
 Ab dem Festschreiben sind Rechnung und Positionen fest. Durchgesetzt auf zwei

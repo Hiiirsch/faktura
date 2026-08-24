@@ -10,6 +10,8 @@ import { DASHBOARD_PATH, PASSKEY_LOGIN_PATH } from '@/routes';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 import { BrandLockup } from '@/ui/components/brand';
 
+
+import { LegalFooter } from '../legal-footer';
 import { PasskeyLoginButton } from '../passkey-login-button';
 import { loginAction, type LoginErrorCode } from './actions';
 
@@ -154,6 +156,13 @@ export default async function LoginPage({
       <p className="text-ui text-ink-muted">
         {messages.login.noRegistrationHint}
       </p>
+
+      {/*
+        Die Rechtstexte gehören hierher (M13): Die Anmeldeseite ist das
+        öffentliche Gesicht der Anwendung, und wer ein Impressum sucht, sucht es
+        dort — nicht hinter einer Anmeldung.
+      */}
+      <LegalFooter />
     </main>
   );
 }

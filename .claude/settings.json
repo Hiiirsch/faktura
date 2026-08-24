@@ -37,7 +37,12 @@
       "Bash(DATABASE_URL='file:../data/probe.db' npx prisma migrate deploy)",
       "Bash(sqlite3 data/probe.db \"select count\\(*\\) as tabellen from sqlite_master where type='table'; select count\\(*\\) as trigger from sqlite_master where type='trigger';\")",
       "Bash(echo \"VERIFY EXIT: $?\")",
-      "Bash(echo \"INTEGRATION $?\")"
+      "Bash(echo \"INTEGRATION $?\")",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git mv *)",
+      "Bash(echo \"VERIFY $?\")",
+      "Bash(awk -F'|' '/^\\\\| NFA-COMP-0[789] \\\\|/ {print NF-2}' FORTSCHRITT.md)"
     ],
     "additionalDirectories": [
       "/tmp"

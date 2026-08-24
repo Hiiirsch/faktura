@@ -14,9 +14,16 @@ zweimal eine Nummer verschoben). Ein `†` markiert IDs, die dort **keinem** Mei
 sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
-Stand: 2026-08-24 · **226 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
-132 umgesetzt, 11 offen. Dazu **34 IDs** aus `faktura-frontend-design.md` §9
+Stand: 2026-08-24 · **229 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
+135 umgesetzt, 11 offen. Dazu **34 IDs** aus `faktura-frontend-design.md` §9
 (Abschnitt 16), alle umgesetzt.
+
+**M13 umgesetzt** — Impressum und Datenschutzhinweise. Drei neue IDs
+(NFA-COMP-07 bis -09). Der Anlass ist die Mandantenfähigkeit aus M8: Wer die
+Anwendung auch für andere Unternehmen betreibt, bietet ein Telemedium an. Die
+Fristen der Datenschutzhinweise sind Verweise auf die Konstanten der Domäne —
+eine Erklärung, die neben der Wirklichkeit herläuft, wäre eine Zusage, die
+niemand hält.
 
 **M12 umgesetzt** — Briefpapier je Unternehmen und klare Rückmeldung beim
 Speichern. Vier neue IDs (FA-TPL-11, FA-PDF-13, NFA-SEC-31, FA-UI-28), dazu
@@ -489,6 +496,9 @@ Szenario benannt.
 | NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | umgesetzt | Kundenseite (`archiveExplanation`), Katalogseite und Belegseite (`noDeleteExplanation`) — jeweils dort, wo jemand zu löschen versucht, nicht in einer Hilfeseite |
 | NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | umgesetzt | `tests/architecture/offline.test.ts` — keine fremde Adresse im Quelltext, `default-src 'none'` mit `connect-src 'self'`, keine Telemetriepakete; `tests/integration/rendering.test.ts` weist die Blockade im Renderer nach (NFA-SEC-12) |
 | NFA-COMP-06 | Keine externen Fonts, Skripte, Analysedienste | MUSS | R | M7 | umgesetzt | `tests/architecture/design-tokens.test.ts` — Schriften aus dem Paket, keine externe Adresse im Frontend |
+| NFA-COMP-07 | Impressum des Betreibers, öffentlich erreichbar | MUSS | T | M13 | umgesetzt | `tests/integration/legal-notices.test.ts`, `tests/integration/browser-legal.test.ts`. Genau eines je Installation in `PlatformSettings` (feste Kennung `platform` statt CHECK-Bedingung). **Umkehrung der Regel für Logo und Briefpapier:** Die gehören dem Mandanten, weil der Beleg sein Dokument ist — das Telemedium bietet der Betreiber an. Ohne hinterlegten Inhalt: 404 und kein Link |
+| NFA-COMP-08 | Datenschutzhinweise mit Zweck und Aufbewahrung | MUSS | T | M13 | umgesetzt | `tests/unit/domain/privacy-notice.test.ts` — die Fristen sind **Verweise auf die Konstanten** der Domäne, nicht Zahlen im Text; gegen eine geänderte Konstante gegengeprüft. `domain/legal/privacy-notice.ts` |
+| NFA-COMP-09 | Hinterlegter Text wird als Text gesetzt, nie als Markup | MUSS | T | M13 | umgesetzt | `LegalText` setzt Absätze aus Leerzeilen; kein `dangerouslySetInnerHTML`. Es ist die einzige Stelle, an der fremder Inhalt öffentlich erscheint — Szenario A19 prüft ein hinterlegtes `<script>` |
 
 ## 13. Betrieb
 
@@ -679,3 +689,4 @@ Auftraggeber vorgegeben hat.
 | A16 | Beleg eines Kleinunternehmers | offen |
 | A17 | Eigenes Briefpapier | offen |
 | A18 | Gespeichert heißt gespeichert | offen |
+| A19 | Impressum und Datenschutz | offen |

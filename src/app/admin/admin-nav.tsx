@@ -6,6 +6,7 @@ import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
   ADMIN_ACCOUNTS_PATH,
   ADMIN_AUDIT_PATH,
+  ADMIN_LEGAL_PATH,
   ADMIN_OPERATIONS_PATH,
   ADMIN_PATH,
 } from '@/routes';
@@ -51,6 +52,7 @@ export function AdminNav({
     { href: ADMIN_ACCOUNTS_PATH, label: messages.admin.navAccounts },
     { href: ADMIN_AUDIT_PATH, label: messages.admin.navAudit },
     { href: ADMIN_OPERATIONS_PATH, label: messages.admin.navOperations },
+    { href: ADMIN_LEGAL_PATH, label: messages.legal.adminNav },
   ];
 
   return (

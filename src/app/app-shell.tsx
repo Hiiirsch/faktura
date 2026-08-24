@@ -20,6 +20,7 @@ import type { ActiveSession } from '@/application/auth/session-service';
 import { getCompanyProfile } from '@/application/company/company-profile';
 import { holds, type PermissionKey } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
+
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
   EXPORT_SETTINGS_PATH,
@@ -188,6 +189,8 @@ function initialsOf(name: string | null, email: string): string {
   return (letters.join('') || email.slice(0, 1)).toUpperCase();
 }
 
+import { LegalFooter } from './legal-footer';
+
 export async function AppShell({
   session,
   csrfToken,
@@ -298,7 +301,11 @@ export async function AppShell({
       </aside>
 
       <div className="min-w-0 flex-1">
-        <main className="mx-auto flex max-w-content flex-col gap-6 px-8 pb-12">{children}</main>
+        <main className="mx-auto flex max-w-content flex-col gap-6 px-8 pb-12">
+          {children}
+          {/* Auch angemeldet erreichbar — Art. 13 gilt nicht nur vor der Tür. */}
+          <LegalFooter />
+        </main>
       </div>
     </div>
   );
