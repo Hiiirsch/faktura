@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { messages } from '@/i18n/de';
 
-import { FOCUS_RING, SECONDARY_BUTTON_CLASS } from './form';
+import { FOCUS_RING, ICON_BUTTON_CLASS } from './form';
 import { ICON_STROKE } from './icon';
 
 /**
@@ -84,18 +84,34 @@ export function PdfViewer({
      */
     const unscaled = rendered.getViewport({ scale: 1 });
     const fit = (container.clientWidth || unscaled.width) / unscaled.width;
+
+    /*
+     * **Zwei Maße, nicht eines.**
+     *
+     * Die Leinwand hat eine Bildgröße (`width`/`height`) und eine Anzeigegröße
+     * (CSS). Die erste bestimmt die Schärfe, die zweite die Größe auf dem
+     * Blatt. Hier stand `style.width = '100%'`: Die Anzeige hing damit am
+     * Container, und Vergrößern erhöhte nur die Auflösung — sichtbar änderte
+     * sich nichts. Gemessen im Browser: Bild 462 → 577 Punkte, Anzeige
+     * unverändert 430.
+     *
+     * Jetzt trägt die Anzeige den Zoom und die Bildgröße zusätzlich die
+     * Punktdichte des Bildschirms. Über die Containerbreite hinaus rollt der
+     * Rahmen — dafür steht `overflow-auto` daran.
+     */
+    const displayScale = fit * zoom;
     const ratio = window.devicePixelRatio || 1;
-    const viewport = rendered.getViewport({ scale: fit * zoom * ratio });
+    const viewport = rendered.getViewport({ scale: displayScale * ratio });
 
     const context = canvas.getContext('2d');
     if (context === null) {
       return;
     }
 
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-    canvas.style.width = '100%';
-    canvas.style.height = 'auto';
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    canvas.style.width = `${String(Math.round(unscaled.width * displayScale))}px`;
+    canvas.style.height = `${String(Math.round(unscaled.height * displayScale))}px`;
 
     await rendered.render({ canvas, canvasContext: context, viewport }).promise;
   }, []);
@@ -162,6 +178,26 @@ export function PdfViewer({
     void drawPage(pageNumber, ZOOM_STEPS[zoomIndex] ?? 1);
   }, [drawPage, pageNumber, state, zoomIndex]);
 
+  /*
+   * Und bei geänderter Breite erneut: Die Grundgröße ist „passt in die Spalte",
+   * und die Spalte ändert sich mit dem Fenster. Ohne das bliebe das Blatt in
+   * der Breite von vorhin stehen.
+   */
+  useEffect(() => {
+    if (state.kind !== 'ready') {
+      return;
+    }
+
+    const handler = (): void => {
+      void drawPage(pageNumber, ZOOM_STEPS[zoomIndex] ?? 1);
+    };
+
+    window.addEventListener('resize', handler);
+    return () => {
+      window.removeEventListener('resize', handler);
+    };
+  }, [drawPage, pageNumber, state, zoomIndex]);
+
   const pageCount = state.kind === 'ready' ? state.pageCount : 0;
 
   return (
@@ -177,9 +213,9 @@ export function PdfViewer({
             onClick={() => {
               setPageNumber((current) => Math.max(1, current - 1));
             }}
-            className={`${SECONDARY_BUTTON_CLASS} size-9 px-0`}
+            className={ICON_BUTTON_CLASS}
           >
-            <ChevronLeft aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
+            <ChevronLeft aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
           </button>
           <span className="text-ui tabular-nums text-ink-muted">
             {state.kind === 'ready'
@@ -193,9 +229,9 @@ export function PdfViewer({
             onClick={() => {
               setPageNumber((current) => Math.min(pageCount, current + 1));
             }}
-            className={`${SECONDARY_BUTTON_CLASS} size-9 px-0`}
+            className={ICON_BUTTON_CLASS}
           >
-            <ChevronRight aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
+            <ChevronRight aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
           </button>
         </div>
 
@@ -207,9 +243,9 @@ export function PdfViewer({
             onClick={() => {
               setZoomIndex((current) => Math.max(0, current - 1));
             }}
-            className={`${SECONDARY_BUTTON_CLASS} size-9 px-0`}
+            className={ICON_BUTTON_CLASS}
           >
-            <Minus aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
+            <Minus aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
           </button>
           <button
             type="button"
@@ -227,14 +263,20 @@ export function PdfViewer({
             onClick={() => {
               setZoomIndex((current) => Math.min(ZOOM_STEPS.length - 1, current + 1));
             }}
-            className={`${SECONDARY_BUTTON_CLASS} size-9 px-0`}
+            className={ICON_BUTTON_CLASS}
           >
-            <Plus aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
+            <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
           </button>
         </div>
       </div>
 
-      <div ref={containerRef} className="overflow-auto p-4" data-testid="pdf-viewer-canvas">
+      <div className="overflow-auto p-4">
+        {/*
+          Gemessen wird an diesem Rahmen, nicht am rollenden darüber: Dessen
+          `clientWidth` enthält die Polsterung, und das Blatt wäre jedes Mal
+          32 Punkte zu breit.
+        */}
+        <div ref={containerRef} className="min-w-0">
         {state.kind === 'failed' ? (
           <p className="text-ui text-ink-muted">{messages.preview.failed}</p>
         ) : (
@@ -244,6 +286,7 @@ export function PdfViewer({
            */
           <canvas ref={canvasRef} aria-label={title} className="mx-auto block bg-sheet shadow-sheet" />
         )}
+        </div>
       </div>
     </div>
   );

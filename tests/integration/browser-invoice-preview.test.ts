@@ -39,6 +39,56 @@ async function openDraft(page: Page): Promise<void> {
   await page.waitForSelector('canvas[aria-label]', { timeout: 30_000 });
 }
 
+/**
+ * Wartet, bis auf der Leinwand wirklich Farbe liegt, und gibt deren Menge.
+ *
+ * **Gezählt, nicht gestichprobt.** Die erste Fassung sah nur die obersten
+ * Zeilen an und fragte, ob ein Punkt von Weiß abweicht. Sie bestand aus dem
+ * falschen Grund: Eine noch leere Leinwand ist durchsichtig, und durchsichtig
+ * las sich als „dunkler als Weiß" — sie hätte also auch bestanden, wenn gar
+ * nichts gesetzt worden wäre.
+ *
+ * Gewartet wird, weil die Leiste vor dem ersten Strich erscheint: Der Zustand
+ * „geladen" und das Zeichnen sind zwei Schritte.
+ */
+async function warteAufTinte(page: Page): Promise<number> {
+  const frist = Date.now() + 15_000;
+  let treffer = 0;
+
+  while (Date.now() < frist) {
+    treffer = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas');
+      if (canvas === null || canvas.width === 0) {
+        return 0;
+      }
+      const context2d = canvas.getContext('2d');
+      if (context2d === null) {
+        return 0;
+      }
+
+      const daten = context2d.getImageData(0, 0, canvas.width, canvas.height).data;
+      let punkte = 0;
+
+      for (let index = 0; index < daten.length; index += 4) {
+        const deckend = (daten[index + 3] ?? 0) > 200;
+        const dunkel = (daten[index] ?? 255) < 200;
+        if (deckend && dunkel) {
+          punkte += 1;
+        }
+      }
+
+      return punkte;
+    });
+
+    if (treffer > 0) {
+      return treffer;
+    }
+    await page.waitForTimeout(250);
+  }
+
+  return treffer;
+}
+
 describe('FA-PDF-02 Die Vorschau gehört der Anwendung', () => {
   it('setzt den Beleg selbst — mit eigener Leiste, ohne fremden Betrachter', async () => {
     /*
@@ -72,27 +122,95 @@ describe('FA-PDF-02 Die Vorschau gehört der Anwendung', () => {
       expect(await page.locator('button[aria-label="Größer"]').count()).toBe(1);
 
       // Und die Leinwand trägt wirklich ein Bild, keine leere Fläche.
-      const gezeichnet = await page.evaluate(() => {
-        const canvas = document.querySelector('canvas');
-        if (canvas === null || canvas.width === 0) {
-          return false;
-        }
-        const context2d = canvas.getContext('2d');
-        if (context2d === null) {
-          return false;
-        }
-        const daten = context2d.getImageData(0, 0, canvas.width, Math.min(canvas.height, 200)).data;
-        // Irgendein Bildpunkt muss von reinem Weiß abweichen.
-        for (let index = 0; index < daten.length; index += 4) {
-          if ((daten[index] ?? 255) < 250) {
-            return true;
-          }
-        }
-        return false;
-      });
+      /*
+       * **Gezählt, nicht gestichprobt.**
+       *
+       * Die erste Fassung sah nur die obersten 200 Zeilen an und fragte, ob
+       * ein Punkt von Weiß abweicht. Sie bestand aus dem falschen Grund: Eine
+       * noch **leere** Leinwand ist durchsichtig, und durchsichtig las sich
+       * als „dunkler als Weiß". Sie hätte also auch dann bestanden, wenn gar
+       * nichts gesetzt worden wäre — und fiel erst um, als der Kopfbereich
+       * tatsächlich weiß gezeichnet wurde.
+       *
+       * Jetzt wird das ganze Blatt gezählt: Punkte, die deckend und nicht weiß
+       * sind. Das ist Text auf Papier und sonst nichts.
+       */
+      const dunklePunkte = await warteAufTinte(page);
 
-      expect(gezeichnet).toBe(true);
+      expect(dunklePunkte).toBeGreaterThan(500);
       expect(richtlinienverstoesse).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('zeigt die Symbole der Leiste in voller Breite', async () => {
+    /*
+     * **Gemessen, nicht angesehen.** Die Symbole waren 2 Punkte breit bei 16
+     * Punkten Höhe: Die Knopfklasse hängte `px-0` an ein `px-4`, und in CSS
+     * entscheidet nicht die Reihenfolge im Klassenstring, sondern die im
+     * erzeugten Stylesheet. Im 36 Punkte breiten Knopf blieben 4 für den
+     * Inhalt. Am Bildschirm sah das aus wie „die Symbole fehlen".
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+
+      const breiten = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-document] button svg')].map(
+          (symbol) => symbol.getBoundingClientRect().width,
+        ),
+      );
+
+      expect(breiten).toHaveLength(4);
+      for (const breite of breiten) {
+        expect(breite).toBeGreaterThanOrEqual(12);
+      }
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('vergrößert wirklich, nicht nur die Auflösung', async () => {
+    /*
+     * Eine Leinwand hat zwei Maße: Bildgröße und Anzeigegröße. Stand die
+     * Anzeige auf `100%`, hing sie am Container — Vergrößern erhöhte allein
+     * die Auflösung, und sichtbar änderte sich nichts. Geprüft wird deshalb
+     * die **angezeigte** Breite.
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+      await page.waitForTimeout(1_000);
+
+      const vorher = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().width ?? 0,
+      );
+      expect(vorher).toBeGreaterThan(0);
+
+      await page.click('button[aria-label="Größer"]');
+      await page.waitForTimeout(1_500);
+
+      const nachher = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().width ?? 0,
+      );
+
+      expect(nachher).toBeGreaterThan(vorher);
+
+      // Und wieder zurück: Der Zoom ist eine Stufenleiter, keine Einbahnstraße.
+      await page.click('button[aria-label="Kleiner"]');
+      await page.waitForTimeout(1_500);
+
+      const zurueck = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().width ?? 0,
+      );
+      expect(Math.round(zurueck)).toBe(Math.round(vorher));
     } finally {
       await context.close();
     }

@@ -66,6 +66,22 @@ export const SECONDARY_BUTTON_CLASS =
   `${CONTROL_BASE} inline-flex items-center justify-center border border-rule px-4 ` +
   'text-ink hover:bg-surface-sunken disabled:text-ink-faint';
 
+/**
+ * Ein Knopf, der **nur** ein Symbol trägt (M12).
+ *
+ * Warum eine eigene Klasse und nicht `SECONDARY_BUTTON_CLASS` mit `px-0`
+ * daneben: In CSS entscheidet nicht die Reihenfolge im Klassenstring, sondern
+ * die im erzeugten Stylesheet. `px-4` und `px-0` haben dieselbe Spezifität —
+ * welches gewinnt, ist nicht steuerbar. In der Vorschau gewann `px-4`, und im
+ * 36 px breiten Knopf blieben 4 px für das Symbol: Es erschien als 2 px
+ * schmaler Strich. Gemessen im Browser, nicht vermutet.
+ *
+ * Ein Symbol ohne Beschriftung gibt es nicht — der Aufrufer setzt `aria-label`.
+ */
+export const ICON_BUTTON_CLASS =
+  `${CONTROL_BASE} inline-flex size-9 shrink-0 items-center justify-center border border-rule ` +
+  'text-ink hover:bg-surface-sunken disabled:text-ink-faint';
+
 /** Tertiäre Aktionen: nur Text, keine Fläche, keine Kontur. */
 export const QUIET_BUTTON_CLASS =
   `${CONTROL_BASE} inline-flex items-center justify-center px-2 text-accent ` +
