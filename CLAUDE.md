@@ -80,6 +80,16 @@ jeweils neuesten Fassung, beide durch Fehlschläge belegt:
   Driver-Adapter (`better-sqlite3`, nativ kompiliert). Zurückgestellt, bis der
   Nutzen den Aufwand im Container rechtfertigt.
 
+Ein `overrides`-Eintrag hebt `deepmerge-ts` auf 8.0.2. Der Grund ist eine
+Sicherheitsmeldung (Stack Exhaustion beim Verschmelzen rekursiver Objektgraphen)
+in der Kette `prisma → @prisma/config → deepmerge-ts`; `npm audit` bricht
+darüber ab, und die Kette läuft im Container mit — der Startvorgang wendet die
+Migrationen an. Der von npm vorgeschlagene Ausweg wäre ein Rückschritt auf
+Prisma 6.12.0 gewesen. Stattdessen wird nur die betroffene Unterabhängigkeit
+angehoben; dass die Werkzeugkette das verträgt, ist nachgesehen worden:
+`validate`, `generate` und ein vollständiges `migrate deploy` auf frischer
+Datei (28 Tabellen, 27 Trigger).
+
 Laufzeit: Node 24.13.0 (`.nvmrc`), Next 16.3.0, React 19.2.8, Tailwind 4.3.3,
 Vitest 4.1.10, Zod 4.4.3, lucide-react 1.31.0, pdfjs-dist 6.2.108 (Belegvorschau,
 seit M12 — die größte Abhängigkeit im Browser, bewusst in Kauf genommen).

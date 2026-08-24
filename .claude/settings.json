@@ -21,7 +21,23 @@
       "Bash(awk -F'|' '/^\\\\| FA-PDF-02 \\\\|/ {print NF-2}' FORTSCHRITT.md)",
       "Bash(grep -B 3 -A 12 \"öffnet die Rückfrage und schreibt fest$\" /private/tmp/claude-501/-Users-tim-private-faktura/36c97d69-fd8c-450f-acc5-b10c30f80d1a/scratchpad/bie3.log)",
       "Bash(grep -n 'name={`lines\\\\[${String\\(index\\)}\\\\]\\\\[name\\\\]`}' -A 8 src/app/invoices/invoice-editor.tsx)",
-      "Bash(grep -n \"\\\\[name\\\\]\\\\`}\" -B 3 -A 10 src/app/invoices/invoice-editor.tsx)"
+      "Bash(grep -n \"\\\\[name\\\\]\\\\`}\" -B 3 -A 10 src/app/invoices/invoice-editor.tsx)",
+      "Bash(git clone *)",
+      "Bash(cp /Users/tim/private/faktura/.env .env)",
+      "Bash(npm ci *)",
+      "Bash(echo \"npm ci: $?\")",
+      "Bash(echo \"audit exit: $?\")",
+      "Bash(npm audit *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('Schwachstellen:', {k: v['severity'] for k,v in d.get\\('vulnerabilities',{}\\).items\\(\\)}\\)\")",
+      "Bash(python3 -c \"import json,sys; v=json.load\\(sys.stdin\\); print\\([x for x in v if x.startswith\\('6.'\\)][-6:]\\)\")",
+      "Bash(python3 -c \"import json,sys; print\\(json.load\\(sys.stdin\\)[-5:]\\)\")",
+      "Bash(npm ls *)",
+      "Bash(python3 -c ' *)",
+      "Bash(echo \"install: $?\")",
+      "Bash(DATABASE_URL='file:../data/probe.db' npx prisma migrate deploy)",
+      "Bash(sqlite3 data/probe.db \"select count\\(*\\) as tabellen from sqlite_master where type='table'; select count\\(*\\) as trigger from sqlite_master where type='trigger';\")",
+      "Bash(echo \"VERIFY EXIT: $?\")",
+      "Bash(echo \"INTEGRATION $?\")"
     ],
     "additionalDirectories": [
       "/tmp"

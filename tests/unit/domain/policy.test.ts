@@ -25,6 +25,7 @@ import {
   isPermissionKey,
   omnipotentActor,
   PERMITTED,
+  splitPermissionKey,
 } from '@/domain/policy/can';
 
 describe('FA-ROLE-06 Der Katalog ist geschlossen und abgeleitet', () => {
@@ -123,5 +124,27 @@ describe('FA-UI-14 Die Frage nach der Berechtigung', () => {
 
     expect(can(actorOf(['organization.administer']), 'administer', 'organization')).toBe(true);
     expect(can(actorOf(['invoice.issue']), 'administer', 'organization')).toBe(false);
+  });
+});
+
+describe('splitPermissionKey', () => {
+  /*
+   * Die Rollenverwaltung zeigt Berechtigungen nach Gegenstand gruppiert; dafür
+   * zerlegt sie den Schlüssel. Bisher ungeprüft — und der Punkt trennt nicht
+   * überall dasselbe: `invoice.recordPayment` hat einen im Gegenstand keinen,
+   * aber die Handlung trägt Großbuchstaben.
+   */
+  it('trennt am **ersten** Punkt', () => {
+    expect(splitPermissionKey('invoice.recordPayment')).toEqual({
+      subject: 'invoice',
+      action: 'recordPayment',
+    });
+  });
+
+  it('zerlegt jeden Schlüssel des Katalogs verlustfrei', () => {
+    for (const key of ALL_PERMISSION_KEYS) {
+      const { subject, action } = splitPermissionKey(key);
+      expect(`${subject}.${action}`).toBe(key);
+    }
   });
 });
