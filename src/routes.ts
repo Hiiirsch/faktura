@@ -256,6 +256,15 @@ export const routes: readonly RouteDefinition[] = [
     publicReason: 'Die Anmeldeseite muss ohne Sitzung erreichbar sein.',
   },
   {
+    path: PASSWORD_RESET_PATH,
+    kind: 'page',
+    access: 'public',
+    publicReason:
+      'Wer sein Passwort vergessen hat, hat keine Sitzung — das ist der Anlass. ' +
+      'Die Seite nimmt eine Adresse entgegen und antwortet in **allen** Fällen ' +
+      'gleich; sie gibt damit keine Auskunft darüber, wer hier ein Konto hat.',
+  },
+  {
     path: IMPRINT_PATH,
     kind: 'page',
     access: 'public',

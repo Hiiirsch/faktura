@@ -235,11 +235,18 @@ describe('FA-ROLE-03 Jede Server Action prüft, bevor sie schreibt', () => {
      *   ebenfalls vor der Sitzung. Ihr Nachweis ist der Token in der Adresse,
      *   und ein Recht zu verlangen wäre hier unmöglich: Das Konto entsteht erst
      *   dabei, oder sein Inhaber kommt gerade nicht hinein.
+     * - Das **Anfordern** einer Zurücksetzung (M14) liegt noch davor: Wer sie
+     *   auslöst, hat nicht einmal einen Token — nur eine Adresse. Ein Recht zu
+     *   verlangen hieße, es von dem zu verlangen, der gerade nicht hineinkommt.
+     *   Geschützt ist der Vorgang stattdessen dadurch, dass er **nichts
+     *   herausgibt**: dieselbe Antwort in allen Fällen, und die Mail geht an
+     *   die hinterlegte Adresse, nicht an die eingegebene.
      */
     const withoutSession = [
       'src/app/auth-actions.ts',
       `src/app/invitations/[token]${path.sep}actions.ts`,
       `src/app/password-reset/[token]${path.sep}actions.ts`,
+      `src/app/password-reset${path.sep}actions.ts`,
     ];
 
     const relevant = files.filter(

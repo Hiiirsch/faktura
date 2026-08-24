@@ -1244,6 +1244,22 @@ export const messages = {
     passwordReady: 'Das Passwort ist gesetzt. Jetzt anmelden.',
   },
   passwordReset: {
+    requestTitle: 'Passwort vergessen',
+    requestHeading: 'Passwort vergessen',
+    requestIntro:
+      'Adresse eintragen. Gibt es dazu ein Konto, geht ein Link zum Setzen eines neuen Passworts hinaus.',
+    requestSubmit: 'Link anfordern',
+    /**
+     * **Eine Antwort für fünf Fälle** (FA-MEMB-08): unbekannte Adresse,
+     * gesperrtes Konto, stillgelegtes Unternehmen, Bremse gegriffen, Erfolg.
+     * Der Satz sagt deshalb nicht „wir haben geschickt", sondern was gilt.
+     */
+    requestDone:
+      'Wenn es zu dieser Adresse ein Konto gibt, ist ein Link unterwegs. Er gilt 24 Stunden und lässt sich einmal einlösen. Prüfen Sie auch den Spam-Ordner.',
+    requestNoMailHint:
+      'In dieser Anlage ist kein Mailversand eingerichtet. Ein neues Passwort bekommen Sie über die Rechteverwaltung Ihres Unternehmens: Sie stellt einen Link aus und gibt ihn Ihnen.',
+    backToLogin: 'Zurück zur Anmeldung',
+    forgotten: 'Passwort vergessen?',
     title: 'Passwort setzen',
     heading: 'Neues Passwort setzen',
     intro: 'Für {email}. Alle laufenden Sitzungen dieses Kontos enden dabei.',

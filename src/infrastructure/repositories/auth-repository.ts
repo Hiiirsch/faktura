@@ -266,6 +266,26 @@ export async function deleteRecoveryCodes(
 // bestätigt über `findMember(context, id)`, dass das Konto zum eigenen
 // Unternehmen gehört, und stellt ihn erst danach aus.
 
+/**
+ * Der jüngste unverbrauchte Nachweis eines Kontos (M14).
+ *
+ * Er ist die Bremse für die Selbstbedienung: Wer „Passwort vergessen" zweimal
+ * hintereinander drückt, bekommt keine zweite Mail. Dafür braucht es **keine
+ * neue Tabelle** — die Zeile trägt die Auskunft schon, und ein Zähler daneben
+ * wäre ein zweiter Ort für dieselbe Wahrheit.
+ */
+export async function findNewestUnusedPasswordReset(
+  userId: string,
+): Promise<{ readonly expiresAt: Date } | null> {
+  return clientFor(undefined).passwordReset.findFirst({
+    where: { userId, usedAt: null },
+    orderBy: { createdAt: 'desc' },
+    // `expiresAt` und nicht `createdAt`: Diesen Wert setzt die Anwendung aus
+    // ihrer Uhr, `createdAt` setzt die Datenbank aus ihrer.
+    select: { expiresAt: true },
+  });
+}
+
 export async function createPasswordReset(
   data: { readonly userId: string; readonly tokenHash: string; readonly expiresAt: Date },
   handle?: TransactionHandle,

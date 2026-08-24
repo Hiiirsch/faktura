@@ -7,6 +7,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isTooSoonForAnotherReset,
+  PASSWORD_RESET_TTL_MS,
+  passwordResetExpiry,
+  RESET_REQUEST_INTERVAL_MS,
+} from '@/domain/auth/password-reset-policy';
+
+import {
   clearFailedAttempts,
   isLocked,
   LOCKOUT_DURATION_MS,
@@ -198,5 +205,40 @@ describe('Wiederherstellungscodes (NFA-SEC-05)', () => {
     expect(isWellFormedRecoveryCode('ABCD-EFGH-JKLM')).toBe(false);
     // Enthält die ausgeschlossenen Zeichen O und I.
     expect(isWellFormedRecoveryCode('ABCO-EFGI-JKLM-NPQR')).toBe(false);
+  });
+});
+
+describe('FA-MEMB-08 Abstand zwischen zwei Anforderungen (M14)', () => {
+  /*
+   * **Gerechnet wird über `expiresAt`, nicht über `createdAt`.** Der erste
+   * Anlauf verglich den Zeitpunkt des Aufrufers mit dem, den die Datenbank
+   * beim Einfügen setzt. In der Anwendung fällt das nie auf — beide Uhren sind
+   * dieselbe. Im Test mit festem Zeitpunkt lagen Monate dazwischen, und die
+   * Bremse griff für immer.
+   */
+  const now = new Date('2026-03-01T09:00:00.000Z');
+
+  it('bremst, solange der Nachweis jünger als fünf Minuten ist', () => {
+    // Vor einer Minute ausgestellt: Die Frist läuft noch 24 h minus 1 min.
+    const expiresAt = new Date(now.getTime() + PASSWORD_RESET_TTL_MS - 60_000);
+
+    expect(isTooSoonForAnotherReset(expiresAt, now)).toBe(true);
+  });
+
+  it('lässt nach fünf Minuten wieder einen zu', () => {
+    const expiresAt = new Date(
+      now.getTime() + PASSWORD_RESET_TTL_MS - RESET_REQUEST_INTERVAL_MS - 1_000,
+    );
+
+    expect(isTooSoonForAnotherReset(expiresAt, now)).toBe(false);
+  });
+
+  it('bremst einen eben erst ausgestellten Nachweis', () => {
+    expect(isTooSoonForAnotherReset(passwordResetExpiry(now), now)).toBe(true);
+  });
+
+  it('bremst einen abgelaufenen Nachweis nicht', () => {
+    // Er ist längst nutzlos; ein neuer muss möglich sein.
+    expect(isTooSoonForAnotherReset(new Date(now.getTime() - 1_000), now)).toBe(false);
   });
 });
