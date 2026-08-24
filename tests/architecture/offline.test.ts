@@ -8,7 +8,15 @@
  * Wechselkurs-API dort, und niemand bemerkt es, weil im Entwicklungsnetz alles
  * erreichbar ist.
  *
- * Geprüft wird deshalb an drei Stellen zugleich:
+ * **Seit M14 gibt es genau eine Ausnahme**, und sie ist benannt: der Versand
+ * per E-Mail an einen Mailserver, den der Betreiber selbst konfiguriert. Ohne
+ * Konfiguration bleibt die Anwendung vollständig offline. Die Regel wurde
+ * dafür **enger** gefasst statt gestrichen: Es wird jetzt zusätzlich geprüft,
+ * dass außer `infrastructure/mail/**` kein Modul einen Netzwerkverkehr
+ * aufbaut. Eine Zusage, die man lockert, verliert man; eine, die man
+ * einschränkt und dabei schärft, behält man.
+ *
+ * Geprüft wird deshalb an vier Stellen zugleich:
  *
  * 1. **Im Quelltext**: keine Adresse eines fremden Hosts in einem Aufruf.
  * 2. **In der Richtlinie**: `connect-src` und `default-src` lassen den Browser
@@ -69,6 +77,63 @@ describe('NFA-COMP-05 Keine ausgehende Verbindung', () => {
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  it('baut außerhalb des Mailmoduls keine Verbindung nach außen auf', async () => {
+    /*
+     * **Die benannte Ausnahme, und nur sie** (M14).
+     *
+     * Gesucht wird nach den Werkzeugen, mit denen man **hinaus** greift: die
+     * Netzmodule von Node, der Mailversender, und ein `fetch` auf eine
+     * absolute Adresse. Erlaubt ist das ausschließlich unter
+     * `infrastructure/mail/**` — und dort auch nur mit einer Adresse aus der
+     * Umgebung.
+     *
+     * **Ein `fetch` auf einen eigenen Pfad zählt nicht.** Die Passkey-Zeremonie
+     * ruft `/api/passkeys` — dieselbe Herkunft, und der Browser käme über
+     * `connect-src 'self'` ohnehin nicht weiter. Der erste Anlauf dieser Regel
+     * hat genau das gemeldet und wäre damit eine Regel gewesen, die man
+     * abschaltet statt befolgt.
+     *
+     * `playwright` fällt ebenfalls nicht darunter: Der Renderer spricht mit
+     * einem Browser auf demselben Rechner, und dass der nicht nach außen
+     * greift, prüft `tests/integration/rendering.test.ts` am erzeugten Beleg.
+     */
+    const erlaubt = /^src\/infrastructure\/mail\//u;
+    const werkzeuge =
+      /\b(?:fetch\(\s*[`'"]https?:|createTransport\(|from 'node:(?:net|https|http|dgram|tls)')/u;
+
+    const offenders: string[] = [];
+
+    for (const file of await collect('src')) {
+      if (erlaubt.test(file)) {
+        continue;
+      }
+
+      const code = withoutComments(readFileSync(path.join(projectRoot, file), 'utf8'));
+      if (werkzeuge.test(code)) {
+        offenders.push(file);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('stellt ohne Konfiguration nichts zu', () => {
+    /*
+     * Die Bedingung, unter der die alte Zusage weitergilt: Wer keinen
+     * Mailserver einträgt, hat eine Anwendung, die nichts hinausschickt. Das
+     * steht im Mailmodul als Rückgabewert `not-configured` — hier wird
+     * festgehalten, dass es diesen Zweig überhaupt gibt.
+     */
+    const mailer = readFileSync(
+      path.join(projectRoot, 'src/infrastructure/mail/mailer.ts'),
+      'utf8',
+    );
+
+    expect(mailer).toContain("reason: 'not-configured'");
+    // Die Adresse kommt aus der Umgebung, nie aus dem Quelltext (NFA-SEC-21).
+    expect(mailer).toContain('env.SMTP_URL');
   });
 
   it('lässt den Browser über die Richtlinie nicht nach außen', () => {

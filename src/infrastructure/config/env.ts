@@ -54,6 +54,29 @@ const envSchema = z.object({
    * eingefrorener Download im Image zu liegen.
    */
   CHROMIUM_PATH: z.string().min(1).optional(),
+
+  /**
+   * Der Mailserver, über den zugestellt wird (M14, NFA-COMP-05 in neuer
+   * Fassung).
+   *
+   * **Optional, und ohne ihn bleibt alles wie vorher.** Die Anwendung
+   * funktioniert vollständig ohne ausgehende Verbindung; wer keinen Versand
+   * einrichtet, bekommt weiterhin jeden Link genau einmal in der Oberfläche zu
+   * sehen. Der Versand ist eine Zugabe, kein Bestandteil eines Vorgangs.
+   *
+   * **Eine Adresse statt sechs Einzelwerte**
+   * (`smtps://benutzer:kennwort@host:465`): Wer einen Mailserver einrichtet,
+   * hat diese Zeichenkette vom Anbieter; sie in Wirt, Anschluss, Benutzer,
+   * Kennwort, Verschlüsselung und Zertifikatsprüfung zu zerlegen verteilt eine
+   * Angabe auf sechs Stellen, an denen sie einzeln falsch sein kann.
+   *
+   * Die Zugangsdaten stehen ausschließlich hier und nie im Repository
+   * (NFA-SEC-21).
+   */
+  SMTP_URL: z.string().min(1).optional(),
+
+  /** Absenderadresse. Ohne sie wird nicht zugestellt, auch nicht mit `SMTP_URL`. */
+  MAIL_FROM: z.string().min(3).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

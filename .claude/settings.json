@@ -49,7 +49,8 @@
       "Bash(curl -s -o /dev/null -w \"admin/legal ohne Sitzung: %{http_code} → %{redirect_url}\\\\n\" http://localhost/admin/legal)",
       "Bash(sqlite3 data/faktura.db \"select email, disabledAt is null as aktiv from AdminUser;\")",
       "Bash(grep -oE \"^\\\\| [A-Z-]+-[0-9]+ \\\\| [^|]{0,70}\")",
-      "Bash(awk -F'|' '/^\\\\| FA-UI-29 \\\\|/ {print NF-2}' FORTSCHRITT.md faktura-frontend-design.md)"
+      "Bash(awk -F'|' '/^\\\\| FA-UI-29 \\\\|/ {print NF-2}' FORTSCHRITT.md faktura-frontend-design.md)",
+      "Bash(echo \"audit: $?\")"
     ],
     "additionalDirectories": [
       "/tmp"
