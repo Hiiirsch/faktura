@@ -45,6 +45,7 @@ export function DateField({
   onChange,
   hint,
   required,
+  invalid,
 }: {
   readonly name: string;
   readonly label: string;
@@ -54,6 +55,8 @@ export function DateField({
   readonly onChange?: (isoDate: string) => void;
   readonly hint?: string;
   readonly required?: boolean;
+  /** Markiert das Feld als unvollständig (M12, FA-UI-10). */
+  readonly invalid?: boolean;
 }): ReactNode {
   const fieldId = useId();
   const hintId = hint === undefined ? undefined : `${fieldId}-hint`;
@@ -87,6 +90,7 @@ export function DateField({
           inputMode="numeric"
           autoComplete="off"
           placeholder={messages.common.datePlaceholder}
+          aria-invalid={invalid === true ? true : undefined}
           aria-describedby={hintId}
           value={shown}
           onChange={(event) => {

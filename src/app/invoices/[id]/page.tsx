@@ -372,6 +372,7 @@ async function DraftEditor({
         templates={context.templates}
         defaultTaxRatePercent={context.defaultTaxRatePercent}
         sellerIsSmallBusiness={context.sellerIsSmallBusiness}
+        seller={context.seller}
         defaultPaymentTerms={context.defaultPaymentTerms}
         csrfToken={csrfToken}
       />

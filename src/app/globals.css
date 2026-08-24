@@ -264,6 +264,18 @@ table {
  * `de.ts` „Faktura" und wird auch so vorgelesen. Nur die Marke setzt ihn klein,
  * und das ist eine Frage der Darstellung, keine des Namens.
  */
+/*
+ * Ein Feld, dem etwas fehlt (M12, FA-UI-10).
+ *
+ * Als Regel auf `aria-invalid` und nicht als Klasse an jedem Feld: Die
+ * Markierung ist dieselbe Aussage wie die für Screenreader, und zwei Quellen
+ * für dieselbe Aussage laufen auseinander. So markiert sich jedes Feld, das
+ * seinen Zustand ehrlich meldet — auch die, die es künftig gibt.
+ */
+[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
 .brand-wordmark {
   letter-spacing: -0.015em;
   text-transform: lowercase;

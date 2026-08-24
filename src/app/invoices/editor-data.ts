@@ -89,6 +89,8 @@ export type EditorContext = {
    * einen bewussten Schritt.
    */
   readonly sellerIsSmallBusiness: boolean;
+  /** Steuernummer/USt-IdNr — für die Vollständigkeitsprüfung im Entwurf (M12). */
+  readonly seller: { readonly hasTaxIdentifier: boolean; readonly vatId: string | null };
   readonly defaultCurrency: string;
   readonly today: string;
   readonly hasCompanyProfile: boolean;
@@ -174,6 +176,11 @@ export async function loadEditorContext(
     })),
     defaultTaxRatePercent: String(company.defaultTaxRateBasisPoints / PERCENT_BASIS_POINTS),
     sellerIsSmallBusiness: company.isSmallBusiness,
+    seller: {
+      hasTaxIdentifier:
+        (company.taxNumber ?? '').trim().length > 0 || (company.vatId ?? '').trim().length > 0,
+      vatId: company.vatId,
+    },
     defaultCurrency: company.defaultCurrency,
     today,
     hasCompanyProfile: company.legalName.length > 0,

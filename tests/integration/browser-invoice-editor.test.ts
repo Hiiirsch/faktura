@@ -124,6 +124,43 @@ describe('FA-RECH-12 Festschreiben aus dem Editor', () => {
     }
   }, 180_000);
 
+  it('sagt schon im Entwurf, was zum Festschreiben fehlt, und markiert das Feld', async () => {
+    /*
+     * Die Prüfung gab es seit M3 — sie lief nur zu spät, erst beim
+     * Festschreiben. Jetzt läuft dieselbe Domänenfunktion laufend über den
+     * Formularstand, und jede Zeile führt zu ihrem Feld.
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openFreshDraft(page);
+
+      /*
+       * Das Rechnungsdatum leeren. Gesucht wird über das **sichtbare** Feld
+       * neben dem versteckten mit dem ISO-Wert: `DateField` zeigt die deutsche
+       * Schreibweise und sendet ISO — zwei Eingaben, ein Wert.
+       */
+      const datum = page
+        .locator('div:has(> input[type="hidden"][name="issueDate"]) input[inputmode="numeric"]')
+        .first();
+      await datum.fill('');
+      await datum.blur();
+      await page.waitForTimeout(1_000);
+
+      const hinweis = page.locator('section:has-text("Zum Festschreiben fehlt noch")');
+      expect(await hinweis.count()).toBeGreaterThan(0);
+      expect(await hinweis.first().textContent()).toContain('Rechnungsdatum');
+
+      // Und das Feld selbst ist markiert.
+      const markiert = await datum.getAttribute('aria-invalid');
+      expect(markiert).toBe('true');
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
   it('setzt die Vorschau ohne Seitenfehler, auch bei schnellem Zoomen', async () => {
     /*
      * Zwei Zeichnungen auf derselben Leinwand weist pdf.js ab, und das trifft

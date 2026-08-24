@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useActionState, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import Link from 'next/link';
@@ -26,6 +26,7 @@ import type { CatalogItem } from '@/application/catalog/catalog-service';
 import { TAX_CATEGORY_CODES, type TaxCategoryCode } from '@/domain/codes/tax-category';
 import { UNIT_CODES, type UnitCode } from '@/domain/codes/unit-code';
 import type { BuyerMode } from '@/domain/invoice/buyer';
+import type { CompletenessViolation } from '@/domain/invoice/completeness';
 import { calculateInvoiceTotals, PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
 import { cents, parseCents } from '@/domain/money/money';
 import { parseQuantity, quantityFromScaled } from '@/domain/quantity/quantity';
@@ -52,6 +53,12 @@ import { SaveToast } from '@/ui/components/toast';
 import { formatMoney, formatPercent, parseGermanDecimal } from '@/ui/format';
 
 import { type InvoiceFormState, issueInvoiceAction, saveDraftAction } from './actions';
+import {
+  describeViolation,
+  fieldOfViolation,
+  violationsOf,
+  type SellerFacts,
+} from './completeness-hints';
 import { BuyerFieldset, type EditorBuyerValues } from './buyer-fieldset';
 
 export type EditableLine = {
@@ -145,6 +152,7 @@ function SortableLineRow({
   onRemove,
   onDuplicate,
   onMove,
+  flagged,
 }: {
   readonly line: EditableLine;
   readonly index: number;
@@ -155,6 +163,8 @@ function SortableLineRow({
   readonly onRemove: (key: string) => void;
   readonly onDuplicate: (key: string) => void;
   readonly onMove: (key: string, delta: number) => void;
+  /** Felder dieser Zeile, denen etwas fehlt (M12). */
+  readonly flagged: ReadonlySet<string>;
 }): ReactNode {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: line.key,
@@ -233,6 +243,7 @@ function SortableLineRow({
           <input
             id={`${fieldId}-name`}
             name={`lines[${String(index)}][name]`}
+            aria-invalid={flagged.has(`lines[${String(index)}][name]`) ? true : undefined}
             value={line.name}
             onChange={(event) => {
               onChange(line.key, { name: event.target.value });
@@ -315,6 +326,7 @@ function SortableLineRow({
           <span className="font-medium">{messages.invoices.lineTaxRate}</span>
           <input
             name={`lines[${String(index)}][taxRate]`}
+            aria-invalid={flagged.has(`lines[${String(index)}][taxRate]`) ? true : undefined}
             value={line.taxRate}
             inputMode="decimal"
             onChange={(event) => {
@@ -356,6 +368,7 @@ export function InvoiceEditor({
   templates,
   defaultTaxRatePercent,
   sellerIsSmallBusiness,
+  seller,
   defaultPaymentTerms,
   csrfToken,
   canIssue,
@@ -371,6 +384,8 @@ export function InvoiceEditor({
   readonly defaultTaxRatePercent: string;
   /** Ob das Unternehmen nach §19 UStG abrechnet (M12). */
   readonly sellerIsSmallBusiness: boolean;
+  /** Steuernummer/USt-IdNr des eigenen Unternehmens — für die Vollständigkeit. */
+  readonly seller: SellerFacts;
   /** Zahlungsziel der Firmendaten — gilt, wo kein Kunde eines vorgibt. */
   readonly defaultPaymentTerms: number;
   readonly csrfToken: string;
@@ -387,6 +402,9 @@ export function InvoiceEditor({
   const [issueState, issueAction] = useActionState(issueInvoiceAction, INITIAL_STATE);
   /** Die Fehlermeldung des Formulars — zum Anfahren nach einem Fehlschlag. */
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  /** Was zum Festschreiben noch fehlt — laufend geprüft (M12). */
+  const [violations, setViolations] = useState<readonly CompletenessViolation[]>([]);
 
   const [buyerMode, setBuyerMode] = useState<BuyerMode>(initial.buyer.mode);
   const [customerId, setCustomerId] = useState(initial.buyer.customerId);
@@ -427,6 +445,38 @@ export function InvoiceEditor({
       announceInvoiceSaved();
     }
   }, [saveState]);
+
+  /*
+   * **Die Vollständigkeit wird laufend geprüft** (M12, FA-RECH-12).
+   *
+   * Dieselbe Domänenfunktion, die auch das Festschreiben befragt — nur eben
+   * schon währenddessen. Gelesen wird das Formular selbst, deshalb hängt der
+   * Effekt nicht an einzelnen Zuständen, sondern wird nach jeder Änderung
+   * angestoßen (`onChange` am Formular) und zusätzlich einmal beim Aufbau.
+   */
+  const recheck = useCallback((): void => {
+    const form = formRef.current;
+    if (form === null) {
+      return;
+    }
+    setViolations(violationsOf(form, seller));
+  }, [seller]);
+
+  useEffect(() => {
+    recheck();
+  }, [recheck, lines, buyerMode, customerId, taxScheme, issueDate, dueDate]);
+
+  /** Die Felder, denen etwas fehlt — für die Markierung. */
+  const flaggedFields = useMemo(() => {
+    const fields = new Set<string>();
+    for (const violation of violations) {
+      const field = fieldOfViolation(violation);
+      if (field !== null) {
+        fields.add(field);
+      }
+    }
+    return fields;
+  }, [violations]);
 
   // Ungespeicherte Änderungen beim Verlassen (NFA-QUAL-11).
   useEffect(() => {
@@ -551,7 +601,14 @@ export function InvoiceEditor({
   }, [errors.length, issueState, saveState]);
 
   return (
-    <form className="flex flex-col gap-6" onChange={touch}>
+    <form
+      ref={formRef}
+      className="flex flex-col gap-6"
+      onChange={() => {
+        touch();
+        recheck();
+      }}
+    >
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
       {initial.invoiceId === null ? null : (
         <input type="hidden" name="invoiceId" value={initial.invoiceId} />
@@ -611,6 +668,7 @@ export function InvoiceEditor({
 
         <div className="grid gap-4 sm:grid-cols-3">
           <DateField
+            invalid={flaggedFields.has('issueDate')}
             name="issueDate"
             label={messages.invoices.issueDate}
             value={issueDate}
@@ -621,6 +679,7 @@ export function InvoiceEditor({
             }}
           />
           <DateField
+            invalid={flaggedFields.has('dueDate')}
             name="dueDate"
             label={messages.invoices.dueDate}
             value={dueDate}
@@ -639,12 +698,14 @@ export function InvoiceEditor({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <DateField
+            invalid={flaggedFields.has('serviceDateFrom')}
             name="serviceDateFrom"
             label={messages.invoices.serviceDateFrom}
             defaultValue={initial.serviceDateFrom}
             hint={messages.invoices.serviceDateHint}
           />
           <DateField
+            invalid={flaggedFields.has('serviceDateTo')}
             name="serviceDateTo"
             label={messages.invoices.serviceDateTo}
             defaultValue={initial.serviceDateTo}
@@ -774,6 +835,7 @@ export function InvoiceEditor({
                     key={line.key}
                     line={line}
                     index={index}
+                    flagged={flaggedFields}
                     count={lines.length}
                     netCents={totals?.lineNets[index] ?? 0}
                     currency={initial.currency}
@@ -854,6 +916,51 @@ export function InvoiceEditor({
           defaultValue={initial.outroText}
         />
       </FormSection>
+
+      {/*
+        **Was noch fehlt** (M12, FA-RECH-12).
+
+        Steht direkt über den Knöpfen und nicht oben im Formular: Es ist die
+        Auskunft zu der Handlung, die hier beginnt. Ein Hinweis ist kein
+        Fehler — ein Entwurf **darf** unvollständig sein, das ist sein Zweck —,
+        deshalb der ruhige Ton und keine Alarmfarbe.
+
+        Jede Zeile führt zu ihrem Feld. Was kein Feld dieses Formulars betrifft
+        (die fehlende Steuernummer liegt in den Firmendaten), bleibt Text.
+      */}
+      {violations.length > 0 ? (
+        <section className="flex flex-col gap-2 rounded-control border border-rule bg-surface-sunken px-4 py-3">
+          <h2 className="text-ui font-medium text-ink">{messages.invoices.missingHeading}</h2>
+          <ul className="flex flex-col gap-1">
+            {violations.map((violation) => {
+              const field = fieldOfViolation(violation);
+              const label = describeViolation(violation);
+
+              return (
+                <li key={`${violation.kind}-${field ?? ''}`} className="text-ui text-ink-muted">
+                  {field === null ? (
+                    label
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const element = formRef.current?.elements.namedItem(field);
+                        if (element instanceof HTMLElement) {
+                          element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                          element.focus();
+                        }
+                      }}
+                      className={`text-left underline underline-offset-4 ${FOCUS_RING}`}
+                    >
+                      {label}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <button

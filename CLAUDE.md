@@ -425,6 +425,40 @@ Die Vorschau in den Firmendaten ist das PDF selbst, über eine eigene Route mit
 dem Profil `pdf`. Unter `assetPath()` mit `sandbox` startet der eingebaute
 Betrachter des Browsers nicht (M5.6).
 
+## Vollständigkeit schon im Entwurf (seit M12)
+
+Die Prüfung gab es seit M3 — sie lief nur **zu spät**: erst beim
+Festschreiben, als Liste oben im Formular. Wer unten auf den Knopf drückte,
+bekam eine Absage für Dinge, die seit einer halben Stunde offen waren.
+
+`completeness-hints.ts` legt jetzt den laufenden Formularstand **derselben**
+Domänenfunktion vor, die auch der Server befragt (`validateForIssue`). Ein paar
+Felder im Editor auf „leer" abzufragen wäre einfacher gewesen und hätte eine
+zweite Vorstellung davon geschaffen, wann ein Beleg vollständig ist — die
+zweite ist die, die nach einer Gesetzesänderung nicht nachgezogen wird.
+
+Gelesen wird über `FormData`, nicht aus React-Zustand: Empfängerfelder und
+Datumsfelder sind ungesteuert, und sie dafür alle umzubauen hieße, halb
+Formular in Zustand zu verwandeln — für eine Anzeige.
+
+**Die Markierung ist eine CSS-Regel auf `aria-invalid`**, keine Klasse an
+jedem Feld. Die optische Markierung ist dieselbe Aussage wie die für
+Screenreader, und zwei Quellen für dieselbe Aussage laufen auseinander. So
+markiert sich jedes Feld, das seinen Zustand ehrlich meldet — auch die
+künftigen.
+
+Der Hinweis steht **über den Knöpfen**, nicht oben im Formular: Er gehört zu
+der Handlung, die dort beginnt. Und er ist ein Hinweis, kein Fehler — ein
+Entwurf darf unvollständig sein, das ist sein Zweck. Jede Zeile führt zu ihrem
+Feld; was kein Feld dieses Formulars betrifft (die fehlende Steuernummer liegt
+in den Firmendaten), bleibt Text.
+
+**Der Dialog steht mittig, und zwar ausdrücklich.** Ein `<dialog>` tut das von
+Haus aus — die Stilvorgabe des Browsers setzt `margin: auto`. Genau das nimmt
+ihm der Preflight von Tailwind, der die Ränder aller Elemente auf null setzt.
+Nachgebaut mit `fixed` und `translate` wäre es dieselbe Wirkung mit mehr
+Teilen, und die Fokusfalle des Browsers hinge daran.
+
 ## Der tote Knopf im Dialog (seit M12)
 
 **Ein modaler Dialog macht alles hinter sich `inert`.** Ist im Formular ein

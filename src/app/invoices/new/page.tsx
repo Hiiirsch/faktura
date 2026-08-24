@@ -88,6 +88,7 @@ export default async function NewInvoicePage(): Promise<ReactNode> {
           templates={context.templates}
           defaultTaxRatePercent={context.defaultTaxRatePercent}
         sellerIsSmallBusiness={context.sellerIsSmallBusiness}
+        seller={context.seller}
           defaultPaymentTerms={context.defaultPaymentTerms}
           csrfToken={csrfToken}
         />

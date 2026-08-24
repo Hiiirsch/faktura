@@ -795,6 +795,7 @@ export const messages = {
     noCustomers: 'Bitte zuerst einen Kunden anlegen.',
     notFound: 'Der Beleg wurde nicht gefunden.',
 
+    missingHeading: 'Zum Festschreiben fehlt noch',
     violationNO_BUYER: 'Es ist kein Empfänger angegeben.',
     violationNO_BUYER_ADDRESS: 'Dem Empfänger fehlt die Anschrift.',
     violationNO_LINES: 'Der Beleg enthält keine Position.',

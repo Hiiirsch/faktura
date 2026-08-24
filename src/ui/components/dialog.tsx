@@ -113,9 +113,20 @@ export function ConfirmDialog({
       <dialog
         ref={dialog}
         aria-labelledby={titleId}
+        /*
+         * **Mittig, und zwar ausdrücklich** (M12).
+         *
+         * Ein `<dialog>` steht von Haus aus in der Mitte: Die Stilvorgabe des
+         * Browsers setzt `margin: auto`. Genau das nimmt ihm der Preflight von
+         * Tailwind, der die Ränder aller Elemente auf null setzt — der Dialog
+         * klebte dadurch oben links am Rand. Ein Fall, in dem man erst den
+         * Browser fragen muss, wo etwas herkommt, bevor man es „repariert":
+         * Nachgebaut mit `fixed` und `translate` wäre es dieselbe Wirkung mit
+         * mehr Teilen, und die Fokusfalle des Browsers hinge daran.
+         */
         className={
-          'w-full max-w-dialog rounded-surface border border-rule bg-surface p-6 text-ink ' +
-          'shadow-raised backdrop:bg-ink/30'
+          'm-auto w-full max-w-dialog rounded-surface border border-rule bg-surface p-6 ' +
+          'text-ink shadow-raised backdrop:bg-ink/30'
         }
         onClick={(event) => {
           // Klick auf den Hintergrund schließt. Der Dialog selbst füllt seinen
