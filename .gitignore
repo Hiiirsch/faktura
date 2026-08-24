@@ -9,9 +9,16 @@ next-env.d.ts
 coverage/
 
 # Betriebsdaten — Datenbank, Uploads, erzeugte PDFs, Sicherungen
-data/
-storage/
-backups/
+#
+# **Am Wurzelverzeichnis verankert** (führender Schrägstrich). Ohne ihn trifft
+# ein Muster jedes gleichnamige Verzeichnis in jeder Tiefe — `storage/` schluckte
+# so `src/infrastructure/storage/` mitsamt `artifact-store.ts` und
+# `asset-store.ts`. Lokal lief alles, im CI fehlten die Module: Der Typcheck
+# scheiterte an `Cannot find module '@/infrastructure/storage/artifact-store'`,
+# und der Docker-Build gleich mit. Ein Fehler, den nur ein zweiter Rechner sieht.
+/data/
+/storage/
+/backups/
 
 # Konfiguration mit Geheimnissen (NFA-SEC-21)
 .env
