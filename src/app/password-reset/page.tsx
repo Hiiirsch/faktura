@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: `${messages.passwordReset.requestTitle} · ${messages.app.name}` };
 
 /**
- * „Passwort vergessen" (M14, B3, FA-MEMB-08).
+ * „Passwort vergessen" (M14, B3, FA-MEMB-09).
  *
  * **Die Antwort ist immer dieselbe.** Unbekannte Adresse, gesperrtes Konto,
  * stillgelegtes Unternehmen, Bremse gegriffen, Erfolg — fünf Fälle, ein Satz.

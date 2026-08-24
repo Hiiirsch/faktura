@@ -227,7 +227,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-COMP-02 | Das Audit-Log ist über die Anwendung nicht löschbar oder änderbar. | MUSS | R |
 | NFA-COMP-03 | Ein vollständiger Datenexport aller Kunden- und Rechnungsdaten in maschinenlesbarer Form ist auslösbar. | MUSS | M |
 | NFA-COMP-04 | Die UI erklärt an der Stelle des Löschversuchs, warum Rechnungsdaten nur archiviert und nicht gelöscht werden. | SOLL | M |
-| NFA-COMP-05 | Es werden keine Daten an Dritte übertragen; die Anwendung funktioniert ohne ausgehende Internetverbindung. | MUSS | T |
+| NFA-COMP-05 | Es werden keine Daten an Dritte übertragen. **Einzige Ausnahme ist ein Mailserver, den der Betreiber selbst benennt** (`SMTP_URL`); ohne diese Konfiguration funktioniert die Anwendung vollständig ohne ausgehende Internetverbindung. Es gibt keinen weiteren Weg nach außen, und kein anderes Modul als der Versandweg darf einen öffnen. | MUSS | T |
 | NFA-COMP-06 | Es sind keine externen Schriftarten, Skripte oder Analysedienste eingebunden. | MUSS | R |
 | NFA-COMP-07 | Der **Betreiber** der Installation hinterlegt ein Impressum; es ist ohne Anmeldung erreichbar (§5 DDG). Es gibt genau eines je Installation — angeboten wird die Anwendung von dem, der sie betreibt, nicht von den Mandanten darin. Solange keins hinterlegt ist, antwortet die Seite mit 404 und nichts verlinkt darauf. | MUSS | T |
 | NFA-COMP-08 | Die Datenschutzhinweise sind ohne Anmeldung erreichbar und nennen je gespeicherter Angabe Zweck und Aufbewahrung (Art. 13 DSGVO). Die **Fristen stammen aus den Konstanten der Domäne**, nicht aus dem Fließtext; ein Test hält beides gegeneinander. | MUSS | T |
@@ -248,6 +248,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-BETR-09 | Logs werden strukturiert auf stdout ausgegeben; sicherheitsrelevante Ereignisse sind als solche erkennbar. | MUSS | R |
 | NFA-BETR-10 | Logs enthalten keine Passwörter, Token oder vollständigen Kundendatensätze. | MUSS | R |
 | NFA-BETR-11 | Das README beschreibt Installation, Konfiguration, Backup, Restore und Update in nachvollziehbaren Schritten. | MUSS | R |
+| NFA-BETR-12 | Der Versand ist optional und über Umgebungsvariablen konfiguriert. Ein nicht erreichbarer oder ablehnender Mailserver bricht keine Handlung ab, hält keine Server Action länger als zehn Sekunden fest und erscheint als benannter Zustand, nicht als Fehlerseite. | MUSS | T |
 
 ## 14. Architektur & Erweiterbarkeit
 
@@ -324,7 +325,8 @@ Betreiber der Installation darf und was nicht.
 | FA-MEMB-05 | Unbekannte, abgelaufene, zurückgezogene und bereits eingelöste Links werden **ununterscheidbar** beantwortet. Ohne gültigen Nachweis nennt die Seite weder Adresse noch Unternehmen. | MUSS | T |
 | FA-MEMB-06 | Ein Konto wird gesperrt, nicht gelöscht. Die Sperre beendet alle Sitzungen sofort; Belege und Protokolleinträge bleiben unverändert. | MUSS | T |
 | FA-MEMB-07 | Je E-Mail-Adresse gibt es höchstens eine offene Einladung; eine neue entwertet die vorige. | MUSS | T |
-| FA-MEMB-08 | Die Anwendung versendet keine E-Mail. Einladungs- und Zurücksetzungslinks erscheinen **genau einmal** in der Oberfläche und werden außerhalb weitergereicht. | MUSS | R |
+| FA-MEMB-08 | Einladungs- und Zurücksetzungslinks erscheinen **genau einmal** in der Oberfläche. Ist ein Mailserver eingerichtet, werden sie **zusätzlich** zugestellt — nie stattdessen. Wer die Mail nicht bekommt, ist nicht ausgesperrt; ein Fehlschlag beim Versand bricht die Handlung nicht ab und wird in der Oberfläche benannt. | MUSS | T |
+| FA-MEMB-09 | Ein vergessenes Passwort lässt sich ohne fremde Hilfe anfordern. Unbekannte Adresse, gesperrtes Konto, stillgelegtes Unternehmen und Erfolg werden **ununterscheidbar** beantwortet. Liegt ein unverbrauchter Nachweis vor, der jünger ist als fünf Minuten, entsteht kein zweiter. | MUSS | T |
 
 ### 16.4 Zentrale Verwaltung
 
@@ -528,3 +530,14 @@ der Vorgang steht im Protokoll der Verwaltung, der Inhalt nicht. Abgemeldet
 beide Seiten aufrufen: erreichbar. Ins Impressum
 `<script>alert(1)</script>` eintragen: erscheint als Text, nichts wird
 ausgeführt.
+
+**A20 — Zustellung**
+Ohne `SMTP_URL` ein Mitglied einladen: Der Link steht in der Oberfläche, es
+gibt keine Fehlermeldung und keinen Versuch. Dann `SMTP_URL` und `MAIL_FROM`
+setzen und erneut einladen: Die Mail kommt an, der Link steht **trotzdem** da.
+Als Nächstes „Passwort vergessen" mit einer erfundenen und mit der eigenen
+Adresse: gleicher Satz, gleiche Dauer, und nur im zweiten Fall eine Mail.
+Sofort ein zweites Mal anfordern: keine zweite Mail. `SMTP_URL` auf einen Port
+zeigen lassen, an dem nichts lauscht, und einladen: Die Einladung entsteht, die
+Oberfläche nennt den fehlgeschlagenen Versand, und es dauert höchstens zehn
+Sekunden.

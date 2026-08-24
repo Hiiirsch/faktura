@@ -11,7 +11,7 @@ import { PASSWORD_RESET_PATH } from '@/routes';
 const schema = z.string().trim().toLowerCase().pipe(z.email()).pipe(z.string().max(200));
 
 /**
- * „Passwort vergessen" (M14, B3, FA-MEMB-08).
+ * „Passwort vergessen" (M14, B3, FA-MEMB-09).
  *
  * **Der Ausgang ist immer derselbe** — auch bei einer Adresse, die gar keine
  * ist: Eine Ablehnung wegen ungültigen Formats wäre schon eine Auskunft, wenn

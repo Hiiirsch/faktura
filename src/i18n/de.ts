@@ -1250,7 +1250,7 @@ export const messages = {
       'Adresse eintragen. Gibt es dazu ein Konto, geht ein Link zum Setzen eines neuen Passworts hinaus.',
     requestSubmit: 'Link anfordern',
     /**
-     * **Eine Antwort für fünf Fälle** (FA-MEMB-08): unbekannte Adresse,
+     * **Eine Antwort für fünf Fälle** (FA-MEMB-09): unbekannte Adresse,
      * gesperrtes Konto, stillgelegtes Unternehmen, Bremse gegriffen, Erfolg.
      * Der Satz sagt deshalb nicht „wir haben geschickt", sondern was gilt.
      */

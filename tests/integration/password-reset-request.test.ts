@@ -1,5 +1,5 @@
 /**
- * „Passwort vergessen" als Selbstbedienung (M14, B3 — FA-MEMB-08).
+ * „Passwort vergessen" als Selbstbedienung (M14, B3 — FA-MEMB-09).
  *
  * **Bis M14 gab es diesen Anfang nicht.** Nachweis, Frist und Einlöseseite
  * existieren seit M8; ausstellen konnte ihn allein ein Konto mit
@@ -71,7 +71,7 @@ async function seedMember(): Promise<string> {
   return user.id;
 }
 
-describe('FA-MEMB-08 Die Antwort ist in allen Fällen dieselbe', () => {
+describe('FA-MEMB-09 Die Antwort ist in allen Fällen dieselbe', () => {
   it('legt für ein bekanntes Konto einen Nachweis an', async () => {
     const userId = await seedMember();
 
@@ -122,7 +122,7 @@ describe('FA-MEMB-08 Die Antwort ist in allen Fällen dieselbe', () => {
   });
 });
 
-describe('FA-MEMB-08 Die Bremse', () => {
+describe('FA-MEMB-09 Die Bremse', () => {
   it('stellt binnen fünf Minuten keinen zweiten Nachweis aus', async () => {
     /*
      * Ohne sie wäre das Formular ein Versandknopf für jeden, der eine fremde

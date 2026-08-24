@@ -53,7 +53,9 @@ Seitenaufruf einen Hinweis ins Log, wenn beides auseinanderläuft.
 ## Konfiguration
 
 Die gesamte Konfiguration erfolgt über Umgebungsvariablen; `.env.example`
-beschreibt jede einzelne. Geheimnisse liegen nie im Repository und nie im
+beschreibt jede einzelne. Optional sind allein `SMTP_URL` und `MAIL_FROM`
+(siehe [E-Mail-Versand](#e-mail-versand)); ohne sie läuft die Anwendung
+vollständig ohne ausgehende Verbindung. Geheimnisse liegen nie im Repository und nie im
 Container-Image. Fehlt eine Variable oder ist sie unplausibel, bricht die
 Anwendung beim Start mit einer benannten Meldung ab, statt im Betrieb
 aufzufallen.
@@ -614,6 +616,50 @@ einen Test.
 
 Faktura prüft die Angaben des Betreibers nicht und leistet keine
 Rechtsberatung.
+
+## E-Mail-Versand
+
+**Optional.** Ohne `SMTP_URL` und `MAIL_FROM` verschickt Faktura nichts und
+kommt vollständig ohne ausgehende Internetverbindung aus — Einladungen und
+Zurücksetzungsnachweise erscheinen dann wie bisher genau einmal in der
+Oberfläche und werden von Hand weitergereicht.
+
+```env
+SMTP_URL=smtps://benutzer:kennwort@mail.example.org:465
+MAIL_FROM=Faktura <rechnungen@example.org>
+```
+
+Mit beiden Werten kommt die Zustellung **hinzu**. Sie ersetzt den Link in der
+Oberfläche nicht: Wer die Nachricht nicht bekommt, soll nicht ausgesperrt sein.
+Die Oberfläche sagt nach jeder Einladung, was daraus geworden ist — zugestellt,
+kein Versand eingerichtet, oder der Mailserver hat abgelehnt.
+
+Ein nicht erreichbarer Mailserver bricht keine Handlung ab: Wer ein Mitglied
+einlädt, hat es eingeladen. Nach zehn Sekunden gibt der Versuch auf, damit ein
+schweigender Server niemanden warten lässt.
+
+Verschickt wird ausschließlich **Text**, nie HTML — kein nachgeladenes Bild,
+keine Lesebestätigung, und ein Link bleibt sichtbar, was er ist.
+
+### Damit die Nachrichten ankommen
+
+Faktura verschickt über den Server, den Sie benennen; ob eine Nachricht im
+Posteingang oder im Spam landet, entscheidet dessen Ruf und die DNS-Einträge
+Ihrer Absenderdomäne. Das ist Betriebssache und gehört nicht in die Anwendung:
+
+- **SPF** — ein `TXT`-Eintrag auf der Absenderdomäne, der den sendenden Server
+  benennt: `v=spf1 mx a:mail.example.org -all`.
+- **DKIM** — der Mailserver signiert ausgehende Nachrichten, der öffentliche
+  Schlüssel steht im DNS. Ohne Signatur werten viele Empfänger ab.
+- **DMARC** — sagt Empfängern, was bei einem Fehlschlag geschehen soll, und
+  liefert Berichte: `v=DMARC1; p=quarantine; rua=mailto:dmarc@example.org`.
+
+`MAIL_FROM` muss zu der Domäne passen, für die diese Einträge gelten. Eine
+Absenderadresse bei einem Freemail-Anbieter, versendet über den eigenen Server,
+scheitert an SPF und DMARC — und zwar stillschweigend beim Empfänger.
+
+Zum Prüfen genügt eine Einladung an eine Adresse außerhalb des Hauses und ein
+Blick in den Kopf der angekommenen Nachricht (`Authentication-Results`).
 
 ## Unveränderbarkeit
 

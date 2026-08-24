@@ -273,7 +273,7 @@ export async function completePasswordReset(
 }
 
 /**
- * Der Beginn des Wegs: „Passwort vergessen" (M14, B3, FA-MEMB-08).
+ * Der Beginn des Wegs: „Passwort vergessen" (M14, B3, FA-MEMB-09).
  *
  * **Bis M14 gab es diesen Anfang nicht.** Die Einlöseseite und der Nachweis
  * existieren seit M8 — nur ausstellen konnte ihn allein ein Konto mit

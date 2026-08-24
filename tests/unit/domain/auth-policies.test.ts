@@ -208,7 +208,7 @@ describe('Wiederherstellungscodes (NFA-SEC-05)', () => {
   });
 });
 
-describe('FA-MEMB-08 Abstand zwischen zwei Anforderungen (M14)', () => {
+describe('FA-MEMB-09 Abstand zwischen zwei Anforderungen (M14)', () => {
   /*
    * **Gerechnet wird über `expiresAt`, nicht über `createdAt`.** Der erste
    * Anlauf verglich den Zeitpunkt des Aufrufers mit dem, den die Datenbank

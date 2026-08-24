@@ -1414,6 +1414,67 @@ laufender Monat und die Zwölfmonatsreihe hängen am selben Tag. Läse jede
 Kennzahl ihre eigene Uhr, könnte eine um Mitternacht geladene Übersicht
 denselben Beleg als überfällig und als heute fällig ausweisen.
 
+## Zustellung (seit M14)
+
+**Die Mail ist ein zusätzlicher Weg, kein Ersatz.** Einladung, Zurücksetzung und
+Einrichtung eines Betreiberkontos erscheinen weiterhin genau einmal in der
+Oberfläche; ist ein Mailserver eingerichtet, gehen sie **zusätzlich** hinaus.
+Damit bleibt die Zusage aus M8 unangetastet: Wer die Nachricht nicht bekommt,
+ist nicht ausgesperrt — und ein Fehlschlag beim Versand ist kein Fehlschlag der
+Handlung. Der Test dazu prüft beides in **einem** Durchlauf
+(`tests/integration/invitation-delivery.test.ts`): Sobald der Link woanders
+steht, liegt es nahe, ihn aus der Oberfläche zu nehmen.
+
+**NFA-COMP-05 wurde verengt, nicht gestrichen.** Es gibt genau eine ausgehende
+Verbindung, sie führt zu einem Server, den der Betreiber selbst benennt
+(`SMTP_URL`), und ohne diese Konfiguration verhält sich die Anwendung exakt wie
+vor M14. „Nicht eingerichtet" ist deshalb ein **Rückgabewert**
+(`{ ok: false, reason: 'not-configured' }`), keine Ausnahme: Ein Aufrufer, der
+nichts konfiguriert, muss nichts wissen und nichts abfangen.
+
+Die Oberfläche unterscheidet die drei Ausgänge (`Delivery`), weil sie sich
+unterscheiden: `sent`, `not-configured` — der Link steht da, reichen Sie ihn
+weiter — und `failed`, es gibt einen Mailserver und er hat abgelehnt. Wer einen
+Link von Hand weitergeben muss, soll wissen, ob er es muss.
+
+**Nur Text, kein HTML.** Eine HTML-Mail lädt Bilder nach, und genau das tut diese
+Anwendung nirgends (NFA-COMP-06); ein Link bleibt im Text sichtbar, was er ist.
+Der Wortlaut steht in `src/domain/notifications/mail-texts.ts` und **nicht** in
+`de.ts` — die Anwendungsschicht kennt keine Oberfläche, und eine Mail ist die
+Ausgabe eines Anwendungsfalls, nicht die Beschriftung eines Knopfes. Das Vorbild
+ist `domain/legal/privacy-notice.ts` aus M13.
+
+Jede Nachricht sagt, **was bei Nichtstun geschieht**. Wer eine unerwartete Mail
+bekommt, soll nicht raten müssen — und eine Nachricht, die zum Klicken drängt,
+ist von der Fälschung nicht zu unterscheiden, vor der dieselben Empfänger
+gewarnt werden.
+
+**Zehn Sekunden für Verbindung, Begrüßung und Übergabe.** Ein hängender
+Mailserver darf keine Server Action festhalten: Wer ein Mitglied einlädt, hat es
+eingeladen; die Zustellung ist die Zugabe.
+
+**„Passwort vergessen" ist Selbstbedienung** (FA-MEMB-09). Bis M14 konnte den
+Nachweis nur ein Konto mit `organization.administer` ausstellen — wer sein
+Passwort vergaß, musste jemanden anrufen. Die Antwort ist in allen Fällen
+dieselbe: unbekannte Adresse, gesperrtes Konto, stillgelegtes Unternehmen,
+Erfolg. Alles andere wäre eine Auskunft darüber, wer hier ein Konto hat.
+
+Der Vorgang steht in `src/application/members/redeem.ts` und ist damit die
+**vierte** Stelle ohne Mandantenkontext, aus demselben Grund wie die drei
+anderen: Wer eine Adresse eingibt, ist noch niemand, und die Organisation ist
+das *Ergebnis* der Abfrage.
+
+**Die Bremse rechnet über `expiresAt`, nicht über `createdAt`** — fünf Minuten
+Abstand, ohne neue Tabelle. Der erste Anlauf verglich den Zeitpunkt des
+Aufrufers mit dem, den die **Datenbank** beim Einfügen setzt. In der Anwendung
+fällt das nie auf, weil beide Uhren dieselbe sind; im Test mit festem Zeitpunkt
+lagen Monate dazwischen, und die Bremse griff für immer. `expiresAt` setzen wir
+selbst aus demselben `now` — damit ist die Regel rein, ohne Datenbank prüfbar
+und liegt in `domain/auth/password-reset-policy.ts`.
+
+**Kein automatisches Anmelden über einen Maillink.** Die Regel aus M8 bleibt: Ein
+Link, der eine Sitzung eröffnet, wäre ein Passwortersatz in einem Postfach.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1439,6 +1500,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M11 | Der Beleg: keine Steuer bei §19, Blattfuß, Logo, Entwurf bearbeiten | umgesetzt |
 | M12 | Briefpapier je Unternehmen, PDF beim Festschreiben, klare Rückmeldung | umgesetzt |
 | M13 | Impressum und Datenschutzhinweise, gepflegt vom Betreiber | umgesetzt |
+| M14 | Zustellung: E-Mail als zusätzlicher Weg, „Passwort vergessen" | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 
