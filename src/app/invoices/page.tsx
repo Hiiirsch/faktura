@@ -33,6 +33,7 @@ import { IconButton, IconLink } from '@/ui/components/icon';
 import { EmptyState, PageHeader } from '@/ui/components/page';
 import { PendingBar } from '@/ui/components/progress-bar';
 import { Toast } from '@/ui/components/toast';
+import { acceptsPayments, canBeCancelled } from '@/domain/invoice/status';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { DataTable, type Column } from '@/ui/components/table';
 
@@ -217,7 +218,17 @@ export default async function InvoicesPage({
    * Handlung sein `formAction`.
    */
   function rowActions(invoice: InvoiceListEntry): ReactNode {
-    const isOpen = invoice.status === 'ISSUED' || invoice.status === 'PARTIALLY_PAID';
+    /*
+     * Was der Beleg zulässt, entscheidet die Domäne (M12) — nicht der Status
+     * allein. Sonst bekäme eine **Stornorechnung** dieselben Aktionen wie eine
+     * offene Rechnung: stornieren und bezahlt markieren, beides vom Server
+     * abgewiesen und sichtbar folgenlos.
+     */
+    const documentType = invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE';
+    const payable =
+      acceptsPayments(invoice.status, documentType) &&
+      (invoice.status === 'ISSUED' || invoice.status === 'PARTIALLY_PAID');
+    const cancellable = canBeCancelled(invoice.status, documentType);
     const isIssued = invoice.invoiceNumber !== null;
 
     return (
@@ -240,7 +251,7 @@ export default async function InvoicesPage({
           />
         ) : null}
 
-        {isOpen && can(session.actor, 'recordPayment', 'invoice') ? (
+        {payable && can(session.actor, 'recordPayment', 'invoice') ? (
           <IconButton
             icon={BanknoteArrowUp}
             label={messages.invoices.actionMarkPaid}
@@ -264,7 +275,7 @@ export default async function InvoicesPage({
           />
         ) : null}
 
-        {isOpen && can(session.actor, 'cancel', 'invoice') ? (
+        {cancellable && can(session.actor, 'cancel', 'invoice') ? (
           <ConfirmDialog
             title={messages.invoices.cancelConfirmTitle}
             message={messages.invoices.cancelConfirm}

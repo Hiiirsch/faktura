@@ -483,6 +483,14 @@ Entschieden wird das in zwei reinen Funktionen (`statusLabel`,
 `showsOverdue`), nicht mitten im Markup: Dort steckt eine Zusage, nicht eine
 Formatierung, und Zusagen gehören an eine prüfbare Stelle.
 
+**Dieselbe Blindheit gab es bei den Zeilenaktionen**, und sie reichte weiter:
+Sie sahen den Status, nicht den Belegtyp. Eine **Stornorechnung** ließ sich
+stornieren und als bezahlt markieren — der Server wies beides ab
+(`NOT_AN_INVOICE`, `CREDIT_NOTE`), sichtbar geschah nichts. Die Regeln stehen
+jetzt als `canBeCancelled()` und `acceptsPayments()` in der Domäne, wo beide
+Seiten dieselben lesen. Eine Kopie in der Oberfläche wäre die zweite Wahrheit,
+die beim nächsten Sonderfall zurückbleibt.
+
 **Eine Sammelaktion, die die Auswahl nicht trifft, wird nicht angeboten.**
 Vorher standen „Als bezahlt markieren" und „Entwürfe löschen" immer beide da.
 Wer drei festgeschriebene Belege wählte und löschen drückte, sah nichts

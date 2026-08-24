@@ -19,6 +19,7 @@ import { isTaxScheme } from '@/domain/tax/tax-scheme';
 import { todayIn } from '@/domain/time/plain-date';
 import { can } from '@/domain/policy/can';
 import { messages } from '@/i18n/de';
+import { canBeCancelled } from '@/domain/invoice/status';
 import { InvoiceStatusField } from '@/ui/components/status-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import {
@@ -239,9 +240,14 @@ export default async function InvoiceDetailPage({
           />
         )}
 
-        {invoice.status === 'ISSUED' ||
-        invoice.status === 'PARTIALLY_PAID' ||
-        invoice.status === 'PAID' ? (
+        {/*
+          Dieselbe Regel wie im Server (M12): Eine Gutschrift storniert man
+          nicht — sie **ist** das Storno.
+        */}
+        {canBeCancelled(
+          invoice.status,
+          invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE',
+        ) ? (
           <section className={SECTION_CLASS}>
             <h2 className="text-section font-medium">{messages.invoices.cancelConfirmTitle}</h2>
             {/*

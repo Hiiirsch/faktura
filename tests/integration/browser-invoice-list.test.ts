@@ -297,4 +297,39 @@ describe('FA-UI-20 Mehrfachauswahl', () => {
       await close();
     }
   }, 120_000);
+
+  it('bietet an einer Stornorechnung weder Stornieren noch Bezahlen an', async () => {
+    /*
+     * Gemeldet als „warum kann ich eine Stornorechnung stornieren". Der Server
+     * wies es immer ab (`NOT_AN_INVOICE`), die Oberfläche bot es trotzdem an —
+     * sie sah nur den Status, nicht den Belegtyp. Sichtbar geschah dann
+     * nichts, und der Fehlschlag sah aus wie ein Fehler des Benutzers.
+     */
+    const { page, close } = await openList();
+
+    try {
+      // Eine offene Rechnung stornieren — daraus entsteht die Gutschrift.
+      const stornieren = page.locator('tbody tr button[aria-label="Stornieren"], tbody tr button:has-text("Stornieren")');
+      expect(await stornieren.count()).toBeGreaterThan(0);
+      await stornieren.first().click();
+      await page.waitForTimeout(600);
+      await page.locator('dialog[open] button:has-text("Stornieren")').click();
+      await page.waitForTimeout(3_000);
+
+      // Ihre Zeile trägt „Ausgestellt" …
+      await page.goto(`${TEST_BASE_URL}/invoices`, { waitUntil: 'networkidle' });
+      const zeile = page.locator('tbody tr', { hasText: 'Stornorechnung' }).first();
+      expect(await zeile.count()).toBe(1);
+      expect(await zeile.textContent()).toContain('Ausgestellt');
+
+      // … und keine der beiden Aktionen, die sie nicht annehmen kann.
+      expect(await zeile.locator('button:has-text("Stornieren")').count()).toBe(0);
+      expect(await zeile.locator('button:has-text("Als bezahlt markieren")').count()).toBe(0);
+
+      // Duplizieren und Herunterladen bleiben — die gehen sehr wohl.
+      expect(await zeile.locator('button:has-text("Duplizieren")').count()).toBe(1);
+    } finally {
+      await close();
+    }
+  }, 120_000);
 });

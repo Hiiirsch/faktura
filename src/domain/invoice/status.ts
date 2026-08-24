@@ -6,6 +6,7 @@
  * gespeichert, sondern aus Fälligkeitsdatum und heutigem Tag abgeleitet
  * (FA-STAT-02) — deshalb braucht es dafür keinen geplanten Auftrag.
  */
+import type { DocumentType } from '../document/document-type';
 import { type Cents, subtractCents, ZERO_CENTS } from '../money/money';
 import { type PlainDate, isPlainDateBefore } from '../time/plain-date';
 
@@ -85,6 +86,37 @@ export function allowedTransitionsFrom(status: InvoiceStatus): readonly InvoiceS
 /** Belege, auf die noch Geld erwartet wird. */
 export function isOpenReceivable(status: InvoiceStatus): boolean {
   return status === 'ISSUED' || status === 'PARTIALLY_PAID';
+}
+
+/**
+ * Ob der Beleg eine Handlung noch zulässt (M12, FA-STAT-04, FA-STAT-05).
+ *
+ * **Warum das hier steht und nicht in der Oberfläche.** Beide Regeln gab es
+ * schon — in `cancelInvoice` und in `addPayment`, als Reihe von Abweisungen.
+ * Die Oberfläche kannte sie nicht und bot beides an, sobald der Status
+ * „ausgestellt" war: Man konnte eine **Stornorechnung stornieren** und sie als
+ * bezahlt markieren. Der Server wies es korrekt ab — nur passierte dann
+ * sichtbar nichts, und der Fehlschlag sah aus wie ein Fehler des Benutzers.
+ *
+ * Als Funktionen der Domäne sind sie an einer Stelle nachlesbar und für beide
+ * Seiten dieselben. Eine Kopie in der Oberfläche wäre die zweite Wahrheit, die
+ * beim nächsten Sonderfall zurückbleibt.
+ */
+export function canBeCancelled(status: InvoiceStatus, documentType: DocumentType): boolean {
+  // Eine Gutschrift storniert man nicht — sie **ist** das Storno.
+  if (documentType !== 'INVOICE') {
+    return false;
+  }
+  return status !== 'DRAFT' && status !== 'CANCELLED';
+}
+
+/** Ob auf den Beleg noch eine Zahlung erfasst werden kann (FA-STAT-05). */
+export function acceptsPayments(status: InvoiceStatus, documentType: DocumentType): boolean {
+  // Eine Gutschrift wird nicht bezahlt — sie erstattet.
+  if (documentType !== 'INVOICE') {
+    return false;
+  }
+  return status !== 'DRAFT' && status !== 'CANCELLED';
 }
 
 /**

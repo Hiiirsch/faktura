@@ -18,6 +18,8 @@ import {
   isOpenReceivable,
   isOverdue,
   outstandingAmount,
+  acceptsPayments,
+  canBeCancelled,
 } from '@/domain/invoice/status';
 import { countsTowardReceivables, countsTowardRevenue } from '@/domain/invoice/revenue';
 import { INVOICE_EVENT_TYPES } from '@/domain/invoice/events';
@@ -258,5 +260,39 @@ describe('Domain-Ereignisse (NFA-ARCH-08)', () => {
       'InvoicePaid',
       'InvoiceCancelled',
     ]);
+  });
+});
+
+describe('FA-STAT-04 Was ein Beleg noch zulässt (M12)', () => {
+  /*
+   * Beide Regeln gab es schon — in `cancelInvoice` und in `addPayment`, als
+   * Reihe von Abweisungen. Die Oberfläche kannte sie nicht und bot beides an,
+   * sobald der Status „ausgestellt" war: Man konnte eine **Stornorechnung
+   * stornieren**. Der Server wies es ab, und sichtbar geschah nichts.
+   */
+  it('lässt eine ausgestellte Rechnung stornieren', () => {
+    expect(canBeCancelled('ISSUED', 'INVOICE')).toBe(true);
+    expect(canBeCancelled('PARTIALLY_PAID', 'INVOICE')).toBe(true);
+    expect(canBeCancelled('PAID', 'INVOICE')).toBe(true);
+  });
+
+  it('lässt eine Stornorechnung nicht stornieren — sie ist das Storno', () => {
+    expect(canBeCancelled('ISSUED', 'CREDIT_NOTE')).toBe(false);
+    expect(canBeCancelled('PAID', 'CREDIT_NOTE')).toBe(false);
+  });
+
+  it('lässt weder Entwurf noch bereits stornierten Beleg stornieren', () => {
+    expect(canBeCancelled('DRAFT', 'INVOICE')).toBe(false);
+    expect(canBeCancelled('CANCELLED', 'INVOICE')).toBe(false);
+  });
+
+  it('nimmt auf eine Gutschrift keine Zahlung an — sie erstattet', () => {
+    expect(acceptsPayments('ISSUED', 'CREDIT_NOTE')).toBe(false);
+    expect(acceptsPayments('ISSUED', 'INVOICE')).toBe(true);
+  });
+
+  it('nimmt weder auf einen Entwurf noch auf einen Storno eine Zahlung an', () => {
+    expect(acceptsPayments('DRAFT', 'INVOICE')).toBe(false);
+    expect(acceptsPayments('CANCELLED', 'INVOICE')).toBe(false);
   });
 });
