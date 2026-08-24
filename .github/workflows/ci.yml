@@ -58,6 +58,20 @@ jobs:
       - name: Produktionsbuild
         run: npm run build
 
+      # Chromium für die Belegausgabe.
+      #
+      # **Seit M12 braucht ihn fast jeder Integrationstest**, nicht nur die zur
+      # Ausgabe: Das PDF entsteht beim Festschreiben (FA-PDF-13), und wer einen
+      # Beleg festschreibt, startet einen Browser. Vorher fehlte der Schritt
+      # ebenfalls — die Läufe scheiterten nur früher, am Typcheck, und kamen
+      # nie bis hierher.
+      #
+      # Im Container läuft dagegen Chromium aus der Paketverwaltung
+      # (`CHROMIUM_PATH`, Spec §11.3). Der Läufer hat keins, deshalb hier der
+      # Download von Playwright — dieselbe Fassung wie im gepinnten Paket.
+      - name: Chromium bereitstellen
+        run: npx playwright install --with-deps chromium
+
       # Prüft den Zugriffsschutz gegen den echten Server (NFA-SEC-01).
       - name: Integrationstests
         run: npm run test:integration
