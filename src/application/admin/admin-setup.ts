@@ -29,6 +29,7 @@ import { hashPassword } from '@/infrastructure/auth/password-hasher';
 import { generateRedemptionToken, hashToken } from '@/infrastructure/auth/tokens';
 import { buildTotpUri, generateTotpSecret, verifyTotpCode } from '@/infrastructure/auth/totp';
 import { getEnv } from '@/infrastructure/config/env';
+import { deliverAdminSetup, type Delivery } from '@/application/notifications/deliver';
 import { logger } from '@/infrastructure/logging/logger';
 import {
   createAdminInvitation,
@@ -76,7 +77,12 @@ export type AdminSetupOffer = {
 export async function inviteAdmin(
   email: string,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, AdminSetupError>> {
+): Promise<
+  Result<
+    { readonly token: string; readonly expiresAt: Date; readonly delivery: Delivery },
+    AdminSetupError
+  >
+> {
   const address = email.trim().toLowerCase();
 
   if ((await findAdminUserByEmail(address)) !== null) {
@@ -99,7 +105,11 @@ export async function inviteAdmin(
 
   logger.security('admin.invitation_created', { email: address });
 
-  return ok({ token, expiresAt });
+  // Zugestellt wird zusätzlich; der Link steht weiterhin im Terminal
+  // beziehungsweise in der Oberfläche (M14).
+  const delivery = await deliverAdminSetup(address, token, expiresAt);
+
+  return ok({ token, expiresAt, delivery });
 }
 
 /** Lädt den Nachweis zur Anzeige: Adresse, Geheimnis und `otpauth://`-URI. */
@@ -148,7 +158,12 @@ export async function loadAdminSetup(
 export async function resetAdmin(
   email: string,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, AdminSetupError>> {
+): Promise<
+  Result<
+    { readonly token: string; readonly expiresAt: Date; readonly delivery: Delivery },
+    AdminSetupError
+  >
+> {
   const address = email.trim().toLowerCase();
   const admin = await findAdminUserByEmail(address);
 
@@ -172,7 +187,11 @@ export async function resetAdmin(
 
   logger.security('admin.reset_started', { adminUserId: admin.id });
 
-  return ok({ token, expiresAt });
+  // Zugestellt wird zusätzlich; der Link steht weiterhin im Terminal
+  // beziehungsweise in der Oberfläche (M14).
+  const delivery = await deliverAdminSetup(address, token, expiresAt);
+
+  return ok({ token, expiresAt, delivery });
 }
 
 /**

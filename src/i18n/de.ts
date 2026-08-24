@@ -1142,6 +1142,20 @@ export const messages = {
     errorLAST_ADMINISTRATOR:
       'Das ist das letzte aktive Konto mit Rechteverwaltung. Ohne ein solches Konto ließe sich das Unternehmen nicht mehr verwalten.',
     errorSELF: 'Das eigene Konto lässt sich nicht sperren.',
+
+    /*
+     * Was aus der Zustellung wurde (M14).
+     *
+     * Alle drei Sätze stehen **neben** dem Link, nicht an seiner Stelle: Die
+     * Mail ist ein zusätzlicher Weg. „Kein Mailserver eingerichtet" ist dabei
+     * kein Fehler, sondern der Normalzustand einer Anlage, die ohne Netz nach
+     * außen läuft.
+     */
+    deliverySent: 'Der Link wurde zusätzlich an {email} geschickt.',
+    deliveryFailed:
+      'Der Link ließ sich nicht per E-Mail zustellen. Er gilt trotzdem — bitte oben kopieren und weitergeben.',
+    deliveryNotConfigured:
+      'Es ist kein Mailversand eingerichtet. Der Link oben ist der einzige Weg; bitte kopieren und weitergeben.',
   },
   roles: {
     title: 'Rollen',

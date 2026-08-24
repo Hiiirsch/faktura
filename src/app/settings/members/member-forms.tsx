@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import type { ReactNode } from 'react';
 
+import type { Delivery } from '@/application/notifications/deliver';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import {
@@ -30,15 +31,35 @@ import {
  * Clipboard-API nicht aus, und die ist an eine sichere Herkunft gebunden — in
  * einer selbstgehosteten Installation ohne Zertifikat also nicht verlässlich da.
  */
+function deliveryNote(delivery: Delivery | undefined, email: string): string | null {
+  switch (delivery) {
+    case 'sent':
+      return messages.members.deliverySent.replace('{email}', email);
+    case 'failed':
+      return messages.members.deliveryFailed;
+    case 'not-configured':
+      return messages.members.deliveryNotConfigured;
+    default:
+      return null;
+  }
+}
+
 function RedemptionLink({
   heading,
   hint,
   link,
+  delivery,
+  email,
 }: {
   readonly heading: string;
   readonly hint: string;
   readonly link: string;
+  /** Was aus der Zustellung wurde (M14) — der Link steht trotzdem hier. */
+  readonly delivery?: Delivery;
+  readonly email?: string;
 }): ReactNode {
+  const note = deliveryNote(delivery, email ?? '');
+
   return (
     <div className="flex flex-col gap-2 rounded-control border border-rule bg-surface-sunken p-4">
       <span className="text-label font-semibold uppercase text-ink-faint">{heading}</span>
@@ -52,6 +73,7 @@ function RedemptionLink({
         className="w-full rounded-control border border-rule bg-surface px-3 py-2 font-mono text-data text-ink"
       />
       <p className="text-small text-ink-muted">{hint}</p>
+      {note === null ? null : <p className="text-small text-ink-muted">{note}</p>}
     </div>
   );
 }
@@ -88,6 +110,8 @@ export function InviteForm({
             heading={messages.members.inviteLinkHeading}
             hint={messages.members.inviteLinkOnceOnly}
             link={state.link}
+            delivery={state.delivery}
+            email={state.email}
           />
         </>
       ) : null}
@@ -144,6 +168,8 @@ export function PasswordResetForm({
           heading={messages.members.resetLinkHeading}
           hint={messages.members.resetLinkOnceOnly}
           link={state.link}
+          delivery={state.delivery}
+          email={state.email}
         />
       ) : null}
 
