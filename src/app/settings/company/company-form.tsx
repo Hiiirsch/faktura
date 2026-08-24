@@ -18,6 +18,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import { type CompanyFormState, saveCompanyProfileAction } from './actions';
 
@@ -61,7 +62,7 @@ export function CompanyForm({
     >
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
 
-      {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast savedAt={state.status === 'saved' ? state.savedAt : null} />
       {errors.form === undefined ? null : <Alert tone="error">{errors.form}</Alert>}
 
       <FormSection title={messages.company.sectionIdentity} description={messages.company.sectionIdentityHint}>

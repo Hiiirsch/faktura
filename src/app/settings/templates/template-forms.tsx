@@ -16,6 +16,7 @@ import {
   TEXTAREA_CLASS,
   TextField,
 } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import {
   createTemplateAction,
@@ -190,9 +191,7 @@ export function TemplateEditorForm({
           <NoScriptNotice message={messages.common.noScript} />
 
           {state.status === 'error' ? <Alert tone="error">{state.message}</Alert> : null}
-          {state.status === 'saved' ? (
-            <Alert tone="success">{messages.common.saved}</Alert>
-          ) : null}
+          <SaveToast savedAt={state.status === 'saved' ? state.savedAt : null} />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
@@ -273,9 +272,10 @@ export function TemplateEditorForm({
           {uploadState.status === 'error' ? (
             <Alert tone="error">{uploadState.message}</Alert>
           ) : null}
-          {uploadState.status === 'saved' ? (
-            <Alert tone="success">{messages.common.saved}</Alert>
-          ) : null}
+          <SaveToast
+            savedAt={uploadState.status === 'saved' ? uploadState.savedAt : null}
+            message={messages.templates.uploaded}
+          />
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-2">

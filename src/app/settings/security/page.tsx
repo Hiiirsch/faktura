@@ -15,6 +15,7 @@ import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
 import { PASSKEY_PATH, SECURITY_SETTINGS_PATH } from '@/routes';
 import { Alert, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
+import { Toast } from '@/ui/components/toast';
 import { formatDate, formatDateTime } from '@/ui/format';
 
 import { AppShell } from '../../app-shell';
@@ -33,6 +34,30 @@ import { TotpSetupForm } from './totp-setup-form';
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: `${messages.security.title} · ${messages.app.name}` };
+
+/**
+ * Rückmeldung nach einer stillen Handlung (M12, FA-UI-28).
+ *
+ * Die Aktionen dieser Seite geben nichts zurück; was sie getan haben, steht in
+ * der Adresse. Ein unbekannter Schlüssel zeigt nichts an — er soll keine
+ * Meldung erfinden, die zu keiner Handlung gehört.
+ */
+function noticeFor(done: string | undefined): string | null {
+  switch (done) {
+    case 'totp-aus':
+      return messages.security.totpTurnedOff;
+    case 'sitzung-beendet':
+      return messages.security.sessionRevoked;
+    case 'sitzungen-beendet':
+      return messages.security.otherSessionsRevoked;
+    case 'gerät-entzogen':
+      return messages.security.trustRevoked;
+    case 'passkey-entfernt':
+      return messages.security.passkeyRemoved;
+    default:
+      return null;
+  }
+}
 
 export default async function SecuritySettingsPage({
   searchParams,
@@ -57,6 +82,7 @@ export default async function SecuritySettingsPage({
   const passkeysPossible = isPasskeyCapableOrigin();
 
   const params = await searchParams;
+  const notice = noticeFor(typeof params.erledigt === 'string' ? params.erledigt : undefined);
   const isSettingUp = params.setup === '1' && !overview.totpEnabled;
 
   // Geheimnis und QR-Code entstehen im selben Rendervorgang und gehören damit
@@ -70,6 +96,8 @@ export default async function SecuritySettingsPage({
   return (
     <AppShell session={session} csrfToken={csrfToken} currentPath={SECURITY_SETTINGS_PATH}>
       <PageHeader title={messages.security.heading} />
+
+      {notice === null ? null : <Toast message={notice} />}
 
       {/*
         Betriebszustand (NFA-BETR-08).

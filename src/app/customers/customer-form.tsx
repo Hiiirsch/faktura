@@ -15,6 +15,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import { createCustomerAction, type CustomerFormState, updateCustomerAction } from './actions';
 
@@ -56,7 +57,7 @@ export function CustomerForm({
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
       {isEditing ? <input type="hidden" name="id" value={customer.id} /> : null}
 
-      {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast savedAt={state.status === 'saved' ? state.savedAt : null} />
       {errors.form === undefined ? null : <Alert tone="error">{errors.form}</Alert>}
 
       <FormSection title={messages.customers.heading}>

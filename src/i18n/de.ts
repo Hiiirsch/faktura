@@ -499,6 +499,7 @@ export const messages = {
      */
     logoNotLinked:
       'Das Logo konnte nicht mit den Firmendaten verknüpft werden und wurde verworfen. Bitte den Vorgang wiederholen; bleibt es dabei, hilft ein Blick ins Log des Servers.',
+    logoSaved: 'Das Logo wurde hochgeladen.',
     logoRemove: 'Logo entfernen',
     logoNone: 'Es ist kein Logo hinterlegt.',
     logoAlt: 'Firmenlogo',
@@ -514,6 +515,7 @@ export const messages = {
       'Eine einseitige PDF im Format A4, die unter jeden Beleg gelegt wird — höchstens 5 MB. Sie trägt nur die Gestaltung; Anschrift, Bankverbindung und Pflichtangaben setzt Faktura selbst.',
     letterheadUpload: 'Briefpapierdatei',
     letterheadUploadButton: 'Briefpapier hochladen',
+    letterheadSaved: 'Das Briefpapier wurde hochgeladen.',
     letterheadRemove: 'Briefpapier entfernen',
     letterheadNone: 'Es ist kein Briefpapier hinterlegt. Belege erscheinen auf weißem Grund.',
     letterheadPreviewTitle: 'Vorschau des Briefpapiers',
@@ -849,6 +851,7 @@ export const messages = {
       'Einzelne .html- und .css-Datei oder ein ZIP mit template.html und style.css.',
     uploadFile: 'Datei',
     upload: 'Hochladen',
+    uploaded: 'Die Vorlage wurde hochgeladen.',
     uploadEmpty: 'Keine Datei ausgewählt.',
     uploadTooLarge: 'Die Datei ist größer als 5 MB.',
     uploadUnknownType: 'Zulässig sind .html, .css und .zip.',
@@ -923,6 +926,14 @@ export const messages = {
     startValueInvalid: 'Bitte eine Zahl ab 0 angeben.',
   },
   security: {
+    // Bestätigungen nach einer Handlung (M12, FA-UI-28). Der Wortlaut trägt
+    // den Verbstamm des auslösenden Knopfes (FA-UI-11).
+    totpTurnedOff: 'Der zweite Faktor wurde abgeschaltet.',
+    sessionRevoked: 'Die Sitzung wurde beendet.',
+    otherSessionsRevoked: 'Alle anderen Sitzungen wurden beendet.',
+    trustRevoked: 'Dem Gerät wurde das Vertrauen entzogen.',
+    passkeyRemoved: 'Der Passkey wurde entfernt.',
+
     title: 'Sicherheit',
     heading: 'Sicherheit',
     back: 'Zur Übersicht',

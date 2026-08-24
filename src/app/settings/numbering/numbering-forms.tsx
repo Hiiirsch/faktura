@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { Alert, PRIMARY_BUTTON_CLASS, TextField } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import { type NumberingFormState, saveNumberFormatAction, setStartValueAction } from './actions';
 
@@ -24,7 +25,7 @@ export function NumberFormatForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
 
-      {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast savedAt={state.status === 'saved' ? state.savedAt : null} />
       {state.status === 'error' ? <Alert tone="error">{state.message}</Alert> : null}
 
       <TextField
@@ -61,9 +62,10 @@ export function StartValueForm({
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
 
-      {state.status === 'saved' ? (
-        <Alert tone="success">{messages.numbering.startValueSet}</Alert>
-      ) : null}
+      <SaveToast
+        savedAt={state.status === 'saved' ? state.savedAt : null}
+        message={messages.numbering.startValueSet}
+      />
       {state.status === 'error' ? <Alert tone="error">{state.message}</Alert> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">

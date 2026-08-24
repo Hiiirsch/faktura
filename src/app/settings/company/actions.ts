@@ -32,7 +32,7 @@ import { COMPANY_SETTINGS_PATH } from '@/routes';
 
 export type CompanyFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | {
       readonly status: 'error';
       readonly errors: Readonly<Record<string, string>>;
@@ -187,12 +187,12 @@ export async function saveCompanyProfileAction(
   await saveCompanyProfile(authorized, data, session.userId, context.ipAddress);
 
   revalidatePath(COMPANY_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export type LogoFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | { readonly status: 'error'; readonly message: string };
 
 const LOGO_ERROR_MESSAGES: Readonly<Record<string, string>> = {
@@ -258,7 +258,7 @@ export async function uploadLogoAction(
   }
 
   revalidatePath(COMPANY_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function removeLogoAction(formData: FormData): Promise<void> {
@@ -280,7 +280,7 @@ export async function removeLogoAction(formData: FormData): Promise<void> {
 
 export type LetterheadFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | { readonly status: 'error'; readonly message: string };
 
 const LETTERHEAD_ERROR_MESSAGES: Readonly<Record<string, string>> = {
@@ -344,7 +344,7 @@ export async function uploadLetterheadAction(
   }
 
   revalidatePath(COMPANY_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function removeLetterheadAction(formData: FormData): Promise<void> {

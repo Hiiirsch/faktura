@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import { type LogoFormState, uploadLogoAction } from './actions';
 
@@ -19,7 +20,10 @@ export function LogoForm({ csrfToken }: { readonly csrfToken: string }): ReactNo
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
 
       {state.status === 'error' ? <Alert tone="error">{state.message}</Alert> : null}
-      {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast
+        savedAt={state.status === 'saved' ? state.savedAt : null}
+        message={messages.company.logoSaved}
+      />
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="logo" className="text-ui font-medium">

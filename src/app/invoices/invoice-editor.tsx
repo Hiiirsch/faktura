@@ -43,6 +43,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 import { formatMoney, formatPercent, parseGermanDecimal } from '@/ui/format';
 
 import { type InvoiceFormState, issueInvoiceAction, saveDraftAction } from './actions';
@@ -519,7 +520,7 @@ export function InvoiceEditor({
           </span>
         </Alert>
       ) : null}
-      {saveState.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast savedAt={saveState.status === 'saved' ? saveState.savedAt : null} />
 
       <FormSection title={messages.invoices.viewHeading}>
         <BuyerFieldset

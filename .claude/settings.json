@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npx tsx *)",
-      "Bash(node probe-count.mjs)"
+      "Bash(node probe-count.mjs)",
+      "Bash(cp /tmp/actions.bak src/app/catalog/actions.ts)",
+      "Bash(rm -f /tmp/actions.bak)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }

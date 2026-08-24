@@ -31,7 +31,7 @@ const roleSchema = z.object({
 
 export type RoleFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | { readonly status: 'error'; readonly message: string };
 
 function describe(error: RoleError): string {
@@ -146,7 +146,7 @@ export async function saveRoleAction(
   }
 
   revalidatePath(ROLES_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function deleteRoleAction(roleId: string, formData: FormData): Promise<void> {

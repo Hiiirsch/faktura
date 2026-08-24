@@ -25,7 +25,7 @@ import { customerPath, CUSTOMERS_PATH } from '@/routes';
 
 export type CustomerFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | {
       readonly status: 'error';
       readonly errors: Readonly<Record<string, string>>;
@@ -206,7 +206,7 @@ export async function updateCustomerAction(
 
   revalidatePath(CUSTOMERS_PATH);
   revalidatePath(customerPath(id.data));
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function setCustomerArchivedAction(formData: FormData): Promise<void> {

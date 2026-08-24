@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
@@ -29,6 +30,24 @@ const confirmSchema = z.object({
 });
 
 const sessionIdSchema = z.string().trim().min(1).max(64);
+
+/**
+ * Beendet eine stille Aktion mit einer sichtbaren Bestätigung (M12, FA-UI-28).
+ *
+ * Diese Aktionen geben nichts zurück — die Seite ist eine Server-Komponente,
+ * das Formular hat keinen Rückkanal. Bis M12 endeten sie mit einem
+ * `revalidatePath`: Der Eintrag verschwand aus der Liste, und ob das die
+ * Handlung war oder ein Zufall, musste man erraten. Ein entzogener Passkey
+ * verschwand sogar, ohne dass irgendetwas es bestätigte.
+ *
+ * Die Meldung reist in der Adresse und soll ein Neuladen **nicht** überleben —
+ * sie gilt einer Handlung, nicht einem Zustand (M5.8). `redirect()` schließt
+ * die Aktion ab; `revalidatePath` erübrigt sich damit, die Zielseite wird neu
+ * gesetzt.
+ */
+function done(key: string): never {
+  redirect(`${SECURITY_SETTINGS_PATH}?erledigt=${encodeURIComponent(key)}`);
+}
 
 export async function confirmTotpAction(
   _previous: TotpFormState,
@@ -87,7 +106,7 @@ export async function disableTotpAction(formData: FormData): Promise<void> {
   const context = await readRequestContext();
 
   await disableTotp(authorized, session.userId, context.ipAddress);
-  revalidatePath(SECURITY_SETTINGS_PATH);
+  done('totp-aus');
 }
 
 export async function revokeSessionAction(formData: FormData): Promise<void> {
@@ -112,7 +131,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
     });
   }
 
-  revalidatePath(SECURITY_SETTINGS_PATH);
+  done('sitzung-beendet');
 }
 
 export async function revokeOtherSessionsAction(formData: FormData): Promise<void> {
@@ -132,7 +151,7 @@ export async function revokeOtherSessionsAction(formData: FormData): Promise<voi
     details: { revokedCount: count },
   });
 
-  revalidatePath(SECURITY_SETTINGS_PATH);
+  done('sitzungen-beendet');
 }
 
 /**
@@ -152,7 +171,7 @@ export async function revokeTrustedDeviceAction(formData: FormData): Promise<voi
   }
 
   await revokeTrustedDevice(session.userId, id.data);
-  revalidatePath(SECURITY_SETTINGS_PATH);
+  done('gerät-entzogen');
 }
 
 /** Einen Passkey entfernen (M9, FA-PASS-04). */
@@ -170,5 +189,5 @@ export async function removePasskeyAction(formData: FormData): Promise<void> {
     { kind: 'user', id: session.userId, email: session.email, name: session.name },
     id.data,
   );
-  revalidatePath(SECURITY_SETTINGS_PATH);
+  done('passkey-entfernt');
 }

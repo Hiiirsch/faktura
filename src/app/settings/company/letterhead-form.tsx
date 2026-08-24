@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import { type LetterheadFormState, uploadLetterheadAction } from './actions';
 
@@ -19,7 +20,10 @@ export function LetterheadForm({ csrfToken }: { readonly csrfToken: string }): R
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
 
       {state.status === 'error' ? <Alert tone="error">{state.message}</Alert> : null}
-      {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast
+        savedAt={state.status === 'saved' ? state.savedAt : null}
+        message={messages.company.letterheadSaved}
+      />
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="letterhead" className="text-ui font-medium">

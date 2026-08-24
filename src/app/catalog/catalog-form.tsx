@@ -15,6 +15,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 import { formatAmount } from '@/ui/format';
 import { cents } from '@/domain/money/money';
 import { PERCENT_BASIS_POINTS } from '@/domain/invoice/totals';
@@ -53,7 +54,7 @@ export function CatalogForm({
       <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
       {isEditing ? <input type="hidden" name="id" value={item.id} /> : null}
 
-      {state.status === 'saved' ? <Alert tone="success">{messages.common.saved}</Alert> : null}
+      <SaveToast savedAt={state.status === 'saved' ? state.savedAt : null} />
       {errors.form === undefined ? null : <Alert tone="error">{errors.form}</Alert>}
 
       <FormSection

@@ -39,7 +39,7 @@ const templateSchema = z.object({
 
 export type TemplateFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | { readonly status: 'error'; readonly message: string };
 
 function readText(formData: FormData, key: string): string {
@@ -159,7 +159,7 @@ export async function updateTemplateAction(
 
   revalidatePath(templatePath(id.data));
   revalidatePath(TEMPLATE_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function makeDefaultAction(formData: FormData): Promise<void> {
@@ -267,5 +267,5 @@ export async function uploadTemplateAction(
   }
 
   revalidatePath(templatePath(id.data));
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }

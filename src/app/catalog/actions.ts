@@ -21,7 +21,7 @@ import { parseGermanDecimal } from '@/ui/format';
 
 export type CatalogFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | {
       readonly status: 'error';
       readonly errors: Readonly<Record<string, string>>;
@@ -117,7 +117,7 @@ export async function createCatalogItemAction(
   await createCatalogItem(authorized, parsed.data, session.userId, context.ipAddress);
 
   revalidatePath(CATALOG_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function updateCatalogItemAction(
@@ -153,7 +153,7 @@ export async function updateCatalogItemAction(
   );
 
   revalidatePath(CATALOG_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function setCatalogItemArchivedAction(formData: FormData): Promise<void> {

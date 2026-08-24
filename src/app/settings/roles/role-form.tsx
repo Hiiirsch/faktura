@@ -13,6 +13,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/ui/components/form';
+import { SaveToast } from '@/ui/components/toast';
 
 import { createRoleAction, type RoleFormState, saveRoleAction } from './actions';
 
@@ -69,7 +70,10 @@ export function RoleForm({
       {role === undefined ? null : <input type="hidden" name="roleId" value={role.id} />}
 
       {state.status === 'error' ? <Alert tone="error">{state.message}</Alert> : null}
-      {state.status === 'saved' ? <Alert tone="success">{messages.roles.saved}</Alert> : null}
+      <SaveToast
+        savedAt={state.status === 'saved' ? state.savedAt : null}
+        message={messages.roles.saved}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField

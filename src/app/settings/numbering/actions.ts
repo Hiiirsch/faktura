@@ -19,7 +19,7 @@ import { NUMBERING_SETTINGS_PATH } from '@/routes';
 
 export type NumberingFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved' }
+  | { readonly status: 'saved'; readonly savedAt: number }
   | { readonly status: 'error'; readonly message: string };
 
 const formatSchema = z.string().trim().min(1).max(64);
@@ -79,7 +79,7 @@ export async function saveNumberFormatAction(
   );
 
   revalidatePath(NUMBERING_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }
 
 export async function saveFileNamePatternAction(formData: FormData): Promise<void> {
@@ -135,5 +135,5 @@ export async function setStartValueAction(
   }
 
   revalidatePath(NUMBERING_SETTINGS_PATH);
-  return { status: 'saved' };
+  return { status: 'saved', savedAt: Date.now() };
 }

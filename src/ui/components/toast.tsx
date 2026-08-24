@@ -71,3 +71,37 @@ export function Toast({ message }: { readonly message: string }): ReactNode {
 }
 
 const VISIBLE_MS = 4_000;
+
+/**
+ * Bestätigung aus dem Zustand eines Formulars (M12, FA-UI-28).
+ *
+ * **Warum nicht die Meldung oben im Formular.** Sie war da — als
+ * `Alert tone="success"` über dem ersten Feld. Nur steht der Knopf „Speichern"
+ * am **Ende** eines langen Formulars, und die Seite springt nach dem Absenden
+ * nicht nach oben: Man drückte, und im Blickfeld änderte sich nichts. Eine
+ * Bestätigung, die man nicht sieht, ist keine.
+ *
+ * **Warum ein Zeitstempel und nicht `status === 'saved'`.** `useActionState`
+ * behält den vorigen Zustand, während die nächste Aktion läuft; zweimal
+ * hintereinander speichern hieß also zweimal denselben `'saved'`-Zustand. Der
+ * Toast blieb nach dem ersten Mal für immer verschwunden, weil sein Zeitgeber
+ * schon abgelaufen war und die Komponente nicht neu entstand. Der Zeitstempel
+ * ist der `key`: neuer Wert, neue Komponente, neuer Zeitgeber.
+ *
+ * Fehler bleiben, wo sie hingehören — am Feld, das sie betrifft (FA-UI-10). Ein
+ * Toast bestätigt, er entschuldigt nicht.
+ */
+export function SaveToast({
+  savedAt,
+  message = messages.common.saved,
+}: {
+  readonly savedAt: number | null;
+  readonly message?: string;
+}): ReactNode {
+  if (savedAt === null) {
+    return null;
+  }
+
+  return <Toast key={savedAt} message={message} />;
+}
+

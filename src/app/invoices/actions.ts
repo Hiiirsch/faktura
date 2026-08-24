@@ -49,7 +49,7 @@ function readText(formData: FormData, key: string): string {
 
 export type InvoiceFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'saved'; readonly id: string }
+  | { readonly status: 'saved'; readonly id: string; readonly savedAt: number }
   | { readonly status: 'issued'; readonly invoiceNumber: string }
   | { readonly status: 'error'; readonly messages: readonly string[] };
 
@@ -313,7 +313,7 @@ export async function saveDraftAction(
 
   revalidatePath(INVOICES_PATH);
   revalidatePath(invoicePath(existingId));
-  return { status: 'saved', id: existingId };
+  return { status: 'saved', id: existingId, savedAt: Date.now() };
 }
 
 export async function issueInvoiceAction(
