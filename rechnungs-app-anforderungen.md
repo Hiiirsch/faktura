@@ -513,6 +513,13 @@ dasselbe Aussehen. Danach das Briefpapier entfernen und die Rechnung erneut
 herunterladen: **unverändert**, denn ihr PDF entstand beim Festschreiben. Eine neue
 Rechnung anlegen: ohne Bogen.
 
+**A18 — Gespeichert heißt gespeichert**
+Firmendaten ändern und speichern, ohne zu scrollen: Die Bestätigung erscheint
+sichtbar. Ein Feld leeren, das nicht leer sein darf, und erneut speichern: Der
+Fehler steht am Feld, kein Toast behauptet Erfolg. Zweimal hintereinander speichern:
+Die Bestätigung erscheint **beide** Male. Auf der Sicherheitsseite einem Gerät das
+Vertrauen entziehen: Die Handlung wird benannt, nicht nur die Zeile entfernt.
+
 **A19 — Impressum und Datenschutz**
 Ohne hinterlegte Angaben `/impressum` aufrufen: 404, und auf der Anmeldeseite
 steht kein Link darauf. `/datenschutz` ist trotzdem erreichbar und nennt die
@@ -521,10 +528,3 @@ der Vorgang steht im Protokoll der Verwaltung, der Inhalt nicht. Abgemeldet
 beide Seiten aufrufen: erreichbar. Ins Impressum
 `<script>alert(1)</script>` eintragen: erscheint als Text, nichts wird
 ausgeführt.
-
-**A18 — Gespeichert heißt gespeichert**
-Firmendaten ändern und speichern, ohne zu scrollen: Die Bestätigung erscheint
-sichtbar. Ein Feld leeren, das nicht leer sein darf, und erneut speichern: Der
-Fehler steht am Feld, kein Toast behauptet Erfolg. Zweimal hintereinander speichern:
-Die Bestätigung erscheint **beide** Male. Auf der Sicherheitsseite einem Gerät das
-Vertrauen entziehen: Die Handlung wird benannt, nicht nur die Zeile entfernt.

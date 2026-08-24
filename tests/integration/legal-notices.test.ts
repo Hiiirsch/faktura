@@ -85,6 +85,30 @@ describe('NFA-COMP-07 Impressum des Betreibers', () => {
   });
 });
 
+describe('NFA-COMP-09 Hinterlegter Text bleibt Text (A19)', () => {
+  it('nimmt Markup an und gibt es als Zeichen zurück', async () => {
+    /*
+     * Der Betreiber ist kein Angreifer — und trotzdem ist dies die einzige
+     * Stelle, an der fremder Inhalt **öffentlich** erscheint. Ein
+     * `dangerouslySetInnerHTML` wäre hier eine gespeicherte Lücke, über die ein
+     * Betreiberkonto Skript in jeden Besucherbrowser brächte.
+     *
+     * Gespeichert wird der Text unverändert: Die Abwehr sitzt in der Anzeige,
+     * nicht in einer Filterung beim Schreiben. Was gefiltert wird, ist
+     * irgendwann unvollständig gefiltert; was gar nicht als Markup gesetzt
+     * wird, kann nicht ausgeführt werden.
+     */
+    await saveLegalNotices(
+      platform(),
+      { imprint: '<script>alert(1)</script>\n\nZweiter Absatz', privacyAddendum: '' },
+      null,
+    );
+
+    const gespeichert = await getLegalNotices();
+    expect(gespeichert.imprint).toContain('<script>');
+  });
+});
+
 describe('FA-ADM-14 Der Vorgang steht im Protokoll der Verwaltung', () => {
   it('vermerkt die Änderung ohne den Inhalt', async () => {
     await saveLegalNotices(

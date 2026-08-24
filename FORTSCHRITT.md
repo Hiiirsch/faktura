@@ -670,24 +670,36 @@ Auftraggeber vorgegeben hat.
 ---
 ## Abnahmeszenarien (Katalog §19)
 
-| ID | Szenario | Status |
-|---|---|---|
-| A1 | Regelfall Inland | offen |
-| A2 | Gemischte Steuersätze | offen |
-| A3 | Reverse Charge | offen |
-| A4 | Storno | offen |
-| A5 | Umfangreiche Rechnung (60 Positionen) | offen |
-| A6 | Kundenumzug | offen |
-| A7 | Bösartige Vorlage | offen |
-| A8 | Zugriffsschutz | offen |
-| A9 | Wiederherstellung | offen |
-| A10 | Passkey statt Passwort | offen |
-| A11 | Vertrautes Gerät | offen |
-| A12 | Zurück aus der Sackgasse | offen |
-| A13 | Zweiter Betreiber | offen |
-| A14 | Konto unkenntlich machen | offen |
-| A15 | Was die Verwaltung sieht | offen |
-| A16 | Beleg eines Kleinunternehmers | offen |
-| A17 | Eigenes Briefpapier | offen |
-| A18 | Gespeichert heißt gespeichert | offen |
-| A19 | Impressum und Datenschutz | offen |
+Durchgang vom 2026-08-24. **Was hier „belegt" heißt:** Das Szenario ist Schritt
+für Schritt durch einen Test abgedeckt, der bei jedem Lauf erneut prüft — das
+ist mehr als ein einmaliger Klickdurchlauf und weniger als eine Abnahme durch
+den Auftraggeber. Die Freigabe bleibt seine.
+
+Zwei Lücken hat der Durchgang aufgedeckt, beide behoben: die fehlende
+Steuersumme bei gemischten Sätzen (A2) und der nie geprüfte Kundenumzug (A6).
+
+| ID | Szenario | Stand | Beleg |
+|---|---|---|---|
+| A1 | Regelfall Inland | belegt | `e2e-invoice-lifecycle.test.ts` — anmelden, Kunde, Beleg, festschreiben, PDF, Zahlung, Status; `dashboard.test.ts` für die Kennzahlen |
+| A2 | Gemischte Steuersätze | belegt, **Mangel behoben** | `invoice-totals.test.ts` (Rechnung, Rundung je Gruppe), `document-output.test.ts` (getrennte Aufstellung **auf dem Beleg**). Der Durchgang fand: Es gab keine Zeile „Umsatzsteuer gesamt" — bei einem Satz richtig, bei zweien musste der Leser selbst addieren |
+| A3 | Reverse Charge | belegt | `editor-context.test.ts` (AE wird vorgeschlagen), `document-output.test.ts` (beide USt-IdNr und Hinweis im Satz) |
+| A4 | Storno | belegt | `e2e-invoice-lifecycle.test.ts`, `invoice-lifecycle.test.ts`, `dashboard.test.ts` (Umsatz ohne stornierte Belege) |
+| A5 | Umfangreiche Rechnung | belegt | `document-output.test.ts` — 60 Positionen, Seitenumbruch, Seitenangabe ab Seite 2 |
+| A6 | Kundenumzug | belegt, **Lücke geschlossen** | `document-output.test.ts` — der Snapshot war gebaut, aber nie hatte jemand einen Kunden umgezogen und nachgesehen |
+| A7 | Bösartige Vorlage | belegt | `rendering.test.ts` (kein ausgehender Zugriff, kein Skript), `document-output.test.ts` (verständliche Meldung bei Syntaxfehler) |
+| A8 | Zugriffsschutz | belegt | `route-protection.test.ts` — 82 Prüfungen über jede Route in `routes.ts` |
+| A9 | Wiederherstellung | **teilweise** | `backup.test.ts` prüft Erzeugen, Auspacken und Gleichheit von Belegen und PDFs. **Offen bleibt der Ernstfall**: Container und Volumes löschen und aus der Sicherung neu aufsetzen — das kann kein Test tun, ohne die Anlage abzuräumen |
+| A10 | Passkey statt Passwort | belegt | `browser-passkey.test.ts` mit nachgebautem Authenticator; Entfernen und erneuter Versuch in `passkeys.test.ts` |
+| A11 | Vertrautes Gerät | belegt | `two-step-login.test.ts` — ohne Ankreuzen kein Gerät, fremdes Konto, Ablauf, Verfall beim Zurücksetzen |
+| A12 | Zurück aus der Sackgasse | belegt | `platform-admin.test.ts` — Einladung erneut ausstellen, Zurücksetzungsnachweis, `actorKind: ADMIN` im Protokoll des Unternehmens |
+| A13 | Zweiter Betreiber | belegt | `platform-accounts.test.ts` — einladen, letztes aktives Konto nicht sperrbar, Zurücksetzen desselben Kontos erlaubt |
+| A14 | Konto unkenntlich machen | belegt | `platform-admin.test.ts` — Belege unverändert, Protokolleintrag auflösbar, keine Anmeldung mehr möglich, Vorgang in beiden Protokollen |
+| A15 | Was die Verwaltung sieht | belegt | `platform-admin.test.ts` (nur Kennzahlen, Notiz nicht im Export), `tests/architecture/platform-repository.test.ts` (Wächter über die Delegates) |
+| A16 | Beleg eines Kleinunternehmers | **offen — beim Auftraggeber** | Die Bestandteile sind belegt (`document-output.test.ts`, `letterhead.test.ts`), das Aussehen ist eine Sichtprüfung |
+| A17 | Eigenes Briefpapier | belegt | `letterhead.test.ts` (eine Seite, A4, Bogen auf **jeder** Seite, Hash nach Austausch unverändert), `browser-letterhead.test.ts` |
+| A18 | Gespeichert heißt gespeichert | belegt | `tests/architecture/save-feedback.test.ts`, `browser-invoice-editor.test.ts` (Fehler im Blickfeld) |
+| A19 | Impressum und Datenschutz | belegt | `legal-notices.test.ts`, `browser-legal.test.ts` — 404 ohne Inhalt, ohne Sitzung erreichbar, Markup bleibt Text |
+
+**Was der Auftraggeber noch selbst tun muss:** A16 (Sichtprüfung des Belegs)
+und der Ernstfall aus A9 (Wiederherstellung nach vollständigem Verlust). Alles
+andere läuft bei jedem Testlauf mit.

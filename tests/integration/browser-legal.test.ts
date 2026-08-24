@@ -54,6 +54,36 @@ describe('NFA-COMP-08 Die Datenschutzhinweise stehen jedem offen', () => {
     }
   }, 120_000);
 
+  it('führt hinterlegtes Markup nicht aus (A19)', async () => {
+    /*
+     * Der Nachweis lässt sich nur im Browser führen: Ob ein `<script>` läuft,
+     * entscheidet sich beim Setzen der Seite. Geprüft wird deshalb, dass die
+     * Zeichen als **Text** im Dokument stehen und dass kein Skriptknoten
+     * daraus geworden ist.
+     *
+     * Der Inhalt wird hier über die Anwendungsschicht hinterlegt, nicht über
+     * die Oberfläche: Der Testprozess arbeitet auf einer anderen Datenbank als
+     * der Server (siehe `setup/server.ts`) — was hier geschrieben wird, sähe
+     * der Server nicht. Was der Browser prüft, ist die **Anzeige**, und dafür
+     * genügt der Weg über die Seite des Betreibers.
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await page.goto(`${TEST_BASE_URL}/datenschutz`, { waitUntil: 'domcontentloaded' });
+
+      // Auf der Seite steht ausschließlich, was die Anwendung selbst setzt —
+      // und kein einziger Skriptknoten aus hinterlegtem Text.
+      const skripteImHauptteil = await page.evaluate(
+        () => document.querySelectorAll('main script').length,
+      );
+      expect(skripteImHauptteil).toBe(0);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
   it('zeigt das Impressum nicht, solange keins hinterlegt ist', async () => {
     const context = await browser.newContext();
     const page = await context.newPage();

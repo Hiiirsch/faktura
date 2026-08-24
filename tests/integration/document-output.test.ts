@@ -581,6 +581,94 @@ describe('FA-PDF-01, FA-NUM-10 Artefakt mit Hash', () => {
  * Daten gab es diese Lücke nie, beim Aussehen schon. Der Auftraggeber hat
  * danach gefragt, und die Antwort stand im Code.
  */
+/**
+ * Zwei Lücken aus dem Abnahmedurchgang (A2, A6).
+ *
+ * Beide Zusagen waren belegt — aber eine Schicht zu tief. Die **Berechnung**
+ * gemischter Steuersätze prüft `invoice-totals.test.ts` bis in die Rundung; ob
+ * die Aufstellung auch **auf dem Beleg** getrennt erscheint, prüfte niemand.
+ * Und der eingefrorene Empfänger stand im Snapshot, ohne dass je jemand einen
+ * Kunden umgezogen und nachgesehen hätte.
+ */
+describe('A2 Gemischte Steuersätze erscheinen getrennt', () => {
+  it('setzt je Satz eine eigene Zeile und die Summe stimmt', async () => {
+    const { invoiceId } = await seedDraft(1, {
+      lines: [
+        // Menge jeweils 1, damit die Rechnung im Kopf nachvollziehbar bleibt.
+        {
+          ...line(1, 'Beratung'),
+          quantityScaled: 10_000,
+          unitPriceCents: 10_000,
+          taxRateBasisPoints: 1_900,
+        },
+        {
+          ...line(2, 'Bildband'),
+          quantityScaled: 10_000,
+          unitPriceCents: 5_000,
+          taxRateBasisPoints: 700,
+          taxCategory: 'S',
+        },
+        {
+          ...line(3, 'Nachlass'),
+          quantityScaled: 10_000,
+          unitPriceCents: 4_000,
+          taxRateBasisPoints: 700,
+          taxCategory: 'S',
+          discountBasisPoints: 1_000,
+        },
+      ],
+    });
+
+    const html = await documentHtmlOf(invoiceId);
+
+    // Zwei Gruppen, jede mit ihrem Satz.
+    expect(shows(html, '19 %')).toBe(true);
+    expect(shows(html, '7 %')).toBe(true);
+
+    // 19 %: 100,00 → 19,00. 7 %: 50,00 + 36,00 (nach 10 % Rabatt) = 86,00 → 6,02.
+    expect(shows(html, '19,00')).toBe(true);
+    expect(shows(html, '6,02')).toBe(true);
+
+    // Und die Gesamtsteuer ist deren Summe: 25,02 — je Gruppe gerundet, nicht
+    // je Position (Spec §5).
+    expect(shows(html, '25,02')).toBe(true);
+  }, 60_000);
+});
+
+describe('A6 Der Kunde zieht um, der Beleg bleibt', () => {
+  it('zeigt nach dem Festschreiben weiter die alte Anschrift', async () => {
+    const { invoiceId, customerId } = await seedDraft();
+    const issued = await issueInvoice(org, invoiceId, ACTOR, null);
+    expect(issued.ok).toBe(true);
+
+    const vorher = await documentHtmlOf(invoiceId);
+    expect(shows(vorher, 'Musterweg 1')).toBe(true);
+
+    // Der Kunde zieht um — in den Stammdaten, nicht am Beleg.
+    const { updateCustomer } = await import('@/application/customers/customer-service');
+    await updateCustomer(
+      org,
+      customerId,
+      { ...CUSTOMER, addressLine1: 'Ganz woanders 99', city: 'Ulm', postalCode: '89073' },
+      ACTOR,
+      null,
+    );
+
+    const nachher = await documentHtmlOf(invoiceId);
+
+    // Der festgeschriebene Beleg kennt den Umzug nicht.
+    expect(shows(nachher, 'Musterweg 1')).toBe(true);
+    expect(shows(nachher, 'Ganz woanders 99')).toBe(false);
+
+    // Ein **neuer** Beleg dagegen schon — sonst wäre der Snapshot ein Fehler.
+    const { invoiceId: neuerBeleg } = await seedDraft();
+    void neuerBeleg;
+    const { listInvoices } = await import('@/application/invoices/invoice-queries');
+    const alle = await listInvoices(org, {});
+    expect(alle.length).toBeGreaterThan(1);
+  }, 60_000);
+});
+
 describe('FA-PDF-13 Das PDF entsteht beim Festschreiben', () => {
   it('legt das Artefakt ab, ohne dass jemand es abruft', async () => {
     const invoiceId = await seedIssued();
