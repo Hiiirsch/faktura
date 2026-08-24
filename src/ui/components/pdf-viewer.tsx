@@ -1,7 +1,7 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Minus, Plus } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 
 import { messages } from '@/i18n/de';
 
@@ -57,6 +57,12 @@ export function PdfViewer({
 }): ReactNode {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  /** Der rollende Rahmen — an ihm wird gezogen. */
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  /** Das ganze Bauteil — es geht als Ganzes in den Vollbildmodus. */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  /** Woher der Zug begann: Zeigerposition und Rollstand in diesem Moment. */
+  const dragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   /* Das geladene Dokument überlebt das Blättern; `unknown`, weil der Typ aus
      einem dynamischen Import stammt und die Domain-Regel kein `any` erlaubt. */
   const documentRef = useRef<PdfDocument | null>(null);
@@ -64,6 +70,8 @@ export function PdfViewer({
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [pageNumber, setPageNumber] = useState(1);
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
+  const [dragging, setDragging] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   /** Setzt eine Seite auf die Leinwand — in der Auflösung des Bildschirms. */
   const drawPage = useCallback(async (page: number, zoom: number): Promise<void> => {
@@ -198,12 +206,122 @@ export function PdfViewer({
     };
   }, [drawPage, pageNumber, state, zoomIndex]);
 
+  /*
+   * **Das Blatt lässt sich mit der Maus greifen und schieben** (M12).
+   *
+   * Der Handgriff eines PDF-Betrachters, nachgebaut über Zeigerereignisse: Was
+   * der Zeiger zurücklegt, legt der Rollstand in die Gegenrichtung zurück.
+   *
+   * Drei Feinheiten, die man erst beim Ausprobieren merkt:
+   *
+   * - `setPointerCapture` hält den Zug fest, auch wenn der Zeiger dabei den
+   *   Rahmen verlässt. Ohne das bliebe das Blatt an der Kante hängen, sobald
+   *   man zu weit zieht — und ein losgelassener Knopf außerhalb käme nie an.
+   * - **Nur die Maus.** Auf einem Berührungsbildschirm rollt der Browser von
+   *   sich aus, und zwar besser: mit Schwung und Fangkante. Ein nachgebauter
+   *   Zug daneben wäre eine zweite, schlechtere Mechanik.
+   * - Der Zeiger wechselt zur geschlossenen Hand, solange gezogen wird. Ohne
+   *   Rückmeldung weiß niemand, ob er das Blatt hat oder daneben greift.
+   */
+  const startDrag = useCallback((event: PointerEvent<HTMLDivElement>): void => {
+    const rahmen = scrollRef.current;
+    if (rahmen === null || event.pointerType !== 'mouse' || event.button !== 0) {
+      return;
+    }
+
+    dragRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      left: rahmen.scrollLeft,
+      top: rahmen.scrollTop,
+    };
+    rahmen.setPointerCapture(event.pointerId);
+    setDragging(true);
+  }, []);
+
+  const moveDrag = useCallback((event: PointerEvent<HTMLDivElement>): void => {
+    const rahmen = scrollRef.current;
+    const start = dragRef.current;
+    if (rahmen === null || start === null) {
+      return;
+    }
+
+    rahmen.scrollLeft = start.left - (event.clientX - start.x);
+    rahmen.scrollTop = start.top - (event.clientY - start.y);
+  }, []);
+
+  const endDrag = useCallback((event: PointerEvent<HTMLDivElement>): void => {
+    const rahmen = scrollRef.current;
+    if (rahmen !== null && rahmen.hasPointerCapture(event.pointerId)) {
+      rahmen.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+    setDragging(false);
+  }, []);
+
+  /*
+   * **Vollbild** (M12).
+   *
+   * Über die Schnittstelle des Browsers, nicht über ein `position: fixed` mit
+   * hohem `z-index`: Nur so verschwindet auch alles, was der Browser selbst
+   * um die Seite legt, und `Escape` tut ohne Zutun das Erwartete. Der Zustand
+   * kommt aus `fullscreenchange` und nicht aus dem eigenen Klick — wer über
+   * `Escape` oder die Taste des Browsers hinausgeht, soll denselben Weg
+   * nehmen.
+   */
+  const toggleFullscreen = useCallback((): void => {
+    const wurzel = rootRef.current;
+    if (wurzel === null) {
+      return;
+    }
+
+    if (document.fullscreenElement === null) {
+      void wurzel.requestFullscreen().catch(() => {
+        // Verweigert der Browser den Vollbildmodus, bleibt die Ansicht wie sie
+        // ist. Eine Vorschau, die deshalb abbricht, wäre die schlechtere Wahl.
+      });
+      return;
+    }
+
+    void document.exitFullscreen().catch(() => {
+      /* dasselbe in der Gegenrichtung */
+    });
+  }, []);
+
+  useEffect(() => {
+    const handler = (): void => {
+      setFullscreen(document.fullscreenElement !== null);
+    };
+
+    document.addEventListener('fullscreenchange', handler);
+    return () => {
+      document.removeEventListener('fullscreenchange', handler);
+    };
+  }, []);
+
+  // Im Vollbild ist die Spalte eine andere: neu einpassen.
+  useEffect(() => {
+    if (state.kind !== 'ready') {
+      return;
+    }
+    void drawPage(pageNumber, ZOOM_STEPS[zoomIndex] ?? 1);
+  }, [drawPage, fullscreen, pageNumber, state, zoomIndex]);
+
   const pageCount = state.kind === 'ready' ? state.pageCount : 0;
 
   return (
     // `data-document` nennt die gezeigte Datei. Im DOM steht sonst nichts
     // darüber — anders als beim `<iframe>`, dessen `src` sichtbar war.
-    <div className={className} data-document={src}>
+    <div
+      ref={rootRef}
+      /*
+       * Im Vollbild gilt nicht mehr die Höhe der Spalte, sondern die des
+       * Bildschirms — und die Fläche braucht einen eigenen Grund: Der
+       * Vollbildmodus zeigt nur dieses Element, alles dahinter ist fort.
+       */
+      className={fullscreen ? 'flex h-screen w-screen flex-col bg-surface' : className}
+      data-document={src}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule px-3 py-2">
         <div className="flex items-center gap-2">
           <button
@@ -267,10 +385,32 @@ export function PdfViewer({
           >
             <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
           </button>
+
+          <button
+            type="button"
+            aria-label={fullscreen ? messages.preview.exitFullscreen : messages.preview.fullscreen}
+            onClick={toggleFullscreen}
+            className={ICON_BUTTON_CLASS}
+          >
+            {fullscreen ? (
+              <Minimize2 aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
+            ) : (
+              <Maximize2 aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="overflow-auto p-4">
+      <div
+        ref={scrollRef}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        className={
+          `min-h-0 flex-1 overflow-auto p-4 ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`
+        }
+      >
         {/*
           Gemessen wird an diesem Rahmen, nicht am rollenden darüber: Dessen
           `clientWidth` enthält die Polsterung, und das Blatt wäre jedes Mal

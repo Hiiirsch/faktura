@@ -165,7 +165,8 @@ describe('FA-PDF-02 Die Vorschau gehört der Anwendung', () => {
         ),
       );
 
-      expect(breiten).toHaveLength(4);
+      // Fünf: zurück, vor, kleiner, größer, Vollbild.
+      expect(breiten).toHaveLength(5);
       for (const breite of breiten) {
         expect(breite).toBeGreaterThanOrEqual(12);
       }
@@ -211,6 +212,89 @@ describe('FA-PDF-02 Die Vorschau gehört der Anwendung', () => {
         () => document.querySelector('canvas')?.getBoundingClientRect().width ?? 0,
       );
       expect(Math.round(zurueck)).toBe(Math.round(vorher));
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('lässt sich mit der Maus greifen und schieben', async () => {
+    /*
+     * Der Handgriff eines PDF-Betrachters. Geprüft am Rollstand des Rahmens:
+     * Was der Zeiger zurücklegt, muss das Blatt in die Gegenrichtung
+     * zurücklegen. Vergrößert wird vorher, sonst gibt es nichts zu schieben.
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+      await warteAufTinte(page);
+
+      // Zweimal größer: Jetzt ist das Blatt breiter als seine Spalte.
+      await page.click('button[aria-label="Größer"]');
+      await page.click('button[aria-label="Größer"]');
+      await page.waitForTimeout(1_500);
+
+      const rahmen = page.locator('canvas').locator('xpath=ancestor::div[contains(@class,"overflow-auto")][1]');
+      const kasten = await rahmen.boundingBox();
+      expect(kasten).not.toBeNull();
+      if (kasten === null) return;
+
+      const vorher = await rahmen.evaluate((element) => element.scrollLeft);
+
+      // Greifen, ziehen, loslassen — 120 Punkte nach links.
+      await page.mouse.move(kasten.x + kasten.width / 2, kasten.y + kasten.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(kasten.x + kasten.width / 2 - 120, kasten.y + kasten.height / 2, {
+        steps: 10,
+      });
+      await page.mouse.up();
+
+      const nachher = await rahmen.evaluate((element) => element.scrollLeft);
+
+      // Nach links gezogen heißt: weiter rechts im Blatt.
+      expect(nachher).toBeGreaterThan(vorher);
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('geht in den Vollbildmodus und wieder heraus', async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+      await warteAufTinte(page);
+
+      await page.click('button[aria-label="Vollbild"]');
+      await page.waitForTimeout(1_000);
+
+      /*
+       * Gefragt wird der Browser, nicht die eigene Zustandsvariable: Der
+       * Vollbildmodus gehört ihm, und ein Bauteil, das ihn nur behauptet,
+       * bestünde diesen Test ebenfalls.
+       */
+      const drin = await page.evaluate(() => document.fullscreenElement !== null);
+      expect(drin).toBe(true);
+
+      // Der Knopf trägt jetzt die Gegenhandlung — und das Blatt wurde neu
+      // eingepasst, ist also breiter als in der Spalte.
+      expect(await page.locator('button[aria-label="Vollbild beenden"]').count()).toBe(1);
+
+      /*
+       * Beendet wird über den eigenen Knopf, nicht über `Escape`: Die Taste
+       * gehört dem Browser, und ein kopfloses Chromium behandelt sie anders
+       * als eines mit Fenster. Geprüft werden soll der Weg, den diese Ansicht
+       * anbietet — für `Escape` bürgt die Schnittstelle des Browsers.
+       */
+      await page.click('button[aria-label="Vollbild beenden"]');
+      await page.waitForTimeout(1_500);
+
+      expect(await page.evaluate(() => document.fullscreenElement !== null)).toBe(false);
+      expect(await page.locator('button[aria-label="Vollbild"]').count()).toBe(1);
     } finally {
       await context.close();
     }

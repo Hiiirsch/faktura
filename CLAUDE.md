@@ -454,6 +454,16 @@ Drei Dinge, die dabei zu beachten waren:
   darüber — anders als beim `<iframe>`, dessen `src` sichtbar war; die
   Browsertests lesen es.
 
+**Greifen und schieben, Vollbild.** Das Blatt lässt sich mit der Maus ziehen —
+was der Zeiger zurücklegt, legt der Rollstand in die Gegenrichtung zurück.
+`setPointerCapture` hält den Zug fest, auch wenn der Zeiger den Rahmen
+verlässt; **nur die Maus**, denn auf einem Berührungsbildschirm rollt der
+Browser von sich aus, und zwar besser. Das Vollbild läuft über die
+Schnittstelle des Browsers statt über ein `position: fixed` mit hohem
+`z-index`: Nur so verschwindet auch, was der Browser um die Seite legt, und
+`Escape` tut ohne Zutun das Erwartete. Der Zustand kommt aus
+`fullscreenchange`, nicht aus dem eigenen Klick.
+
 **Die Vorschau erneuert sich nach dem Speichern.** Ein `<iframe>` mit derselben
 Adresse lädt nicht neu, gleich wie oft React rendert; man sah seine Änderungen
 erst nach einem Neuladen der ganzen Seite. Die Version wandert deshalb in die

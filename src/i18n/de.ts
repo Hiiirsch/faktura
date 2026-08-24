@@ -823,6 +823,8 @@ export const messages = {
     nextPage: 'Nächste Seite',
     zoomIn: 'Größer',
     zoomOut: 'Kleiner',
+    fullscreen: 'Vollbild',
+    exitFullscreen: 'Vollbild beenden',
     loading: 'Wird gesetzt …',
     failed: 'Die Vorschau ließ sich nicht laden. Der Beleg selbst ist davon nicht betroffen.',
   },
