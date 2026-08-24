@@ -645,6 +645,11 @@ export const messages = {
     taxScheme: 'Steuerliche Behandlung',
     taxSchemeHint:
       'Aus Kunden- und Firmendaten vorgeschlagen. Eine Änderung setzt Kategorie und Satz aller Positionen neu.',
+    taxSchemeFromCompany: 'Aus den Firmendaten übernommen.',
+    taxSchemeCompanyLink: 'Firmendaten ändern',
+    taxSchemeOverride: 'Abweichende Behandlung für diese Rechnung',
+    taxSchemeWarning:
+      'Wer Umsatzsteuer ausweist, schuldet sie — auch dann, wenn sie zu Unrecht ausgewiesen ist (§14c UStG). Eine Abweichung von der Kleinunternehmerregelung gehört deshalb nur auf einen Beleg, für den sie wirklich gilt. Eine Änderung setzt Kategorie und Satz aller Positionen neu.',
     purchaseOrderRef: 'Bestellnummer',
     template: 'Vorlage',
 

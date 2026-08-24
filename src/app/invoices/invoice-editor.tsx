@@ -20,6 +20,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useActionState, useEffect, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import Link from 'next/link';
+
 import type { CatalogItem } from '@/application/catalog/catalog-service';
 import { TAX_CATEGORY_CODES, type TaxCategoryCode } from '@/domain/codes/tax-category';
 import { UNIT_CODES, type UnitCode } from '@/domain/codes/unit-code';
@@ -31,11 +33,13 @@ import { addDays, parsePlainDate } from '@/domain/time/plain-date';
 import { TAX_SCHEMES, type TaxScheme, taxCategoryForScheme } from '@/domain/tax/tax-scheme';
 import { messages, taxCategoryLabels, unitLabels } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
+import { COMPANY_SETTINGS_PATH } from '@/routes';
 import { ConfirmDialog } from '@/ui/components/dialog';
 import { DateField } from '@/ui/components/date-field';
 import {
   Alert,
   SECTION_CLASS,
+  FOCUS_RING,
   FormSection,
   INPUT_CLASS,
   PRIMARY_BUTTON_CLASS,
@@ -350,6 +354,7 @@ export function InvoiceEditor({
   catalog,
   templates,
   defaultTaxRatePercent,
+  sellerIsSmallBusiness,
   defaultPaymentTerms,
   csrfToken,
   canIssue,
@@ -363,6 +368,8 @@ export function InvoiceEditor({
     readonly isDefault: boolean;
   }[];
   readonly defaultTaxRatePercent: string;
+  /** Ob das Unternehmen nach §19 UStG abrechnet (M12). */
+  readonly sellerIsSmallBusiness: boolean;
   /** Zahlungsziel der Firmendaten — gilt, wo kein Kunde eines vorgibt. */
   readonly defaultPaymentTerms: number;
   readonly csrfToken: string;
@@ -605,27 +612,72 @@ export function InvoiceEditor({
           />
         </div>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium">{messages.invoices.taxScheme} *</span>
-          <select
-            name="taxScheme"
-            required
-            value={taxScheme}
-            onChange={(event) => {
-              changeScheme(event.target.value as TaxScheme);
-            }}
-            className={INPUT_CLASS}
+        {/*
+          Bei §19 ist die steuerliche Behandlung **festgestellt**, keine Frage.
+
+          Sie kommt aus den Firmendaten, und `determineTaxScheme()` lässt sie
+          alles andere schlagen — wer keine Umsatzsteuer ausweist, weist auch
+          bei einem ausländischen Kunden keine aus. Sie hier als gleichwertigen
+          Eintrag neben „Regelbesteuerung" anzubieten machte den teuersten
+          Fehlgriff der Anwendung zu einem Klick: Was ausgewiesen ist, schuldet
+          man nach §14c, auch wenn es falsch ist.
+
+          Abweichen bleibt möglich — FA-CALC-08 verlangt das —, kostet aber
+          einen bewussten Schritt und trägt den Grund neben sich. Das Auswahlfeld
+          steht dabei im Baum, auch zugeklappt: Ein `<details>` verbirgt seinen
+          Inhalt, nimmt ihn aber nicht aus dem Formular.
+        */}
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="text-ui font-medium">{messages.invoices.taxScheme} *</legend>
+
+          {sellerIsSmallBusiness && taxScheme === 'SMALL_BUSINESS' ? (
+            <>
+              <p className="text-ui text-ink">{messages.taxScheme.SMALL_BUSINESS}</p>
+              <p className="text-ui text-ink-muted">
+                {messages.invoices.taxSchemeFromCompany}{' '}
+                <Link href={COMPANY_SETTINGS_PATH} className="underline underline-offset-4">
+                  {messages.invoices.taxSchemeCompanyLink}
+                </Link>
+              </p>
+            </>
+          ) : null}
+
+          <details
+            className={sellerIsSmallBusiness ? 'mt-1 flex flex-col gap-2' : 'contents'}
+            open={!sellerIsSmallBusiness || taxScheme !== 'SMALL_BUSINESS'}
           >
-            {TAX_SCHEMES.map((scheme) => (
-              <option key={scheme} value={scheme}>
-                {messages.taxScheme[scheme]}
-              </option>
-            ))}
-          </select>
-          <span className="text-ui text-ink-muted">
-            {messages.invoices.taxSchemeHint}
-          </span>
-        </label>
+            {sellerIsSmallBusiness ? (
+              <summary className={`cursor-pointer text-ui text-accent ${FOCUS_RING}`}>
+                {messages.invoices.taxSchemeOverride}
+              </summary>
+            ) : null}
+
+            {sellerIsSmallBusiness ? (
+              <p className="mt-2 text-ui text-ink-muted">{messages.invoices.taxSchemeWarning}</p>
+            ) : null}
+
+            <select
+              name="taxScheme"
+              required
+              aria-label={messages.invoices.taxScheme}
+              value={taxScheme}
+              onChange={(event) => {
+                changeScheme(event.target.value as TaxScheme);
+              }}
+              className={sellerIsSmallBusiness ? `${INPUT_CLASS} mt-2` : INPUT_CLASS}
+            >
+              {TAX_SCHEMES.map((scheme) => (
+                <option key={scheme} value={scheme}>
+                  {messages.taxScheme[scheme]}
+                </option>
+              ))}
+            </select>
+
+            {sellerIsSmallBusiness ? null : (
+              <span className="text-ui text-ink-muted">{messages.invoices.taxSchemeHint}</span>
+            )}
+          </details>
+        </fieldset>
       </FormSection>
 
       <section className={SECTION_CLASS}>

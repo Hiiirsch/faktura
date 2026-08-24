@@ -424,6 +424,31 @@ Die Vorschau in den Firmendaten ist das PDF selbst, über eine eigene Route mit
 dem Profil `pdf`. Unter `assetPath()` mit `sandbox` startet der eingebaute
 Betrachter des Browsers nicht (M5.6).
 
+## Steuerliche Behandlung im Editor (seit M12)
+
+Bei **§19 ist sie festgestellt, keine Frage.** Sie kommt aus den Firmendaten,
+und `determineTaxScheme()` lässt sie alles andere schlagen — wer keine
+Umsatzsteuer ausweist, weist auch bei einem ausländischen Kunden keine aus. Sie
+als gleichwertigen Eintrag neben „Regelbesteuerung" anzubieten machte den
+teuersten Fehlgriff der Anwendung zu einem Klick: Was ausgewiesen ist, schuldet
+man nach §14c, auch wenn es falsch ist.
+
+Abweichen bleibt möglich — **FA-CALC-08 verlangt das** —, kostet aber einen
+bewussten Schritt hinter einem `<details>` und trägt den Grund neben sich. Das
+Auswahlfeld steht dabei im Baum, auch zugeklappt: Ein `<details>` verbirgt
+seinen Inhalt, nimmt ihn aber nicht aus dem Formular.
+
+Die beiden anderen Verfahren bleiben am Beleg und nicht in den Firmendaten,
+weil sie Eigenschaften des einzelnen Geschäfts sind: Reverse Charge hängt am
+EU-Kunden mit USt-IdNr., die Ausfuhr am Drittland.
+
+**Der Vorschlag hatte einen Weg an den Firmendaten vorbei.** Ohne angelegten
+Kunden stand in `editor-data.ts` ein `'STANDARD'`, gesetzt an
+`determineTaxScheme()` vorbei — der erste Beleg eines Kleinunternehmers kam mit
+19 % vorbelegt. Statt eines zweiten Vorschlagswegs bekommt die Funktion jetzt
+das eigene Land als Empfängerland: Inland ist die richtige Annahme, solange
+niemand etwas anderes sagt.
+
 ## Rückmeldung beim Speichern (seit M12)
 
 **Der Mangel war nicht die fehlende Meldung, sondern ihr Ort.** Sie stand als

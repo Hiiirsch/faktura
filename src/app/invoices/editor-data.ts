@@ -80,6 +80,15 @@ export type EditorContext = {
     readonly isDefault: boolean;
   }[];
   readonly defaultTaxRatePercent: string;
+  /**
+   * Ob das Unternehmen nach §19 UStG abrechnet (M12).
+   *
+   * Der Editor braucht es nicht zum Rechnen — das steht im Vorschlag —, sondern
+   * für die Darstellung: Bei §19 ist die steuerliche Behandlung **festgestellt**
+   * und keine Auswahl. Eine Abweichung bleibt möglich (FA-CALC-08), kostet aber
+   * einen bewussten Schritt.
+   */
+  readonly sellerIsSmallBusiness: boolean;
   readonly defaultCurrency: string;
   readonly today: string;
   readonly hasCompanyProfile: boolean;
@@ -125,15 +134,25 @@ export async function loadEditorContext(
     countryCode: customer.countryCode,
   }));
 
-  const suggestedTaxScheme =
-    first === undefined
-      ? 'STANDARD'
-      : determineTaxScheme({
-          sellerIsSmallBusiness: company.isSmallBusiness,
-          sellerCountry: company.countryCode as CountryCode,
-          buyerCountry: first.countryCode as CountryCode,
-          buyerHasVatId: first.vatId !== null,
-        });
+  /*
+   * **Ohne Kunden wird nicht geraten, sondern dieselbe Regel gefragt** (M12).
+   *
+   * Hier stand ein `'STANDARD'` für den Fall, dass noch kein Kunde angelegt
+   * ist. Das ging an `determineTaxScheme()` vorbei — und damit an der ersten
+   * Zeile darin, die alles andere schlägt: Wer nach §19 abrechnet, weist keine
+   * Umsatzsteuer aus, gleich an wen. Ein Kleinunternehmer ohne Kundenstamm
+   * bekam so einen Beleg mit 19 % vorbelegt.
+   *
+   * Statt eines zweiten Vorschlagswegs bekommt die Funktion das eigene Land als
+   * Empfängerland, wenn es keinen Empfänger gibt: Inland ist die richtige
+   * Annahme, solange niemand etwas anderes sagt.
+   */
+  const suggestedTaxScheme = determineTaxScheme({
+    sellerIsSmallBusiness: company.isSmallBusiness,
+    sellerCountry: company.countryCode as CountryCode,
+    buyerCountry: (first?.countryCode ?? company.countryCode) as CountryCode,
+    buyerHasVatId: first?.vatId != null,
+  });
 
   return {
     customers: options,
@@ -154,6 +173,7 @@ export async function loadEditorContext(
       isDefault: template.isDefault,
     })),
     defaultTaxRatePercent: String(company.defaultTaxRateBasisPoints / PERCENT_BASIS_POINTS),
+    sellerIsSmallBusiness: company.isSmallBusiness,
     defaultCurrency: company.defaultCurrency,
     today,
     hasCompanyProfile: company.legalName.length > 0,
