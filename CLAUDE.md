@@ -271,6 +271,29 @@ Vorlagenänderung erzeugte PDFs nicht (FA-TPL-09) — ausgeliefert wird die Date
 nicht ein bei jedem Abruf neu gesetztes Dokument. Ein **Entwurf** wird bei jedem
 Abruf neu gesetzt und nie abgelegt.
 
+**Es entsteht beim Festschreiben, nicht beim ersten Abruf** (seit M12,
+FA-PDF-13). Bis dahin lag zwischen der Vergabe der Nummer und dem ersten Abruf
+ein Fenster, in dem eine Vorlagenänderung den Beleg noch veränderte. Bei den
+Daten gab es dieses Fenster nie — Snapshot und vier Trigger frieren sie in der
+Sekunde des Festschreibens ein.
+
+Ein Fehlschlag beim Setzen **wirft das Festschreiben nicht um**: Die Nummer ist
+vergeben, der Beleg gilt, das PDF entsteht dann beim Abruf. Ein Beleg, der an
+einem Renderer scheitert, wäre der schlechtere Fehler.
+
+Daraus folgt eine Nebenwirkung, die nichts mit Belegen zu tun hat: **Wer
+festschreibt, startet einen Browser.** Ein Skript, das ihn offen lässt, endet
+nie — ein offener Chromium hält den Node-Prozess am Leben. `seed-user.ts` und
+`scripts/seed.ts` rufen deshalb `closeRenderer()`, und ein `setupFiles`-Eintrag
+tut es nach jeder Integrationstestdatei. Aufgefallen ist es als Hänger der
+gesamten Suite, der wie ein langsamer Test aussah; gefunden über ein
+Prozess-Sample (`SyncProcessRunner::Spawn`, blockiert).
+
+`RenderedPdf.origin` unterscheidet `stored`, `draft` und `substitute`. Der
+dritte Fall ist der Grund für das Feld: Fehlt die abgelegte Datei, wurde bis M12
+**still** neu gesetzt und ausgeliefert. Was dabei herauskam, sah aus wie das
+Original und war es nicht.
+
 Geschrieben wird über eine Zwischendatei und `rename`; ein abgebrochener Lauf
 hinterlässt damit nichts (FA-PDF-11). Trigger `InvoiceArtifact_no_update` weist
 jede Änderung am Artefakt ab.
@@ -344,6 +367,83 @@ und ein Logo auf dem Beleg ist für jeden sichtbar, der den Beleg sieht.
 Standardvorlage erreichen bestehende Installationen **nicht**: `Template` trägt
 eine Kopie, und Faktura schreibt sie nicht um. Wer die Verbesserungen will,
 setzt die Ränder nach oder legt die Standardvorlage neu an.
+
+## Briefpapier (seit M12)
+
+Ein Unternehmen hinterlegt eine **einseitige A4-PDF**, die unter jede Seite des
+Belegs gelegt wird (FA-TPL-11). Sie trägt **nur Gestaltung**: Anschrift,
+Bankverbindung und Pflichtangaben setzt die Vorlage. Läge die Steuernummer auf
+dem Bogen, stünde sie in einer Datei, die kein Test lesen kann — FA-PFL-02 und
+FA-PFL-10 wären dann Behauptungen statt Zusagen.
+
+Der Weg dorthin war ein Gegenvorschlag des Auftraggebers und der bessere: Das
+Aussehen in CSS nachzubauen hieße, Winkel und Grautöne aus einem PDF zu raten.
+So gestaltet er im Werkzeug seiner Wahl, Faktura bleibt ein DIN-5008-Satzprogramm,
+und randabfallend ist geschenkt — der Bogen *ist* das ganze Blatt.
+
+**Geprüft wird auf zwei Schichten**, weil eine nicht reicht. Die Domain
+(`domain/assets/pdf-upload.ts`) sieht nur Bytes: Signatur `%PDF-`, 5 MB, und eine
+Ablehnung für `/JavaScript`, `/JS`, `/Launch`, `/EmbeddedFile`, `/OpenAction`. Die
+Anwendung (`application/company/letterhead.ts`) liest danach mit pdf-lib, was
+ohne PDF-Leser nicht zu sehen ist: **genau eine Seite** und **A4 ±2 mm**. Der
+Spielraum ist Arithmetik, keine Bequemlichkeit — A4 misst 595,276 × 841,890
+Punkte, und Gestaltungsprogramme runden das unterschiedlich.
+
+Die Seitenzahl ist die wichtigere der beiden Prüfungen: Ein zweiseitiger Bogen
+wäre eine stille Falle, denn der Beleg bekäme immer nur die erste Seite.
+
+**Der Nachbearbeiter entsteht je Beleg**, nicht einmal beim Start:
+`letterheadBackground(bytes)` ist ein Abschluss über die geladenen Bytes. Der
+Vertrag `PdfPostProcessor.process(pdf)` kennt keinen Zusammenhang, das
+Briefpapier hängt aber am Unternehmen — und bei einem festgeschriebenen Beleg am
+Tag seiner Ausstellung. Die Kette wird deshalb pro Lauf zusammengesetzt.
+
+**Die Reihenfolge ist zweimal entscheidend, und beide Male sieht man den Fehler
+erst am fertigen PDF:**
+
+- In der Kette steht der Bogen **vor** dem Seitenstempel. Andersherum läge die
+  Seitenangabe unter einer deckenden Fläche.
+- Innerhalb der Seite steht er **vor** dem Satz. `drawPage` hängt hinten an die
+  Zeichenliste an, also *über* den Beleg; ein Bogen mit Farbfläche verdeckte
+  damit die ganze Rechnung. Die angehängte Operation wandert deshalb an den
+  Anfang des Inhaltsstroms.
+
+Geprüft wird das ohne Rasterer: In einem PDF liegt oben, was zuletzt im Strom
+steht — also vergleichen die Tests Positionen statt Pixel.
+
+Der Preis steht im Kommentar: Mit Briefpapier läuft jedes PDF durch pdf-lib, und
+die Zusage des Seitenstempels — ein einseitiges PDF kommt bytegleich zurück —
+gilt für diesen Beleg nicht mehr. Tragbar, weil der Hash **nach** der Kette
+gebildet wird.
+
+Eine **leere** PDF-Seite trägt keinen Inhaltsstrom, und pdf-lib weigert sich,
+sie einzubetten. Das ist eine gültige Datei; der Beleg entsteht trotzdem, ohne
+Bogen und ohne Fehler — dieselbe Regel wie beim Logo.
+
+Die Vorschau in den Firmendaten ist das PDF selbst, über eine eigene Route mit
+dem Profil `pdf`. Unter `assetPath()` mit `sandbox` startet der eingebaute
+Betrachter des Browsers nicht (M5.6).
+
+## Rückmeldung beim Speichern (seit M12)
+
+**Der Mangel war nicht die fehlende Meldung, sondern ihr Ort.** Sie stand als
+`Alert tone="success"` über dem ersten Feld, und der Knopf „Speichern" steht am
+Ende eines langen Formulars; die Seite springt nach dem Absenden nicht nach oben.
+Man drückte, und im Blickfeld änderte sich nichts.
+
+Neun Formulare zeigen sie jetzt als `SaveToast` unten links. Fehler bleiben am
+betroffenen Feld (FA-UI-10) — ein Toast bestätigt, er entschuldigt nicht.
+
+**Der Zeitstempel im `'saved'`-Zustand ist kein Beiwerk.** `useActionState`
+behält den vorigen Zustand, während die nächste Aktion läuft; zweimal
+hintereinander speichern hieß zweimal derselbe `'saved'`. Der Toast blieb nach
+dem ersten Mal für immer weg, weil sein Zeitgeber abgelaufen war und die
+Komponente nicht neu entstand. Der Zeitstempel ist der `key`.
+
+Die fünf stillen Aktionen der Sicherheitsseite haben keinen Rückkanal und enden
+deshalb mit `?erledigt=…` — dasselbe Muster wie die Listen seit M5.8. Vorher
+endeten sie mit einem `revalidatePath`: Die Zeile verschwand, und ob das die
+Handlung war, musste man erraten.
 
 ## Empfänger (seit M5.7)
 
@@ -1073,6 +1173,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M9 | Passkeys, vertraute Geräte, Wege aus einer Sackgasse | umgesetzt |
 | M10 | Handlungsfähigkeit der Verwaltung: Betreiberkonten, Protokoll, Anonymisieren | umgesetzt |
 | M11 | Der Beleg: keine Steuer bei §19, Blattfuß, Logo, Entwurf bearbeiten | umgesetzt |
+| M12 | Briefpapier je Unternehmen, PDF beim Festschreiben, klare Rückmeldung | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -134,8 +134,9 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-TPL-06 | Die verfügbaren Template-Variablen sind in der UI dokumentiert. | MUSS | M |
 | FA-TPL-07 | Ein Syntaxfehler in einer Vorlage führt zu einer verständlichen Fehlermeldung, nicht zu einem Absturz oder einem leeren PDF. | MUSS | T |
 | FA-TPL-08 | Seitenränder und Seitenformat sind je Vorlage konfigurierbar. | SOLL | T |
-| FA-TPL-09 | Eine geänderte Vorlage verändert bereits erzeugte PDFs nicht. | MUSS | T |
+| FA-TPL-09 | Eine geänderte Vorlage verändert bereits erzeugte PDFs nicht. Maßgeblich ist der Zeitpunkt des **Festschreibens**, nicht der des ersten Abrufs: Das PDF entsteht mit der Nummer und liegt danach als Artefakt vor (FA-PDF-13). | MUSS | T |
 | FA-TPL-10 | Das Logo des ausstellenden Unternehmens erscheint im Briefkopf. Es reist als `data:`-URI im Dokument — der Renderer hat keinen Netzwerkzugriff. Die Kennung liegt im Snapshot: Ein festgeschriebener Beleg zeigt das Logo, das beim Festschreiben galt. Fehlt die Datei, erscheint kein Logo und kein Fehler. | MUSS | T |
+| FA-TPL-11 | Je Unternehmen lässt sich ein **Briefpapier** hinterlegen: eine einseitige A4-PDF, die unter jede Seite des Belegs gelegt wird. Sie trägt ausschließlich Gestaltung — Anschrift, Bankverbindung und Pflichtangaben setzt die Anwendung. Der Bogen liegt **unter** dem Satz und **unter** der Seitenangabe. Die Kennung liegt im Snapshot; ein Austausch verändert keinen ausgestellten Beleg. Fehlt oder scheitert die Datei, erscheint kein Briefpapier und kein Fehler. | SOLL | T |
 
 ## 8. PDF-Ausgabe
 
@@ -153,6 +154,7 @@ prüfbar und einer Verifikationsmethode zugeordnet.
 | FA-PDF-10 | Das Rendering einer Rechnung mit 10 Positionen dauert im Normalbetrieb unter 3 Sekunden. | SOLL | T |
 | FA-PDF-11 | Ein fehlgeschlagenes Rendering hinterlässt keine unvollständige Datei im Artefaktspeicher. | MUSS | T |
 | FA-PDF-12 | Der Blattfuß mit Absender, Kontakt, Steuerangabe und Bankverbindung steht am Fuß des Blattes und wiederholt sich auf jeder Seite. Der Seitenumbruch hält den Platz dafür frei; kein Inhalt läuft darunter. | MUSS | T |
+| FA-PDF-13 | Das PDF eines Belegs entsteht beim **Festschreiben** und wird als Artefakt abgelegt; damit steht sein Aussehen ab derselben Sekunde fest wie seine Daten. Ein Fehlschlag beim Setzen macht das Festschreiben nicht rückgängig — die Nummer ist vergeben. Fehlt die abgelegte Datei bei einem späteren Abruf, wird der Ersatz **als solcher gekennzeichnet** und protokolliert, nicht still für das Original ausgegeben. | MUSS | T |
 
 ## 9. Pflichtangaben auf dem Dokument
 
@@ -352,6 +354,7 @@ Betreiber der Installation darf und was nicht.
 | NFA-SEC-25 | Berechtigungen werden bei jeder Anfrage frisch aus der Datenbank gelesen; sie liegen weder im Cookie noch in einem Zwischenspeicher. | MUSS | T |
 | NFA-SEC-26 | Die Stellen, an denen ein Mandantenkontext entsteht, sind aufgezählt und werden automatisiert überwacht. | MUSS | T |
 | NFA-SEC-30 | Der Wächter des Adminbereichs erfasst **jede** Datei der Repository-Schicht, die einen `PlatformContext` führt — nicht nur eine benannte. Auf dem Protokoll eines Mandanten darf die Verwaltung ausschließlich schreiben. | MUSS | T |
+| NFA-SEC-31 | Ein hochgeladenes PDF wird auf Signatur (`%PDF-`), Größe (5 MB) und ausführbare Bestandteile (`/JavaScript`, `/JS`, `/Launch`, `/EmbeddedFile`, `/OpenAction`) geprüft, bevor eine PDF-Bibliothek es liest; danach auf **genau eine Seite** und **A4** (±2 mm). Eine unlesbare Datei ist eine Auskunft an den Benutzer, kein Serverfehler. | MUSS | T |
 
 ---
 
@@ -404,6 +407,7 @@ unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
 | M9 Anmeldeverfahren | FA-PASS-*, FA-TRUST-*, FA-ADM-09 bis -11, NFA-SEC-27 bis -29 |
 | M10 Verwaltung | FA-ADM-12 bis -17, NFA-SEC-30 |
 | M11 Der Beleg | FA-TPL-10, FA-PDF-12, FA-PFL-12, -13, FA-UI-27 |
+| M12 Briefpapier | FA-TPL-11, FA-PDF-13, FA-UI-28, NFA-SEC-31 |
 
 ---
 
@@ -494,3 +498,20 @@ Vorschau ansehen: Logo im Briefkopf, keine Steuerspalte, Netto und Brutto gleich
 mit dem §19-Hinweis dazwischen, Blattfuß am Fuß mit Bankverbindung und
 Steuernummer. Danach das Kennzeichen abschalten und eine neue Rechnung anlegen —
 Steuerspalte und Steueraufstellung sind wieder da, der Hinweis ist weg.
+
+**A17 — Eigenes Briefpapier**
+Unter Firmendaten ein einseitiges A4-PDF als Briefpapier hochladen: Die Vorschau
+zeigt es. Ein zweiseitiges und ein A5-PDF werden mit einer Meldung abgewiesen, die
+den Grund nennt. Eine Rechnung mit 60 Positionen anlegen und die Vorschau ansehen:
+Der Bogen liegt auf **jeder** Seite unter dem Satz, keine Zeile ist verdeckt, die
+Seitenangabe ab Seite 2 steht darüber. Rechnung festschreiben und herunterladen —
+dasselbe Aussehen. Danach das Briefpapier entfernen und die Rechnung erneut
+herunterladen: **unverändert**, denn ihr PDF entstand beim Festschreiben. Eine neue
+Rechnung anlegen: ohne Bogen.
+
+**A18 — Gespeichert heißt gespeichert**
+Firmendaten ändern und speichern, ohne zu scrollen: Die Bestätigung erscheint
+sichtbar. Ein Feld leeren, das nicht leer sein darf, und erneut speichern: Der
+Fehler steht am Feld, kein Toast behauptet Erfolg. Zweimal hintereinander speichern:
+Die Bestätigung erscheint **beide** Male. Auf der Sicherheitsseite einem Gerät das
+Vertrauen entziehen: Die Handlung wird benannt, nicht nur die Zeile entfernt.

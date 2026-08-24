@@ -699,6 +699,16 @@ Standardvorlage als Seed, Upload und Editor, Live-Vorschau.
 Backup-Job, Restore-Doku, Healthcheck, Logging, E2E-Tests für die kritischen Pfade
 (Login → Rechnung anlegen → festschreiben → PDF → bezahlen → stornieren).
 
+**M8 bis M11 — Mandanten, Verwaltung, Anmeldeverfahren, der Beleg**
+Rollen und Mitglieder je Unternehmen, zentrale Verwaltung mit getrennter Identität,
+Passkeys und vertraute Geräte, Blattfuß und §19 auf dem Beleg. Siehe `CLAUDE.md`
+für die Entscheidungen, die dabei gefallen sind.
+
+**M12 — Briefpapier und klare Rückmeldung**
+Das PDF entsteht beim Festschreiben statt beim ersten Abruf (FA-PDF-13); ein
+Briefpapier je Unternehmen wird als Nachbearbeiter unter jede Seite gelegt
+(FA-TPL-11); jede Speicheraktion bestätigt sichtbar (FA-UI-28).
+
 ---
 
 ## 15. Akzeptanzkriterien

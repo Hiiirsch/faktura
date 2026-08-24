@@ -13,7 +13,7 @@ Verbindliche Grundlagen:
 **Aktueller Stand: M4 (Rechnungen).** Rechnungen lassen sich anlegen,
 bearbeiten, festschreiben, bezahlen und stornieren. Ab dem Festschreiben ist der
 Beleg unveränderlich — durchgesetzt von Datenbank-Triggern, nicht nur vom
-Anwendungscode. Erfasst werden außerdem Firmendaten samt Logo und
+Anwendungscode. Erfasst werden außerdem Firmendaten samt Logo, Briefpapier und
 Bankverbindung, Kunden mit automatischer Nummernvergabe und ein
 Leistungskatalog. PDF-Ausgabe, Vorlagen und Auswertung folgen.
 
@@ -576,6 +576,21 @@ steht am Fuß jeder Seite — der Seitenumbruch hält den Platz dafür frei.
 verbessert, ändert das **bestehende** Installationen nicht: Jedes Unternehmen
 trägt seine eigene Kopie, und Faktura schreibt sie nicht um. Wer die Änderungen
 übernehmen will, legt die Standardvorlage unter **Vorlagen** neu an.
+
+**Eigenes Briefpapier.** Unter **Firmendaten › Briefpapier** lässt sich eine
+einseitige A4-PDF hinterlegen, die unter jede Seite des Belegs gelegt wird.
+Gestaltet wird sie im Werkzeug der Wahl — Faktura setzt nur den Inhalt darauf.
+Der Bogen trägt deshalb ausschließlich Gestaltung: Anschrift, Bankverbindung und
+Pflichtangaben kommen weiter aus den Firmendaten, damit sie prüfbar bleiben.
+
+Abgewiesen werden ein mehrseitiges PDF — seine zweite Seite erschiene auf keinem
+Beleg — und eines, das nicht A4 ist. Ein Bogen mit ausführbaren Bestandteilen
+ebenfalls.
+
+**Was einmal ausgestellt ist, bleibt.** Das PDF entsteht in dem Moment, in dem
+die Rechnungsnummer vergeben wird, und liegt danach als Datei mit Prüfsumme.
+Wer später Vorlage, Logo oder Briefpapier ändert, ändert damit **keinen**
+ausgestellten Beleg — auch keinen, den niemand angesehen hat.
 
 ## Unveränderbarkeit
 

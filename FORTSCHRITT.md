@@ -14,9 +14,15 @@ zweimal eine Nummer verschoben). Ein `†` markiert IDs, die dort **keinem** Mei
 sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
-Stand: 2026-08-22 · **223 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
-129 umgesetzt, 11 offen. Dazu **33 IDs** aus `faktura-frontend-design.md` §9
+Stand: 2026-08-24 · **226 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
+132 umgesetzt, 11 offen. Dazu **34 IDs** aus `faktura-frontend-design.md` §9
 (Abschnitt 16), alle umgesetzt.
+
+**M12 umgesetzt** — Briefpapier je Unternehmen und klare Rückmeldung beim
+Speichern. Vier neue IDs (FA-TPL-11, FA-PDF-13, NFA-SEC-31, FA-UI-28), dazu
+FA-TPL-09 im Wortlaut geschärft. Der eigentliche Fund war die Lücke dahinter:
+Das PDF entstand beim **ersten Abruf**, nicht beim Festschreiben — wer
+dazwischen die Vorlage änderte, änderte den Beleg.
 
 **M11 umgesetzt** — der Beleg selbst: keine Umsatzsteuer bei §19, Blattfuß am
 Blattfuß mit Bankverbindung, Logo im Briefkopf, Entwurf aus der Liste
@@ -390,8 +396,9 @@ Szenario benannt.
 | FA-TPL-06 | Template-Variablen in der UI dokumentiert | MUSS | M | M5 | umgesetzt | `tests/unit/domain/template-variables.test.ts` — die Referenz wird gegen den tatsächlichen Gültigkeitsbereich der Engine geprüft; angezeigt unter `/settings/templates/[id]` |
 | FA-TPL-07 | Syntaxfehler → verständliche Meldung, kein Absturz | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts`, `tests/integration/rendering.test.ts` — Ergebniswert mit Meldung und Zeilenangabe statt Ausnahme |
 | FA-TPL-08 | Seitenränder und -format je Vorlage konfigurierbar | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Ränder der Vorlage landen in den `@page`-Angaben |
-| FA-TPL-09 | Vorlagenänderung verändert erzeugte PDFs nicht | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — nach vollständigem Austausch der Vorlage liefert der Abruf denselben Hash und dieselben Bytes |
+| FA-TPL-09 | Vorlagenänderung verändert erzeugte PDFs nicht | MUSS | T | M5, verschärft in M12 | umgesetzt | `tests/integration/document-output.test.ts` — nach vollständigem Austausch der Vorlage liefert der Abruf denselben Hash und dieselben Bytes. **Bis M12 galt das nur für einen Beleg, den jemand schon einmal abgerufen hatte:** Das PDF entstand beim ersten Abruf. Ein eigener Fall prüft jetzt den ungelesenen Beleg |
 | FA-TPL-10 | Logo des Unternehmens im Briefkopf | MUSS | T | M11 | umgesetzt | `DocumentSeller.logo` als `data:`-URI, aufgelöst in `build-invoice-document.ts`; die Kennung liegt im `SellerSnapshot`. Gelesen über die Repository-Schicht statt über `getAsset()` — jene verlangt `companyProfile.read`, und ein Logo auf dem Beleg ist für jeden sichtbar, der den Beleg sieht. Fehlende Datei: kein Logo, kein Fehler |
+| FA-TPL-11 | Briefpapier je Unternehmen, nur Gestaltung | SOLL | T | M12 | umgesetzt | `tests/unit/domain/pdf-upload.test.ts`, `tests/unit/infrastructure/letterhead.test.ts`, `tests/integration/letterhead.test.ts`. Nachbearbeiter `letterheadBackground(bytes)`, je Beleg als Abschluss gebaut — der Vertrag `process(pdf)` kennt keinen Zusammenhang, das Briefpapier hängt am Unternehmen. **Die Reihenfolge ist zweimal entscheidend:** in der Kette vor dem Seitenstempel, innerhalb der Seite vor dem Satz (`drawPage` hängt hinten an, also *über* den Beleg). Geprüft über die Reihenfolge der Inhaltsströme statt über ein Bild |
 
 ## 8. PDF-Ausgabe
 
@@ -409,6 +416,7 @@ Szenario benannt.
 | FA-PDF-10 | Rendering 10 Positionen unter 3 s | SOLL | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — 10 Positionen unter 3 s bei laufendem Browser |
 | FA-PDF-11 | Fehlgeschlagenes Rendering hinterlässt keine Datei | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — kaputte Vorlage hinterlässt weder Artefakt noch Datei; Schreiben über Zwischendatei und `rename` |
 | FA-PDF-12 | Blattfuß am Fuß jeder Seite, Platz freigehalten | MUSS | T | M11 | umgesetzt | Fußgruppe einer Seitentabelle (`display: table-footer-group`) plus Mindesthöhe von 250 mm. **Zwei Anläufe davor gescheitert:** `position: fixed` erschien auf jeder Seite, hielt aber keinen Platz frei — die Positionszeilen liefen mitten durch den Fuß; ein negatives `bottom` schnitt ihn an der Blattkante ab. Beides erst am zweiseitigen PDF sichtbar. `tests/integration/rendering.test.ts` |
+| FA-PDF-13 | PDF entsteht beim Festschreiben; Ersatz ist gekennzeichnet | MUSS | T | M12 | umgesetzt | `tests/integration/document-output.test.ts` — Artefakt liegt vor, ohne dass jemand es abgerufen hat; Vorlagenänderung am ungelesenen Beleg ändert nichts; gelöschte Datei ergibt `origin: 'substitute'` statt einer stillen Neusetzung. Ein Fehlschlag beim Setzen wirft das Festschreiben nicht um — die Nummer ist vergeben. **Nebenwirkung, die die ganze Suite lahmlegte:** Wer festschreibt, startet einen Browser; `seed-user.ts` ließ ihn offen und der `execFileSync` der Testvorbereitung wartete für immer |
 
 ## 9. Pflichtangaben auf dem Dokument
 
@@ -574,6 +582,7 @@ Auftraggeber vorgegeben hat.
 | FA-UI-25 | Marke als Inline-SVG mit `currentColor`, Wortmarke als Text | MUSS | T | M9 | umgesetzt | `src/ui/components/brand.tsx`; Kleinschreibung und Laufweite in `.brand-wordmark` (`globals.css`), damit der Name in `de.ts` „Faktura" bleibt und auch so vorgelesen wird. `tests/architecture/design-tokens.test.ts` — gegen `fill="#2A3EA0"` gegengeprüft |
 | FA-UI-26 | Das Rechnungsdokument trägt nie die Marke der Software | MUSS | T | M9 | umgesetzt | `tests/architecture/design-tokens.test.ts` — kein Bauteil im Weg vom Beleg zur Datei importiert die Marke; gegen einen absichtlichen Import in `render-invoice.ts` gegengeprüft. Auf dem Beleg steht das Logo des Unternehmens (FA-STAMM-05) |
 | FA-UI-27 | Entwurf aus der Liste bearbeiten | SOLL | T | M11 | umgesetzt | Zeilenaktion in `src/app/invoices/page.tsx`, sichtbar unter `invoice.update` und nur an Entwürfen; `tests/integration/browser-invoice-list.test.ts`. Bearbeiten ging seit M4 — es fehlte der Weg dorthin, denn aus der Liste führte nur die Belegnummer, und ein Entwurf hat keine |
+| FA-UI-28 | Jede Speicheraktion wird sichtbar bestätigt | MUSS | T | M12 | umgesetzt | `tests/architecture/save-feedback.test.ts`, gegen einen absichtlichen Verstoß geprüft. **Der Mangel war nicht die fehlende Meldung, sondern ihr Ort:** `Alert tone="success"` über dem ersten Feld, Knopf am Ende eines langen Formulars, keine Sprungmarke — im Blickfeld änderte sich nichts. Neun Formulare zeigen jetzt einen Toast; der Zeitstempel im Zustand ist nötig, weil `useActionState` den vorigen Zustand behält und der Toast sonst beim zweiten Speichern ausbliebe. Fünf stille Aktionen der Sicherheitsseite bestätigen über `?erledigt=…` |
 
 ---
 
@@ -631,6 +640,7 @@ Auftraggeber vorgegeben hat.
 | NFA-SEC-28 | Alle Ablehnungen ununterscheidbar | MUSS | T | M9 | umgesetzt | Ein einziger Fehlertyp `REJECTED` in `passkey-login.ts`; `tests/integration/passkeys.test.ts` (unbekannt, gesperrt, stillgelegt, falsche Identität) |
 | NFA-SEC-29 | Anmeldesperre gilt nicht für Passkeys | MUSS | T | M9 | umgesetzt | `passkey-login.ts` liest `lockedUntil` nicht; `tests/integration/passkeys.test.ts` — Konto mit zehn Fehlversuchen meldet mit Passkey an |
 | NFA-SEC-30 | Der Wächter erfasst jede Datei mit `PlatformContext` | MUSS | T | M10 | umgesetzt | `tests/architecture/platform-repository.test.ts` — die **vierte** Lücke dieses Wächters: Alle drei bisherigen Prüfungen lasen eine Datei, und `createPlatformAuditEntry` stand mit `PlatformContext` daneben. Dazu eine dritte Kategorie: auf `auditLog` darf die Verwaltung nur schreiben. Beide Regeln gegengeprüft |
+| NFA-SEC-31 | Hochgeladene PDF: Signatur, Größe, aktive Bestandteile, eine Seite, A4 | MUSS | T | M12 | umgesetzt | `tests/unit/domain/pdf-upload.test.ts` (19 Fälle über Bytes), `tests/integration/letterhead.test.ts` (echte, mit pdf-lib erzeugte Bögen). Zwei Schichten, weil eine nicht reicht: Die Domain sieht die Bytes, die Anwendung liest mit pdf-lib, was ohne PDF-Leser nicht zu sehen ist. Ein zweiseitiger Bogen wird abgewiesen statt beschnitten — seine zweite Seite erschiene auf keinem Beleg |
 | FA-TRUST-01 | Gerät merken, 30 Tage, Passwort bleibt | SOLL | T | M9 | umgesetzt | `src/domain/auth/trusted-device-policy.ts`; `login()` prüft **vor** dem `PendingLogin`; `tests/integration/two-step-login.test.ts` |
 | FA-TRUST-02 | An das Konto gebunden, nicht nur an den Token | MUSS | T | M9 | umgesetzt | Abfrage über `userId` **und** Hash; `tests/integration/two-step-login.test.ts` — der Nachweis eines fremden Kontos überspringt nichts |
 | FA-TRUST-03 | Einsehbar und einzeln widerrufbar | MUSS | M | M9 | umgesetzt | `/settings/security`, Abschnitt „Vertraute Geräte" mit Bezeichnung, letzter Nutzung und Ablauf. Manuell: A11 |
@@ -667,3 +677,5 @@ Auftraggeber vorgegeben hat.
 | A14 | Konto unkenntlich machen | offen |
 | A15 | Was die Verwaltung sieht | offen |
 | A16 | Beleg eines Kleinunternehmers | offen |
+| A17 | Eigenes Briefpapier | offen |
+| A18 | Gespeichert heißt gespeichert | offen |
