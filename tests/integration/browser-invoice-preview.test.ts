@@ -300,6 +300,114 @@ describe('FA-PDF-02 Die Vorschau gehört der Anwendung', () => {
     }
   }, 180_000);
 
+  it('vergrößert mit Strg und Mausrad', async () => {
+    /*
+     * Der Zuhörer ist von Hand angemeldet, weil React Radereignisse **passiv**
+     * anmeldet und ein passiver Zuhörer `preventDefault()` nicht darf. Ohne das
+     * zöge der Browser seine eigene Seitenlupe auf, während das Blatt sich
+     * ebenfalls ändert. Ob die Anmeldung greift, sieht man nur hier.
+     */
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+      await warteAufTinte(page);
+
+      const vorher = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().width ?? 0,
+      );
+
+      const canvas = page.locator('canvas');
+      const kasten = await canvas.boundingBox();
+      expect(kasten).not.toBeNull();
+      if (kasten === null) return;
+
+      await page.mouse.move(kasten.x + kasten.width / 2, kasten.y + kasten.height / 2);
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -120);
+      await page.keyboard.up('Control');
+      await page.waitForTimeout(1_500);
+
+      const nachher = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().width ?? 0,
+      );
+
+      expect(nachher).toBeGreaterThan(vorher);
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('blättert mit den Pfeiltasten und passt in die Höhe ein', async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+      await warteAufTinte(page);
+
+      const hoeheVorher = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().height ?? 0,
+      );
+
+      /*
+       * „Passt in die Höhe" muss das Blatt **kleiner** machen als „passt in die
+       * Breite": Ein A4-Blatt ist höher als breit, und die Vorschauspalte ist
+       * höher als sie breit ist — aber nicht im selben Verhältnis.
+       */
+      await page.click('button[aria-label="Ansicht wechseln: Breite, Höhe, Stufe"]');
+      await page.waitForTimeout(1_500);
+
+      const hoeheNachher = await page.evaluate(
+        () => document.querySelector('canvas')?.getBoundingClientRect().height ?? 0,
+      );
+
+      expect(hoeheNachher).toBeLessThan(hoeheVorher);
+
+      // Und es passt wirklich in den Rahmen, statt ihn zu überragen.
+      const passt = await page.evaluate(() => {
+        const canvas = document.querySelector('canvas');
+        const rahmen = canvas?.closest('.overflow-auto');
+        if (canvas === null || rahmen === null || rahmen === undefined) {
+          return false;
+        }
+        return canvas.getBoundingClientRect().height <= rahmen.getBoundingClientRect().height + 1;
+      });
+      expect(passt).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
+  it('blättert mit den Pfeiltasten', async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    try {
+      await login(page);
+      await openDraft(page);
+      await warteAufTinte(page);
+
+      // Der Entwurf des Testbestands ist einseitig; geprüft wird deshalb, dass
+      // die Taste ankommt und die Anzeige an der Grenze stehen bleibt.
+      const rahmen = page.locator('[role="group"][aria-label]').first();
+      await rahmen.focus();
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(500);
+
+      expect(await page.locator('text=Seite 1 von 1').count()).toBe(1);
+
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(500);
+      expect(await page.locator('text=Seite 1 von 1').count()).toBe(1);
+    } finally {
+      await context.close();
+    }
+  }, 180_000);
+
   it('holt das PDF nach dem Speichern erneut', async () => {
     const context = await browser.newContext();
     const page = await context.newPage();

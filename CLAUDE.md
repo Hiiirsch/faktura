@@ -454,6 +454,16 @@ Drei Dinge, die dabei zu beachten waren:
   darüber — anders als beim `<iframe>`, dessen `src` sichtbar war; die
   Browsertests lesen es.
 
+**Die Leiste kann vier Dinge**, und drei davon haben eine Begründung, die man
+im Code nicht sieht: Der Zoom kennt zwei **Einpassungen** (Breite, Höhe) und
+Stufen darüber — Einpassungen als feste Zahl zu speichern wäre beim ersten
+Größenwechsel falsch, deshalb sind sie eine Betriebsart und keine Zahl.
+`Strg`+Mausrad meldet seinen Zuhörer **von Hand** an: React meldet
+Radereignisse passiv an, und passiv darf man `preventDefault()` nicht — sonst
+zöge der Browser seine eigene Seitenlupe auf, während das Blatt sich ebenfalls
+ändert. Und geblättert wird mit **links/rechts**; hoch und runter bleiben beim
+Rollen, weil das auf einem hohen Blatt die häufigere Absicht ist.
+
 **Greifen und schieben, Vollbild.** Das Blatt lässt sich mit der Maus ziehen —
 was der Zeiger zurücklegt, legt der Rollstand in die Gegenrichtung zurück.
 `setPointerCapture` hält den Zug fest, auch wenn der Zeiger den Rahmen

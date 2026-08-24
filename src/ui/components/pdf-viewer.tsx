@@ -38,8 +38,35 @@ import { ICON_STROKE } from './icon';
  * - **Keine Datei aus dem Netz.** Der Worker wird mitgebaut und von unserer
  *   eigenen Herkunft geladen (NFA-COMP-06); ein CDN gibt es hier nicht.
  */
-const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
-const DEFAULT_ZOOM_INDEX = 2;
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3] as const;
+
+/**
+ * Wie groß das Blatt gesetzt wird.
+ *
+ * **Zwei Einpassungen und eine Stufe**, nicht nur eine Zahl: „Passt in die
+ * Breite" und „passt in die Höhe" hängen an der Fläche und müssen sich mit ihr
+ * ändern — beim Wechsel ins Vollbild, beim Ziehen am Fenster. Als feste Zahl
+ * gespeichert wären sie beim ersten Größenwechsel falsch.
+ *
+ * Die Stufe ist ein Vielfaches der Breiteneinpassung, nicht der Blattgröße:
+ * „100 %" heißt „füllt die Spalte", und das ist die Größe, mit der die Vorschau
+ * beginnt.
+ */
+type Zoom =
+  | { readonly mode: 'width' }
+  | { readonly mode: 'height' }
+  | { readonly mode: 'factor'; readonly factor: number };
+
+const DEFAULT_ZOOM: Zoom = { mode: 'width' };
+
+/** Die Polsterung des rollenden Rahmens (`p-4`) in Punkten. */
+const PADDING_PX = 16;
+
+/** Die nächste Stufe über bzw. unter dem aktuellen Vielfachen. */
+function stepFrom(factor: number, direction: 1 | -1): number {
+  const steps = direction === 1 ? ZOOM_STEPS : [...ZOOM_STEPS].reverse();
+  return steps.find((step) => (direction === 1 ? step > factor + 0.01 : step < factor - 0.01)) ?? factor;
+}
 
 type LoadState =
   | { readonly kind: 'loading' }
@@ -69,12 +96,14 @@ export function PdfViewer({
 
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [pageNumber, setPageNumber] = useState(1);
-  const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
+  const [zoom, setZoom] = useState<Zoom>(DEFAULT_ZOOM);
+  /** Das zuletzt gesetzte Vielfache — für die Anzeige und für die Stufen. */
+  const [shownFactor, setShownFactor] = useState(1);
   const [dragging, setDragging] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
 
   /** Setzt eine Seite auf die Leinwand — in der Auflösung des Bildschirms. */
-  const drawPage = useCallback(async (page: number, zoom: number): Promise<void> => {
+  const drawPage = useCallback(async (page: number, requested: Zoom): Promise<void> => {
     const pdf = documentRef.current;
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -94,6 +123,23 @@ export function PdfViewer({
     const fit = (container.clientWidth || unscaled.width) / unscaled.width;
 
     /*
+     * Die Höheneinpassung misst am **rollenden** Rahmen, nicht am Messrahmen:
+     * Nur er kennt die verfügbare Höhe. Die Polsterung geht ab, sonst stünde
+     * das Blatt eine Zeile zu hoch und der Rahmen rollte um genau diesen Rest.
+     */
+    const scroller = scrollRef.current;
+    const availableHeight = Math.max(0, (scroller?.clientHeight ?? 0) - PADDING_PX * 2);
+    const fitHeight =
+      availableHeight > 0 ? availableHeight / unscaled.height : fit;
+
+    const factor =
+      requested.mode === 'factor'
+        ? requested.factor
+        : requested.mode === 'height'
+          ? fitHeight / fit
+          : 1;
+
+    /*
      * **Zwei Maße, nicht eines.**
      *
      * Die Leinwand hat eine Bildgröße (`width`/`height`) und eine Anzeigegröße
@@ -107,7 +153,7 @@ export function PdfViewer({
      * Punktdichte des Bildschirms. Über die Containerbreite hinaus rollt der
      * Rahmen — dafür steht `overflow-auto` daran.
      */
-    const displayScale = fit * zoom;
+    const displayScale = fit * factor;
     const ratio = window.devicePixelRatio || 1;
     const viewport = rendered.getViewport({ scale: displayScale * ratio });
 
@@ -120,6 +166,9 @@ export function PdfViewer({
     canvas.height = Math.round(viewport.height);
     canvas.style.width = `${String(Math.round(unscaled.width * displayScale))}px`;
     canvas.style.height = `${String(Math.round(unscaled.height * displayScale))}px`;
+
+    // Was tatsächlich gesetzt wurde, steht danach auf dem Knopf.
+    setShownFactor(factor);
 
     await rendered.render({ canvas, canvasContext: context, viewport }).promise;
   }, []);
@@ -183,8 +232,8 @@ export function PdfViewer({
     if (state.kind !== 'ready') {
       return;
     }
-    void drawPage(pageNumber, ZOOM_STEPS[zoomIndex] ?? 1);
-  }, [drawPage, pageNumber, state, zoomIndex]);
+    void drawPage(pageNumber, zoom);
+  }, [drawPage, pageNumber, state, zoom]);
 
   /*
    * Und bei geänderter Breite erneut: Die Grundgröße ist „passt in die Spalte",
@@ -197,14 +246,14 @@ export function PdfViewer({
     }
 
     const handler = (): void => {
-      void drawPage(pageNumber, ZOOM_STEPS[zoomIndex] ?? 1);
+      void drawPage(pageNumber, zoom);
     };
 
     window.addEventListener('resize', handler);
     return () => {
       window.removeEventListener('resize', handler);
     };
-  }, [drawPage, pageNumber, state, zoomIndex]);
+  }, [drawPage, pageNumber, state, zoom]);
 
   /*
    * **Das Blatt lässt sich mit der Maus greifen und schieben** (M12).
@@ -304,8 +353,64 @@ export function PdfViewer({
     if (state.kind !== 'ready') {
       return;
     }
-    void drawPage(pageNumber, ZOOM_STEPS[zoomIndex] ?? 1);
-  }, [drawPage, fullscreen, pageNumber, state, zoomIndex]);
+    void drawPage(pageNumber, zoom);
+  }, [drawPage, fullscreen, pageNumber, state, zoom]);
+
+  /**
+   * Eine Stufe größer oder kleiner.
+   *
+   * Aus einer Einpassung heraus wird von dem Vielfachen aus weitergezählt, das
+   * gerade **tatsächlich** gilt — sonst spränge das Blatt beim ersten Klick auf
+   * eine Größe, die mit dem Gesehenen nichts zu tun hat.
+   */
+  const zoomBy = useCallback(
+    (direction: 1 | -1): void => {
+      setZoom({ mode: 'factor', factor: stepFrom(shownFactor, direction) });
+    },
+    [shownFactor],
+  );
+
+  const goToPage = useCallback(
+    (direction: 1 | -1): void => {
+      setPageNumber((current) => {
+        const next = current + direction;
+        if (next < 1 || (state.kind === 'ready' && next > state.pageCount)) {
+          return current;
+        }
+        return next;
+      });
+    },
+    [state],
+  );
+
+  /*
+   * **Zoom mit Strg und Mausrad**, wie in jedem Betrachter.
+   *
+   * Der Zuhörer wird von Hand angemeldet und nicht über `onWheel`: React meldet
+   * Radereignisse **passiv** an, und ein passiver Zuhörer darf
+   * `preventDefault()` nicht — der Browser zöge dann seine eigene Seitenlupe
+   * auf, während das Blatt sich ebenfalls ändert. Zwei Zooms übereinander sind
+   * schlimmer als keiner.
+   */
+  useEffect(() => {
+    const rahmen = scrollRef.current;
+    if (rahmen === null) {
+      return;
+    }
+
+    const handler = (event: WheelEvent): void => {
+      if (!event.ctrlKey && !event.metaKey) {
+        return;
+      }
+      event.preventDefault();
+      zoomBy(event.deltaY < 0 ? 1 : -1);
+    };
+
+    rahmen.addEventListener('wheel', handler, { passive: false });
+    return () => {
+      rahmen.removeEventListener('wheel', handler);
+    };
+  }, [zoomBy]);
 
   const pageCount = state.kind === 'ready' ? state.pageCount : 0;
 
@@ -329,7 +434,7 @@ export function PdfViewer({
             aria-label={messages.preview.previousPage}
             disabled={pageNumber <= 1}
             onClick={() => {
-              setPageNumber((current) => Math.max(1, current - 1));
+              goToPage(-1);
             }}
             className={ICON_BUTTON_CLASS}
           >
@@ -345,7 +450,7 @@ export function PdfViewer({
             aria-label={messages.preview.nextPage}
             disabled={state.kind !== 'ready' || pageNumber >= pageCount}
             onClick={() => {
-              setPageNumber((current) => Math.min(pageCount, current + 1));
+              goToPage(1);
             }}
             className={ICON_BUTTON_CLASS}
           >
@@ -357,29 +462,41 @@ export function PdfViewer({
           <button
             type="button"
             aria-label={messages.preview.zoomOut}
-            disabled={zoomIndex <= 0}
+            disabled={shownFactor <= ZOOM_STEPS[0]}
             onClick={() => {
-              setZoomIndex((current) => Math.max(0, current - 1));
+              zoomBy(-1);
             }}
             className={ICON_BUTTON_CLASS}
           >
             <Minus aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
           </button>
+
+          {/*
+            Ein Knopf, der sagt, was er zeigt, und beim Drücken weiterschaltet:
+            Breite → Höhe → Breite. In der Stufenansicht steht der Prozentwert
+            und führt zurück auf „passt in die Breite".
+          */}
           <button
             type="button"
+            aria-label={messages.preview.fitMode}
             onClick={() => {
-              setZoomIndex(DEFAULT_ZOOM_INDEX);
+              setZoom((current) => (current.mode === 'width' ? { mode: 'height' } : DEFAULT_ZOOM));
             }}
-            className={`text-ui tabular-nums text-ink-muted ${FOCUS_RING}`}
+            className={`min-w-16 text-ui tabular-nums text-ink-muted ${FOCUS_RING}`}
           >
-            {`${String(Math.round((ZOOM_STEPS[zoomIndex] ?? 1) * 100))} %`}
+            {zoom.mode === 'width'
+              ? messages.preview.fitWidth
+              : zoom.mode === 'height'
+                ? messages.preview.fitHeight
+                : `${String(Math.round(shownFactor * 100))} %`}
           </button>
+
           <button
             type="button"
             aria-label={messages.preview.zoomIn}
-            disabled={zoomIndex >= ZOOM_STEPS.length - 1}
+            disabled={shownFactor >= (ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? 3)}
             onClick={() => {
-              setZoomIndex((current) => Math.min(ZOOM_STEPS.length - 1, current + 1));
+              zoomBy(1);
             }}
             className={ICON_BUTTON_CLASS}
           >
@@ -403,6 +520,28 @@ export function PdfViewer({
 
       <div
         ref={scrollRef}
+        /*
+         * Blättern mit den Pfeiltasten — **links und rechts**. Hoch und runter
+         * bleiben beim Rollen: Auf einem Blatt, das höher ist als sein Rahmen,
+         * ist das die häufigere Absicht, und sie dem Blättern zu geben hieße,
+         * das Naheliegende wegzunehmen.
+         *
+         * `tabIndex` macht den Rahmen anfahrbar; ohne ihn erreichten die Tasten
+         * ihn nie.
+         */
+        tabIndex={0}
+        role="group"
+        aria-label={title}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            goToPage(1);
+          }
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            goToPage(-1);
+          }
+        }}
         onPointerDown={startDrag}
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
