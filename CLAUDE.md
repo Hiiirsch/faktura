@@ -1425,6 +1425,33 @@ Handlung. Der Test dazu prüft beides in **einem** Durchlauf
 (`tests/integration/invitation-delivery.test.ts`): Sobald der Link woanders
 steht, liegt es nahe, ihn aus der Oberfläche zu nehmen.
 
+**Die Verwaltung stellt ebenso zu — das war der erste Nachtrag.** B2 hat drei
+Wege verkabelt und drei übersehen, alle in der Betreibersicht: Unternehmen
+anlegen, Einladung erneut ausstellen, Zurücksetzung für ein Mandantenkonto.
+Nichts daran war ein Typfehler; jede Funktion war für sich richtig, der Fehler
+lag zwischen ihnen. `tests/architecture/delivery.test.ts` hält die Regel jetzt
+fest: Ein Modul der Anwendungsschicht, das `generateRedemptionToken()` aufruft,
+ruft auch eine `deliver*`-Funktion auf.
+
+Bei der Zurücksetzung durch den Betreiber ist die Zustellung mehr als
+Bequemlichkeit. Er könnte den Nachweis selbst einlösen — der bewusst in Kauf
+genommene Preis aus M9. Geht die Nachricht an den Kontoinhaber, erfährt der
+davon, ohne ins Protokoll zu sehen: Der Eingriff wird dadurch nicht unmöglich,
+aber sichtbar.
+
+**Ein Testlauf verschickt nichts, und das musste erzwungen werden.** Vitest
+liest die `.env` des Entwicklers mit; sobald dort Zugangsdaten standen, gingen
+Einladungen an `ohne-mail@example.org` **tatsächlich** hinaus — an eine
+reservierte Domäne, also als Rückläufer, die den Absenderruf beschädigen.
+Aufgefallen ist es nur, weil zwei Tests `not-configured` erwarteten.
+
+Ein `setupFiles`-Eintrag, der die Variablen löscht, reichte nicht: Nach knapp
+dreißig Tests standen sie wieder da. Die Integrationskonfiguration setzt sie
+deshalb auf **leer**, und eine leere Variable heißt in `env.ts` „nicht
+eingerichtet" statt „ungültig". Das ist auch für den Betrieb richtig — `SMTP_URL=`
+ist die übliche Art, etwas abzuschalten, und brachte die Anwendung bis dahin zum
+Absturz statt zum Schweigen.
+
 **NFA-COMP-05 wurde verengt, nicht gestrichen.** Es gibt genau eine ausgehende
 Verbindung, sie führt zu einem Server, den der Betreiber selbst benennt
 (`SMTP_URL`), und ohne diese Konfiguration verhält sich die Anwendung exakt wie
