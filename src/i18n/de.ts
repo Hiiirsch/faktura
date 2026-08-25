@@ -1071,6 +1071,26 @@ export const messages = {
     trustedNote:
       'Alle vertrauten Geräte verfallen, sobald das Passwort zurückgesetzt, der zweite Faktor abgeschaltet oder „Alle anderen Sitzungen beenden" gewählt wird.',
   },
+  /*
+   * Was aus der Zustellung wurde (M14).
+   *
+   * **Eigene Gruppe und nicht unter `members`**, weil fünf Stellen dieselbe
+   * Auskunft geben: Mitglied einladen, Passwort zurücksetzen, Unternehmen
+   * anlegen, Einladung erneut ausstellen und Betreiberkonto einrichten. Lägen
+   * die Sätze bei einer davon, schriebe die zweite ihre eigenen — und die
+   * dritte wieder andere.
+   *
+   * Alle drei stehen **neben** dem Link, nicht an seiner Stelle: Die Mail ist
+   * ein zusätzlicher Weg. „Kein Mailserver eingerichtet" ist dabei kein Fehler,
+   * sondern der Normalzustand einer Anlage, die ohne Netz nach außen läuft.
+   */
+  delivery: {
+    sent: 'Der Link wurde zusätzlich an {email} geschickt.',
+    failed:
+      'Der Link ließ sich nicht per E-Mail zustellen. Er gilt trotzdem — bitte oben kopieren und weitergeben.',
+    notConfigured:
+      'Es ist kein Mailversand eingerichtet. Der Link oben ist der einzige Weg; bitte kopieren und weitergeben.',
+  },
   members: {
     title: 'Mitglieder',
     heading: 'Mitglieder',
@@ -1143,19 +1163,6 @@ export const messages = {
       'Das ist das letzte aktive Konto mit Rechteverwaltung. Ohne ein solches Konto ließe sich das Unternehmen nicht mehr verwalten.',
     errorSELF: 'Das eigene Konto lässt sich nicht sperren.',
 
-    /*
-     * Was aus der Zustellung wurde (M14).
-     *
-     * Alle drei Sätze stehen **neben** dem Link, nicht an seiner Stelle: Die
-     * Mail ist ein zusätzlicher Weg. „Kein Mailserver eingerichtet" ist dabei
-     * kein Fehler, sondern der Normalzustand einer Anlage, die ohne Netz nach
-     * außen läuft.
-     */
-    deliverySent: 'Der Link wurde zusätzlich an {email} geschickt.',
-    deliveryFailed:
-      'Der Link ließ sich nicht per E-Mail zustellen. Er gilt trotzdem — bitte oben kopieren und weitergeben.',
-    deliveryNotConfigured:
-      'Es ist kein Mailversand eingerichtet. Der Link oben ist der einzige Weg; bitte kopieren und weitergeben.',
   },
   roles: {
     title: 'Rollen',

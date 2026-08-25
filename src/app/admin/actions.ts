@@ -25,6 +25,7 @@ import { requireAdminSessionOrThrow } from '@/application/admin/require-admin-se
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { removePasskey } from '@/application/auth/passkey-registration';
 import { readRequestContext } from '@/application/auth/request-context';
+import type { Delivery } from '@/application/notifications/deliver';
 import { messages } from '@/i18n/de';
 import {
   ADMIN_SESSION_COOKIE_NAME,
@@ -80,6 +81,8 @@ export type NewOrganizationState =
       readonly organizationId: string;
       readonly email: string;
       readonly link: string;
+      /** Was aus der Zustellung wurde (M14) — der Link steht trotzdem da. */
+      readonly delivery: Delivery;
     }
   | { readonly status: 'error'; readonly message: string };
 
@@ -140,6 +143,7 @@ export async function createOrganizationAction(
     organizationId: result.value.organizationId,
     email: parsed.data.ownerEmail,
     link: absoluteLink(invitationPath(result.value.token)),
+    delivery: result.value.delivery,
   };
 }
 
@@ -227,7 +231,21 @@ export async function setAccountDisabledAction(
 
 export type RecoveryState =
   | { readonly status: 'idle' }
-  | { readonly status: 'issued'; readonly heading: string; readonly link: string }
+  | {
+      readonly status: 'issued';
+      readonly heading: string;
+      readonly link: string;
+      /**
+       * Was aus der Zustellung wurde (M14).
+       *
+       * Optional, weil nicht jede Stelle zustellt — und dort, wo nicht, soll
+       * kein Satz darüber stehen. `undefined` heißt „diese Handlung verschickt
+       * nichts", nicht „es ging schief".
+       */
+      readonly delivery?: Delivery;
+      /** Empfänger, für den Satz „… wurde zusätzlich an {email} geschickt". */
+      readonly email?: string;
+    }
   | { readonly status: 'error'; readonly message: string };
 
 const idSchema = z.string().trim().min(1).max(64);
@@ -283,6 +301,8 @@ export async function reissueInvitationAction(
     status: 'issued',
     heading: messages.admin.reissuedHeading,
     link: absoluteLink(invitationPath(result.value.token)),
+    delivery: result.value.delivery,
+    email: email.data,
   };
 }
 
@@ -322,6 +342,8 @@ export async function resetTenantPasswordAction(
     status: 'issued',
     heading: messages.admin.tenantResetHeading,
     link: absoluteLink(passwordResetPath(result.value.token)),
+    delivery: result.value.delivery,
+    email: result.value.email,
   };
 }
 
@@ -440,6 +462,8 @@ export async function invitePlatformAccountAction(
     status: 'issued',
     heading: messages.admin.accountsInvitedHeading,
     link: `${getEnv().APP_URL}${adminSetupPath(result.value.token)}`,
+    delivery: result.value.delivery,
+    email: result.value.email,
   };
 }
 
@@ -472,6 +496,8 @@ export async function resetPlatformAccountAction(
     status: 'issued',
     heading: messages.admin.accountsResetLinkHeading,
     link: `${getEnv().APP_URL}${adminSetupPath(result.value.token)}`,
+    delivery: result.value.delivery,
+    email: result.value.email,
   };
 }
 

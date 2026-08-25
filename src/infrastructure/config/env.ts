@@ -9,6 +9,27 @@ import { z } from 'zod';
 
 const supportedTimeZones = new Set(Intl.supportedValuesOf('timeZone'));
 
+/**
+ * Eine leere Variable heißt „nicht eingerichtet", nicht „ungültig".
+ *
+ * `SMTP_URL=` in einer `.env` ist die übliche Art, etwas abzuschalten, ohne die
+ * Zeile zu verlieren. Ohne diese Vorstufe fiele der Wert durch `min(1)` und die
+ * **gesamte** Konfiguration wäre ungültig — die Anwendung startete nicht, mit
+ * einer Meldung über eine Variable, die der Betreiber gerade ausschalten
+ * wollte.
+ *
+ * Dieselbe Regel macht die Testläufe verlässlich: Die Integrationstests setzen
+ * beide Werte auf leer und sind damit unabhängig davon, was in der `.env` des
+ * Entwicklers steht. Das ist kein Nebenzweck, sondern der Anlass — ein Lauf mit
+ * ausgefüllter `.env` hat echte Post an erfundene Adressen verschickt.
+ */
+function leerIstUnkonfiguriert<T extends z.ZodType>(schema: T): z.ZodType<z.output<T>> {
+  return z.preprocess(
+    (wert) => (typeof wert === 'string' && wert.trim() === '' ? undefined : wert),
+    schema,
+  );
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
@@ -73,10 +94,10 @@ const envSchema = z.object({
    * Die Zugangsdaten stehen ausschließlich hier und nie im Repository
    * (NFA-SEC-21).
    */
-  SMTP_URL: z.string().min(1).optional(),
+  SMTP_URL: leerIstUnkonfiguriert(z.string().min(1).optional()),
 
   /** Absenderadresse. Ohne sie wird nicht zugestellt, auch nicht mit `SMTP_URL`. */
-  MAIL_FROM: z.string().min(3).optional(),
+  MAIL_FROM: leerIstUnkonfiguriert(z.string().min(3).optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;
