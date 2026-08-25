@@ -351,6 +351,83 @@ export async function deleteAdminSessionByTokenHash(tokenHash: string): Promise<
   await clientFor(undefined).adminSession.deleteMany({ where: { tokenHash } });
 }
 
+/**
+ * Die Sitzungen **eines** Betreiberkontos, jüngste zuletzt gesehen zuerst.
+ *
+ * Der `PlatformContext` steht wie überall hier als erster Parameter und wird
+ * nicht gelesen — er ist der Nachweis, dass eine Betreibersitzung aufgelöst
+ * wurde, nicht ein Filter. Gefiltert wird über `adminUserId`, und die kommt
+ * aus derselben Sitzung.
+ */
+export async function listAdminSessions(
+  _context: PlatformContext,
+  adminUserId: string,
+): Promise<
+  readonly {
+    readonly id: string;
+    readonly userAgent: string | null;
+    readonly ipAddress: string | null;
+    readonly createdAt: Date;
+    readonly lastSeenAt: Date;
+    readonly expiresAt: Date;
+  }[]
+> {
+  return clientFor(undefined).adminSession.findMany({
+    where: { adminUserId },
+    orderBy: { lastSeenAt: 'desc' },
+    select: {
+      id: true,
+      userAgent: true,
+      ipAddress: true,
+      createdAt: true,
+      lastSeenAt: true,
+      expiresAt: true,
+    },
+  });
+}
+
+/**
+ * Beendet **eine** Sitzung des eigenen Kontos.
+ *
+ * `deleteMany` mit `adminUserId` statt `delete` mit der Kennung allein: Sonst
+ * beendete eine untergeschobene fremde Kennung die Sitzung eines anderen
+ * Betreibers. Die Zahl sagt, ob es die eigene war.
+ */
+export async function deleteOwnAdminSession(
+  _context: PlatformContext,
+  adminUserId: string,
+  id: string,
+): Promise<number> {
+  const result = await clientFor(undefined).adminSession.deleteMany({
+    where: { id, adminUserId },
+  });
+  return result.count;
+}
+
+/** Beendet alle Sitzungen des Kontos außer der aufrufenden. */
+export async function deleteOtherAdminSessions(
+  _context: PlatformContext,
+  adminUserId: string,
+  keepId: string,
+): Promise<number> {
+  const result = await clientFor(undefined).adminSession.deleteMany({
+    where: { adminUserId, id: { not: keepId } },
+  });
+  return result.count;
+}
+
+/** Setzt das Passwort eines Betreiberkontos. */
+export async function updateAdminPassword(
+  _context: PlatformContext,
+  adminUserId: string,
+  passwordHash: string,
+): Promise<void> {
+  await clientFor(undefined).adminUser.update({
+    where: { id: adminUserId },
+    data: { passwordHash },
+  });
+}
+
 // ─── Unternehmen ────────────────────────────────────────────────────────────
 
 export async function countOrganizations(_context: PlatformContext): Promise<number> {

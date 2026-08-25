@@ -71,7 +71,15 @@ export type AuditAction =
   | 'ADMIN_INVITED'
   | 'ADMIN_DISABLED'
   | 'ADMIN_ENABLED'
-  | 'ADMIN_RESET';
+  | 'ADMIN_RESET'
+  /**
+   * Ein Betreiber hat sein eigenes Passwort gewechselt (M14.1).
+   *
+   * Getrennt von `ADMIN_RESET`: Das ist ein Eingriff **an** einem Konto, dies
+   * eine Handlung **des** Kontos. Wer das Protokoll liest, muss den Unterschied
+   * sehen — im ersten Fall war jemand anders am Werk.
+   */
+  | 'ADMIN_PASSWORD_CHANGED';
 
 export type AuditEntry = {
   readonly entityType: string;

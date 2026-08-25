@@ -265,6 +265,7 @@ export const messages = {
       ADMIN_DISABLED: 'Betreiberkonto gesperrt',
       ADMIN_ENABLED: 'Betreiberkonto entsperrt',
       ADMIN_RESET: 'Betreiberzugang neu eingerichtet',
+      ADMIN_PASSWORD_CHANGED: 'Passwort gewechselt',
       ANONYMIZED: 'Konto unkenntlich gemacht',
       UPDATED: 'Unternehmen bearbeitet',
     } as Record<string, string>,
@@ -1084,6 +1085,59 @@ export const messages = {
    * ein zusätzlicher Weg. „Kein Mailserver eingerichtet" ist dabei kein Fehler,
    * sondern der Normalzustand einer Anlage, die ohne Netz nach außen läuft.
    */
+  /*
+   * Die eigene Sicherheit eines Betreiberkontos (M14.1).
+   *
+   * Eigene Gruppe neben `security`: Die Mandantenseite kennt vertraute Geräte,
+   * Wiederherstellungscodes und das Abschalten des zweiten Faktors — hier gibt
+   * es das alles nicht, und die Sätze dazu sagen etwas anderes.
+   */
+  adminSecurity: {
+    navLabel: 'Sicherheit',
+    title: 'Sicherheit',
+    heading: 'Eigenes Konto',
+    intro:
+      'Passwort, angemeldete Geräte und Passkeys dieses Betreiberkontos. Der zweite Faktor bleibt verpflichtend; er lässt sich nur über eine Neueinrichtung wechseln.',
+
+    passwordHeading: 'Passwort ändern',
+    passwordIntro:
+      'Das bisherige Passwort wird verlangt. Nach dem Wechsel enden alle anderen Sitzungen dieses Kontos; diese bleibt bestehen.',
+    passwordCurrent: 'Bisheriges Passwort',
+    passwordNew: 'Neues Passwort',
+    passwordHint: 'Mindestens {min} Zeichen. Bekannte Passwörter aus Datenlecks werden abgewiesen.',
+    passwordSubmit: 'Passwort ändern',
+    passwordChanged: 'Das Passwort ist gewechselt.',
+    passwordChangedWithSessions:
+      'Das Passwort ist gewechselt. Beendete Sitzungen: {count}.',
+    passwordWrong: 'Das bisherige Passwort stimmt nicht.',
+    passwordTooShort: 'Das neue Passwort ist zu kurz — mindestens {min} Zeichen.',
+    passwordTooLong: 'Das neue Passwort ist zu lang.',
+    passwordCompromised:
+      'Dieses Passwort steht in bekannten Datenlecks. Bitte ein anderes wählen.',
+
+    totpHeading: 'Zweiter Faktor',
+    totpIntro:
+      'Für Betreiberkonten ist er verpflichtend und lässt sich nicht abschalten. Es gibt auch keine Wiederherstellungscodes: Geht der Authenticator verloren, richtet ein anderer Betreiber das Konto neu ein — oder der Betreiber des Servers über den Befehl admin:reset. Dabei entstehen Passwort und zweiter Faktor gemeinsam neu.',
+
+    sessionsHeading: 'Angemeldete Geräte',
+    sessionsIntro:
+      'Jede Anmeldung an der Verwaltung. Eine Sitzung zu beenden, wirkt sofort.',
+    sessionCurrent: 'dieses Gerät',
+    sessionUnknownDevice: 'Unbekanntes Gerät',
+    sessionLastSeen: 'zuletzt gesehen',
+    sessionRevoke: 'Beenden',
+    sessionRevokeAll: 'Alle anderen beenden',
+    sessionRevoked: 'Die Sitzung ist beendet.',
+    otherSessionsRevoked: 'Alle anderen Sitzungen sind beendet.',
+
+    passkeyHeading: 'Passkeys',
+    passkeyIntro:
+      'Ein Passkey meldet ohne Passwort an; die Gerätesperre ist dabei der zweite Faktor. Er gilt nur für dieses Betreiberkonto.',
+    passkeyEmpty: 'Für dieses Konto ist kein Passkey hinterlegt.',
+    passkeyRemove: 'Entfernen',
+    passkeyRemoved: 'Der Passkey ist entfernt.',
+  },
+
   delivery: {
     sent: 'Der Link wurde zusätzlich an {email} geschickt.',
     failed:

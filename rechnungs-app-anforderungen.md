@@ -349,6 +349,9 @@ Betreiber der Installation darf und was nicht.
 | FA-ADM-15 | Ein Mandantenkonto lässt sich **unkenntlich machen**, nicht löschen: Adresse, Name, Zugangsdaten und alle Anmeldespuren werden entfernt, die Zeile bleibt. Belege behalten ihren Urheber, Protokolleinträge ihren Akteur. Die Oberfläche zeigt „Gelöschtes Konto", nie die Platzhalteradresse. Der Vorgang ist nicht umkehrbar und steht im Protokoll beider Seiten. | MUSS | T |
 | FA-ADM-16 | Der Betreiber kann Name und eine **interne Notiz** eines Unternehmens ändern. Die Notiz erreicht den Mandanten nicht — weder in seiner Oberfläche noch in seinem Datenexport. Protokolliert wird nur die Namensänderung. | MUSS | T |
 | FA-ADM-17 | Der Betreiber sieht den **Zustand** der Anlage (Datenbank, Renderer, Zeitpunkt der Prüfung) und löst die **Sicherung** aus der Oberfläche aus. Zeitplan und Wiederherstellung bleiben Betriebsaufträge. | SOLL | M |
+| FA-ADM-18 | Ein Betreiber wechselt sein **eigenes Passwort** bei bestehender Sitzung. Das bisherige wird verlangt; danach enden alle **anderen** Sitzungen des Kontos, die aufrufende nicht. Der Wechsel steht im Protokoll der Anlage — als Handlung des Kontos, unterscheidbar von einem Eingriff daran. | MUSS | T |
+| FA-ADM-19 | Ein Betreiber sieht seine **angemeldeten Geräte** und **Passkeys** und kann beide einzeln entfernen. Sitzungen und Passkeys fremder Betreiberkonten sind dabei weder sichtbar noch beendbar, auch nicht mit bekannter Kennung. | MUSS | T |
+| FA-ADM-20 | Für Betreiberkonten gibt es **kein „Passwort vergessen"**. Ein Zurücksetzungsnachweis setzt dort Passwort **und** zweiten Faktor neu (FA-ADM-08); per Mail zustellbar wäre er ein vollständiger Ersatz für beide Faktoren. Der Weg führt über ein zweites Betreiberkonto oder über den Server. Die Oberfläche benennt das, statt zu schweigen. | MUSS | R |
 
 ### 16.5 Sicherheit der Trennung
 

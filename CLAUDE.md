@@ -1502,6 +1502,56 @@ und liegt in `domain/auth/password-reset-policy.ts`.
 **Kein automatisches Anmelden über einen Maillink.** Die Regel aus M8 bleibt: Ein
 Link, der eine Sitzung eröffnet, wäre ein Passwortersatz in einem Postfach.
 
+## Die eigene Sicherheit eines Betreiberkontos (seit M14.1)
+
+`/admin/security` ist das Gegenstück zu `/settings/security`, **aber nicht
+dessen Kopie**. Drei Abschnitte der Mandantenseite fehlen, und alle drei aus
+demselben Grund: Für Betreiberkonten ist der zweite Faktor verpflichtend
+(FA-ADM-08). Es gibt deshalb kein Abschalten, keine Wiederherstellungscodes und
+keine vertrauten Geräte. Der Abschnitt „Zweiter Faktor" steht trotzdem da — er
+sagt, warum es ihn nicht gibt und was bei Verlust hilft. Eine Leerstelle
+beantwortet die Frage nicht.
+
+**Warum es bis dahin gar keinen Passwortwechsel gab.** Ein Betreiberkonto
+entsteht über einen Einrichtungslink, und derselbe Weg diente der
+Wiederherstellung. Wer sein Passwort wechseln wollte, ließ sich zurücksetzen —
+und bekam dabei jedes Mal auch einen neuen zweiten Faktor. Das ist kein Vorgang,
+das ist ein Umweg. Nebenbei: Auch **Mandanten** können ihr Passwort bis heute
+nicht ändern, nur über „Passwort vergessen" neu setzen.
+
+**Das bisherige Passwort wird verlangt**, obwohl die Sitzung schon steht. Sie
+ist der einzige Nachweis, den ein Angreifer an dieser Stelle mitbringt; ohne die
+Prüfung genügte ein übernommener Bildschirm für die Übernahme des Kontos.
+
+**Alle anderen Sitzungen enden, die aufrufende nicht.** Wer sein Passwort
+wechselt, tut das oft, weil er einen fremden Zugriff vermutet — bliebe der
+bestehen, hätte der Wechsel nichts bewirkt. Die eigene mitzubeenden wäre die
+reinere Regel und bestrafte jeden Wechsel mit einer Neuanmeldung. Bei der
+Zurücksetzung durch einen **anderen** Betreiber enden dagegen alle: Dort weiß
+niemand, welche die richtige ist.
+
+**Gefiltert wird in der Abfrage, nicht in der Kennung.**
+`deleteMany({ where: { id, adminUserId } })` statt `delete({ where: { id } })` —
+sonst beendete eine untergeschobene fremde Kennung die Sitzung eines anderen
+Betreibers. Der Rückgabewert `count` sagt zugleich, ob es die eigene war.
+Derselbe Angriff steht als Test.
+
+**Es gibt weiterhin kein „Passwort vergessen" für die Verwaltung** (FA-ADM-20),
+und das ist der Unterschied zu M14: Beim Mandanten setzt ein
+Zurücksetzungsnachweis **nur** das Passwort, der zweite Faktor bleibt stehen.
+Beim Betreiber muss er **beides** neu setzen, weil es keine
+Wiederherstellungscodes gibt. Ein Link im Postfach wäre damit ein vollständiger
+Ersatz für Passwort und Authenticator — die verpflichtende
+Zweifaktorauthentifizierung wäre ein Satz im Katalog und sonst nichts.
+
+`ADMIN_PASSWORD_CHANGED` ist eine eigene Protokollaktion neben `ADMIN_RESET`:
+Das eine ist eine Handlung **des** Kontos, das andere ein Eingriff **an** ihm.
+Wer das Protokoll liest, muss den Unterschied sehen.
+
+Der Betriebszustand fehlt auf dieser Seite, obwohl er auf der Mandantenseite
+steht: Er hat unter `/admin/operations` längst einen Platz, und zweimal
+dieselbe Auskunft sind zwei Stellen, die auseinanderlaufen.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1528,6 +1578,7 @@ Link, der eine Sitzung eröffnet, wäre ein Passwortersatz in einem Postfach.
 | M12 | Briefpapier je Unternehmen, PDF beim Festschreiben, klare Rückmeldung | umgesetzt |
 | M13 | Impressum und Datenschutzhinweise, gepflegt vom Betreiber | umgesetzt |
 | M14 | Zustellung: E-Mail als zusätzlicher Weg, „Passwort vergessen" | umgesetzt |
+| M14.1 | Eigene Sicherheit eines Betreiberkontos: Passwort, Geräte, Passkeys | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

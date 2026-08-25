@@ -54,6 +54,9 @@ const STATEFUL_FORMS = [
   'src/app/settings/templates/template-forms.tsx',
   'src/app/settings/roles/role-form.tsx',
   'src/app/invoices/invoice-editor.tsx',
+  // Die eigene Sicherheit eines Betreiberkontos (M14.1): Der Knopf steht am
+  // Ende eines Abschnitts, eine Meldung über dem ersten Feld sähe man nicht.
+  'src/app/admin/security/password-form.tsx',
 ];
 
 async function read(relative: string): Promise<string> {

@@ -32,6 +32,14 @@ export const ADMIN_OPERATIONS_PATH = '/admin/operations';
 export const ADMIN_LEGAL_PATH = '/admin/legal';
 
 /**
+ * Die eigene Sicherheit eines Betreiberkontos (M14.1).
+ *
+ * Das Gegenstück zu `/settings/security` bei den Mandanten — getrennte Route,
+ * wie alles an dieser Identität (M8).
+ */
+export const ADMIN_SECURITY_PATH = '/admin/security';
+
+/**
  * Die öffentlichen Rechtstexte (M13).
  *
  * **Öffentlich, weil sie es sein müssen.** Ein Impressum hinter einer Anmeldung
@@ -300,6 +308,7 @@ export const routes: readonly RouteDefinition[] = [
   { path: ADMIN_AUDIT_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_OPERATIONS_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_LEGAL_PATH, kind: 'page', access: 'platformAdmin' },
+  { path: ADMIN_SECURITY_PATH, kind: 'page', access: 'platformAdmin' },
   {
     path: '/admin/setup/[token]',
     kind: 'page',
