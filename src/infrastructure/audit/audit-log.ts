@@ -53,6 +53,8 @@ export type AuditAction =
   | 'ROLE_ASSIGNED'
   | 'PASSWORD_RESET_REQUESTED'
   | 'PASSWORD_RESET_COMPLETED'
+  /** Eine Mahnung zu einem überfälligen Beleg ausgestellt (M15, FA-MAHN-05). */
+  | 'REMINDED'
   | 'DISABLED'
   | 'ENABLED'
   // Eingriffe der Verwaltung (M8, FA-ADM-05, -07)

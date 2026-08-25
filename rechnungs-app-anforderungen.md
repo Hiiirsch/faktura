@@ -420,6 +420,23 @@ unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
 
 ---
 
+### Mahnwesen (M15)
+
+Bis M14 stand Mahnwesen in Spec §13 unter „Explizit nicht in Scope (V1), aber
+vorbereitet". Der Auftraggeber hat es in M15 in den Umfang genommen — dieselbe
+Entscheidung wie bei Mehrbenutzer (M8) und E-Mail-Versand (M14), die in
+derselben Tabelle standen.
+
+| ID | Anforderung | Prio | V |
+|---|---|---|---|
+| FA-MAHN-01 | Zu einem **überfälligen, offenen** Beleg lässt sich eine Mahnung ausstellen. Entwurf, Gutschrift, stornierter Beleg, bezahlter Beleg und ein Beleg ohne Fälligkeitsdatum werden abgewiesen — jeweils mit dem Grund, nicht mit einem toten Knopf. | MUSS | T |
+| FA-MAHN-02 | Es gibt genau **drei Stufen**: Zahlungserinnerung, Mahnung, letzte Mahnung. Gezählt wird ab der höchsten bereits ausgestellten Stufe, nicht ab ihrer Anzahl. Nach der dritten entsteht keine weitere. | MUSS | T |
+| FA-MAHN-03 | Je Stufe ist eine **Mahngebühr in Cent** hinterlegt; sie wird zum offenen Betrag addiert. Verzugszinsen werden **nicht** berechnet — der Basiszinssatz nach §288 BGB ändert sich halbjährlich und wäre eine gepflegte Fremdzahl, mit der die Anwendung rechnet, während sie veraltet. | MUSS | T |
+| FA-MAHN-04 | Die Mahnung setzt eine **neue, kurze Zahlungsfrist** ab ihrem Ausstellungstag; die Frist der Rechnung bleibt unberührt. | MUSS | T |
+| FA-MAHN-05 | Eine ausgestellte Mahnung ist **unveränderlich und nicht löschbar**. Die Beträge sind eingefroren: Eine spätere Teilzahlung ändert das verschickte Schreiben nicht. Der Vorgang steht im Protokoll. | MUSS | T |
+| FA-MAHN-06 | Die Mahnung entsteht als **PDF** über dieselbe Kette wie ein Beleg — dieselbe Schrift, dasselbe Briefpapier, derselbe Seitenstempel — und liegt danach als Artefakt mit SHA-256 vor. Sie weist **keine Umsatzsteuer** aus. Ihr Nummernkreis ist von dem der Belege **getrennt** (FA-NUM-05). | MUSS | T |
+| FA-MAHN-07 | Mahnen ist ein **eigenes Recht** (`invoice.remind`), nicht Teil von `invoice.issue`. Eine neue Berechtigung erreicht bestehende eingeschränkte Rollen nicht von selbst. | MUSS | T |
+
 ## 19. Abnahmeszenarien
 
 Manuell durchzuspielen, bevor V1 als fertig gilt.
@@ -533,6 +550,15 @@ der Vorgang steht im Protokoll der Verwaltung, der Inhalt nicht. Abgemeldet
 beide Seiten aufrufen: erreichbar. Ins Impressum
 `<script>alert(1)</script>` eintragen: erscheint als Text, nichts wird
 ausgeführt.
+
+**A21 — Mahnlauf**
+Eine Rechnung mit verstrichener Fälligkeit öffnen: „Mahnung ausstellen" steht da.
+Ausstellen — die Mahnung bekommt eine eigene Nummer aus dem Mahnkreis, das PDF
+zeigt Absender, Empfänger, die gemahnte Rechnung, den offenen Betrag und **keine
+Umsatzsteuer**. Zweimal weiter mahnen: Stufe 2 und 3, mit steigender Gebühr. Ein
+viertes Mal: abgewiesen. Dann eine Teilzahlung erfassen und die erste Mahnung
+erneut herunterladen — der Betrag darauf ist unverändert. Zum Schluss eine noch
+nicht fällige Rechnung und eine Gutschrift öffnen: kein Knopf, sondern der Grund.
 
 **A20 — Zustellung**
 Ohne `SMTP_URL` ein Mitglied einladen: Der Link steht in der Oberfläche, es

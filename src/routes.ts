@@ -123,6 +123,11 @@ export function invoicePdfPath(id: string): string {
   return `/api/invoices/${id}/pdf`;
 }
 
+/** Download einer erzeugten Mahnung (M15, FA-MAHN-06). */
+export function reminderPdfPath(id: string): string {
+  return `/api/reminders/${id}/pdf`;
+}
+
 /**
  * Dasselbe PDF zum Einbetten statt zum Herunterladen (FA-PDF-02).
  *
@@ -414,6 +419,14 @@ export const routes: readonly RouteDefinition[] = [
     probePath: '/api/invoices/probe-kennung/pdf',
     // Wird als Vorschau eingebettet; ohne dieses Profil greift
     // `X-Frame-Options: DENY` und der Rahmen bleibt weiß.
+    securityProfile: 'pdf',
+  },
+  {
+    path: '/api/reminders/[id]/pdf',
+    kind: 'api',
+    access: 'authenticated',
+    probePath: '/api/reminders/probe-kennung/pdf',
+    // Dasselbe Profil wie beim Beleg: Die Mahnung lässt sich einbetten.
     securityProfile: 'pdf',
   },
   {

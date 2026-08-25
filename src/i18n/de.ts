@@ -261,6 +261,7 @@ export const messages = {
       INVITED: 'Einladung ausgestellt',
       INVITATION_REVOKED: 'Einladung zurückgezogen',
       PASSWORD_RESET_REQUESTED: 'Zurücksetzung ausgestellt',
+      REMINDED: 'Mahnung ausgestellt',
       ADMIN_INVITED: 'Betreiber eingeladen',
       ADMIN_DISABLED: 'Betreiberkonto gesperrt',
       ADMIN_ENABLED: 'Betreiberkonto entsperrt',
@@ -1138,6 +1139,47 @@ export const messages = {
     passkeyRemoved: 'Der Passkey ist entfernt.',
   },
 
+  /*
+   * Mahnwesen (M15).
+   *
+   * Der **Wortlaut der Mahnung selbst** steht nicht hier, sondern in
+   * `domain/reminder/reminder-texts.ts`: Er ist die Ausgabe eines
+   * Anwendungsfalls, keine Beschriftung. Hier steht nur, was auf dem Bildschirm
+   * erscheint.
+   */
+  reminders: {
+    heading: 'Mahnungen',
+    intro: 'Zu diesem Beleg ausgestellte Mahnungen. Eine ausgestellte Mahnung lässt sich nicht zurücknehmen.',
+    empty: 'Es wurde noch nicht gemahnt.',
+    create: 'Mahnung ausstellen',
+    confirmTitle: 'Mahnung ausstellen?',
+    confirmBody:
+      'Die Mahnung bekommt eine Nummer, friert den heute offenen Betrag ein und lässt sich nicht zurücknehmen.',
+    confirmAction: 'Ausstellen',
+    level1: 'Zahlungserinnerung',
+    level2: 'Mahnung',
+    level3: 'Letzte Mahnung',
+    columnLevel: 'Stufe',
+    columnNumber: 'Nummer',
+    columnDate: 'Datum',
+    columnDue: 'Zahlbar bis',
+    columnTotal: 'Zu zahlen',
+    download: 'PDF',
+    created: 'Die Mahnung ist ausgestellt.',
+    /*
+     * Die Gründe, aus denen nicht gemahnt wird — jeder sagt, was der Fall ist,
+     * nicht was fehlt. „Nicht überfällig" ist kein Fehler des Benutzers.
+     */
+    refusedNOT_AN_INVOICE: 'Eine Gutschrift wird nicht gemahnt — sie fordert nichts ein.',
+    refusedNOT_ISSUED: 'Ein Entwurf ist keine Forderung.',
+    refusedCANCELLED: 'Der Beleg ist storniert; es besteht keine Forderung mehr.',
+    refusedNOTHING_OUTSTANDING: 'Es ist nichts mehr offen.',
+    refusedNO_DUE_DATE: 'Ohne Fälligkeitsdatum gibt es keinen Verzug.',
+    refusedNOT_OVERDUE: 'Der Beleg ist noch nicht überfällig.',
+    refusedLAST_LEVEL_REACHED: 'Die letzte Mahnstufe ist erreicht.',
+    refusedGeneric: 'Die Mahnung ließ sich nicht ausstellen.',
+  },
+
   delivery: {
     sent: 'Der Link wurde zusätzlich an {email} geschickt.',
     failed:
@@ -1277,6 +1319,7 @@ export const messages = {
       issue: 'festschreiben',
       cancel: 'stornieren',
       recordPayment: 'Zahlungen erfassen',
+      remind: 'mahnen',
       run: 'ausführen',
       administer: 'Mitglieder und Rollen verwalten',
     },

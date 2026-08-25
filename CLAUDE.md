@@ -1552,6 +1552,74 @@ Der Betriebszustand fehlt auf dieser Seite, obwohl er auf der Mandantenseite
 steht: Er hat unter `/admin/operations` längst einen Platz, und zweimal
 dieselbe Auskunft sind zwei Stellen, die auseinanderlaufen.
 
+## Mahnwesen (seit M15)
+
+**Es stand unter `[V2]`, und das wurde entschieden, nicht übergangen.** Spec §13
+führt Mahnwesen unter „Explizit nicht in Scope (V1), aber vorbereitet" — in
+derselben Tabelle wie Mehrbenutzer (gebaut in M8) und E-Mail-Versand (gebaut in
+M14). Der Auftraggeber hat es in den Umfang genommen; die Papiere halten das
+fest, statt die Regel stillschweigend zu dehnen.
+
+**Eine Mahnung ist kein umsatzsteuerlicher Beleg.** Sie fordert eine bestehende
+Forderung ein und begründet keine neue: kein Steuerausweis, kein Umsatz, keine
+Zahlung darauf. Bezahlt wird die **Rechnung**; die Mahnung nennt nur, was von
+ihr offen ist.
+
+**Deshalb eine eigene Tabelle und nicht `documentType: 'REMINDER'`.** Die Spec
+schlägt das Erweitern der Aufzählung vor — das gilt für Angebot und
+Auftragsbestätigung, die Positionen und Steuer tragen. Eine Mahnung tut beides
+nicht. Läge sie in `Invoice`, bekäme **jede** dortige Regel einen neuen Fall:
+Umsatz, Zahlungen, Storno, Status, Dashboard, Export, Sammelaktionen. Genau
+diese Blindheit nach Belegart hat M12 an vier Stellen aufgedeckt. Eine eigene
+Tabelle ändert nichts Bestehendes.
+
+**Der Nummernkreis ist getrennt** (`REMINDER_SEQUENCE_PREFIX`). Der Kreis der
+Rechnungen muss lückenlos sein (FA-NUM-05); zählte eine Mahnung darin mit,
+entstünde eine Lücke, die niemand erklären kann. Ein Test schreibt deshalb nach
+einer Mahnung den nächsten Beleg fest und prüft dessen Nummer.
+
+**Drei Stufen, gezählt ab der höchsten bisherigen — nicht ab ihrer Anzahl.**
+Zwei Mahnungen derselben Stufe, etwa nach einem verlorenen Brief, dürfen die
+nächste nicht überspringen lassen.
+
+**Gebühr ja, Verzugszinsen nein.** Die Gebühr steht je Stufe in Cent an den
+Firmendaten. Zinsen nach §288 BGB bräuchten den Basiszinssatz der Bundesbank —
+eine Zahl, die sich halbjährlich ändert und im System veralten würde, während
+die Anwendung damit rechnet. Dieselbe Überlegung wie bei den Fristen der
+Datenschutzhinweise, nur andersherum: Was wir nicht aus eigener Kenntnis
+ableiten können, behaupten wir nicht.
+
+**Die Beträge sind eingefroren.** Was auf der Mahnung steht, galt am Tag ihrer
+Ausstellung; `Reminder_no_update` weist jede Änderung ab. Zahlt der Kunde danach
+eine Teilsumme, ändert das den verschickten Brief nicht — ein Dokument, das sich
+nachträglich ändert, ist keines. Gelöscht wird ebenfalls nicht: Die Stufe der
+nächsten Mahnung hängt an ihr.
+
+**Das PDF geht dieselbe Kette wie ein Beleg** — dieselbe Schrift, dasselbe
+Briefpapier, derselbe Seitenstempel, dieselbe Ablage mit SHA-256. Absender und
+Empfänger kommen aus `buildInvoiceDocument()` und nicht aus einer zweiten
+Abbildung der Firmendaten: Damit gilt für die Mahnung, was für den Beleg gilt —
+Snapshot statt Gegenwart, freier Anschriftenblock, Logo. Eine eigene Umsetzung
+wäre die zweite Wahrheit, die beim ersten Sonderfall abweicht.
+
+**Die Vorlage gehört ausnahmsweise nicht dem Unternehmen.** Sie liegt als Modul
+neben der Standardvorlage und teilt deren CSS; bearbeitbar ist sie nicht. Eine
+Mahnung ist ein kurzer Brief mit festem Inhalt, und was daran
+unternehmensspezifisch ist — Logo, Anschrift, Bankverbindung, Briefpapier —
+kommt ohnehin aus den Firmendaten. Sollte sich das ändern, bekommt `Template`
+eine Spalte `kind`; heute wäre sie eine Einstellung ohne Frage dahinter.
+
+**`ReminderTemplateEngine` ist ein eigener Vertrag**, keine Verallgemeinerung
+von `TemplateEngine`. Dessen Signatur nennt `InvoiceDocument` ausdrücklich —
+darin liegt die Aussage, welche Variablen eine Belegvorlage vorfindet. Auf ein
+beliebiges Objekt geöffnet, sagte sie nichts mehr.
+
+**Mahnen ist ein eigenes Recht** (`invoice.remind`). Die Migration trägt es
+**nur** bei Rollen mit `organization.administer` nach — der Rolle „Inhaber", die
+als „alle Berechtigungen" definiert ist. Eingeschränkte Rollen bekommen nichts:
+Wer eine Rolle beschnitten hat, hat das bewusst getan, und eine still ergänzte
+Fähigkeit wäre eine Rechteerweiterung, die niemand angeordnet hat.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1579,6 +1647,7 @@ dieselbe Auskunft sind zwei Stellen, die auseinanderlaufen.
 | M13 | Impressum und Datenschutzhinweise, gepflegt vom Betreiber | umgesetzt |
 | M14 | Zustellung: E-Mail als zusätzlicher Weg, „Passwort vergessen" | umgesetzt |
 | M14.1 | Eigene Sicherheit eines Betreiberkontos: Passwort, Geräte, Passkeys | umgesetzt |
+| M15 | Mahnwesen: drei Stufen, Gebühr je Stufe, eigenes PDF | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

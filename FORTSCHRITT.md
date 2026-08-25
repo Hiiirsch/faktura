@@ -673,6 +673,18 @@ Auftraggeber vorgegeben hat.
 | FA-ADM-20 | Kein „Passwort vergessen" für Betreiberkonten | MUSS | R | M14.1 | umgesetzt | Bewusste Nichtexistenz, benannt auf `/admin/security`: Ein Zurücksetzungsnachweis setzt dort Passwort **und** zweiten Faktor neu (FA-ADM-08), per Mail wäre er ein Ersatz für beide. Der Weg führt über ein zweites Betreiberkonto oder `npm run admin:reset` |
 
 ---
+## 20. Mahnwesen (Katalog, M15)
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-MAHN-01 | Mahnung zu einem überfälligen, offenen Beleg | MUSS | T | M15 | umgesetzt | `refusalForReminder()` in `src/domain/reminder/dunning.ts` — **eine** Funktion für Oberfläche und Server, die Regel aus M12. `tests/unit/domain/dunning.test.ts`, `tests/integration/reminders.test.ts` |
+| FA-MAHN-02 | Drei Stufen, gezählt ab der höchsten bisherigen | MUSS | T | M15 | umgesetzt | `nextReminderLevel()`. Ab der höchsten Stufe und nicht ab der Anzahl: Zwei Mahnungen derselben Stufe — etwa nach einem verlorenen Brief — dürfen die nächste nicht überspringen lassen |
+| FA-MAHN-03 | Mahngebühr je Stufe, keine Verzugszinsen | MUSS | T | M15 | umgesetzt | `reminderFee1Cents` bis `-3Cents` an `CompanyProfile` (0 / 500 / 1000). Zinsen bewusst nicht: Der Basiszinssatz ändert sich halbjährlich und wäre eine Zahl, die veraltet, während die Anwendung damit rechnet |
+| FA-MAHN-04 | Neue Zahlungsfrist ab dem Tag der Mahnung | MUSS | T | M15 | umgesetzt | `reminderDueDate()`; Vorgabe sieben Tage (`reminderPaymentTerms`) |
+| FA-MAHN-05 | Unveränderlich, nicht löschbar, protokolliert | MUSS | T | M15 | umgesetzt | Trigger `Reminder_no_update`, `Reminder_no_delete`; Aktion `REMINDED` im Protokoll. Der Test zahlt nach der Mahnung eine Teilsumme und prüft, dass der Betrag darauf unverändert bleibt |
+| FA-MAHN-06 | PDF über dieselbe Kette, ohne Steuer, eigener Nummernkreis | MUSS | T | M15 | umgesetzt | `application/reminders/render-reminder.ts`; Vorlage in `infrastructure/templates/reminder-template.ts` teilt das CSS des Belegs. `REMINDER_SEQUENCE_PREFIX` trennt den Kreis — sonst entstünde in der Rechnungsfolge eine Lücke (FA-NUM-05), was der Test eigens prüft |
+| FA-MAHN-07 | Mahnen ist ein eigenes Recht | MUSS | T | M15 | umgesetzt | `invoice.remind` in `PERMITTED`. Die Migration trägt es **nur** bei Rollen mit `organization.administer` nach; eingeschränkte Rollen bekommen nichts — eine stille Rechteerweiterung wäre das Gegenteil dessen, wofür Rollen da sind |
+
 ## Abnahmeszenarien (Katalog §19)
 
 Durchgang vom 2026-08-24. **Was hier „belegt" heißt:** Das Szenario ist Schritt
@@ -705,6 +717,7 @@ Steuersumme bei gemischten Sätzen (A2) und der nie geprüfte Kundenumzug (A6).
 | A18 | Gespeichert heißt gespeichert | belegt | `tests/architecture/save-feedback.test.ts`, `browser-invoice-editor.test.ts` (Fehler im Blickfeld) |
 | A19 | Impressum und Datenschutz | belegt | `legal-notices.test.ts`, `browser-legal.test.ts` — 404 ohne Inhalt, ohne Sitzung erreichbar, Markup bleibt Text |
 | A20 | Zustellung | offen | Von Hand durchzuspielen: ohne `SMTP_URL` unverändert, mit `SMTP_URL` kommt die Mail und der Link steht trotzdem da, unbekannte Adresse liest sich wie eine bekannte, kein zweiter Nachweis binnen fünf Minuten. Automatisiert belegt sind die Teile: `mailer.test.ts`, `invitation-delivery.test.ts`, `password-reset-request.test.ts` |
+| A21 | Mahnlauf | offen | Von Hand: drei Stufen ausstellen, vierte wird abgewiesen; PDF ohne Steuerausweis; Teilzahlung ändert die ausgestellte Mahnung nicht. Automatisiert belegt in `tests/integration/reminders.test.ts` |
 
 **Stand: alle neunzehn Szenarien durch.** Siebzehn laufen bei jedem Testlauf
 mit; die beiden, die kein Test führen kann — die Sichtprüfung des Belegs (A16)
