@@ -1180,6 +1180,34 @@ export const messages = {
     refusedGeneric: 'Die Mahnung ließ sich nicht ausstellen.',
   },
 
+  /*
+   * Die Bedienoberfläche des Handbuchs (M16).
+   *
+   * **Der Inhalt steht hier nicht** — er liegt als MDX in `src/content/hilfe/`.
+   * Das ist eine benannte Ausnahme von „alle deutschen Texte in `de.ts`", mit
+   * derselben Begründung wie bei `domain/notifications/mail-texts.ts` und
+   * `domain/legal/privacy-notice.ts`: Ein Handbuch ist ein Dokument, keine
+   * Beschriftung. Was hier steht, sind die Knöpfe und Zeilen darum herum.
+   */
+  help: {
+    navLabel: 'Hilfe',
+    title: 'Hilfe',
+    heading: 'Handbuch',
+    intro:
+      'Wie Faktura benutzt wird — von der Anmeldung bis zur Mahnung. Die Angaben stammen aus der Anwendung selbst; Fristen und Grenzen sind keine abgeschriebenen Zahlen.',
+    searchLabel: 'Im Handbuch suchen',
+    searchPlaceholder: 'Begriff eingeben',
+    searchAction: 'Suchen',
+    searchReset: 'Alle Themen',
+    resultsHeading: 'Treffer für „{query}“',
+    resultsOne: '1 Treffer',
+    resultsMany: '{count} Treffer',
+    resultsNone:
+      'Kein Abschnitt enthält alle gesuchten Wörter. Ein kürzerer Begriff findet mehr.',
+    topicsHeading: 'Themen',
+    back: 'Zur Übersicht',
+  },
+
   delivery: {
     sent: 'Der Link wurde zusätzlich an {email} geschickt.',
     failed:

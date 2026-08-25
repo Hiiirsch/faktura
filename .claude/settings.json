@@ -51,7 +51,15 @@
       "Bash(grep -oE \"^\\\\| [A-Z-]+-[0-9]+ \\\\| [^|]{0,70}\")",
       "Bash(awk -F'|' '/^\\\\| FA-UI-29 \\\\|/ {print NF-2}' FORTSCHRITT.md faktura-frontend-design.md)",
       "Bash(echo \"audit: $?\")",
-      "Bash(xargs sed -i '' 's/FA-MEMB-08/FA-MEMB-09/g')"
+      "Bash(xargs sed -i '' 's/FA-MEMB-08/FA-MEMB-09/g')",
+      "Bash(npm run *)",
+      "Bash(rm -f src/domain/docs/manual.ts)",
+      "Bash(npx tsc *)",
+      "Bash(python3 -)",
+      "Bash(npx vitest *)",
+      "Bash(curl -s http://localhost/hilfe?suche=mahnung -o __TRACKED_VAR__/s.html)",
+      "Bash(grep -o 'Treffer[^<]*' __TRACKED_VAR__/s.html)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "/tmp"

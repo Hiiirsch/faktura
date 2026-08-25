@@ -51,6 +51,18 @@ export const ADMIN_SECURITY_PATH = '/admin/security';
 export const IMPRINT_PATH = '/impressum';
 export const PRIVACY_PATH = '/datenschutz';
 
+/**
+ * Das Handbuch (M16, FA-DOC-01).
+ *
+ * Deutsch wie die Oberfläche, und **öffentlich**: Ein Handbuch hinter einer
+ * Anmeldung hilft dem nicht, der sich gerade nicht anmelden kann.
+ */
+export const HELP_PATH = '/hilfe';
+
+export function helpTopicPath(id: string): string {
+  return `${HELP_PATH}/${id}`;
+}
+
 /** Einrichtung eines Betreiberkontos — der Nachweis steht in der Adresse (M8). */
 export const ADMIN_SETUP_PATH = '/admin/setup';
 
@@ -295,6 +307,30 @@ export const routes: readonly RouteDefinition[] = [
       'Wer wissen will, wie mit seinen Daten umgegangen wird, hat dafür noch kein ' +
       'Konto (Art. 13 DSGVO). Die Seite beschreibt die Software und den Betreiber, ' +
       'nicht die Mandanten.',
+  },
+  {
+    path: HELP_PATH,
+    kind: 'page',
+    access: 'public',
+    publicReason:
+      'Ein Handbuch hinter einer Anmeldung hilft dem nicht, der sich gerade nicht ' +
+      'anmelden kann. Es beschreibt die Software und liest keine Daten — es kennt ' +
+      'weder Mandant noch Sitzung.',
+  },
+  {
+    path: '/hilfe/[thema]',
+    kind: 'page',
+    access: 'public',
+    probePath: '/hilfe/unbekanntes-thema',
+    /*
+     * Ein unbekanntes Thema antwortet mit 404 — dieselbe Kennzeichnung wie beim
+     * Impressum: `200` **oder** `404`, aber niemals eine Umleitung zur
+     * Anmeldung. Eine Umleitung hieße, das Handbuch verlange eine Sitzung.
+     */
+    optionalContent: true,
+    publicReason:
+      'Dasselbe wie die Übersicht: Der Inhalt beschreibt die Software. Ein ' +
+      'unbekanntes Thema antwortet mit 404.',
   },
   {
     path: LOGIN_CODE_PATH,

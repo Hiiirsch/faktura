@@ -437,6 +437,14 @@ derselben Tabelle standen.
 | FA-MAHN-06 | Die Mahnung entsteht als **PDF** über dieselbe Kette wie ein Beleg — dieselbe Schrift, dasselbe Briefpapier, derselbe Seitenstempel — und liegt danach als Artefakt mit SHA-256 vor. Sie weist **keine Umsatzsteuer** aus. Ihr Nummernkreis ist von dem der Belege **getrennt** (FA-NUM-05). | MUSS | T |
 | FA-MAHN-07 | Mahnen ist ein **eigenes Recht** (`invoice.remind`), nicht Teil von `invoice.issue`. Eine neue Berechtigung erreicht bestehende eingeschränkte Rollen nicht von selbst. | MUSS | T |
 
+### Anwenderdokumentation (M16)
+
+| ID | Anforderung | Prio | V |
+|---|---|---|---|
+| FA-DOC-01 | Ein **Handbuch für Endanwender** wird mit der Software ausgeliefert, ist **ohne Anmeldung** erreichbar und von der Anmeldeseite verlinkt. Es beschreibt die Anwendung, nicht den Betreiber, und liest keine Daten — es kennt weder Mandant noch Sitzung. | MUSS | T |
+| FA-DOC-02 | Jede Frist, Länge und Grenze im Handbuch ist ein **Verweis auf die Konstante**, die der Code anwendet — keine abgeschriebene Zahl. Ein Test hält beides gegeneinander. | MUSS | T |
+| FA-DOC-03 | Das Handbuch ist **durchsuchbar**. Die Suche läuft serverseitig über einen beim Erzeugen gebauten Index; sie funktioniert **ohne JavaScript** und verlangt keine Lockerung der Content-Security-Policy. Dass der Index zu den Quellen passt, hält ein Test fest. | MUSS | T |
+
 ## 19. Abnahmeszenarien
 
 Manuell durchzuspielen, bevor V1 als fertig gilt.
@@ -550,6 +558,12 @@ der Vorgang steht im Protokoll der Verwaltung, der Inhalt nicht. Abgemeldet
 beide Seiten aufrufen: erreichbar. Ins Impressum
 `<script>alert(1)</script>` eintragen: erscheint als Text, nichts wird
 ausgeführt.
+
+**A22 — Handbuch**
+Abgemeldet `/hilfe` aufrufen: erreichbar, keine Umleitung zur Anmeldung. Auf der
+Anmeldeseite steht der Link im Fuß neben Impressum und Datenschutz. Nach
+„Mahnung" suchen und einem Treffer folgen. JavaScript abschalten und erneut
+suchen — dasselbe Ergebnis. Ein erfundenes Thema aufrufen: 404, keine Umleitung.
 
 **A21 — Mahnlauf**
 Eine Rechnung mit verstrichener Fälligkeit öffnen: „Mahnung ausstellen" steht da.

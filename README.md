@@ -617,6 +617,30 @@ einen Test.
 Faktura prüft die Angaben des Betreibers nicht und leistet keine
 Rechtsberatung.
 
+## Anwenderdokumentation
+
+Das Handbuch liegt unter **`/hilfe`** und wird mit der Anwendung ausgeliefert —
+es ist ohne Anmeldung erreichbar und von der Anmeldeseite aus verlinkt. Es
+richtet sich an die Menschen, die mit Faktura arbeiten: Anmeldung, Firmendaten,
+Rechnungen, Festschreiben, Zahlungen, Mahnungen, Vorlagen, Mitglieder,
+Sicherheit des eigenen Kontos.
+
+**Dieses README bleibt die Betriebsanleitung** — Installation, Konfiguration,
+Sicherung, Wiederherstellung, Update. Beides gehört getrennt, weil es sich an
+verschiedene Leser richtet.
+
+Der Inhalt steht als MDX in `src/content/hilfe/`. Wer ihn ändert, erzeugt
+danach den Suchindex neu:
+
+```bash
+npm run docs:index
+```
+
+Ohne diesen Lauf schlägt `npm run verify` fehl — ein Test vergleicht den
+eingecheckten Index mit den Quellen. Fristen und Grenzen im Text sind Verweise
+auf die Konstanten der Anwendung und keine abgeschriebenen Zahlen; ein zweiter
+Test hält auch das fest.
+
 ## E-Mail-Versand
 
 **Optional.** Ohne `SMTP_URL` und `MAIL_FROM` verschickt Faktura nichts und

@@ -1,0 +1,24 @@
+export const meta = {
+  id: 'stammdaten',
+  title: 'Kunden und Katalog',
+  summary: 'Drei Wege zum Empfänger; warum archiviert und nicht gelöscht wird.',
+};
+
+## Kunden und Katalog
+
+Kunden und Katalogpositionen sind Vorlagen für die tägliche Arbeit, keine
+Pflicht: Ein Beleg kommt auch ohne Kundendatensatz aus.
+
+### Drei Wege zum Empfänger
+
+- **Kunde aus den Stammdaten** — die Anschrift kommt von dort.
+- **Felder am Beleg** — dieselben Angaben, nur einmalig erfasst.
+- **Freier Anschriftenblock** — Zeile für Zeile, wie eingegeben. Die erste Zeile
+  ist der Name; Name und Anschrift müssen auf getrennten Zeilen stehen, sonst
+  fehlt dem Beleg die Anschrift des Empfängers.
+
+### Archivieren statt löschen
+
+Kunden werden archiviert, nicht gelöscht: Ein Beleg verweist auf seinen
+Empfänger, und der Verweis darf nicht ins Leere zeigen. Ein archivierter Kunde
+erscheint nicht mehr in der Auswahl, seine Belege bleiben unverändert.

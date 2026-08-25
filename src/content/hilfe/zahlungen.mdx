@@ -1,0 +1,22 @@
+export const meta = {
+  id: 'zahlungen',
+  title: 'Zahlungen',
+  summary: 'Teilzahlungen, Status, offener Betrag.',
+};
+
+## Zahlungen
+
+Zahlungen werden einzeln erfasst; der Status folgt daraus und wird nicht von
+Hand gesetzt:
+
+- **Offen** — es steht Geld aus.
+- **Teilweise bezahlt** — ein Teil ist eingegangen.
+- **Bezahlt** — nichts mehr offen.
+- **Überfällig** — offen und die Frist ist verstrichen.
+
+Der offene Betrag ergibt sich aus der Differenz zwischen Bruttobetrag und Summe
+der Zahlungen. Eine Zahlung lässt sich zurücknehmen; der Vorgang steht im
+Protokoll.
+
+Eine Stornorechnung nimmt keine Zahlungen an und wird nie überfällig: Sie stellt
+keine Forderung, sie nimmt eine zurück.

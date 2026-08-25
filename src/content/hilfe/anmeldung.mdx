@@ -1,0 +1,37 @@
+import { LOCKOUT_DURATION_MS, MAX_FAILED_LOGINS } from '@/domain/auth/lockout-policy';
+import { MIN_PASSWORD_LENGTH } from '@/domain/auth/password-policy';
+import { PASSWORD_RESET_TTL_MS } from '@/domain/auth/password-reset-policy';
+import { SESSION_LIFETIME_MS } from '@/domain/auth/session-policy';
+import { formatRetention } from '@/domain/legal/privacy-notice';
+
+export const meta = {
+  id: 'anmeldung',
+  title: 'Anmelden',
+  summary: 'Zwei Schritte, Sperre nach Fehlversuchen, vergessenes Passwort.',
+};
+
+## Anmelden
+
+Die Anmeldung läuft in zwei Schritten: zuerst E-Mail-Adresse und Passwort, danach
+der Code des zweiten Faktors. Der zweite Schritt erscheint nur, wenn für das
+Konto ein zweiter Faktor eingerichtet ist.
+
+- Ein Passwort ist mindestens {MIN_PASSWORD_LENGTH} Zeichen lang. Passwörter aus
+  bekannten Datenlecks werden abgewiesen.
+- Nach {MAX_FAILED_LOGINS} Fehlversuchen sperrt sich das Konto für
+  {formatRetention(LOCKOUT_DURATION_MS)}. Die Sperre endet von selbst.
+- Eine Sitzung gilt {formatRetention(SESSION_LIFETIME_MS)}.
+
+### Passwort vergessen
+
+Ein vergessenes Passwort lässt sich auf der Anmeldeseite selbst anfordern. Der
+Link dazu gilt {formatRetention(PASSWORD_RESET_TTL_MS)} und lässt sich einmal
+einlösen. Das bisherige Passwort bleibt gültig, bis ein neues gesetzt ist.
+
+Die Antwort ist in jedem Fall dieselbe — auch bei einer unbekannten Adresse.
+Alles andere wäre eine Auskunft darüber, wer hier ein Konto hat.
+
+### Ein Konto entsteht nur per Einladung
+
+Eine Selbstregistrierung gibt es nicht. Wer ein Konto braucht, wird von einem
+Konto mit Rechteverwaltung eingeladen.

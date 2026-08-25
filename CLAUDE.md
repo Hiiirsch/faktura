@@ -1620,6 +1620,66 @@ als „alle Berechtigungen" definiert ist. Eingeschränkte Rollen bekommen nicht
 Wer eine Rolle beschnitten hat, hat das bewusst getan, und eine still ergänzte
 Fähigkeit wäre eine Rechteerweiterung, die niemand angeordnet hat.
 
+## Das Handbuch (seit M16)
+
+**Kein Doku-Framework, und der Grund ist nicht Geschmack.** Docusaurus, Nextra
+oder VitePress hätten vier Zusagen gebrochen: ein eigenes Theme neben dem
+Tokensatz (FA-UI-01), WebAssembly für die Volltextsuche und damit
+`'wasm-unsafe-eval'` in der Richtlinie — genau das, was für pdf.js vermieden
+wurde —, einen zweiten Build außerhalb von `src/routes.ts` (NFA-SEC-01) und
+nach pdfjs-dist eine zweite große Abhängigkeit im Browser. Die Anforderungen
+— mit der Software ausgeliefert, durchsuchbar, von der Anmeldeseite erreichbar
+— gehen ohne das.
+
+**Der Inhalt ist MDX, die Gestaltung nicht.** Zwölf Dateien in
+`src/content/hilfe/`; in keiner steht eine Klasse oder ein Farbwert. Gesetzt
+wird ausschließlich in `src/mdx-components.tsx`, mit Tokens — deshalb folgt das
+Handbuch dem dunklen Schema, ohne davon zu wissen, und die Wächter aus
+`design-tokens.test.ts` brauchen keine Ausnahme.
+
+**`pageExtensions` bleibt unangetastet.** Die Anleitung schlägt vor, `mdx` in
+die Seitenerweiterungen aufzunehmen; dann würde jede MDX-Datei selbst zur Route.
+Hier werden sie **importiert**. So bleibt `src/routes.ts` das alleinige
+Routenverzeichnis, gegen das der Zugriffsschutztest das Dateisystem abgleicht.
+
+**Jede Zahl ist ein Verweis.** Passwortlänge, Sperrdauer, Sitzungsdauer,
+Einladungsfrist, Mahnstufen — alles kommt aus den Konstanten und wird in der
+MDX-Datei eingesetzt. Ein Test prüft **beide** Richtungen: dass die Konstante
+importiert wird und dass ihr ausformulierter Wert nirgends als Text steht. Die
+zweite Richtung ist die wirksame — ein `{formatRetention(…)}` an einer Stelle
+hilft nichts, wenn anderswo „7 Tage" ausgeschrieben stehen bleibt. Bauart wie
+`privacy-notice.ts` aus M13.
+
+**Die Suche läuft auf dem Server.** MDX wird zu Komponenten übersetzt; der Text
+liegt danach nicht mehr als Zeichenkette vor. `scripts/build-docs-index.ts`
+erzeugt deshalb aus den Quellen einen Index, der **eingecheckt** wird — der
+Containerbau soll nichts herstellen müssen. Dass er zu den Quellen passt, hält
+`tests/architecture/docs-index.test.ts` fest, indem er ihn neu erzeugt und
+vergleicht. Ohne diesen Wächter wäre die Suche nach der zweiten Änderung stumm
+veraltet: Sie fände noch, was gestern dastand.
+
+Gesucht wird über ein `GET`-Formular; die Seite liest `?suche=` und setzt die
+Treffer. Kein Suchindex im Browser, kein zusätzliches Bündel, keine Änderung an
+der Richtlinie — und es funktioniert ohne JavaScript.
+
+**Ein eingesetzter Wert wird im Index zur Auslassungsmarke.** „Ein Passwort ist
+mindestens … Zeichen lang" liest sich als Auslassung; ohne die Marke stünde dort
+„mindestens Zeichen lang", und das läse sich in einem Suchtreffer wie ein Fehler
+im Programm. Die Werte beim Erzeugen auszuwerten hieße, den Index gegen die
+laufende Anwendung zu bauen — dafür ist der Gewinn zu klein.
+
+**Der Text steht nicht in `de.ts`**, sondern in den MDX-Dateien. Das ist die
+dritte benannte Ausnahme dieser Art, nach `mail-texts.ts` (M14) und
+`privacy-notice.ts` (M13), und aus demselben Grund: Ein Handbuch ist ein
+Dokument, keine Beschriftung. In `de.ts` stehen die Knöpfe und Zeilen darum
+herum.
+
+**`src/mdx-components.tsx` liegt in `src/`, nicht im Wurzelverzeichnis.** Next
+findet sie an beiden Orten. Im Wurzelverzeichnis fiel sie aus
+`files: ['src/**/*.{ts,tsx}', …]` der ESLint-Konfiguration heraus, und
+`npm run lint` brach mit einem Ladefehler ab statt mit einer Meldung — ein
+Abbruch, den ein Grep nach „error" nicht sieht.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1648,6 +1708,7 @@ Fähigkeit wäre eine Rechteerweiterung, die niemand angeordnet hat.
 | M14 | Zustellung: E-Mail als zusätzlicher Weg, „Passwort vergessen" | umgesetzt |
 | M14.1 | Eigene Sicherheit eines Betreiberkontos: Passwort, Geräte, Passkeys | umgesetzt |
 | M15 | Mahnwesen: drei Stufen, Gebühr je Stufe, eigenes PDF | umgesetzt |
+| M16 | Handbuch: MDX-Inhalt, serverseitige Suche, öffentlich | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

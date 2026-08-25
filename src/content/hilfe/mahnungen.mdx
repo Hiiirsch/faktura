@@ -1,0 +1,30 @@
+import { LAST_REMINDER_LEVEL } from '@/domain/reminder/dunning';
+
+export const meta = {
+  id: 'mahnungen',
+  title: 'Mahnungen',
+  summary: 'Drei Stufen, Gebühr je Stufe, eingefrorene Beträge.',
+};
+
+## Mahnungen
+
+Zu einer überfälligen, offenen Rechnung lässt sich eine Mahnung ausstellen. Es
+gibt {LAST_REMINDER_LEVEL} Stufen: Zahlungserinnerung, Mahnung, letzte Mahnung.
+
+- Jede Mahnung ist ein eigenes Dokument mit eigener Nummer und eigenem PDF. Ihr
+  Nummernkreis ist von dem der Rechnungen getrennt.
+- Die **Mahngebühr je Stufe** steht in den Firmendaten. Verzugszinsen berechnet
+  Faktura nicht.
+- Eine Mahnung weist **keine Umsatzsteuer** aus — sie fordert eine bestehende
+  Forderung ein und begründet keine neue.
+- Die Beträge sind **eingefroren**: Eine spätere Teilzahlung ändert ein bereits
+  verschicktes Schreiben nicht.
+- Die Mahnung setzt eine neue, kurze Zahlungsfrist. Die Frist der Rechnung
+  bleibt unberührt.
+- Nach der letzten Stufe entsteht keine weitere.
+
+### Wenn nicht gemahnt wird
+
+Steht der Knopf nicht da, nennt die Belegseite den Grund — etwa „noch nicht
+überfällig", „nichts mehr offen" oder „eine Gutschrift wird nicht gemahnt". Das
+ist eine Auskunft, kein Fehler.

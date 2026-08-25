@@ -1,0 +1,26 @@
+export const meta = {
+  id: 'daten',
+  title: 'Daten sichern und mitnehmen',
+  summary: 'Export, Sicherung, Protokoll.',
+};
+
+## Daten sichern und mitnehmen
+
+### Export
+
+Der Datenexport liefert Kunden, Belege mit Positionen und Zahlungen, Vorlagen,
+Nummernkreise und das Protokoll als JSON — **ohne Zugangsdaten**. Ein Export
+wird weitergereicht; Passwörter und Sitzungen gehören dort nicht hinein.
+
+### Sicherung
+
+Die Sicherung umfasst Datenbank **und** Dateispeicher und wird vom Betreiber der
+Installation ausgelöst. Beides gehört zusammen: Ein festgeschriebener Beleg
+verweist auf seine PDF-Datei samt Prüfsumme, und eine Sicherung ohne sie ist
+keine.
+
+### Protokoll
+
+Jede Änderung an Belegen, Kunden und Firmendaten steht mit Zeitpunkt, Aktion und
+handelndem Konto im Protokoll. Über die Anwendung lässt es sich weder ändern
+noch löschen.

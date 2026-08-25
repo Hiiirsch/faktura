@@ -1,0 +1,31 @@
+export const meta = {
+  id: 'festschreiben',
+  title: 'Festschreiben',
+  summary: 'Nummer, eingefrorene Daten, PDF — und warum nichts davon zurückgeht.',
+};
+
+## Festschreiben — und was danach gilt
+
+Mit dem Festschreiben bekommt der Beleg seine Nummer, seine Daten werden
+eingefroren und das PDF entsteht. Ab hier ist er unveränderlich — durchgesetzt
+in der Datenbank, nicht nur in der Oberfläche.
+
+- Die Nummer ist fortlaufend und **lückenlos**. Es gibt keinen Weg, sie
+  nachträglich zu ändern.
+- Das PDF entsteht genau einmal und wird mit Prüfsumme abgelegt. Eine spätere
+  Änderung an der Vorlage verändert es nicht.
+- Änderbar bleiben nur Status, Zahlungsstand und Stornovermerk.
+
+### Ein Fehler wird storniert, nicht korrigiert
+
+Beim Stornieren entsteht eine **Gutschrift mit eigener Nummer**; der
+ursprüngliche Beleg wechselt auf „Storniert". Beide bleiben erhalten, und
+zusammen ergeben sie null.
+
+Eine Gutschrift trägt selbst positive Beträge — die Richtung steckt im Belegtyp.
+Sie wird nie überfällig und nimmt keine Zahlungen an.
+
+### Kein Löschen
+
+Ein festgeschriebener Beleg lässt sich nicht löschen. Das ist keine Einstellung,
+sondern die Aufbewahrungspflicht nach §147 AO.

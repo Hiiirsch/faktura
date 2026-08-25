@@ -685,6 +685,14 @@ Auftraggeber vorgegeben hat.
 | FA-MAHN-06 | PDF über dieselbe Kette, ohne Steuer, eigener Nummernkreis | MUSS | T | M15 | umgesetzt | `application/reminders/render-reminder.ts`; Vorlage in `infrastructure/templates/reminder-template.ts` teilt das CSS des Belegs. `REMINDER_SEQUENCE_PREFIX` trennt den Kreis — sonst entstünde in der Rechnungsfolge eine Lücke (FA-NUM-05), was der Test eigens prüft |
 | FA-MAHN-07 | Mahnen ist ein eigenes Recht | MUSS | T | M15 | umgesetzt | `invoice.remind` in `PERMITTED`. Die Migration trägt es **nur** bei Rollen mit `organization.administer` nach; eingeschränkte Rollen bekommen nichts — eine stille Rechteerweiterung wäre das Gegenteil dessen, wofür Rollen da sind |
 
+## 21. Anwenderdokumentation (Katalog, M16)
+
+| ID | Kurz | Prio | V | MS | Status | Nachweis |
+|---|---|---|---|---|---|---|
+| FA-DOC-01 | Handbuch ausgeliefert, öffentlich, von der Anmeldung verlinkt | MUSS | T | M16 | umgesetzt | Zwölf MDX-Dateien in `src/content/hilfe/`, gesetzt über `src/mdx-components.tsx` mit den Tokens der Anwendung. Routen `/hilfe` und `/hilfe/[thema]` in `src/routes.ts`, Link im `LegalFooter` — damit auf Anmeldung, Zurücksetzung **und** im `AppShell`. `tests/integration/route-protection.test.ts` |
+| FA-DOC-02 | Zahlen im Text sind Verweise auf Konstanten | MUSS | T | M16 | umgesetzt | `tests/unit/domain/help-search.test.ts` prüft beide Richtungen: Die Konstante wird importiert **und** ihr ausformulierter Wert steht nirgends als Text. Bauart wie `privacy-notice.test.ts` aus M13 |
+| FA-DOC-03 | Durchsuchbar, serverseitig, ohne JavaScript | MUSS | T | M16 | umgesetzt | `searchHelp()` in `src/domain/docs/search.ts` über den erzeugten Index; das Suchfeld ist ein `GET`-Formular. `tests/architecture/docs-index.test.ts` erzeugt den Index neu und vergleicht — wer eine MDX-Datei ändert und `npm run docs:index` vergisst, kommt dort nicht vorbei |
+
 ## Abnahmeszenarien (Katalog §19)
 
 Durchgang vom 2026-08-24. **Was hier „belegt" heißt:** Das Szenario ist Schritt
@@ -718,6 +726,7 @@ Steuersumme bei gemischten Sätzen (A2) und der nie geprüfte Kundenumzug (A6).
 | A19 | Impressum und Datenschutz | belegt | `legal-notices.test.ts`, `browser-legal.test.ts` — 404 ohne Inhalt, ohne Sitzung erreichbar, Markup bleibt Text |
 | A20 | Zustellung | offen | Von Hand durchzuspielen: ohne `SMTP_URL` unverändert, mit `SMTP_URL` kommt die Mail und der Link steht trotzdem da, unbekannte Adresse liest sich wie eine bekannte, kein zweiter Nachweis binnen fünf Minuten. Automatisiert belegt sind die Teile: `mailer.test.ts`, `invitation-delivery.test.ts`, `password-reset-request.test.ts` |
 | A21 | Mahnlauf | offen | Von Hand: drei Stufen ausstellen, vierte wird abgewiesen; PDF ohne Steuerausweis; Teilzahlung ändert die ausgestellte Mahnung nicht. Automatisiert belegt in `tests/integration/reminders.test.ts` |
+| A22 | Handbuch | offen | Von Hand: abgemeldet aufrufen, suchen, ohne JavaScript erneut suchen. Automatisiert belegt sind Erreichbarkeit (`route-protection.test.ts`), Suche (`help-search.test.ts`) und die Aktualität des Index (`docs-index.test.ts`) |
 
 **Stand: alle neunzehn Szenarien durch.** Siebzehn laufen bei jedem Testlauf
 mit; die beiden, die kein Test führen kann — die Sichtprüfung des Belegs (A16)

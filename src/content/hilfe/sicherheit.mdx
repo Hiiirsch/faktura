@@ -1,0 +1,39 @@
+import { RECOVERY_CODE_COUNT } from '@/domain/auth/recovery-code';
+import { TRUSTED_DEVICE_TTL_MS } from '@/domain/auth/trusted-device-policy';
+import { formatRetention } from '@/domain/legal/privacy-notice';
+
+export const meta = {
+  id: 'sicherheit',
+  title: 'Das eigene Konto absichern',
+  summary: 'Zweiter Faktor, Passkeys, vertraute Geräte, Sitzungen.',
+};
+
+## Das eigene Konto absichern
+
+### Zweiter Faktor
+
+Ein Code aus einer Authenticator-App, dazu {RECOVERY_CODE_COUNT}
+Wiederherstellungscodes für den Fall, dass das Gerät verloren geht. Die Codes
+werden **genau einmal** angezeigt; jeder gilt einmal.
+
+### Passkey
+
+Der private Schlüssel verlässt das Gerät nie, und die Signatur bindet sich an
+die Adresse der aufrufenden Seite — eine nachgebaute Anmeldeseite bekommt
+nichts. Die Gerätesperre ist dabei der zweite Faktor; deshalb meldet ein Passkey
+allein an.
+
+### Vertraute Geräte
+
+Nach erfolgreichem zweitem Faktor lässt sich ein Gerät als vertraut hinterlegen;
+dort entfällt der Code für {formatRetention(TRUSTED_DEVICE_TTL_MS)}. Das
+Passwort wird weiterhin verlangt. Jeder Nachweis ist einzeln sichtbar und
+einzeln widerrufbar.
+
+### Angemeldete Geräte
+
+Jede Sitzung ist sichtbar und einzeln zu beenden. „Alle anderen beenden" endet
+zugleich jedes Gerätevertrauen.
+
+Jede Zurücksetzung des Passworts beendet alle Sitzungen und alle
+Gerätevertrauen — auch die vom Betreiber ausgelöste.

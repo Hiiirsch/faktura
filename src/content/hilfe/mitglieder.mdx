@@ -1,0 +1,37 @@
+import { INVITATION_TTL_MS } from '@/domain/auth/invitation-policy';
+import { formatRetention } from '@/domain/legal/privacy-notice';
+
+export const meta = {
+  id: 'mitglieder',
+  title: 'Mitglieder und Rollen',
+  summary: 'Einladung, Rollen, Sperren statt Löschen.',
+};
+
+## Mitglieder und Rollen
+
+Jedes Unternehmen legt eigene Rollen an; fest ist nur der Katalog der
+Berechtigungen. Ein Konto trägt genau eine Rolle.
+
+### Einladen
+
+- Eine Einladung gilt {formatRetention(INVITATION_TTL_MS)} und erscheint **genau
+  einmal** in der Oberfläche. Ist ein Mailserver eingerichtet, geht sie
+  zusätzlich hinaus — nie stattdessen.
+- Das **Passwort setzt der Eingeladene**. Kein anderes Konto erfährt es je, auch
+  die Rechteverwaltung nicht: Sie stellt einen Nachweis aus, sie vergibt kein
+  Passwort.
+- Wer erneut einlädt, entwertet den vorigen Link.
+
+### Ausscheiden
+
+Ein Konto wird **gesperrt, nicht gelöscht**: Der Beleg behält seinen Urheber.
+Die Sperre beendet sofort alle Sitzungen des Kontos.
+
+Mindestens ein nicht gesperrtes Konto hält immer die Rechteverwaltung. Das
+letzte lässt sich weder sperren noch seiner Rolle berauben — sonst käme niemand
+mehr in das Unternehmen hinein.
+
+### Fehlende Rechte
+
+Ein Konto, dem ein Recht fehlt, sieht den Weg dorthin nicht. Fehlt ein
+Menüpunkt, fehlt die Berechtigung.
