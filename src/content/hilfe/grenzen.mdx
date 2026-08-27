@@ -1,19 +1,45 @@
 export const meta = {
   id: 'grenzen',
   title: 'Was Faktura nicht tut',
-  summary: 'Die Grenzen, damit niemand danach sucht.',
+  summary: 'Die Grenzen — damit niemand danach sucht.',
 };
 
 ## Was Faktura nicht tut
 
 Eine Auskunft darüber, was fehlt, spart die Suche danach.
 
+### Nach außen
+
 - **Keine Datenübertragung an Dritte.** Die einzige ausgehende Verbindung führt
   zu einem Mailserver, den der Betreiber selbst benennt. Ohne diese Einrichtung
   läuft die Anwendung vollständig ohne Netz nach außen.
 - **Keine externen Schriften, Skripte oder Analysedienste**, keine
   Reichweitenmessung, keine Einwilligungsabfrage — es gibt nichts einzuwilligen.
-- **Keine automatischen Läufe.** Weder Mahnungen noch Sicherungen laufen von
-  selbst. Was geschieht, hat jemand ausgelöst.
-- **Kein Löschen von Belegen**, keine Selbstregistrierung, keine
-  Buchhaltungsanbindung und keine Steuerberatung.
+- **Keine Cloud.** Die Daten liegen dort, wo die Anwendung läuft.
+
+### Von selbst
+
+- **Keine automatischen Läufe.** Weder Mahnungen noch Sicherungen noch
+  wiederkehrende Rechnungen entstehen von selbst. Was geschieht, hat jemand
+  ausgelöst.
+- **Keine Zahlungserkennung.** Es gibt keine Bankanbindung; Zahlungen werden
+  erfasst.
+
+### Nicht vorhanden
+
+- **Kein Löschen von Belegen** (§147 AO).
+- **Keine Selbstregistrierung** — ein Konto entsteht nur per Einladung.
+- **Keine E-Rechnung** im Format ZUGFeRD oder XRechnung. Die Ausgabekette ist
+  darauf vorbereitet, das Format selbst ist nicht gebaut.
+- **Keine Angebote, Auftragsbestätigungen oder Lieferscheine.**
+- **Kein Buchhaltungsexport** nach DATEV.
+- **Keine Zeiterfassung, kein Projektmanagement, keine Lagerhaltung.**
+
+### Ausdrücklich keine Beratung
+
+Faktura prüft die eingegebenen Angaben auf Vollständigkeit, nicht auf
+Richtigkeit. Ob eine Leistung steuerfrei ist, ob Reverse Charge greift, ob die
+Kleinunternehmerregelung noch gilt — das entscheidet nicht die Anwendung.
+
+Die Vorschläge zur steuerlichen Behandlung sind Vorschläge. Sie lassen sich
+übersteuern, und die Verantwortung dafür bleibt beim Aussteller.

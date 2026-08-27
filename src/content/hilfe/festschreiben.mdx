@@ -1,3 +1,5 @@
+import { InvoiceLifecycle } from './diagrams';
+
 export const meta = {
   id: 'festschreiben',
   title: 'Festschreiben',
@@ -10,11 +12,25 @@ Mit dem Festschreiben bekommt der Beleg seine Nummer, seine Daten werden
 eingefroren und das PDF entsteht. Ab hier ist er unveränderlich — durchgesetzt
 in der Datenbank, nicht nur in der Oberfläche.
 
-- Die Nummer ist fortlaufend und **lückenlos**. Es gibt keinen Weg, sie
-  nachträglich zu ändern.
-- Das PDF entsteht genau einmal und wird mit Prüfsumme abgelegt. Eine spätere
-  Änderung an der Vorlage verändert es nicht.
-- Änderbar bleiben nur Status, Zahlungsstand und Stornovermerk.
+<InvoiceLifecycle />
+
+### Was dabei geschieht
+
+- Die **Nummer** wird vergeben: fortlaufend und lückenlos, nach dem Muster aus
+  den Firmendaten. Es gibt keinen Weg, sie nachträglich zu ändern.
+- **Empfänger und Absender werden kopiert.** Der Beleg trägt fortan seine eigene
+  Fassung; ändert sich später eine Anschrift, ändert das den Beleg nicht.
+- Das **PDF** entsteht sofort und wird mit Prüfsumme abgelegt. Jeder weitere
+  Abruf liefert dieselbe Datei — auch nach einer Änderung an der Vorlage.
+- Der Vorgang steht mit Zeitpunkt und handelndem Konto im **Protokoll**.
+
+### Was danach noch geht
+
+Änderbar bleiben nur **Status, Zahlungsstand und Stornovermerk**. Positionen,
+Beträge, Empfänger, Datum und Nummer nicht.
+
+Ein festgeschriebener Beleg lässt sich **nicht löschen**. Das ist keine
+Einstellung, sondern die Aufbewahrungspflicht nach §147 AO — zehn Jahre.
 
 ### Ein Fehler wird storniert, nicht korrigiert
 
@@ -22,10 +38,23 @@ Beim Stornieren entsteht eine **Gutschrift mit eigener Nummer**; der
 ursprüngliche Beleg wechselt auf „Storniert". Beide bleiben erhalten, und
 zusammen ergeben sie null.
 
-Eine Gutschrift trägt selbst positive Beträge — die Richtung steckt im Belegtyp.
-Sie wird nie überfällig und nimmt keine Zahlungen an.
+Danach lässt sich der Vorgang neu berechnen: Der stornierte Beleg dient als
+Vorlage, das Duplikat wird korrigiert und festgeschrieben.
 
-### Kein Löschen
+Über eine Gutschrift ist zu wissen:
 
-Ein festgeschriebener Beleg lässt sich nicht löschen. Das ist keine Einstellung,
-sondern die Aufbewahrungspflicht nach §147 AO.
+- Sie trägt **positive Beträge** — die Richtung steckt im Belegtyp, nicht im
+  Vorzeichen. So schreibt es die europäische Rechnungsnorm vor.
+- Sie zeigt den Status **„Ausgestellt"** und wird nie überfällig: Sie stellt
+  keine Forderung.
+- Sie nimmt **keine Zahlungen** an und lässt sich nicht selbst stornieren.
+- Sie zählt **nicht** zum Umsatz. Neutralisiert wird dadurch, dass das Original
+  auf „Storniert" wechselt — zählte die Gutschrift zusätzlich, fehlte der Betrag
+  zweimal.
+
+### Der Entwurf davor
+
+Ein Entwurf hat keine Nummer, zählt nicht zum Umsatz und trägt im PDF einen
+sichtbaren Vermerk. Er lässt sich ändern, kopieren und löschen. Sein PDF wird
+bei jedem Abruf neu gesetzt und nicht abgelegt: Ein archiviertes PDF von etwas
+jederzeit Änderbarem wäre irreführend.

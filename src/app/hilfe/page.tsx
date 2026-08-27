@@ -6,16 +6,17 @@ import { searchHelp } from '@/domain/docs/search';
 import { HELP_INDEX } from '@/domain/docs/search-index.generated';
 import { messages } from '@/i18n/de';
 import { helpTopicPath, HELP_PATH } from '@/routes';
-import { BrandLockup } from '@/ui/components/brand';
-import { FOCUS_RING, INPUT_CLASS, SECONDARY_BUTTON_CLASS, SECTION_CLASS } from '@/ui/components/form';
+import { FOCUS_RING, SECONDARY_BUTTON_CLASS, SECTION_CLASS } from '@/ui/components/form';
 import { PageHeader } from '@/ui/components/page';
+
+import { HelpShell } from './help-shell';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: `${messages.help.title} · ${messages.app.name}` };
 
 /**
- * Die Übersicht des Handbuchs samt Suche (M16, FA-DOC-01, -03).
+ * Die Übersicht des Handbuchs samt Trefferliste (M16, FA-DOC-01, -03).
  *
  * **Die Suche ist ein `GET`-Formular ohne JavaScript.** Sie schickt `?suche=`,
  * die Seite filtert den erzeugten Index und setzt die Treffer. Kein Suchindex
@@ -38,25 +39,8 @@ export default async function HelpPage({
   const results = query.length === 0 ? [] : searchHelp(HELP_INDEX, query);
 
   return (
-    <main className="mx-auto flex w-full max-w-content flex-col gap-6 px-8 py-12">
-      <BrandLockup />
+    <HelpShell activeId={null}>
       <PageHeader title={messages.help.heading} description={messages.help.intro} />
-
-      <form action={HELP_PATH} className="flex flex-wrap items-end gap-3">
-        <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">{messages.help.searchLabel}</span>
-          <input
-            type="search"
-            name="suche"
-            defaultValue={query}
-            placeholder={messages.help.searchPlaceholder}
-            className={INPUT_CLASS}
-          />
-        </label>
-        <button type="submit" className={SECONDARY_BUTTON_CLASS}>
-          {messages.help.searchAction}
-        </button>
-      </form>
 
       {query.length === 0 ? null : (
         <section className={SECTION_CLASS}>
@@ -121,6 +105,6 @@ export default async function HelpPage({
           ))}
         </ul>
       </section>
-    </main>
+    </HelpShell>
   );
 }

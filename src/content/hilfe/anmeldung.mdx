@@ -1,37 +1,79 @@
 import { LOCKOUT_DURATION_MS, MAX_FAILED_LOGINS } from '@/domain/auth/lockout-policy';
 import { MIN_PASSWORD_LENGTH } from '@/domain/auth/password-policy';
 import { PASSWORD_RESET_TTL_MS } from '@/domain/auth/password-reset-policy';
+import { PENDING_LOGIN_TTL_MS } from '@/domain/auth/pending-login-policy';
 import { SESSION_LIFETIME_MS } from '@/domain/auth/session-policy';
 import { formatRetention } from '@/domain/legal/privacy-notice';
 
 export const meta = {
   id: 'anmeldung',
   title: 'Anmelden',
-  summary: 'Zwei Schritte, Sperre nach Fehlversuchen, vergessenes Passwort.',
+  summary: 'Zwei Schritte, Sperre nach Fehlversuchen, vergessenes Passwort, erster Zugang.',
 };
 
 ## Anmelden
 
-Die Anmeldung läuft in zwei Schritten: zuerst E-Mail-Adresse und Passwort, danach
-der Code des zweiten Faktors. Der zweite Schritt erscheint nur, wenn für das
-Konto ein zweiter Faktor eingerichtet ist.
+Die Anmeldung läuft in **zwei Schritten**: zuerst E-Mail-Adresse und Passwort,
+danach der Code des zweiten Faktors. Der zweite Schritt erscheint nur, wenn für
+das Konto ein zweiter Faktor eingerichtet ist — sonst führt der erste direkt
+hinein.
 
-- Ein Passwort ist mindestens {MIN_PASSWORD_LENGTH} Zeichen lang. Passwörter aus
-  bekannten Datenlecks werden abgewiesen.
-- Nach {MAX_FAILED_LOGINS} Fehlversuchen sperrt sich das Konto für
-  {formatRetention(LOCKOUT_DURATION_MS)}. Die Sperre endet von selbst.
-- Eine Sitzung gilt {formatRetention(SESSION_LIFETIME_MS)}.
+Zwischen beiden Schritten liegt ein Zustand mit eigener Frist: Wer das Passwort
+eingegeben hat, aber den Code schuldig bleibt, hat
+{formatRetention(PENDING_LOGIN_TTL_MS)} Zeit. Danach beginnt die Anmeldung von
+vorn.
+
+### Das Passwort
+
+- Mindestens **{MIN_PASSWORD_LENGTH} Zeichen**. Keine Vorschrift über Zahlen,
+  Sonderzeichen oder Großbuchstaben: Länge trägt mehr als Zeichenklassen, und
+  erzwungene Muster führen zu `Passwort1!`.
+- Passwörter aus **bekannten Datenlecks** werden abgewiesen. Die Prüfung läuft
+  auf dem Server gegen eine mitgelieferte Liste; es geht dabei nichts nach außen.
+- Ein Passwort lässt sich mit dem Augensymbol im Feld sichtbar machen, solange
+  es getippt wird.
+
+### Wenn die Anmeldung nicht klappt
+
+Nach **{MAX_FAILED_LOGINS} Fehlversuchen** sperrt sich das Konto für
+{formatRetention(LOCKOUT_DURATION_MS)}. Die Sperre endet von selbst; niemand
+muss sie aufheben.
+
+Der Zähler läuft über **beide** Schritte. Ein richtiges Passwort setzt ihn
+nicht zurück — sonst wäre der Code beliebig oft ratbar.
+
+Unbekannte Adresse und falsches Passwort werden **gleich beantwortet**, und
+zwar mit gleichem Zeitaufwand. Die Meldung sagt deshalb nicht, welches von
+beidem nicht stimmte.
+
+### Wie lange eine Anmeldung hält
+
+Eine Sitzung gilt {formatRetention(SESSION_LIFETIME_MS)}. Danach ist eine neue
+Anmeldung fällig. Unter **Sicherheit** stehen alle angemeldeten Geräte; jedes
+lässt sich einzeln beenden.
 
 ### Passwort vergessen
 
-Ein vergessenes Passwort lässt sich auf der Anmeldeseite selbst anfordern. Der
-Link dazu gilt {formatRetention(PASSWORD_RESET_TTL_MS)} und lässt sich einmal
-einlösen. Das bisherige Passwort bleibt gültig, bis ein neues gesetzt ist.
+Auf der Anmeldeseite steht der Weg dorthin. Nach Eingabe der Adresse gilt:
 
-Die Antwort ist in jedem Fall dieselbe — auch bei einer unbekannten Adresse.
-Alles andere wäre eine Auskunft darüber, wer hier ein Konto hat.
+1. Der Link kommt per E-Mail, sofern ein Mailversand eingerichtet ist.
+2. Er gilt {formatRetention(PASSWORD_RESET_TTL_MS)} und lässt sich **einmal**
+   einlösen.
+3. Das bisherige Passwort bleibt gültig, bis ein neues gesetzt ist.
+4. Mit dem neuen Passwort enden alle Sitzungen und alle vertrauten Geräte.
 
-### Ein Konto entsteht nur per Einladung
+Die Antwort auf der Seite ist in **jedem** Fall dieselbe — auch bei einer
+unbekannten Adresse, einem gesperrten Konto oder einem stillgelegten
+Unternehmen. Alles andere wäre eine Auskunft darüber, wer hier ein Konto hat.
 
-Eine Selbstregistrierung gibt es nicht. Wer ein Konto braucht, wird von einem
-Konto mit Rechteverwaltung eingeladen.
+Binnen weniger Minuten entsteht kein zweiter Link. Wer zweimal drückt, bekommt
+keine zweite Mail.
+
+### Der erste Zugang
+
+Ein Konto entsteht **ausschließlich per Einladung**; eine Selbstregistrierung
+gibt es nicht. Wer eingeladen wird, bekommt einen Link, setzt sein Passwort und
+meldet sich anschließend regulär an — der Link selbst eröffnet keine Sitzung.
+
+Kommt die Einladung nicht an, hilft nur eine neue: Der Link erscheint auch in
+der Oberfläche desjenigen, der einlädt, und lässt sich von dort weitergeben.

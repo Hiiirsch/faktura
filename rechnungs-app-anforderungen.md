@@ -444,6 +444,8 @@ derselben Tabelle standen.
 | FA-DOC-01 | Ein **Handbuch für Endanwender** wird mit der Software ausgeliefert, ist **ohne Anmeldung** erreichbar und von der Anmeldeseite verlinkt. Es beschreibt die Anwendung, nicht den Betreiber, und liest keine Daten — es kennt weder Mandant noch Sitzung. | MUSS | T |
 | FA-DOC-02 | Jede Frist, Länge und Grenze im Handbuch ist ein **Verweis auf die Konstante**, die der Code anwendet — keine abgeschriebene Zahl. Ein Test hält beides gegeneinander. | MUSS | T |
 | FA-DOC-03 | Das Handbuch ist **durchsuchbar**. Die Suche läuft serverseitig über einen beim Erzeugen gebauten Index; sie funktioniert **ohne JavaScript** und verlangt keine Lockerung der Content-Security-Policy. Dass der Index zu den Quellen passt, hält ein Test fest. | MUSS | T |
+| FA-DOC-04 | Das Handbuch führt eine **Gliederung** neben dem Inhalt; das gelesene Thema ist darin ausgezeichnet. Abläufe werden als **Inline-SVG mit `currentColor`** gezeigt — sie folgen dem Farbschema und tragen keine eigenen Farbwerte. | SOLL | T |
+| FA-DOC-05 | Bildschirmfotos werden **erzeugt, nicht abgelegt**: Ein Befehl fährt die gebaute Anwendung mit Beispieldaten hoch und nimmt sie auf. Sie zeigen keinen echten Datenbestand und keinen realen Namen. | SOLL | M |
 
 ## 19. Abnahmeszenarien
 

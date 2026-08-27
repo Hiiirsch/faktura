@@ -32,3 +32,9 @@ dist/
 
 # Fremde Dokumente in der Wurzel — nie Teil des Projekts
 /*.pdf
+
+# Wegwerfbestand des Aufnahmelaufs für die Bildschirmfotos (M16.1). Er entsteht
+# in `npm run docs:shots` und wird dort auch wieder gelöscht; bleibt er nach
+# einem Abbruch liegen, gehört er trotzdem nicht ins Repository.
+/data/docs-shots.db*
+/data/docs-shots-storage/

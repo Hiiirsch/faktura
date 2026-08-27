@@ -1,33 +1,80 @@
+import { Screenshot } from './diagrams';
+
 export const meta = {
   id: 'rechnung',
   title: 'Eine Rechnung schreiben',
-  summary: 'Vom Entwurf zum Festschreiben, Vollständigkeit, steuerliche Behandlung.',
+  summary: 'Vom Entwurf zum fertigen Beleg: Positionen, Rabatte, Steuer, Vollständigkeit.',
 };
 
 ## Eine Rechnung schreiben
 
-1. Neue Rechnung anlegen. Sie entsteht als **Entwurf** und darf unvollständig
+1. **Neue Rechnung** anlegen. Sie entsteht als Entwurf und darf unvollständig
    sein — das ist sein Zweck.
-2. Empfänger wählen, Positionen erfassen, Datum und Zahlungsziel prüfen.
-3. Die Vorschau rechts zeigt das PDF selbst, keine Nachbildung. Nach dem
-   Speichern erneuert sie sich.
-4. Über den Knöpfen steht, was zum Festschreiben noch fehlt. Jede Zeile führt zu
-   ihrem Feld.
-5. Festschreiben.
+2. **Empfänger** wählen: Kunde, Felder am Beleg oder freier Anschriftenblock.
+3. **Positionen** erfassen.
+4. **Datum und Zahlungsziel** prüfen. Vorbelegt sind der heutige Tag und die
+   Frist aus den Firmendaten oder vom Kunden.
+5. **Vorschau** rechts ansehen — sie zeigt das PDF selbst, keine Nachbildung.
+6. **Festschreiben.**
+
+<Screenshot
+  src="rechnungen"
+  alt="Die Rechnungsliste mit Filterleiste, Statusreitern und einer Tabelle aus Nummer, Kunde, Datum, Fälligkeit, Bruttobetrag und Status."
+  caption="Die Rechnungsliste: Reiter nach Status, Filter darüber, Zeilenaktionen bei Hover"
+/>
+
+### Positionen
+
+Jede Zeile trägt Bezeichnung, Menge, Einheit, Einzelpreis und Steuersatz;
+Beschreibung und Rabatt sind freiwillig. Zeilen lassen sich mit der Maus
+umsortieren.
+
+Gerechnet wird ausschließlich in **ganzen Cent**. Je Position wird **einmal**
+gerundet, die Steuer dagegen **je Steuersatz** — nicht je Zeile. Deshalb kann
+die Summe der Zeilensteuern um einen Cent von der ausgewiesenen Steuer
+abweichen; ausgewiesen ist die richtige.
+
+Ein **Rabatt** gilt der einzelnen Position und wird in Prozent erfasst. Einen
+Rabatt auf die Gesamtsumme gibt es bewusst nicht — er ließe sich den Steuersätzen
+nicht eindeutig zuordnen.
 
 ### Steuerliche Behandlung
 
 Die Anwendung schlägt sie vor und begründet den Vorschlag:
 
-- **Regelbesteuerung** im Inland.
-- **Reverse Charge** beim Kunden im EU-Ausland mit USt-IdNr.
-- **Ausfuhr** beim Kunden im Drittland.
+- **Regelbesteuerung** — der Normalfall im Inland.
+- **Reverse Charge** — Kunde im EU-Ausland **mit** USt-IdNr. Der Beleg weist
+  keine Steuer aus und trägt den Hinweis auf die Steuerschuldnerschaft des
+  Leistungsempfängers.
+- **Ausfuhr** — Kunde im Drittland.
 
-Bei der Kleinunternehmerregelung ist die Behandlung festgestellt, keine Frage:
-Sie kommt aus den Firmendaten und schlägt alles andere. Abweichen bleibt
-möglich, kostet aber einen bewussten Schritt.
+Bei der **Kleinunternehmerregelung** ist die Behandlung festgestellt, keine
+Frage: Sie kommt aus den Firmendaten und schlägt alles andere.
 
-### Was der Entwurf noch nicht ist
+Abweichen ist möglich, kostet aber einen bewussten Schritt hinter einem
+aufklappbaren Bereich — mit dem Grund daneben. Der Grund für die Hürde: Ein
+falsch ausgewiesener Steuerbetrag wird geschuldet.
 
-Ein Entwurf hat keine Nummer, zählt nicht zum Umsatz und trägt im PDF einen
-sichtbaren Vermerk. Er lässt sich ändern, kopieren und löschen.
+### Was zum Festschreiben fehlt
+
+Über den Knöpfen steht, was noch fehlt: Empfängeranschrift, Positionen, Datum,
+Angaben aus den Firmendaten. Jede Zeile führt zu ihrem Feld, und das Feld
+markiert sich selbst.
+
+Das ist ein **Hinweis, kein Fehler** — ein Entwurf darf unvollständig sein. Erst
+das Festschreiben verlangt Vollständigkeit.
+
+Geprüft wird dabei mit **derselben** Regel, die auch der Server anwendet. Was
+hier grün ist, geht auch durch.
+
+### Freie Texte
+
+**Einleitung** steht über den Positionen, **Schlusstext** darunter. Beide sind
+freiwillig und gehören zu diesem einen Beleg. Ein Text, der auf jedem Beleg
+stehen soll, gehört in die Vorlage oder in den Fußtext der Firmendaten.
+
+### Kopieren
+
+**Duplizieren** legt eine neue Rechnung mit denselben Positionen und demselben
+Empfänger an — als Entwurf, mit heutigem Datum und neuer Frist. Nummer und
+Urheber wandern nicht mit: Die Kopie gehört dem, der sie anlegt.

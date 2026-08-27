@@ -1,25 +1,55 @@
+import { SheetLayout } from './diagrams';
+
 export const meta = {
   id: 'vorlagen',
   title: 'Vorlagen und PDF',
-  summary: 'DIN 5008, eigene Vorlage, Seitenzahl, Briefpapier.',
+  summary: 'DIN 5008, eigene Vorlage bearbeiten, Vorschau, Dateiname.',
 };
 
 ## Vorlagen und PDF
 
-Die Belegvorlage gehört dem Unternehmen: Sie liegt als Kopie in dieser
-Installation. Änderungen an der ausgelieferten Standardvorlage erreichen sie
-**nicht** — wer die Verbesserungen will, setzt die Ränder nach oder legt die
-Standardvorlage neu an.
+<SheetLayout />
 
-- Der Satz folgt **DIN 5008**: Das Anschriftfeld sitzt im Fenster eines
-  DIN-lang-Umschlags, dazu Falz- und Lochmarken.
-- Die **Seitenzahl** erscheint erst ab Seite 2.
+### Der Satz nach DIN 5008
+
+- Das **Anschriftfeld** sitzt links oben, im Fenster eines DIN-lang-Umschlags.
+- Rechts daneben der **Informationsblock**: Belegnummer, Datum, Kundennummer.
+- **Falzmarken** bei 105 mm und 210 mm, **Lochmarke** bei 148,5 mm.
 - Der **Blattfuß** mit Anschrift, Kontakt, Steuernummer und Bankverbindung
-  wiederholt sich auf jeder Seite.
-- Das **Briefpapier** liegt unter dem Satz, die Seitenzahl darüber.
+  wiederholt sich auf **jeder** Seite — wer nur Seite 2 vor sich hat, findet die
+  Bankverbindung trotzdem.
+- Die **Seitenzahl** erscheint erst ab Seite 2. Auf einer einseitigen Rechnung
+  wäre „Seite 1 von 1" nur Lärm.
+
+### Die Vorlage gehört dem Unternehmen
+
+Sie liegt als **Kopie** in dieser Installation. Änderungen an der ausgelieferten
+Standardvorlage erreichen sie **nicht** — wer spätere Verbesserungen will, setzt
+sie nach oder legt die Standardvorlage neu an.
+
+Bearbeitet werden HTML, CSS und die vier Seitenränder. Die Vorschau zeigt das
+Ergebnis, **bevor** gespeichert wird: mit einem echten Beleg, durch dieselbe
+Kette, die auch das fertige PDF erzeugt.
+
+Ein Fehler in der Vorlage bricht nichts Bestehendes: Er erscheint als Meldung in
+der Vorschau, und bereits festgeschriebene Belege behalten ihr fertiges PDF.
+
+### Was die Vorlage nicht entscheidet
+
+Ob ein Beleg Umsatzsteuer ausweist, steht **nicht** in der Vorlage. Diese
+Entscheidung hängt an der steuerlichen Behandlung und an den Firmendaten — eine
+Vorlage kann jedes Unternehmen ändern, und diese Frage darf davon nicht
+abhängen.
 
 ### Vorschau
 
 Die Vorschau zeigt dasselbe PDF, das auch heruntergeladen wird — dieselbe
-Schrift, dieselbe Geometrie. Blättern, Zoom, Ziehen mit der Maus und Vollbild
-gehören zur Anwendung, nicht zum Betrachter des Browsers.
+Schrift, dieselbe Geometrie, dasselbe Briefpapier. Blättern, Zoom, Ziehen mit
+der Maus und Vollbild gehören zur Anwendung, nicht zum Betrachter des Browsers.
+
+Nach dem Speichern erneuert sie sich von selbst.
+
+### Dateiname
+
+Wie die heruntergeladene Datei heißt, steht als Muster in den Firmendaten —
+etwa Belegnummer, Datum oder Kundenname. Voreingestellt ist die Belegnummer.

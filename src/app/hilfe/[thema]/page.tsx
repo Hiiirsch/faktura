@@ -4,9 +4,10 @@ import type { ReactNode } from 'react';
 
 import { findHelpTopic, HELP_TOPICS } from '@/content/hilfe';
 import { messages } from '@/i18n/de';
-import { helpTopicPath, HELP_PATH } from '@/routes';
-import { BrandLockup } from '@/ui/components/brand';
-import { FOCUS_RING, SECONDARY_BUTTON_CLASS, SECTION_CLASS } from '@/ui/components/form';
+import { helpTopicPath } from '@/routes';
+import { FOCUS_RING } from '@/ui/components/form';
+
+import { HelpShell } from '../help-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export async function generateMetadata({
  * Ein Thema des Handbuchs (M16, FA-DOC-01).
  *
  * Der Inhalt kommt als übersetzte MDX-Komponente; gesetzt wird er von
- * `mdx-components.tsx` mit den Tokens der Anwendung. In der MDX-Datei selbst
+ * `src/mdx-components.tsx` mit den Tokens der Anwendung. In der MDX-Datei selbst
  * steht keine Klasse — deshalb folgt das Handbuch dem dunklen Schema, ohne
  * davon zu wissen.
  *
@@ -47,40 +48,46 @@ export default async function HelpTopicPage({
   }
 
   const { Content } = topic;
+  const index = HELP_TOPICS.findIndex((entry) => entry.meta.id === topic.meta.id);
+  const previous = index > 0 ? HELP_TOPICS[index - 1] : undefined;
+  const next = index < HELP_TOPICS.length - 1 ? HELP_TOPICS[index + 1] : undefined;
 
   return (
-    <main className="mx-auto flex w-full max-w-content flex-col gap-6 px-8 py-12">
-      <BrandLockup />
-
-      <div>
-        <Link href={HELP_PATH} className={SECONDARY_BUTTON_CLASS}>
-          {messages.help.back}
-        </Link>
-      </div>
-
+    <HelpShell activeId={topic.meta.id}>
       <article className="flex flex-col gap-4">
         <Content />
       </article>
 
       {/*
-        Weiterlesen: Die übrigen Themen in der Reihenfolge des Handbuchs. Wer
-        unten ankommt, soll nicht zurückspringen müssen, um weiterzukommen.
+        Vor und zurück in der Reihenfolge des Handbuchs.
+
+        Die Gliederung steht links und beantwortet „wo bin ich"; diese beiden
+        Links beantworten „was kommt als Nächstes". Wer eine Seite zu Ende liest,
+        soll nicht in die Seitenleiste zurückgreifen müssen — und auf einem
+        Telefon ist sie ohnehin zugeklappt.
       */}
-      <section className={SECTION_CLASS}>
-        <h2 className="text-section font-medium text-ink">{messages.help.topicsHeading}</h2>
-        <ul className="flex flex-wrap gap-x-4 gap-y-2">
-          {HELP_TOPICS.filter((entry) => entry.meta.id !== topic.meta.id).map((entry) => (
-            <li key={entry.meta.id}>
-              <Link
-                href={helpTopicPath(entry.meta.id)}
-                className={`text-ui text-accent underline underline-offset-4 ${FOCUS_RING}`}
-              >
-                {entry.meta.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+      <nav className="flex flex-wrap justify-between gap-4 border-t border-rule pt-6">
+        <div className="min-w-0">
+          {previous === undefined ? null : (
+            <Link
+              href={helpTopicPath(previous.meta.id)}
+              className={`text-ui text-accent underline underline-offset-4 ${FOCUS_RING}`}
+            >
+              ‹ {previous.meta.title}
+            </Link>
+          )}
+        </div>
+        <div className="min-w-0 text-right">
+          {next === undefined ? null : (
+            <Link
+              href={helpTopicPath(next.meta.id)}
+              className={`text-ui text-accent underline underline-offset-4 ${FOCUS_RING}`}
+            >
+              {next.meta.title} ›
+            </Link>
+          )}
+        </div>
+      </nav>
+    </HelpShell>
   );
 }

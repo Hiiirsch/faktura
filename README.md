@@ -637,7 +637,16 @@ npm run docs:index
 ```
 
 Ohne diesen Lauf schlägt `npm run verify` fehl — ein Test vergleicht den
-eingecheckten Index mit den Quellen. Fristen und Grenzen im Text sind Verweise
+eingecheckten Index mit den Quellen.
+
+Die **Bildschirmfotos** entstehen ebenso auf Befehl. Sie brauchen einen
+Produktionsbuild, fahren die Anwendung auf einer eigenen, wegwerfbaren Datenbank
+hoch und nehmen sie auf:
+
+```bash
+npm run build
+npm run docs:shots
+``` Fristen und Grenzen im Text sind Verweise
 auf die Konstanten der Anwendung und keine abgeschriebenen Zahlen; ein zweiter
 Test hält auch das fest.
 

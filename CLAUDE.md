@@ -1680,6 +1680,49 @@ findet sie an beiden Orten. Im Wurzelverzeichnis fiel sie aus
 `npm run lint` brach mit einem Ladefehler ab statt mit einer Meldung — ein
 Abbruch, den ein Grep nach „error" nicht sieht.
 
+### Gliederung, Diagramme, Bildschirmfotos (M16.1)
+
+**Kein `layout.tsx` für die Seitenleiste.** Ein Layout bekommt den aufgerufenen
+Pfad nicht; um den aktiven Eintrag zu markieren, bräuchte die Gliederung
+`usePathname()` und damit eine Client-Komponente. Stattdessen reicht jede Seite
+ihre Kennung an `HelpShell` — zwei Aufrufstellen, dafür kein JavaScript für
+etwas, das der Server längst weiß.
+
+Ausgezeichnet wird über **`aria-current="page"`**, und gesetzt wird über genau
+dieses Attribut (`aria-[current=page]:…`) statt über eine zusätzlich vergebene
+Klasse: Die optische Auszeichnung ist dieselbe Aussage wie die für
+Screenreader, und zwei Quellen für dieselbe Aussage laufen auseinander.
+
+**Die Diagramme sind Inline-SVG mit `currentColor`** — dieselbe Bauart wie die
+Marke seit M9, aus demselben Grund: Eine Bilddatei bliebe nachts in ihrem
+Grauton stehen. Sie zeigen **Zusammenhänge, keine Bildschirme**; ein umbenannter
+Knopf macht eine Zustandsfolge nicht falsch.
+
+Sie liegen in `src/content/hilfe/diagrams.tsx`, nicht in `src/ui/`: Ihre
+Beschriftungen sind deutscher Fließtext wie in den MDX-Dateien nebenan.
+`design-tokens.test.ts` prüft **`src/content` seither mit** — ein Verzeichnis
+mit Bauteilen, das kein Wächter ansieht, wäre die Stelle, an der die erste
+Literalfarbe steht.
+
+**Bildschirmfotos werden aufgenommen, nicht abgelegt** (`npm run docs:shots`).
+Ein von Hand geschossener Screenshot ist ein Bild, das niemand nachstellen kann;
+nach der zweiten Änderung erneuert ihn niemand mehr. Das Skript fährt die
+**gebaute** Anwendung auf einer eigenen, wegwerfbaren Datenbank mit den
+Beispieldaten aus `scripts/seed.ts` hoch, meldet sich an und nimmt auf.
+
+Drei Entscheidungen darin, alle mit Anlass:
+
+- **`NODE_ENV=development` für den Seed-Lauf**, `production` für den Server.
+  `scripts/seed.ts` weigert sich gegen eine Produktionsdatenbank, und das zu
+  Recht — der erste Anlauf lief genau dort hinein.
+- **Ein neutraler Betrieb.** Der Seed legt „Musterbetrieb Tim Hirsch" an; in
+  einer mitgelieferten Dokumentation hat der Name des Entwicklers nichts zu
+  suchen. Überschrieben wird nach dem Seed, vor der Aufnahme.
+- **`<img>` statt `next/image`.** Der Optimierer verlangt in der Produktion
+  `sharp` — eine nativ übersetzte Abhängigkeit im Container für fünf verzögert
+  geladene Bilder. Die Regel ist an genau einer Stelle mit Begründung
+  abgeschaltet.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1709,6 +1752,7 @@ Abbruch, den ein Grep nach „error" nicht sieht.
 | M14.1 | Eigene Sicherheit eines Betreiberkontos: Passwort, Geräte, Passkeys | umgesetzt |
 | M15 | Mahnwesen: drei Stufen, Gebühr je Stufe, eigenes PDF | umgesetzt |
 | M16 | Handbuch: MDX-Inhalt, serverseitige Suche, öffentlich | umgesetzt |
+| M16.1 | Handbuch: Gliederung, Diagramme, erzeugte Bildschirmfotos | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

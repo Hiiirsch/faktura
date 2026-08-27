@@ -1,32 +1,72 @@
+import { Screenshot } from './diagrams';
+
 export const meta = {
   id: 'firmendaten',
   title: 'Firmendaten',
-  summary: 'Pflichtangaben, Kleinunternehmerregelung, Logo und Briefpapier.',
+  summary: 'Pflichtangaben, Kleinunternehmerregelung, Logo, Briefpapier, Nummernkreis.',
 };
 
 ## Firmendaten
 
-Die Firmendaten stehen auf jedem Beleg. Was dort fehlt, fehlt auf der Rechnung —
-und §14 UStG verlangt es. Anschrift, Steuernummer oder USt-IdNr. gehören deshalb
-vor den ersten Beleg.
+Die Firmendaten stehen auf **jedem** Beleg. Was hier fehlt, fehlt auf der
+Rechnung — und §14 UStG verlangt es. Sie gehören deshalb vor den ersten Beleg,
+nicht danach.
 
-### Kleinunternehmerregelung
+<Screenshot
+  src="firmendaten"
+  alt="Das Formular der Firmendaten mit Feldern für Name, Anschrift, Steuernummer, Bankverbindung, Logo und Briefpapier."
+  caption="Die Firmendaten"
+/>
 
-Ist die Regelung nach §19 UStG gesetzt, weist kein Beleg Umsatzsteuer aus: keine
-Spalte, keine Steuerzeile, kein Betrag. Netto und Brutto bleiben beide stehen;
-dazwischen erklärt ein Hinweis, warum sie gleich sind.
+### Was auf den Beleg muss
 
-Der Grund für die Strenge: Was ausgewiesen ist, schuldet man nach §14c — auch
-wenn es falsch ist.
+- **Vollständiger Name und Anschrift** des Unternehmens.
+- **Steuernummer oder USt-IdNr.** — eines von beidem genügt, beides ist
+  erlaubt.
+- **Bankverbindung**, damit die Rechnung bezahlt werden kann. Sie steht im
+  Blattfuß und gilt für jede Seite.
+- Bei eingetragenen Gesellschaften zusätzlich **Registergericht,
+  Registernummer** und die vertretungsberechtigte Person.
 
-### Aussehen des Belegs
+Fehlt etwas davon, meldet es der Beleg beim Festschreiben — mit dem Hinweis,
+welches Feld gemeint ist.
 
-- Das **Logo** erscheint im Briefkopf jedes Belegs.
-- Das **Briefpapier** ist eine einseitige A4-PDF und wird unter jede Seite
-  gelegt. Es trägt nur Gestaltung; Anschrift, Bankverbindung und Pflichtangaben
-  setzt die Vorlage.
+### Kleinunternehmerregelung nach §19 UStG
 
-### Weitere Vorgaben
+Ist sie gesetzt, weist **kein** Beleg Umsatzsteuer aus: keine Spalte, keine
+Steuerzeile, kein Betrag. Netto und Brutto bleiben beide stehen; dazwischen
+erklärt ein Hinweis, warum sie gleich sind.
 
-Nummernkreis, Zahlungsziel, Währung, Standardsteuersatz und die Mahngebühren je
-Stufe sind ebenfalls hier hinterlegt.
+Der Grund für die Strenge: **Was ausgewiesen ist, schuldet man nach §14c** —
+auch wenn es falsch ist. Eine Spalte „USt. 0 %" behauptet eine Steuerpflicht,
+die nicht besteht.
+
+Die Einstellung schlägt am Beleg alles andere: Auch bei einem ausländischen
+Kunden weist ein Kleinunternehmer keine Steuer aus.
+
+### Aussehen der Belege
+
+**Logo.** Erscheint im Briefkopf jedes Belegs. Ein festgeschriebener Beleg
+behält das Logo vom Tag seiner Ausstellung — ein späterer Wechsel ändert alte
+Belege nicht.
+
+**Briefpapier.** Eine einseitige **A4-PDF**, die unter jede Seite gelegt wird.
+Sie trägt nur Gestaltung: Anschrift, Bankverbindung und Pflichtangaben setzt die
+Vorlage. Läge die Steuernummer auf dem Bogen, stünde sie in einer Datei, die
+keine Prüfung lesen kann.
+
+Zwei Dinge werden beim Hochladen geprüft und sonst abgewiesen:
+
+- **Genau eine Seite.** Ein zweiseitiger Bogen wäre eine stille Falle — der
+  Beleg bekäme immer nur die erste Seite.
+- **A4**, mit wenigen Zehntelmillimetern Spielraum. Gestaltungsprogramme runden
+  das Format unterschiedlich.
+
+### Vorgaben für neue Belege
+
+Hier stehen die Werte, mit denen ein neuer Beleg vorbelegt wird: Zahlungsziel in
+Tagen, Währung, Standardsteuersatz und das Muster der Belegnummer. Wer sie
+ändert, ändert **künftige** Belege — bestehende bleiben, wie sie sind.
+
+Ebenfalls hier: die **Mahngebühren** je Stufe und die Zahlungsfrist einer
+Mahnung.

@@ -12,6 +12,7 @@
     "backup": "tsx scripts/backup.ts",
     "seed": "tsx scripts/seed.ts",
     "docs:index": "tsx scripts/build-docs-index.ts",
+    "docs:shots": "tsx scripts/build-docs-shots.ts",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",

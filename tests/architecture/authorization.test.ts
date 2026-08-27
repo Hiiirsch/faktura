@@ -107,6 +107,12 @@ const MAY_CALL_ORGANIZATION_CONTEXT_OF: readonly string[] = [
   'src/infrastructure/repositories/organization-repository.ts',
   'scripts/create-user.ts',
   'scripts/seed.ts',
+  // Der Aufnahmelauf für die Bildschirmfotos des Handbuchs (M16.1). Er legt
+  // eine **eigene, wegwerfbare** Datenbank an, setzt darin einen neutralen
+  // Betrieb ein und löscht sie danach. Auch hier keine Sitzung, und auch hier
+  // ist die Herkunft belegt: die eine Organisation, die eine frische Datenbank
+  // mitbringt.
+  'scripts/build-docs-shots.ts',
 ];
 
 /**
@@ -119,6 +125,7 @@ const MAY_CALL_ORGANIZATION_CONTEXT_OF: readonly string[] = [
 const MAY_CALL_FULLY_AUTHORIZED: readonly string[] = [
   'src/application/auth/authorize.ts',
   'scripts/seed.ts',
+  'scripts/build-docs-shots.ts',
 ];
 
 describe('NFA-SEC-24 Jeder Anwendungsfall verlangt einen Nachweis', () => {

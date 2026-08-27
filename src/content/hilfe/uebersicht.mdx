@@ -1,0 +1,56 @@
+import { Screenshot } from './diagrams';
+
+export const meta = {
+  id: 'uebersicht',
+  title: 'Die Übersicht',
+  summary: 'Kennzahlen, Umsatzverlauf, Fristenlisten — was die Startseite zeigt.',
+};
+
+## Die Übersicht
+
+Die Startseite beantwortet vier Fragen, ohne dass man sie stellt: Was ist offen?
+Was ist überfällig? Wie lief der Monat? Wer zahlt gut?
+
+<Screenshot
+  src="uebersicht"
+  alt="Die Übersicht mit vier Kennzahlen, einem Balkendiagramm über zwölf Monate und zwei Listen: überfällige Belege links, in den nächsten vierzehn Tagen fällige rechts."
+  caption="Die Übersicht mit Beispieldaten"
+/>
+
+### Die vier Kennzahlen
+
+- **Offen gesamt** — die Summe aller unbezahlten Forderungen, brutto. Entwürfe
+  und Stornos zählen nicht mit.
+- **Davon überfällig** — der Teil davon, dessen Frist verstrichen ist, mit der
+  Anzahl der betroffenen Belege.
+- **Umsatz laufender Monat** — netto, nach Rechnungsdatum.
+- **Umsatz des Jahres** — netto.
+
+Umsatz zählt **netto**: Die Umsatzsteuer ist durchlaufender Posten, kein Ertrag.
+Entwürfe zählen nicht, Gutschriften nie — neutralisiert wird dadurch, dass der
+stornierte Beleg herausfällt.
+
+### Umsatz je Monat
+
+Zwölf Monate rückwärts, netto. Der laufende Monat ist hervorgehoben und
+naturgemäß unvollständig.
+
+### Die beiden Fristenlisten
+
+**Überfällig** zeigt, was zu lange offen ist — mit Betrag und Anzahl der Tage.
+Das ist die Liste, aus der Mahnungen entstehen.
+
+**Fällig in den nächsten vierzehn Tagen** zeigt, was demnächst erwartet wird.
+
+Beide führen unmittelbar zum Beleg.
+
+### Zuletzt bearbeitet und beste Kunden
+
+Darunter stehen die zuletzt angefassten Belege — praktisch nach einer
+Unterbrechung — und die umsatzstärksten Kunden des laufenden Jahres.
+
+### Alle Zahlen aus einer Quelle
+
+Kacheln, Diagramm und Listen stammen aus **einer** Berechnung mit **einem**
+Stichtag. Läse jede Kachel ihre eigene Uhr, könnte eine um Mitternacht geladene
+Übersicht denselben Beleg als überfällig und als heute fällig ausweisen.

@@ -20,6 +20,7 @@ import Mitglieder, { meta as mitglieder } from './mitglieder.mdx';
 import Rechnung, { meta as rechnung } from './rechnung.mdx';
 import Sicherheit, { meta as sicherheit } from './sicherheit.mdx';
 import Stammdaten, { meta as stammdaten } from './stammdaten.mdx';
+import Uebersicht, { meta as uebersicht } from './uebersicht.mdx';
 import Vorlagen, { meta as vorlagen } from './vorlagen.mdx';
 import Zahlungen, { meta as zahlungen } from './zahlungen.mdx';
 
@@ -38,6 +39,7 @@ export type HelpTopic = {
 
 export const HELP_TOPICS: readonly HelpTopic[] = [
   { meta: anmeldung, Content: Anmeldung },
+  { meta: uebersicht, Content: Uebersicht },
   { meta: firmendaten, Content: Firmendaten },
   { meta: stammdaten, Content: Stammdaten },
   { meta: rechnung, Content: Rechnung },
