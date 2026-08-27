@@ -88,6 +88,16 @@ describe('FA-DOC-03 Die Suche', () => {
   });
 });
 
+describe('FA-DOC-06 Die Neuerungen stehen im Handbuch', () => {
+  it('sind durchsuchbar wie jedes andere Thema', () => {
+    // Der Eintrag zum Mahnwesen soll auffindbar sein, ohne dass jemand weiß,
+    // wann er dazugekommen ist.
+    const treffer = searchHelp(HELP_INDEX, 'zahlungserinnerung');
+
+    expect(treffer.map((entry) => entry.topicId)).toContain('neuerungen');
+  });
+});
+
 describe('FA-DOC-02 Das Handbuch nennt keine abgeschriebene Zahl', () => {
   async function sources(): Promise<string> {
     const files = (await readdir(contentDir)).filter((name) => name.endsWith('.mdx'));

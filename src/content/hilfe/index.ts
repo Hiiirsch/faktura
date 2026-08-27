@@ -17,6 +17,7 @@ import Firmendaten, { meta as firmendaten } from './firmendaten.mdx';
 import Grenzen, { meta as grenzen } from './grenzen.mdx';
 import Mahnungen, { meta as mahnungen } from './mahnungen.mdx';
 import Mitglieder, { meta as mitglieder } from './mitglieder.mdx';
+import Neuerungen, { meta as neuerungen } from './neuerungen.mdx';
 import Rechnung, { meta as rechnung } from './rechnung.mdx';
 import Sicherheit, { meta as sicherheit } from './sicherheit.mdx';
 import Stammdaten, { meta as stammdaten } from './stammdaten.mdx';
@@ -51,6 +52,15 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
   { meta: sicherheit, Content: Sicherheit },
   { meta: daten, Content: Daten },
   { meta: grenzen, Content: Grenzen },
+  /*
+   * Die Neuerungen stehen **am Ende**, nicht am Anfang.
+   *
+   * Wer das Handbuch zum ersten Mal öffnet, will wissen, wie man sich anmeldet
+   * — nicht, was sich seit dem letzten Mal geändert hat. Für alle anderen
+   * genügt ein Eintrag in der Gliederung, und der ist von jeder Seite aus zu
+   * sehen.
+   */
+  { meta: neuerungen, Content: Neuerungen },
 ];
 
 export function findHelpTopic(id: string): HelpTopic | null {

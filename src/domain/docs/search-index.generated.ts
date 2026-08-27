@@ -245,6 +245,48 @@ export const HELP_INDEX: readonly HelpIndexEntry[] = [
     "text": "Führt ein Unternehmen mehr als ein Konto, zeigt die Rechnungsliste eine Spalte mit dem Urheber. Bei einem einzigen Konto entfällt sie — dort stünde in jeder Zeile derselbe Name."
   },
   {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "Neuerungen",
+    "text": "Was sich zuletzt geändert hat, das Neueste zuerst. Hier steht, was für die Arbeit mit Faktura einen Unterschied macht — nicht jede Änderung am Programm."
+  },
+  {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "August 2026 · Handbuch",
+    "text": "Dieses Handbuch. Ohne Anmeldung erreichbar, von der Anmeldeseite aus verlinkt und durchsuchbar. Die Suche läuft auf dem Server und funktioniert auch ohne JavaScript. Abbildungen: Ablaufdiagramme zu Belegzuständen, Mahnstufen und Satzspiegel sowie Bildschirmfotos der wichtigsten Ansichten."
+  },
+  {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "August 2026 · Mahnwesen",
+    "text": "Mahnungen zu überfälligen Rechnungen, in drei Stufen: Zahlungserinnerung, Mahnung, letzte Mahnung. Jede Mahnung ist ein eigenes Dokument mit eigener Nummer und eigenem PDF, in einem vom Rechnungskreis getrennten Nummernkreis. Mahngebühren je Stufe in den Firmendaten; die Beträge einer ausgestellten Mahnung sind eingefroren. Wird nicht gemahnt, nennt die Belegseite den Grund statt eines toten Knopfes. Mahnen ist ein eigenes Recht — es lässt sich einer Rolle einzeln geben."
+  },
+  {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "August 2026 · Sicherheit des Betreiberkontos",
+    "text": "Ein Betreiberkonto kann sein Passwort selbst ändern, seine angemeldeten Geräte sehen und einzeln beenden sowie Passkeys verwalten. Beim Passwortwechsel enden alle anderen Sitzungen; die eigene bleibt."
+  },
+  {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "August 2026 · Zustellung per E-Mail",
+    "text": "Ist ein Mailserver eingerichtet, gehen Einladungen und Zurücksetzungslinks zusätzlich per E-Mail hinaus. Der Link steht weiterhin in der Oberfläche — wer die Nachricht nicht bekommt, ist nicht ausgesperrt. „Passwort vergessen\" auf der Anmeldeseite: Wer sein Passwort verliert, braucht niemanden mehr anzurufen. Die Oberfläche sagt nach jeder Einladung, was daraus geworden ist: zugestellt, kein Versand eingerichtet, oder abgelehnt. Ohne Mailserver verhält sich alles wie zuvor; die Anwendung braucht dafür weiterhin keine Verbindung nach außen."
+  },
+  {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "August 2026 · Rechtliches und Kleinigkeiten",
+    "text": "Impressum und Datenschutzhinweise, gepflegt vom Betreiber der Anlage und ohne Anmeldung erreichbar. Die Fristen darin stammen aus der Anwendung selbst. Passwörter lassen sich beim Tippen ansehen — ein Auge im Feld."
+  },
+  {
+    "topicId": "neuerungen",
+    "topicTitle": "Neuerungen",
+    "heading": "August 2026 · Briefpapier, PDF und Rückmeldungen",
+    "text": "Eigenes Briefpapier: eine einseitige A4-PDF, die unter jede Seite des Belegs gelegt wird. Das PDF entsteht beim Festschreiben, nicht erst beim ersten Abruf. Damit kann keine spätere Vorlagenänderung einen bereits geltenden Beleg verändern. Die Vollständigkeitsprüfung erscheint schon im Entwurf, über den Knöpfen, und markiert die fehlenden Felder. Eigene Belegvorschau statt des eingebauten Betrachters: Blättern, Zoom, Ziehen mit der Maus und Vollbild — im Aussehen der Anwendung. Nach dem Speichern erscheint eine Bestätigung dort, wo der Knopf steht. Ehrlichere Aktionen: Was der Server ablehnt, wird nicht mehr angeboten — keine Stornierung einer Gutschrift, kein Zahlungsformular am stornierten Beleg, keine Sammelaktion ohne passende Auswahl."
+  },
+  {
     "topicId": "rechnung",
     "topicTitle": "Eine Rechnung schreiben",
     "heading": "Eine Rechnung schreiben",

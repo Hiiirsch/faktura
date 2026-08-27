@@ -1205,6 +1205,13 @@ export const messages = {
     resultsNone:
       'Kein Abschnitt enthält alle gesuchten Wörter. Ein kürzerer Begriff findet mehr.',
     topicsHeading: 'Themen',
+    /*
+     * Der Hinweis auf die Neuerungen steht auf der Übersicht, obwohl das Thema
+     * in der Gliederung ohnehin auftaucht: „Was ist neu?" ist die Frage, mit
+     * der jemand nach einer Aktualisierung herkommt, und sie soll nicht erst
+     * unten in einer Liste von dreizehn Themen beantwortet werden.
+     */
+    whatsNew: 'Was zuletzt dazugekommen ist',
     back: 'Zur Übersicht',
   },
 

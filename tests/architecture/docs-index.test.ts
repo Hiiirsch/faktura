@@ -83,6 +83,29 @@ describe('FA-DOC-03 Der Suchindex passt zu den Quellen', () => {
     expect(eintrag?.text).toBe('Ein Passwort ist mindestens … Zeichen lang.');
   });
 
+  it('führt die Neuerungen als letztes Thema, das Anmelden als erstes', async () => {
+    /*
+     * Die Reihenfolge ist eine Aussage: Wer das Handbuch zum ersten Mal öffnet,
+     * will wissen, wie man sich anmeldet — nicht, was sich seit dem letzten Mal
+     * geändert hat. Ein Eintrag, der oben einsortiert wird, kehrt das um.
+     *
+     * **Gelesen wird der Quelltext, nicht das Modul.** Die schnelle Suite kennt
+     * den MDX-Lader nicht; ein `import` von `@/content/hilfe` scheitert dort
+     * beim Übersetzen der ersten Überschrift. Für eine Reihenfolge genügt der
+     * Text.
+     */
+    const source = await readFile(
+      path.join(projectRoot, 'src', 'content', 'hilfe', 'index.ts'),
+      'utf8',
+    );
+
+    const liste = source.slice(source.indexOf('HELP_TOPICS'));
+    const reihenfolge = [...liste.matchAll(/\{ meta: (\w+), Content:/gu)].map((m) => m[1]);
+
+    expect(reihenfolge[0]).toBe('anmeldung');
+    expect(reihenfolge.at(-1)).toBe('neuerungen');
+  });
+
   it('weist eine Datei ohne `meta` ab, statt sie zu überspringen', () => {
     // Eine übersprungene Datei fehlte in der Suche, ohne dass es jemand merkt.
     expect(() => entriesOf('## Nur eine Überschrift\n\nText.')).toThrow();

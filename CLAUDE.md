@@ -1680,6 +1680,26 @@ findet sie an beiden Orten. Im Wurzelverzeichnis fiel sie aus
 `npm run lint` brach mit einem Ladefehler ab statt mit einer Meldung — ein
 Abbruch, den ein Grep nach „error" nicht sieht.
 
+### Die Neuerungen (M16.2)
+
+**Von Hand geschrieben, nicht aus dem Verlauf abgeleitet.** Die
+Commit-Nachrichten dieses Projekts sind ausführlich und gut — aber sie richten
+sich an Entwickler („Der Autorisierungswächter verlangte das neue Skript in
+beiden Erlaubnislisten“) und beantworten nicht, was sich für jemanden ändert,
+der Rechnungen schreibt. Ein erzeugtes Änderungsprotokoll wäre vollständig und
+unlesbar.
+
+**Am Ende der Gliederung, nicht am Anfang.** Wer das Handbuch zum ersten Mal
+öffnet, will wissen, wie man sich anmeldet. Für alle anderen steht auf der
+Übersicht ein Verweis darauf — „Was ist neu?“ ist die Frage, mit der jemand nach
+einer Aktualisierung herkommt, und sie soll nicht erst unten in einer Liste von
+dreizehn Themen beantwortet werden.
+
+**Die Reihenfolge steht im Architekturtest**, nicht in einem Unit-Test: Die
+schnelle Suite kennt den MDX-Lader nicht, ein `import` von `@/content/hilfe`
+scheitert dort beim Übersetzen der ersten Überschrift. Gelesen wird deshalb der
+Quelltext des Verzeichnisses — für eine Reihenfolge genügt Text.
+
 ### Gliederung, Diagramme, Bildschirmfotos (M16.1)
 
 **Kein `layout.tsx` für die Seitenleiste.** Ein Layout bekommt den aufgerufenen
@@ -1753,6 +1773,7 @@ Drei Entscheidungen darin, alle mit Anlass:
 | M15 | Mahnwesen: drei Stufen, Gebühr je Stufe, eigenes PDF | umgesetzt |
 | M16 | Handbuch: MDX-Inhalt, serverseitige Suche, öffentlich | umgesetzt |
 | M16.1 | Handbuch: Gliederung, Diagramme, erzeugte Bildschirmfotos | umgesetzt |
+| M16.2 | Handbuch: Abschnitt „Neuerungen“ | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

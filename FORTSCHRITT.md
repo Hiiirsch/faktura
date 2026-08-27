@@ -694,6 +694,7 @@ Auftraggeber vorgegeben hat.
 | FA-DOC-03 | Durchsuchbar, serverseitig, ohne JavaScript | MUSS | T | M16 | umgesetzt | `searchHelp()` in `src/domain/docs/search.ts` über den erzeugten Index; das Suchfeld ist ein `GET`-Formular. `tests/architecture/docs-index.test.ts` erzeugt den Index neu und vergleicht — wer eine MDX-Datei ändert und `npm run docs:index` vergisst, kommt dort nicht vorbei |
 | FA-DOC-04 | Gliederung neben dem Inhalt, Abläufe als SVG | SOLL | T | M16.1 | umgesetzt | `HelpShell` mit Seitenleiste; das aktive Thema trägt `aria-current="page"`, und gesetzt wird über **das Attribut** statt über eine zusätzliche Klasse — die optische Auszeichnung ist dieselbe Aussage wie die für Screenreader. Vier Zeichnungen in `src/content/hilfe/diagrams.tsx` mit `currentColor`; `design-tokens.test.ts` prüft `src/content` seither mit |
 | FA-DOC-05 | Bildschirmfotos werden erzeugt | SOLL | M | M16.1 | umgesetzt | `npm run docs:shots` — eigene wegwerfbare Datenbank, Beispieldaten aus `scripts/seed.ts`, neutraler Betrieb statt des Entwicklernamens, festes Fenster, helles Schema. Fünf Bilder in `public/hilfe/` |
+| FA-DOC-06 | Abschnitt „Neuerungen“, das Neueste zuerst | SOLL | T | M16.2 | umgesetzt | `src/content/hilfe/neuerungen.mdx` — von Hand geschrieben, nicht aus Commit-Nachrichten abgeleitet: Die sind entwicklerseitig und beantworten nicht, was sich für den Benutzer ändert. Steht **am Ende** der Gliederung und ist von der Übersicht aus verlinkt; `tests/architecture/docs-index.test.ts` hält die Reihenfolge fest |
 
 ## Abnahmeszenarien (Katalog §19)
 

@@ -42,6 +42,15 @@ export default async function HelpPage({
     <HelpShell activeId={null}>
       <PageHeader title={messages.help.heading} description={messages.help.intro} />
 
+      <p>
+        <Link
+          href={helpTopicPath('neuerungen')}
+          className={`text-ui text-accent underline underline-offset-4 ${FOCUS_RING}`}
+        >
+          {messages.help.whatsNew} ›
+        </Link>
+      </p>
+
       {query.length === 0 ? null : (
         <section className={SECTION_CLASS}>
           <h2 className="text-section font-medium text-ink">

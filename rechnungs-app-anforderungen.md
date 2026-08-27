@@ -446,6 +446,7 @@ derselben Tabelle standen.
 | FA-DOC-03 | Das Handbuch ist **durchsuchbar**. Die Suche läuft serverseitig über einen beim Erzeugen gebauten Index; sie funktioniert **ohne JavaScript** und verlangt keine Lockerung der Content-Security-Policy. Dass der Index zu den Quellen passt, hält ein Test fest. | MUSS | T |
 | FA-DOC-04 | Das Handbuch führt eine **Gliederung** neben dem Inhalt; das gelesene Thema ist darin ausgezeichnet. Abläufe werden als **Inline-SVG mit `currentColor`** gezeigt — sie folgen dem Farbschema und tragen keine eigenen Farbwerte. | SOLL | T |
 | FA-DOC-05 | Bildschirmfotos werden **erzeugt, nicht abgelegt**: Ein Befehl fährt die gebaute Anwendung mit Beispieldaten hoch und nimmt sie auf. Sie zeigen keinen echten Datenbestand und keinen realen Namen. | SOLL | M |
+| FA-DOC-06 | Das Handbuch führt einen **Abschnitt „Neuerungen“** mit den jüngsten Änderungen, das Neueste zuerst, in der Sprache der Anwender — nicht abgeleitet aus Commit-Nachrichten. Er steht am Ende der Gliederung und ist von der Übersicht aus verlinkt. | SOLL | T |
 
 ## 19. Abnahmeszenarien
 
