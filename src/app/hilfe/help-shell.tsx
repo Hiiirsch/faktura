@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { HELP_TOPICS } from '@/content/hilfe';
+import { APP_VERSION } from '@/domain/version';
 import { messages } from '@/i18n/de';
 import { helpTopicPath, HELP_PATH } from '@/routes';
 import { BrandLockup } from '@/ui/components/brand';
@@ -58,6 +59,19 @@ export function HelpShell({
         <nav aria-label={messages.help.topicsHeading} className="hidden lg:block">
           <TopicList activeId={activeId} />
         </nav>
+
+        {/*
+          Die laufende Version, unter der Gliederung.
+
+          Sie steht hier und **nicht** im Fuß der Anmeldeseite: Eine exakte
+          Versionsnummer vor der Anmeldung sagt einem Angreifer, welche Lücken
+          er versuchen kann — dieselbe Überlegung, aus der `X-Powered-By`
+          abgeschaltet ist. Im Handbuch nennt sie ohnehin jeder Eintrag der
+          Neuerungen.
+        */}
+        <p className="hidden text-small text-ink-faint lg:block">
+          {messages.help.version.replace('{version}', APP_VERSION)}
+        </p>
 
         <details className="lg:hidden">
           <summary className={`cursor-pointer text-ui font-medium text-ink ${FOCUS_RING}`}>

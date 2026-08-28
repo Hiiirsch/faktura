@@ -1212,6 +1212,8 @@ export const messages = {
      * unten in einer Liste von dreizehn Themen beantwortet werden.
      */
     whatsNew: 'Was zuletzt dazugekommen ist',
+    /* „Faktura 1.0.0" — der Name steht dabei, damit die Zahl allein nicht rätselhaft ist. */
+    version: 'Faktura {version}',
     back: 'Zur Übersicht',
   },
 

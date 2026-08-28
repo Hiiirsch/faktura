@@ -1,15 +1,32 @@
+import { APP_VERSION } from '@/domain/version';
+
 export const meta = {
   id: 'neuerungen',
   title: 'Neuerungen',
-  summary: 'Was zuletzt dazugekommen ist — das Neueste zuerst.',
+  summary: 'Was zuletzt dazugekommen ist — das Neueste zuerst, nach Version.',
 };
 
 ## Neuerungen
 
+Diese Anlage läuft mit **Faktura {APP_VERSION}**.
+
 Was sich zuletzt geändert hat, das Neueste zuerst. Hier steht, was für die
 Arbeit mit Faktura einen Unterschied macht — nicht jede Änderung am Programm.
 
-### August 2026 · Handbuch
+### Wie die Nummern zu lesen sind
+
+Drei Zahlen, bezogen auf den Betrieb einer Anlage:
+
+- Die **erste** steigt, wenn eine Aktualisierung keinen Rückweg lässt oder eine
+  Zusage sich ändert. Vorher nachlesen.
+- Die **zweite** steigt bei neuen Fähigkeiten. Aktualisieren ist gefahrlos.
+- Die **dritte** steigt bei Behebungen, ohne dass sich etwas anders verhält als
+  beschrieben.
+
+Stände unterhalb von 1.0.0 sind rückwirkend vergeben; als Auslieferung gab es
+sie nie.
+
+### 1.0.0 · 28. August 2026 · Handbuch
 
 - Dieses **Handbuch**. Ohne Anmeldung erreichbar, von der Anmeldeseite aus
   verlinkt und durchsuchbar. Die Suche läuft auf dem Server und funktioniert
@@ -17,7 +34,7 @@ Arbeit mit Faktura einen Unterschied macht — nicht jede Änderung am Programm.
 - **Abbildungen**: Ablaufdiagramme zu Belegzuständen, Mahnstufen und Satzspiegel
   sowie Bildschirmfotos der wichtigsten Ansichten.
 
-### August 2026 · Mahnwesen
+### 0.9.0 · August 2026 · Mahnwesen
 
 - **Mahnungen** zu überfälligen Rechnungen, in drei Stufen: Zahlungserinnerung,
   Mahnung, letzte Mahnung.
@@ -29,13 +46,13 @@ Arbeit mit Faktura einen Unterschied macht — nicht jede Änderung am Programm.
   Knopfes.
 - Mahnen ist ein **eigenes Recht** — es lässt sich einer Rolle einzeln geben.
 
-### August 2026 · Sicherheit des Betreiberkontos
+### 0.8.0 · August 2026 · Sicherheit des Betreiberkontos
 
 - Ein Betreiberkonto kann sein **Passwort selbst ändern**, seine angemeldeten
   Geräte sehen und einzeln beenden sowie **Passkeys** verwalten.
 - Beim Passwortwechsel enden alle **anderen** Sitzungen; die eigene bleibt.
 
-### August 2026 · Zustellung per E-Mail
+### 0.7.0 · August 2026 · Zustellung per E-Mail
 
 - Ist ein Mailserver eingerichtet, gehen **Einladungen und
   Zurücksetzungslinks zusätzlich per E-Mail** hinaus. Der Link steht weiterhin
@@ -47,13 +64,13 @@ Arbeit mit Faktura einen Unterschied macht — nicht jede Änderung am Programm.
 - Ohne Mailserver verhält sich alles wie zuvor; die Anwendung braucht dafür
   weiterhin keine Verbindung nach außen.
 
-### August 2026 · Rechtliches und Kleinigkeiten
+### 0.6.0 · August 2026 · Rechtliches und Kleinigkeiten
 
 - **Impressum und Datenschutzhinweise**, gepflegt vom Betreiber der Anlage und
   ohne Anmeldung erreichbar. Die Fristen darin stammen aus der Anwendung selbst.
 - **Passwörter lassen sich beim Tippen ansehen** — ein Auge im Feld.
 
-### August 2026 · Briefpapier, PDF und Rückmeldungen
+### 0.5.0 · August 2026 · Briefpapier, PDF und Rückmeldungen
 
 - **Eigenes Briefpapier**: eine einseitige A4-PDF, die unter jede Seite des
   Belegs gelegt wird.
