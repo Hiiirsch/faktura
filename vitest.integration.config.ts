@@ -27,8 +27,11 @@ export default defineConfig({
     // der gestartete Server.
     env: {
       // Der Testprozess arbeitet auf einer eigenen Datenbank, die vor jedem
-      // Test aus einer Vorlage neu entsteht.
-      DATABASE_URL: 'file:../data/integration-data.db',
+      // Test geleert wird. Der Vorgabewert gilt für den Entwicklungsrechner;
+      // in der CI setzt der Läufer `TEST_DATA_DATABASE_URL`.
+      DATABASE_URL:
+        process.env['TEST_DATA_DATABASE_URL'] ??
+        'postgresql://faktura:entwicklung@localhost:55432/faktura_test_data?schema=public',
       APP_URL: 'http://127.0.0.1:3987',
       APP_TIMEZONE: 'Europe/Berlin',
       APP_NAME: 'Faktura',

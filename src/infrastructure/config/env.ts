@@ -33,7 +33,7 @@ function leerIstUnkonfiguriert<T extends z.ZodType>(schema: T): z.ZodType<z.outp
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
-  /** SQLite-Verbindung, z. B. `file:/app/data/faktura.db`. */
+  /** PostgreSQL-Verbindung, z. B. `postgresql://faktura:…@db:5432/faktura`. */
   DATABASE_URL: z.string().min(1, 'DATABASE_URL darf nicht leer sein'),
 
   /** Öffentliche Basis-URL, unter der die Anwendung erreichbar ist. */

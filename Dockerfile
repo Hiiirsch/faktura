@@ -82,9 +82,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # dafür sorgt docker-compose.yml (NFA-SEC-19).
 ENV HOSTNAME=0.0.0.0
 
+# `postgresql-client` liefert `pg_dump` und `pg_restore`. Sie sind seit M17
+# Betriebswerkzeug, nicht Beiwerk: Die Sicherung (NFA-BETR-03) ruft `pg_dump`
+# auf, und ohne das Paket fiele das erst beim ersten Sicherungslauf auf — also
+# genau dann, wenn man sie braucht.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         openssl ca-certificates \
+        postgresql-client \
         chromium \
         chromium-sandbox \
         fonts-liberation \
@@ -97,7 +102,7 @@ ENV CHROMIUM_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 # Der Standardbenutzer `node` des Basisimages ist kein Root (NFA-SEC-20).
-RUN mkdir -p /app/data /app/storage/artifacts && chown -R node:node /app
+RUN mkdir -p /app/storage/artifacts && chown -R node:node /app
 
 # Anwendungsbündel aus dem Standalone-Output.
 COPY --from=builder --chown=node:node /app/.next/standalone ./

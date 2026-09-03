@@ -54,13 +54,17 @@ describe('NFA-ARCH-10 Datenbankzugriff nur über den ORM', () => {
   });
 
   /**
-   * Die eine erlaubte Stelle. Als Liste und nicht als Kommentar, damit ein
-   * zweiter Aufruf den Test bricht statt nur eine Regel zu verletzen, an die
-   * sich niemand erinnert.
+   * **Seit M17 leer.** Bis dahin stand hier `src/infrastructure/db/backup.ts`:
+   * Die Sicherung brauchte `VACUUM INTO`, wofür Prisma keine Entsprechung hat.
+   * Mit PostgreSQL erzeugt `pg_dump` den Abzug, und die Ausnahme ist
+   * weggefallen statt umgeschrieben worden.
+   *
+   * Die Liste bleibt als Liste stehen, damit eine künftige Ausnahme hier
+   * eingetragen und damit sichtbar werden muss.
    */
-  const ALLOWED = ['src/infrastructure/db/backup.ts'];
+  const ALLOWED: readonly string[] = [];
 
-  it('enthält im Quellcode keinen Roh-SQL-Aufruf außerhalb der Sicherung', async () => {
+  it('enthält im Quellcode keinen einzigen Roh-SQL-Aufruf mehr', async () => {
     const files = await collectSourceFiles(sourceRoot);
     expect(files.length).toBeGreaterThan(0);
 
@@ -79,15 +83,14 @@ describe('NFA-ARCH-10 Datenbankzugriff nur über den ORM', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('beschränkt die Ausnahme auf genau einen Aufruf', async () => {
-    const contents = await readFile(path.join(projectRoot, ALLOWED[0] ?? ''), 'utf8');
-    // Ohne Kommentare gezählt: Die Datei erklärt die Ausnahme ausführlich und
-    // nennt den Aufruf dabei beim Namen.
-    const code = contents.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    const calls = code.match(/\$(?:queryRaw|executeRaw|queryRawUnsafe|executeRawUnsafe|queryRawTyped)\b/g);
+  it('braucht für die Sicherung keine Ausnahme mehr', async () => {
+    // Die Gegenprobe zur leeren Liste: Wer `pg_dump` durch einen SQL-Aufruf
+    // ersetzt, bricht diesen Test — und muss die Ausnahme bewusst wieder
+    // eintragen, statt sie unbemerkt zu erben.
+    const backup = await readFile(path.join(sourceRoot, 'infrastructure/db/backup.ts'), 'utf8');
 
-    // Genau einer, und genau `VACUUM INTO`.
-    expect(calls).toHaveLength(1);
-    expect(contents).toContain('VACUUM INTO');
+    expect(RAW_SQL_PATTERN.test(backup)).toBe(false);
+    expect(backup).toContain('pg_dump');
   });
+
 });
