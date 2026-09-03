@@ -115,6 +115,42 @@ Migrationen laufen bei jedem Start (`prisma migrate deploy`). Schlagen sie
 fehl, startet der Server nicht — ein Betrieb gegen ein unbekanntes Schema wäre
 gefährlicher als ein ausbleibender Start.
 
+### Woraus die Anwendung besteht
+
+Zwei Container, und im ersten laufen vier Bestandteile — davon nur zwei als
+eigener Prozess:
+
+| Bestandteil | Was er ist | Wann er startet |
+|---|---|---|
+| Anwendungsserver | Next.js aus dem Standalone-Bündel (`server.js`) | mit dem Container |
+| Prisma-Migrator | kein Dauerprozess: wendet die Migrationen an | im Entrypoint, **vor** dem Server |
+| SQLite | kein Prozess, sondern eine Datei im Anwendungsprozess | mit dem Server |
+| Chromium | Kindprozess für die PDF-Ausgabe | **bei Bedarf**, beim ersten Festschreiben oder Abruf |
+
+Ein Mailserver gehört nicht dazu: Er ist extern und optional (siehe
+[E-Mail-Versand](#e-mail-versand)). Ohne ihn läuft alles unverändert.
+
+Die Startreihenfolge steht vollständig in `scripts/entrypoint.sh`:
+
+```sh
+prisma migrate deploy   # Schema aktuell halten
+exec node server.js     # Anwendungsserver
+```
+
+Das `exec` ist kein Beiwerk: Der Node-Prozess wird dadurch PID 1 und bekommt
+die Signale von Docker unmittelbar — ohne das bliebe beim Stoppen eine Shell
+dazwischen, die sie verschluckt.
+
+`caddy` wartet auf `app: service_healthy`. Der Healthcheck prüft **zwei**
+Bestandteile nebenläufig: die Datenbankverbindung und einen echten
+Chromium-Start. Ein Renderer, der wegen zu enger Capabilities nicht hochkommt,
+fällt damit beim Start auf und nicht erst beim ersten Beleg.
+
+**Nichts plant sich selbst.** Weder Sicherungen noch Mahnungen laufen von
+allein — ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn
+sieht. Die Zeitsteuerung liegt beim Server (cron), die Wiederherstellung
+ausschließlich von Hand.
+
 ### Daten
 
 | Pfad       | Inhalt                                        |
