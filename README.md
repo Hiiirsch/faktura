@@ -53,7 +53,9 @@ Seitenaufruf einen Hinweis ins Log, wenn beides auseinanderläuft.
 ## Konfiguration
 
 Die gesamte Konfiguration erfolgt über Umgebungsvariablen; `.env.example`
-beschreibt jede einzelne. Geheimnisse liegen nie im Repository und nie im
+beschreibt jede einzelne. Optional sind allein `SMTP_URL` und `MAIL_FROM`
+(siehe [E-Mail-Versand](#e-mail-versand)); ohne sie läuft die Anwendung
+vollständig ohne ausgehende Verbindung. Geheimnisse liegen nie im Repository und nie im
 Container-Image. Fehlt eine Variable oder ist sie unplausibel, bricht die
 Anwendung beim Start mit einer benannten Meldung ab, statt im Betrieb
 aufzufallen.
@@ -112,6 +114,42 @@ ausschließlich über den Proxy erreichbar; TLS besorgt Caddy selbsttätig, soba
 Migrationen laufen bei jedem Start (`prisma migrate deploy`). Schlagen sie
 fehl, startet der Server nicht — ein Betrieb gegen ein unbekanntes Schema wäre
 gefährlicher als ein ausbleibender Start.
+
+### Woraus die Anwendung besteht
+
+Zwei Container, und im ersten laufen vier Bestandteile — davon nur zwei als
+eigener Prozess:
+
+| Bestandteil | Was er ist | Wann er startet |
+|---|---|---|
+| Anwendungsserver | Next.js aus dem Standalone-Bündel (`server.js`) | mit dem Container |
+| Prisma-Migrator | kein Dauerprozess: wendet die Migrationen an | im Entrypoint, **vor** dem Server |
+| SQLite | kein Prozess, sondern eine Datei im Anwendungsprozess | mit dem Server |
+| Chromium | Kindprozess für die PDF-Ausgabe | **bei Bedarf**, beim ersten Festschreiben oder Abruf |
+
+Ein Mailserver gehört nicht dazu: Er ist extern und optional (siehe
+[E-Mail-Versand](#e-mail-versand)). Ohne ihn läuft alles unverändert.
+
+Die Startreihenfolge steht vollständig in `scripts/entrypoint.sh`:
+
+```sh
+prisma migrate deploy   # Schema aktuell halten
+exec node server.js     # Anwendungsserver
+```
+
+Das `exec` ist kein Beiwerk: Der Node-Prozess wird dadurch PID 1 und bekommt
+die Signale von Docker unmittelbar — ohne das bliebe beim Stoppen eine Shell
+dazwischen, die sie verschluckt.
+
+`caddy` wartet auf `app: service_healthy`. Der Healthcheck prüft **zwei**
+Bestandteile nebenläufig: die Datenbankverbindung und einen echten
+Chromium-Start. Ein Renderer, der wegen zu enger Capabilities nicht hochkommt,
+fällt damit beim Start auf und nicht erst beim ersten Beleg.
+
+**Nichts plant sich selbst.** Weder Sicherungen noch Mahnungen laufen von
+allein — ein eingebauter Zeitgeber liefe im Container mit, ohne dass jemand ihn
+sieht. Die Zeitsteuerung liegt beim Server (cron), die Wiederherstellung
+ausschließlich von Hand.
 
 ### Daten
 
@@ -614,6 +652,83 @@ einen Test.
 
 Faktura prüft die Angaben des Betreibers nicht und leistet keine
 Rechtsberatung.
+
+## Anwenderdokumentation
+
+Das Handbuch liegt unter **`/hilfe`** und wird mit der Anwendung ausgeliefert —
+es ist ohne Anmeldung erreichbar und von der Anmeldeseite aus verlinkt. Es
+richtet sich an die Menschen, die mit Faktura arbeiten: Anmeldung, Firmendaten,
+Rechnungen, Festschreiben, Zahlungen, Mahnungen, Vorlagen, Mitglieder,
+Sicherheit des eigenen Kontos.
+
+**Dieses README bleibt die Betriebsanleitung** — Installation, Konfiguration,
+Sicherung, Wiederherstellung, Update. Beides gehört getrennt, weil es sich an
+verschiedene Leser richtet.
+
+Der Inhalt steht als MDX in `src/content/hilfe/`. Wer ihn ändert, erzeugt
+danach den Suchindex neu:
+
+```bash
+npm run docs:index
+```
+
+Ohne diesen Lauf schlägt `npm run verify` fehl — ein Test vergleicht den
+eingecheckten Index mit den Quellen.
+
+Die **Bildschirmfotos** entstehen ebenso auf Befehl. Sie brauchen einen
+Produktionsbuild, fahren die Anwendung auf einer eigenen, wegwerfbaren Datenbank
+hoch und nehmen sie auf:
+
+```bash
+npm run build
+npm run docs:shots
+``` Fristen und Grenzen im Text sind Verweise
+auf die Konstanten der Anwendung und keine abgeschriebenen Zahlen; ein zweiter
+Test hält auch das fest.
+
+## E-Mail-Versand
+
+**Optional.** Ohne `SMTP_URL` und `MAIL_FROM` verschickt Faktura nichts und
+kommt vollständig ohne ausgehende Internetverbindung aus — Einladungen und
+Zurücksetzungsnachweise erscheinen dann wie bisher genau einmal in der
+Oberfläche und werden von Hand weitergereicht.
+
+```env
+SMTP_URL=smtps://benutzer:kennwort@mail.example.org:465
+MAIL_FROM=Faktura <rechnungen@example.org>
+```
+
+Mit beiden Werten kommt die Zustellung **hinzu**. Sie ersetzt den Link in der
+Oberfläche nicht: Wer die Nachricht nicht bekommt, soll nicht ausgesperrt sein.
+Die Oberfläche sagt nach jeder Einladung, was daraus geworden ist — zugestellt,
+kein Versand eingerichtet, oder der Mailserver hat abgelehnt.
+
+Ein nicht erreichbarer Mailserver bricht keine Handlung ab: Wer ein Mitglied
+einlädt, hat es eingeladen. Nach zehn Sekunden gibt der Versuch auf, damit ein
+schweigender Server niemanden warten lässt.
+
+Verschickt wird ausschließlich **Text**, nie HTML — kein nachgeladenes Bild,
+keine Lesebestätigung, und ein Link bleibt sichtbar, was er ist.
+
+### Damit die Nachrichten ankommen
+
+Faktura verschickt über den Server, den Sie benennen; ob eine Nachricht im
+Posteingang oder im Spam landet, entscheidet dessen Ruf und die DNS-Einträge
+Ihrer Absenderdomäne. Das ist Betriebssache und gehört nicht in die Anwendung:
+
+- **SPF** — ein `TXT`-Eintrag auf der Absenderdomäne, der den sendenden Server
+  benennt: `v=spf1 mx a:mail.example.org -all`.
+- **DKIM** — der Mailserver signiert ausgehende Nachrichten, der öffentliche
+  Schlüssel steht im DNS. Ohne Signatur werten viele Empfänger ab.
+- **DMARC** — sagt Empfängern, was bei einem Fehlschlag geschehen soll, und
+  liefert Berichte: `v=DMARC1; p=quarantine; rua=mailto:dmarc@example.org`.
+
+`MAIL_FROM` muss zu der Domäne passen, für die diese Einträge gelten. Eine
+Absenderadresse bei einem Freemail-Anbieter, versendet über den eigenen Server,
+scheitert an SPF und DMARC — und zwar stillschweigend beim Empfänger.
+
+Zum Prüfen genügt eine Einladung an eine Adresse außerhalb des Hauses und ein
+Blick in den Kopf der angekommenen Nachricht (`Authentication-Results`).
 
 ## Unveränderbarkeit
 

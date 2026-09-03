@@ -33,19 +33,27 @@ import {
   type PasswordViolation,
   validatePassword,
 } from '@/domain/auth/password-policy';
-import { isPasswordResetExpired } from '@/domain/auth/password-reset-policy';
+import {
+  isPasswordResetExpired,
+  isTooSoonForAnotherReset,
+  passwordResetExpiry,
+} from '@/domain/auth/password-reset-policy';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
 import { isCompromisedPassword } from '@/infrastructure/auth/compromised-passwords';
 import { hashPassword } from '@/infrastructure/auth/password-hasher';
-import { hashToken } from '@/infrastructure/auth/tokens';
+import { generateRedemptionToken, hashToken } from '@/infrastructure/auth/tokens';
 import { logger } from '@/infrastructure/logging/logger';
+import { deliverPasswordReset } from '@/application/notifications/deliver';
 import {
+  createPasswordReset,
   createUser,
   deleteSessionsForUser,
   deleteTrustedDevicesForUser,
   deleteUnusedPasswordResets,
+  findNewestUnusedPasswordReset,
   findPasswordResetByHash,
+  findUserByEmail,
   findUserById,
   markPasswordResetUsed,
   updateUser,
@@ -262,4 +270,79 @@ export async function completePasswordReset(
   logger.security('password_reset.completed', { userId: user.id, ipAddress });
 
   return ok(null);
+}
+
+/**
+ * Der Beginn des Wegs: „Passwort vergessen" (M14, B3, FA-MEMB-09).
+ *
+ * **Bis M14 gab es diesen Anfang nicht.** Die Einlöseseite und der Nachweis
+ * existieren seit M8 — nur ausstellen konnte ihn allein ein Konto mit
+ * `organization.administer`. Wer sein Passwort vergaß, musste jemanden anrufen.
+ *
+ * **Der vierte Vorgang ohne Kontext, und er gehört hierher.** Wer eine Adresse
+ * eintippt, ist niemand: kein Konto, keine Sitzung, keine Organisation. Welche
+ * Organisation gemeint ist, ist das *Ergebnis* der Abfrage — dieselbe
+ * Ausgangslage wie bei den beiden Vorgängen darüber, deshalb dieselbe Datei.
+ *
+ * **Die Antwort ist immer dieselbe**, und zwar in allen fünf Fällen: unbekannte
+ * Adresse, gesperrtes Konto, stillgelegtes Unternehmen, Bremse gegriffen,
+ * Erfolg. Alles andere wäre eine Auskunft darüber, wer hier ein Konto hat —
+ * dieselbe Regel wie beim Einlösen (FA-MEMB-05) und bei der Anmeldung.
+ *
+ * Deshalb gibt diese Funktion auch **nichts** zurück außer der Tatsache, dass
+ * sie fertig ist. Ein Rückgabewert, der die Fälle unterscheidet, wäre eine
+ * Einladung an den nächsten Aufrufer, ihn anzuzeigen.
+ */
+export async function requestPasswordReset(
+  email: string,
+  ipAddress: string | null,
+  now: Date = new Date(),
+): Promise<void> {
+  const address = email.trim().toLowerCase();
+  const user = await findUserByEmail(address);
+
+  if (user === null || user.disabledAt !== null || user.organization.suspendedAt !== null) {
+    /*
+     * Kein Nachweis, keine Mail — und **kein** Protokolleintrag: Es gibt keine
+     * Organisation, in deren Protokoll er gehörte, und für ein gesperrtes Konto
+     * wäre er ein Hinweis darauf, dass die Adresse existiert.
+     */
+    logger.security('password_reset.requested_unknown', { ipAddress });
+    return;
+  }
+
+  /*
+   * **Die Bremse** (M14): Wer zweimal hintereinander drückt, bekommt keine
+   * zweite Mail. Ohne sie wäre das Formular ein Versandknopf für jeden, der
+   * eine fremde Adresse kennt — der Empfänger bekäme die Nachrichten, nicht
+   * der Absender.
+   *
+   * Kein Zähler, keine neue Tabelle: Die vorhandene Zeile trägt die Auskunft.
+   */
+  const newest = await findNewestUnusedPasswordReset(user.id);
+  if (newest !== null && isTooSoonForAnotherReset(newest.expiresAt, now)) {
+    logger.security('password_reset.requested_throttled', { userId: user.id, ipAddress });
+    return;
+  }
+
+  const token = generateRedemptionToken();
+  const expiresAt = passwordResetExpiry(now);
+
+  await runInTransaction(async (handle) => {
+    // Ein neuer Nachweis entwertet ältere — dieselbe Regel wie überall sonst.
+    await deleteUnusedPasswordResets(user.id, handle);
+    await createPasswordReset({ userId: user.id, tokenHash: hashToken(token), expiresAt }, handle);
+  });
+
+  await recordAuditEntry(organizationContextOf(user.organizationId), {
+    entityType: 'User',
+    entityId: user.id,
+    action: 'PASSWORD_RESET_REQUESTED',
+    // Angefordert hat es das Konto selbst — und niemand sonst darf es können.
+    actorId: user.id,
+    ipAddress,
+  });
+
+  await deliverPasswordReset(user.email, token, expiresAt);
+  logger.security('password_reset.requested', { userId: user.id, ipAddress });
 }

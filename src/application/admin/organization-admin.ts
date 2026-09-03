@@ -23,6 +23,11 @@ import type { PlatformContext } from '@/application/admin/admin-session-service'
 import { invitationExpiry } from '@/domain/auth/invitation-policy';
 import { passwordResetExpiry } from '@/domain/auth/password-reset-policy';
 import { ALL_PERMISSION_KEYS } from '@/domain/policy/can';
+import {
+  deliverInvitation,
+  deliverPasswordReset,
+  type Delivery,
+} from '@/application/notifications/deliver';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordPlatformAuditEntry } from '@/infrastructure/audit/audit-log';
 import { generateRedemptionToken, hashToken } from '@/infrastructure/auth/tokens';
@@ -135,7 +140,12 @@ export async function createManagedOrganization(
   now: Date = new Date(),
 ): Promise<
   Result<
-    { readonly organizationId: string; readonly token: string; readonly expiresAt: Date },
+    {
+      readonly organizationId: string;
+      readonly token: string;
+      readonly expiresAt: Date;
+      readonly delivery: Delivery;
+    },
     OrganizationAdminError
   >
 > {
@@ -185,7 +195,15 @@ export async function createManagedOrganization(
     organizationId: created.organizationId,
   });
 
-  return ok({ organizationId: created.organizationId, token, expiresAt });
+  /*
+   * Zugestellt wird **nach** dem Protokolleintrag und außerhalb jeder
+   * Transaktion — dieselbe Reihenfolge wie in `inviteMember`: Das Unternehmen
+   * besteht, sobald es in der Datenbank steht, und ein schweigender Mailserver
+   * darf daran nichts ändern.
+   */
+  const delivery = await deliverInvitation(ownerEmail, token, expiresAt);
+
+  return ok({ organizationId: created.organizationId, token, expiresAt, delivery });
 }
 
 /**
@@ -319,7 +337,12 @@ export async function reissueInvitation(
   adminUserId: string,
   ipAddress: string | null,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, OrganizationAdminError>> {
+): Promise<
+  Result<
+    { readonly token: string; readonly expiresAt: Date; readonly delivery: Delivery },
+    OrganizationAdminError
+  >
+> {
   const organization = await findOrganizationWithMetrics(platform, organizationId);
   if (organization === null) {
     return err({ kind: 'NOT_FOUND' });
@@ -363,7 +386,9 @@ export async function reissueInvitation(
 
   logger.security('admin.invitation_reissued', { adminUserId, organizationId });
 
-  return ok({ token, expiresAt });
+  const delivery = await deliverInvitation(address, token, expiresAt);
+
+  return ok({ token, expiresAt, delivery });
 }
 
 export async function withdrawInvitationAsPlatform(
@@ -411,7 +436,17 @@ export async function startTenantPasswordReset(
   adminUserId: string,
   ipAddress: string | null,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, OrganizationAdminError>> {
+): Promise<
+  Result<
+    {
+      readonly token: string;
+      readonly expiresAt: Date;
+      readonly delivery: Delivery;
+      readonly email: string;
+    },
+    OrganizationAdminError
+  >
+> {
   const user = await findUserForPlatform(platform, userId);
   if (user === null) {
     return err({ kind: 'NOT_FOUND' });
@@ -435,7 +470,16 @@ export async function startTenantPasswordReset(
 
   logger.security('admin.tenant_password_reset', { adminUserId, userId });
 
-  return ok({ token, expiresAt });
+  /*
+   * **Hier ist die Zustellung mehr als eine Bequemlichkeit.** Der Betreiber
+   * könnte den Nachweis selbst einlösen und das Konto übernehmen — der bewusst
+   * in Kauf genommene Preis aus M9. Geht die Nachricht an den Kontoinhaber,
+   * erfährt der davon, ohne im Protokoll nachsehen zu müssen. Der Eingriff
+   * wird dadurch nicht unmöglich, aber er wird sichtbar.
+   */
+  const delivery = await deliverPasswordReset(user.email, token, expiresAt);
+
+  return ok({ token, expiresAt, delivery, email: user.email });
 }
 
 /**

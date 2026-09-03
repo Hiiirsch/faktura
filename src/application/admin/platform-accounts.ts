@@ -35,6 +35,7 @@
  * gesperrt, der seit M8 bei verlorenem Authenticator hilft. Die Begründung steht
  * ausführlich an `setAdminUserDisabled`.
  */
+import type { Delivery } from '@/application/notifications/deliver';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordPlatformEvent } from '@/infrastructure/audit/audit-log';
 import { logger } from '@/infrastructure/logging/logger';
@@ -84,7 +85,18 @@ export async function invitePlatformAccount(
   platform: PlatformContext,
   email: string,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, PlatformAccountError>> {
+): Promise<
+  Result<
+    {
+      readonly token: string;
+      readonly expiresAt: Date;
+      /** Was aus der Zustellung wurde (M14) — der Link steht trotzdem in der Oberfläche. */
+      readonly delivery: Delivery;
+      readonly email: string;
+    },
+    PlatformAccountError
+  >
+> {
   const result = await inviteAdmin(email, now);
   if (!result.ok) {
     return err({ kind: 'EMAIL_TAKEN' });
@@ -103,7 +115,7 @@ export async function invitePlatformAccount(
     by: platform.adminUserId,
     email: email.trim().toLowerCase(),
   });
-  return ok(result.value);
+  return ok({ ...result.value, email: email.trim().toLowerCase() });
 }
 
 /**
@@ -161,7 +173,18 @@ export async function resetPlatformAccount(
   platform: PlatformContext,
   id: string,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, PlatformAccountError>> {
+): Promise<
+  Result<
+    {
+      readonly token: string;
+      readonly expiresAt: Date;
+      /** Was aus der Zustellung wurde (M14) — der Link steht trotzdem in der Oberfläche. */
+      readonly delivery: Delivery;
+      readonly email: string;
+    },
+    PlatformAccountError
+  >
+> {
   if (id === platform.adminUserId) {
     return err({ kind: 'SELF' });
   }
@@ -183,5 +206,5 @@ export async function resetPlatformAccount(
   });
 
   logger.security('admin.account_reset', { by: platform.adminUserId, adminUserId: id });
-  return ok(result.value);
+  return ok({ ...result.value, email: account.email });
 }

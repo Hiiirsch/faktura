@@ -1,0 +1,77 @@
+import { INVITATION_TTL_MS } from '@/domain/auth/invitation-policy';
+import { formatRetention } from '@/domain/legal/privacy-notice';
+
+export const meta = {
+  id: 'mitglieder',
+  title: 'Mitglieder und Rollen',
+  summary: 'Einladen, Rollen zuschneiden, sperren statt löschen, Aussperrsicherung.',
+};
+
+## Mitglieder und Rollen
+
+Jedes Unternehmen legt **eigene Rollen** an; fest ist nur der Katalog der
+Berechtigungen. Ein Konto trägt genau eine Rolle.
+
+### Jemanden einladen
+
+1. Unter **Mitglieder** die E-Mail-Adresse eingeben und eine Rolle wählen.
+2. Der Einladungslink erscheint **genau einmal** in der Oberfläche. Ist ein
+   Mailversand eingerichtet, geht er zusätzlich hinaus — nie stattdessen.
+3. Der Eingeladene setzt sein **eigenes Passwort** und meldet sich danach
+   regulär an.
+
+Die Einladung gilt {formatRetention(INVITATION_TTL_MS)}. Je Adresse gibt es
+höchstens eine offene; wer erneut einlädt, entwertet den vorigen Link.
+
+**Kein anderes Konto erfährt das Passwort** — auch die Rechteverwaltung nicht.
+Sie stellt einen Nachweis aus, sie vergibt kein Passwort. Ein Verfahren, in dem
+sie eines vergibt, hätte immer zwei Wissende.
+
+Kommt die Mail nicht an, ist niemand ausgesperrt: Der Link steht in der
+Oberfläche und lässt sich auf jedem Weg weitergeben.
+
+### Rollen zuschneiden
+
+Eine Rolle ist eine Auswahl aus dem Katalog: Belege lesen, anlegen, ändern,
+festschreiben, stornieren, Zahlungen erfassen, mahnen; Kunden, Katalog,
+Firmendaten, Vorlagen, Nummernkreise, Export, Rechteverwaltung.
+
+Der Zuschnitt wirkt **sofort** — Berechtigungen werden bei jedem Aufruf frisch
+gelesen. Ein entzogenes Recht greift beim nächsten Klick, nicht erst nach dem
+nächsten Anmelden.
+
+Ein Konto, dem ein Recht fehlt, sieht **den Weg dorthin nicht**: Fehlt ein
+Menüpunkt, fehlt die Berechtigung. Das ist keine Verschleierung — ein Menüpunkt,
+der auf eine Fehlerseite führt, ist schlechter als keiner.
+
+Eine Rolle, die jemand trägt, lässt sich nicht löschen. Erst umziehen, dann
+löschen.
+
+### Ausscheiden
+
+Ein Konto wird **gesperrt, nicht gelöscht**: Der Beleg behält seinen Urheber.
+Die Sperre beendet sofort alle Sitzungen des Kontos.
+
+Das eigene Konto lässt sich nicht sperren — nicht weil es unmöglich wäre,
+sondern weil es keinen Vorgang gibt, den das abbildet.
+
+### Die Aussperrsicherung
+
+Mindestens **ein nicht gesperrtes Konto** hält immer die Rechteverwaltung. Das
+letzte lässt sich weder sperren noch seiner Rolle berauben, und der Rolle lässt
+sich das Recht nicht entziehen.
+
+Ohne diese Sicherung entstünde ein Unternehmen, in das niemand mehr hineinkommt
+— auch der Betreiber der Installation nicht.
+
+### Passwort eines Mitglieds zurücksetzen
+
+Wer die Rechteverwaltung hält, kann für ein anderes Konto einen
+Zurücksetzungsnachweis ausstellen. Auch hier gilt: ein Nachweis, kein Passwort.
+Alle Sitzungen des betroffenen Kontos enden dabei.
+
+### Wer einen Beleg angelegt hat
+
+Führt ein Unternehmen mehr als ein Konto, zeigt die Rechnungsliste eine Spalte
+mit dem Urheber. Bei einem einzigen Konto entfällt sie — dort stünde in jeder
+Zeile derselbe Name.

@@ -33,6 +33,25 @@ export default defineConfig({
       APP_TIMEZONE: 'Europe/Berlin',
       APP_NAME: 'Faktura',
       STORAGE_DIR: './data/integration-storage',
+      /*
+       * **Kein Versand aus einem Testlauf.**
+       *
+       * Vitest liest die `.env` des Entwicklers mit. Sobald dort echte
+       * Zugangsdaten stehen, gingen Einladungen an `ohne-mail@example.org` und
+       * `mitglied@example.org` tatsächlich hinaus — an eine reservierte
+       * Domäne, also als Rückläufer, die den Absenderruf beschädigen und das
+       * Kontingent verbrauchen. Genau das ist passiert.
+       *
+       * Leer statt gelöscht: Ein `setupFiles`-Eintrag, der die Variablen
+       * entfernt, wirkt nur bis zum nächsten Mal, dass Vitest die Umgebung aus
+       * der `.env` ergänzt — im Versuch war er nach knapp dreißig Tests wieder
+       * überschrieben. Was hier steht, gilt für den ganzen Lauf.
+       *
+       * Und leer statt eines erfundenen Servers: Ein Wert, der auf niemanden
+       * zeigt, liefe je Versuch zehn Sekunden in die Zeitgrenze.
+       */
+      SMTP_URL: '',
+      MAIL_FROM: '',
     },
     // Der Server wird einmal gestartet; parallele Läufe würden sich denselben
     // Port und dieselbe Datenbankdatei streitig machen.

@@ -21,6 +21,16 @@ export const DEFAULT_INVOICE_NUMBER_FORMAT = 'RE-{YYYY}-{SEQ:4}';
 
 export const INVOICE_SEQUENCE_PREFIX = 'INVOICE';
 
+/**
+ * Der Zählerbereich der Mahnungen (M15, FA-MAHN-06).
+ *
+ * **Getrennt von dem der Belege**, und das ist keine Ordnungsfrage: Der
+ * Nummernkreis der Rechnungen muss lückenlos sein (FA-NUM-05). Zählte eine
+ * Mahnung darin mit, entstünde in der Rechnungsfolge eine Lücke, die niemand
+ * erklären kann.
+ */
+export const REMINDER_SEQUENCE_PREFIX = 'REMINDER';
+
 const MIN_SEQUENCE_WIDTH = 1;
 const MAX_SEQUENCE_WIDTH = 12;
 
@@ -139,17 +149,21 @@ export function formatInvoiceNumber(
  * Eine ungültige Vorlage fällt auf den fortlaufenden Bereich zurück — das ist
  * die Variante, die niemals kollidieren kann.
  */
-export function sequenceScopeFor(format: string, issueDate: PlainDate): string {
+export function sequenceScopeFor(
+  format: string,
+  issueDate: PlainDate,
+  prefix: string = INVOICE_SEQUENCE_PREFIX,
+): string {
   const parsed = parseNumberFormat(format);
   if (!parsed.ok || !parsed.value.hasYear) {
-    return INVOICE_SEQUENCE_PREFIX;
+    return prefix;
   }
 
   const year = String(yearOf(issueDate)).padStart(4, '0');
   if (!parsed.value.hasMonth) {
-    return `${INVOICE_SEQUENCE_PREFIX}-${year}`;
+    return `${prefix}-${year}`;
   }
 
   const month = String(monthOf(issueDate)).padStart(2, '0');
-  return `${INVOICE_SEQUENCE_PREFIX}-${year}-${month}`;
+  return `${prefix}-${year}-${month}`;
 }

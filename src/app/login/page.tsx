@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
@@ -6,8 +7,8 @@ import { getOptionalSession } from '@/application/auth/require-session';
 import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
-import { DASHBOARD_PATH, PASSKEY_LOGIN_PATH } from '@/routes';
-import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
+import { DASHBOARD_PATH, PASSKEY_LOGIN_PATH, PASSWORD_RESET_PATH } from '@/routes';
+import { Alert, FOCUS_RING, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
 import { BrandLockup } from '@/ui/components/brand';
 import { PasswordField } from '@/ui/components/password-field';
 
@@ -146,6 +147,19 @@ export default async function LoginPage({
           />
         </div>
       ) : null}
+
+      {/*
+        Der Weg für den, der nicht hineinkommt (M14).
+
+        Er steht **unter** dem Formular und nicht daneben: Wer sein Passwort
+        weiß, soll ihn nicht lesen müssen.
+      */}
+      <Link
+        href={PASSWORD_RESET_PATH}
+        className={`text-ui text-accent underline underline-offset-4 ${FOCUS_RING}`}
+      >
+        {messages.passwordReset.forgotten}
+      </Link>
 
       <p className="text-ui text-ink-muted">
         {messages.login.noRegistrationHint}

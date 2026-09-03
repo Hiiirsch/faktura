@@ -32,6 +32,14 @@ export const ADMIN_OPERATIONS_PATH = '/admin/operations';
 export const ADMIN_LEGAL_PATH = '/admin/legal';
 
 /**
+ * Die eigene Sicherheit eines Betreiberkontos (M14.1).
+ *
+ * Das Gegenstück zu `/settings/security` bei den Mandanten — getrennte Route,
+ * wie alles an dieser Identität (M8).
+ */
+export const ADMIN_SECURITY_PATH = '/admin/security';
+
+/**
  * Die öffentlichen Rechtstexte (M13).
  *
  * **Öffentlich, weil sie es sein müssen.** Ein Impressum hinter einer Anmeldung
@@ -42,6 +50,18 @@ export const ADMIN_LEGAL_PATH = '/admin/legal';
  */
 export const IMPRINT_PATH = '/impressum';
 export const PRIVACY_PATH = '/datenschutz';
+
+/**
+ * Das Handbuch (M16, FA-DOC-01).
+ *
+ * Deutsch wie die Oberfläche, und **öffentlich**: Ein Handbuch hinter einer
+ * Anmeldung hilft dem nicht, der sich gerade nicht anmelden kann.
+ */
+export const HELP_PATH = '/hilfe';
+
+export function helpTopicPath(id: string): string {
+  return `${HELP_PATH}/${id}`;
+}
 
 /** Einrichtung eines Betreiberkontos — der Nachweis steht in der Adresse (M8). */
 export const ADMIN_SETUP_PATH = '/admin/setup';
@@ -113,6 +133,11 @@ export function assetPath(id: string): string {
 /** Download des erzeugten PDF (FA-PDF-01). */
 export function invoicePdfPath(id: string): string {
   return `/api/invoices/${id}/pdf`;
+}
+
+/** Download einer erzeugten Mahnung (M15, FA-MAHN-06). */
+export function reminderPdfPath(id: string): string {
+  return `/api/reminders/${id}/pdf`;
 }
 
 /**
@@ -256,6 +281,15 @@ export const routes: readonly RouteDefinition[] = [
     publicReason: 'Die Anmeldeseite muss ohne Sitzung erreichbar sein.',
   },
   {
+    path: PASSWORD_RESET_PATH,
+    kind: 'page',
+    access: 'public',
+    publicReason:
+      'Wer sein Passwort vergessen hat, hat keine Sitzung — das ist der Anlass. ' +
+      'Die Seite nimmt eine Adresse entgegen und antwortet in **allen** Fällen ' +
+      'gleich; sie gibt damit keine Auskunft darüber, wer hier ein Konto hat.',
+  },
+  {
     path: IMPRINT_PATH,
     kind: 'page',
     access: 'public',
@@ -275,6 +309,30 @@ export const routes: readonly RouteDefinition[] = [
       'nicht die Mandanten.',
   },
   {
+    path: HELP_PATH,
+    kind: 'page',
+    access: 'public',
+    publicReason:
+      'Ein Handbuch hinter einer Anmeldung hilft dem nicht, der sich gerade nicht ' +
+      'anmelden kann. Es beschreibt die Software und liest keine Daten — es kennt ' +
+      'weder Mandant noch Sitzung.',
+  },
+  {
+    path: '/hilfe/[thema]',
+    kind: 'page',
+    access: 'public',
+    probePath: '/hilfe/unbekanntes-thema',
+    /*
+     * Ein unbekanntes Thema antwortet mit 404 — dieselbe Kennzeichnung wie beim
+     * Impressum: `200` **oder** `404`, aber niemals eine Umleitung zur
+     * Anmeldung. Eine Umleitung hieße, das Handbuch verlange eine Sitzung.
+     */
+    optionalContent: true,
+    publicReason:
+      'Dasselbe wie die Übersicht: Der Inhalt beschreibt die Software. Ein ' +
+      'unbekanntes Thema antwortet mit 404.',
+  },
+  {
     path: LOGIN_CODE_PATH,
     kind: 'page',
     access: 'public',
@@ -291,6 +349,7 @@ export const routes: readonly RouteDefinition[] = [
   { path: ADMIN_AUDIT_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_OPERATIONS_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_LEGAL_PATH, kind: 'page', access: 'platformAdmin' },
+  { path: ADMIN_SECURITY_PATH, kind: 'page', access: 'platformAdmin' },
   {
     path: '/admin/setup/[token]',
     kind: 'page',
@@ -396,6 +455,14 @@ export const routes: readonly RouteDefinition[] = [
     probePath: '/api/invoices/probe-kennung/pdf',
     // Wird als Vorschau eingebettet; ohne dieses Profil greift
     // `X-Frame-Options: DENY` und der Rahmen bleibt weiß.
+    securityProfile: 'pdf',
+  },
+  {
+    path: '/api/reminders/[id]/pdf',
+    kind: 'api',
+    access: 'authenticated',
+    probePath: '/api/reminders/probe-kennung/pdf',
+    // Dasselbe Profil wie beim Beleg: Die Mahnung lässt sich einbetten.
     securityProfile: 'pdf',
   },
   {

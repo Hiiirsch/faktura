@@ -23,7 +23,9 @@ import {
 } from '@/domain/format/de';
 import { cents } from '@/domain/money/money';
 import { quantityFromScaled } from '@/domain/quantity/quantity';
+import type { ReminderDocument } from '@/domain/reminder/reminder-document';
 import type {
+  ReminderTemplateEngine,
   TemplateEngine,
   TemplateRenderResult,
   TemplateSource,
@@ -112,6 +114,81 @@ function describeError(error: unknown): { message: string; line: number | null }
     };
   }
   return { message: 'Die Vorlage konnte nicht verarbeitet werden.', line: null };
+}
+
+/**
+ * Dieselbe Engine für die Mahnung (M15, FA-MAHN-06).
+ *
+ * **Ein zweiter Einstieg statt eines allgemeinen `render(scope, template)`.**
+ * Der Vertrag `TemplateEngine` nennt `InvoiceDocument` ausdrücklich, und das
+ * ist keine Nachlässigkeit: Er sagt, welche Variablen eine Belegvorlage
+ * vorfindet. Ihn auf ein beliebiges Objekt zu öffnen, nähme ihm genau diese
+ * Aussage — die Vorlage bekäme, was der Aufrufer gerade mitbringt.
+ *
+ * Filter (`money`, `date`) und Rahmendokument sind dieselben; nur der
+ * Variablenraum ist ein anderer.
+ */
+export const liquidReminderEngine: ReminderTemplateEngine = {
+  async render(
+    document: ReminderDocument,
+    template: TemplateSource,
+  ): Promise<TemplateRenderResult> {
+    try {
+      const rendered: unknown = await engine().parseAndRender(
+        template.htmlSource,
+        buildReminderScope(document),
+      );
+      const body = typeof rendered === 'string' ? rendered : '';
+      return { ok: true, html: assembleDocument(body, template) };
+    } catch (error) {
+      const described = describeError(error);
+      return {
+        ok: false,
+        error: { kind: 'TEMPLATE_SYNTAX', message: described.message, line: described.line },
+      };
+    }
+  },
+};
+
+/**
+ * Die Variablen einer Mahnungsvorlage.
+ *
+ * `seller` und `buyer` heißen wie beim Beleg und tragen dasselbe — der
+ * Anschriftblock ist derselbe Satz. `invoice` ist hier die **gemahnte**
+ * Rechnung und trägt deshalb nur, was auf dem Blatt erscheint; `reminder` ist
+ * das Schreiben selbst.
+ *
+ * Es gibt **kein** `showsTax` und keine `taxBreakdown`: Eine Mahnung weist
+ * keine Umsatzsteuer aus. Die Variable wegzulassen ist deutlicher, als sie auf
+ * `false` zu setzen — was es nicht gibt, kann eine Vorlage nicht versehentlich
+ * abfragen.
+ */
+export function buildReminderScope(document: ReminderDocument): Record<string, unknown> {
+  return {
+    seller: document.seller,
+    buyer: document.buyer,
+    reminder: {
+      number: document.number,
+      level: document.level,
+      levelLabel: document.levelLabel,
+      issueDate: document.issueDate,
+      dueDate: document.dueDate,
+      currency: document.currency,
+      outstanding: document.outstandingCents,
+      fee: document.feeCents,
+      total: document.totalCents,
+      introText: document.introText,
+      outroText: document.outroText,
+      overdueText: document.overdueText,
+    },
+    invoice: {
+      number: document.invoice.number,
+      issueDate: document.invoice.issueDate,
+      dueDate: document.invoice.dueDate,
+      grossTotal: document.invoice.grossTotalCents,
+    },
+    footerText: document.footerText,
+  };
 }
 
 export const liquidTemplateEngine: TemplateEngine = {

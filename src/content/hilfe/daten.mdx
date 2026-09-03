@@ -1,0 +1,50 @@
+export const meta = {
+  id: 'daten',
+  title: 'Daten sichern und mitnehmen',
+  summary: 'Export, Sicherung, Protokoll, Aufbewahrung.',
+};
+
+## Daten sichern und mitnehmen
+
+### Export
+
+Der Datenexport liefert **Kunden, Belege mit Positionen und Zahlungen,
+Vorlagen, Nummernkreise und das Protokoll** als JSON — maschinenlesbar und
+vollständig für dieses Unternehmen.
+
+Was **nicht** darin steht: Passwörter, Sitzungen, Wiederherstellungscodes,
+Passkeys. Ein Export wird weitergereicht; Zugangsdaten gehören dort nicht hinein.
+
+Er umfasst ausschließlich das **eigene** Unternehmen. Führt eine Installation
+mehrere, sieht keiner die Daten des anderen.
+
+### Sicherung
+
+Die Sicherung umfasst **Datenbank und Dateispeicher** und wird vom Betreiber der
+Installation ausgelöst. Beides gehört zusammen: Ein festgeschriebener Beleg
+verweist auf seine PDF-Datei samt Prüfsumme, und eine Sicherung ohne die Dateien
+ist keine.
+
+Die Anwendung plant **nichts von selbst**. Ein Zeitplan ist Sache des Betriebs —
+ein eingebauter Zeitgeber liefe mit, ohne dass jemand ihn sieht.
+
+### Protokoll
+
+Jede Änderung an Belegen, Kunden und Firmendaten steht mit **Zeitpunkt, Aktion
+und handelndem Konto** im Protokoll: Anlegen, Ändern, Festschreiben,
+Stornieren, Zahlungen, Mahnungen, Einladungen, Rollenänderungen.
+
+Über die Anwendung lässt es sich **weder ändern noch löschen** — auch nicht von
+einem Konto mit allen Rechten.
+
+Greift der Betreiber der Installation ein — etwa indem er eine Einladung erneut
+ausstellt —, steht das ebenfalls im Protokoll des Unternehmens, ausdrücklich als
+Handlung des Betreibers gekennzeichnet.
+
+### Aufbewahrung
+
+Belege werden **nicht gelöscht**. §147 AO verlangt zehn Jahre; wo in der
+Oberfläche ein Löschversuch naheliegt, steht der Grund daneben.
+
+Kunden und Katalogpositionen werden archiviert, Konten gesperrt. Gelöscht wird
+in dieser Anwendung grundsätzlich nichts, was auf einem Beleg steht.

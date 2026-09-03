@@ -38,6 +38,10 @@ async function componentFiles(): Promise<readonly { file: string; source: string
   const files = [
     ...(await collect('src/app', ['.tsx'])),
     ...(await collect('src/ui', ['.tsx'])),
+    // Seit M16.1 stehen auch im Inhalt Komponenten: die Abbildungen des
+    // Handbuchs. Ein Verzeichnis mit Bauteilen, das kein Wächter ansieht, wäre
+    // die Stelle, an der die erste Literalfarbe steht.
+    ...(await collect('src/content', ['.tsx'])),
   ];
 
   return files.map((file) => ({

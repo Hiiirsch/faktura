@@ -15,6 +15,7 @@ import {
   setMemberDisabled,
   startPasswordReset,
 } from '@/application/members/member-service';
+import type { Delivery } from '@/application/notifications/deliver';
 import { messages } from '@/i18n/de';
 import { getEnv } from '@/infrastructure/config/env';
 import { invitationPath, MEMBERS_SETTINGS_PATH, passwordResetPath } from '@/routes';
@@ -57,7 +58,13 @@ export type InviteFormState =
    * Bauart wie die Wiederherstellungscodes. Ein Neuladen der Seite zeigt ihn
    * nicht wieder, weil es ihn nicht mehr gibt.
    */
-  | { readonly status: 'invited'; readonly email: string; readonly link: string }
+  | {
+      readonly status: 'invited';
+      readonly email: string;
+      readonly link: string;
+      /** Was aus der Zustellung wurde (M14); der Link steht trotzdem da. */
+      readonly delivery: Delivery;
+    }
   | { readonly status: 'error'; readonly message: string };
 
 const inviteSchema = z.object({
@@ -119,6 +126,7 @@ export async function inviteMemberAction(
     status: 'invited',
     email: result.value.invitation.email,
     link: absolute(invitationPath(result.value.token)),
+    delivery: result.value.delivery,
   };
 }
 
@@ -126,7 +134,12 @@ export async function inviteMemberAction(
 
 export type ResetFormState =
   | { readonly status: 'idle' }
-  | { readonly status: 'created'; readonly email: string; readonly link: string }
+  | {
+      readonly status: 'created';
+      readonly email: string;
+      readonly link: string;
+      readonly delivery: Delivery;
+    }
   | { readonly status: 'error'; readonly message: string };
 
 export async function resetMemberPasswordAction(
@@ -163,6 +176,7 @@ export async function resetMemberPasswordAction(
 
   return {
     status: 'created',
+    delivery: result.value.delivery,
     email: email.success ? email.data : '',
     link: absolute(passwordResetPath(result.value.token)),
   };

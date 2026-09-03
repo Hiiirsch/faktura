@@ -14,6 +14,8 @@ import {
   TextField,
 } from '@/ui/components/form';
 
+import { RedemptionLink } from '../../../redemption-link';
+
 import { createOrganizationAction, type NewOrganizationState } from '../../actions';
 
 const INITIAL: NewOrganizationState = { status: 'idle' };
@@ -40,27 +42,13 @@ export function NewOrganizationForm({ csrfToken }: { readonly csrfToken: string 
           {messages.admin.createdHeading} — {state.email}
         </Alert>
 
-        <div className="flex flex-col gap-2 rounded-control border border-rule bg-surface-sunken p-4">
-          <span className="text-label font-semibold uppercase text-ink-faint">
-            {messages.admin.createdHeading}
-          </span>
-          {/*
-            `readonly`-Feld statt Absatz: So nimmt ein Doppelklick den Link
-            vollständig auf. Ein „Kopieren"-Knopf bräuchte die Clipboard-API, und
-            die ist an eine sichere Herkunft gebunden — in einer selbstgehosteten
-            Installation ohne Zertifikat also nicht verlässlich da.
-          */}
-          <input
-            readOnly
-            value={state.link}
-            aria-label={messages.admin.createdHeading}
-            onFocus={(event) => {
-              event.currentTarget.select();
-            }}
-            className="w-full rounded-control border border-rule bg-surface px-3 py-2 font-mono text-data text-ink"
-          />
-          <p className="text-small text-ink-muted">{messages.admin.createdOnceOnly}</p>
-        </div>
+        <RedemptionLink
+          heading={messages.admin.createdHeading}
+          hint={messages.admin.createdOnceOnly}
+          link={state.link}
+          delivery={state.delivery}
+          email={state.email}
+        />
 
         <div>
           <Link

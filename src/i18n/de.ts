@@ -261,10 +261,12 @@ export const messages = {
       INVITED: 'Einladung ausgestellt',
       INVITATION_REVOKED: 'Einladung zurückgezogen',
       PASSWORD_RESET_REQUESTED: 'Zurücksetzung ausgestellt',
+      REMINDED: 'Mahnung ausgestellt',
       ADMIN_INVITED: 'Betreiber eingeladen',
       ADMIN_DISABLED: 'Betreiberkonto gesperrt',
       ADMIN_ENABLED: 'Betreiberkonto entsperrt',
       ADMIN_RESET: 'Betreiberzugang neu eingerichtet',
+      ADMIN_PASSWORD_CHANGED: 'Passwort gewechselt',
       ANONYMIZED: 'Konto unkenntlich gemacht',
       UPDATED: 'Unternehmen bearbeitet',
     } as Record<string, string>,
@@ -1071,6 +1073,157 @@ export const messages = {
     trustedNote:
       'Alle vertrauten Geräte verfallen, sobald das Passwort zurückgesetzt, der zweite Faktor abgeschaltet oder „Alle anderen Sitzungen beenden" gewählt wird.',
   },
+  /*
+   * Was aus der Zustellung wurde (M14).
+   *
+   * **Eigene Gruppe und nicht unter `members`**, weil fünf Stellen dieselbe
+   * Auskunft geben: Mitglied einladen, Passwort zurücksetzen, Unternehmen
+   * anlegen, Einladung erneut ausstellen und Betreiberkonto einrichten. Lägen
+   * die Sätze bei einer davon, schriebe die zweite ihre eigenen — und die
+   * dritte wieder andere.
+   *
+   * Alle drei stehen **neben** dem Link, nicht an seiner Stelle: Die Mail ist
+   * ein zusätzlicher Weg. „Kein Mailserver eingerichtet" ist dabei kein Fehler,
+   * sondern der Normalzustand einer Anlage, die ohne Netz nach außen läuft.
+   */
+  /*
+   * Die eigene Sicherheit eines Betreiberkontos (M14.1).
+   *
+   * Eigene Gruppe neben `security`: Die Mandantenseite kennt vertraute Geräte,
+   * Wiederherstellungscodes und das Abschalten des zweiten Faktors — hier gibt
+   * es das alles nicht, und die Sätze dazu sagen etwas anderes.
+   */
+  adminSecurity: {
+    navLabel: 'Sicherheit',
+    title: 'Sicherheit',
+    heading: 'Eigenes Konto',
+    intro:
+      'Passwort, angemeldete Geräte und Passkeys dieses Betreiberkontos. Der zweite Faktor bleibt verpflichtend; er lässt sich nur über eine Neueinrichtung wechseln.',
+
+    passwordHeading: 'Passwort ändern',
+    passwordIntro:
+      'Das bisherige Passwort wird verlangt. Nach dem Wechsel enden alle anderen Sitzungen dieses Kontos; diese bleibt bestehen.',
+    passwordCurrent: 'Bisheriges Passwort',
+    passwordNew: 'Neues Passwort',
+    passwordHint: 'Mindestens {min} Zeichen. Bekannte Passwörter aus Datenlecks werden abgewiesen.',
+    passwordSubmit: 'Passwort ändern',
+    passwordChanged: 'Das Passwort ist gewechselt.',
+    passwordChangedWithSessions:
+      'Das Passwort ist gewechselt. Beendete Sitzungen: {count}.',
+    passwordWrong: 'Das bisherige Passwort stimmt nicht.',
+    passwordTooShort: 'Das neue Passwort ist zu kurz — mindestens {min} Zeichen.',
+    passwordTooLong: 'Das neue Passwort ist zu lang.',
+    passwordCompromised:
+      'Dieses Passwort steht in bekannten Datenlecks. Bitte ein anderes wählen.',
+
+    totpHeading: 'Zweiter Faktor',
+    totpIntro:
+      'Für Betreiberkonten ist er verpflichtend und lässt sich nicht abschalten. Es gibt auch keine Wiederherstellungscodes: Geht der Authenticator verloren, richtet ein anderer Betreiber das Konto neu ein — oder der Betreiber des Servers über den Befehl admin:reset. Dabei entstehen Passwort und zweiter Faktor gemeinsam neu.',
+
+    sessionsHeading: 'Angemeldete Geräte',
+    sessionsIntro:
+      'Jede Anmeldung an der Verwaltung. Eine Sitzung zu beenden, wirkt sofort.',
+    sessionCurrent: 'dieses Gerät',
+    sessionUnknownDevice: 'Unbekanntes Gerät',
+    sessionLastSeen: 'zuletzt gesehen',
+    sessionRevoke: 'Beenden',
+    sessionRevokeAll: 'Alle anderen beenden',
+    sessionRevoked: 'Die Sitzung ist beendet.',
+    otherSessionsRevoked: 'Alle anderen Sitzungen sind beendet.',
+
+    passkeyHeading: 'Passkeys',
+    passkeyIntro:
+      'Ein Passkey meldet ohne Passwort an; die Gerätesperre ist dabei der zweite Faktor. Er gilt nur für dieses Betreiberkonto.',
+    passkeyEmpty: 'Für dieses Konto ist kein Passkey hinterlegt.',
+    passkeyRemove: 'Entfernen',
+    passkeyRemoved: 'Der Passkey ist entfernt.',
+  },
+
+  /*
+   * Mahnwesen (M15).
+   *
+   * Der **Wortlaut der Mahnung selbst** steht nicht hier, sondern in
+   * `domain/reminder/reminder-texts.ts`: Er ist die Ausgabe eines
+   * Anwendungsfalls, keine Beschriftung. Hier steht nur, was auf dem Bildschirm
+   * erscheint.
+   */
+  reminders: {
+    heading: 'Mahnungen',
+    intro: 'Zu diesem Beleg ausgestellte Mahnungen. Eine ausgestellte Mahnung lässt sich nicht zurücknehmen.',
+    empty: 'Es wurde noch nicht gemahnt.',
+    create: 'Mahnung ausstellen',
+    confirmTitle: 'Mahnung ausstellen?',
+    confirmBody:
+      'Die Mahnung bekommt eine Nummer, friert den heute offenen Betrag ein und lässt sich nicht zurücknehmen.',
+    confirmAction: 'Ausstellen',
+    level1: 'Zahlungserinnerung',
+    level2: 'Mahnung',
+    level3: 'Letzte Mahnung',
+    columnLevel: 'Stufe',
+    columnNumber: 'Nummer',
+    columnDate: 'Datum',
+    columnDue: 'Zahlbar bis',
+    columnTotal: 'Zu zahlen',
+    download: 'PDF',
+    created: 'Die Mahnung ist ausgestellt.',
+    /*
+     * Die Gründe, aus denen nicht gemahnt wird — jeder sagt, was der Fall ist,
+     * nicht was fehlt. „Nicht überfällig" ist kein Fehler des Benutzers.
+     */
+    refusedNOT_AN_INVOICE: 'Eine Gutschrift wird nicht gemahnt — sie fordert nichts ein.',
+    refusedNOT_ISSUED: 'Ein Entwurf ist keine Forderung.',
+    refusedCANCELLED: 'Der Beleg ist storniert; es besteht keine Forderung mehr.',
+    refusedNOTHING_OUTSTANDING: 'Es ist nichts mehr offen.',
+    refusedNO_DUE_DATE: 'Ohne Fälligkeitsdatum gibt es keinen Verzug.',
+    refusedNOT_OVERDUE: 'Der Beleg ist noch nicht überfällig.',
+    refusedLAST_LEVEL_REACHED: 'Die letzte Mahnstufe ist erreicht.',
+    refusedGeneric: 'Die Mahnung ließ sich nicht ausstellen.',
+  },
+
+  /*
+   * Die Bedienoberfläche des Handbuchs (M16).
+   *
+   * **Der Inhalt steht hier nicht** — er liegt als MDX in `src/content/hilfe/`.
+   * Das ist eine benannte Ausnahme von „alle deutschen Texte in `de.ts`", mit
+   * derselben Begründung wie bei `domain/notifications/mail-texts.ts` und
+   * `domain/legal/privacy-notice.ts`: Ein Handbuch ist ein Dokument, keine
+   * Beschriftung. Was hier steht, sind die Knöpfe und Zeilen darum herum.
+   */
+  help: {
+    navLabel: 'Hilfe',
+    title: 'Hilfe',
+    heading: 'Handbuch',
+    intro:
+      'Wie Faktura benutzt wird — von der Anmeldung bis zur Mahnung. Die Angaben stammen aus der Anwendung selbst; Fristen und Grenzen sind keine abgeschriebenen Zahlen.',
+    searchLabel: 'Im Handbuch suchen',
+    searchPlaceholder: 'Begriff eingeben',
+    searchAction: 'Suchen',
+    searchReset: 'Alle Themen',
+    resultsHeading: 'Treffer für „{query}“',
+    resultsOne: '1 Treffer',
+    resultsMany: '{count} Treffer',
+    resultsNone:
+      'Kein Abschnitt enthält alle gesuchten Wörter. Ein kürzerer Begriff findet mehr.',
+    topicsHeading: 'Themen',
+    /*
+     * Der Hinweis auf die Neuerungen steht auf der Übersicht, obwohl das Thema
+     * in der Gliederung ohnehin auftaucht: „Was ist neu?" ist die Frage, mit
+     * der jemand nach einer Aktualisierung herkommt, und sie soll nicht erst
+     * unten in einer Liste von dreizehn Themen beantwortet werden.
+     */
+    whatsNew: 'Was zuletzt dazugekommen ist',
+    /* „Faktura 1.0.0" — der Name steht dabei, damit die Zahl allein nicht rätselhaft ist. */
+    version: 'Faktura {version}',
+    back: 'Zur Übersicht',
+  },
+
+  delivery: {
+    sent: 'Der Link wurde zusätzlich an {email} geschickt.',
+    failed:
+      'Der Link ließ sich nicht per E-Mail zustellen. Er gilt trotzdem — bitte oben kopieren und weitergeben.',
+    notConfigured:
+      'Es ist kein Mailversand eingerichtet. Der Link oben ist der einzige Weg; bitte kopieren und weitergeben.',
+  },
   members: {
     title: 'Mitglieder',
     heading: 'Mitglieder',
@@ -1142,6 +1295,7 @@ export const messages = {
     errorLAST_ADMINISTRATOR:
       'Das ist das letzte aktive Konto mit Rechteverwaltung. Ohne ein solches Konto ließe sich das Unternehmen nicht mehr verwalten.',
     errorSELF: 'Das eigene Konto lässt sich nicht sperren.',
+
   },
   roles: {
     title: 'Rollen',
@@ -1202,6 +1356,7 @@ export const messages = {
       issue: 'festschreiben',
       cancel: 'stornieren',
       recordPayment: 'Zahlungen erfassen',
+      remind: 'mahnen',
       run: 'ausführen',
       administer: 'Mitglieder und Rollen verwalten',
     },
@@ -1230,6 +1385,22 @@ export const messages = {
     passwordReady: 'Das Passwort ist gesetzt. Jetzt anmelden.',
   },
   passwordReset: {
+    requestTitle: 'Passwort vergessen',
+    requestHeading: 'Passwort vergessen',
+    requestIntro:
+      'Adresse eintragen. Gibt es dazu ein Konto, geht ein Link zum Setzen eines neuen Passworts hinaus.',
+    requestSubmit: 'Link anfordern',
+    /**
+     * **Eine Antwort für fünf Fälle** (FA-MEMB-09): unbekannte Adresse,
+     * gesperrtes Konto, stillgelegtes Unternehmen, Bremse gegriffen, Erfolg.
+     * Der Satz sagt deshalb nicht „wir haben geschickt", sondern was gilt.
+     */
+    requestDone:
+      'Wenn es zu dieser Adresse ein Konto gibt, ist ein Link unterwegs. Er gilt 24 Stunden und lässt sich einmal einlösen. Prüfen Sie auch den Spam-Ordner.',
+    requestNoMailHint:
+      'In dieser Anlage ist kein Mailversand eingerichtet. Ein neues Passwort bekommen Sie über die Rechteverwaltung Ihres Unternehmens: Sie stellt einen Link aus und gibt ihn Ihnen.',
+    backToLogin: 'Zurück zur Anmeldung',
+    forgotten: 'Passwort vergessen?',
     title: 'Passwort setzen',
     heading: 'Neues Passwort setzen',
     intro: 'Für {email}. Alle laufenden Sitzungen dieses Kontos enden dabei.',
