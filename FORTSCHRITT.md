@@ -474,11 +474,11 @@ Szenario benannt.
 | NFA-SEC-09 | Aktive Sessions einsehbar und beendbar | SOLL | M | M1 | abgenommen | Manuell: Sitzungsübersicht unter /settings/security, einzeln und gesammelt beendbar |
 | NFA-SEC-10 | CSRF-Schutz für alle schreibenden Aktionen | MUSS | T | M1 | abgenommen | `tests/integration/route-protection.test.ts` — ohne Token, fremde Herkunft, falsches Token |
 | NFA-SEC-11 | Serverseitige Schemavalidierung aller Eingaben | MUSS | R | M1 | abgenommen | Zod-Schemata in `src/app/login/actions.ts`, `src/app/settings/security/actions.ts`, `src/infrastructure/config/env.ts` |
-| NFA-SEC-12 | Renderer ohne Netzwerkzugriff, nachgewiesen | MUSS | T | M5 | offen | — |
-| NFA-SEC-13 | JavaScript im Rendering-Kontext deaktiviert | MUSS | R | M5 | offen | — |
-| NFA-SEC-14 | Rendering-Timeout (Standard 15 s) bricht kontrolliert ab | MUSS | T | M5 | offen | — |
+| NFA-SEC-12 | Renderer ohne Netzwerkzugriff, nachgewiesen | MUSS | T | M5 | umgesetzt | `playwright-renderer.ts` — `offline: true` **und** `page.route('**/*')` mit `route.abort('blockedbyclient')`. `tests/integration/rendering.test.ts` setzt einen Beleg mit zwei `<img>` auf fremde Adressen und prüft, dass **beide** blockiert wurden; ein `data:`-URI kommt weiterhin durch, sonst fehlten Schrift und Logo |
+| NFA-SEC-13 | JavaScript im Rendering-Kontext deaktiviert | MUSS | R | M5 | umgesetzt | `javaScriptEnabled: false` an **beiden** Stellen, an denen ein Kontext entsteht (`playwright-renderer.ts`). Ein Beleg ist Satz, kein Programm |
+| NFA-SEC-14 | Rendering-Timeout (Standard 15 s) bricht kontrolliert ab | MUSS | T | M5 | umgesetzt | `page.setDefaultTimeout(options.timeoutMs)` und dieselbe Grenze an `setContent`; ein Zeitablauf wird als `{ kind: 'TIMEOUT' }` zurückgegeben, nicht geworfen. `tests/integration/rendering.test.ts` |
 | NFA-SEC-15 | Uploads: Größe, MIME, Magic Bytes, ZIP-Slip-Schutz | MUSS | T | M5 | umgesetzt | `tests/unit/domain/template-upload.test.ts` — ZIP-Slip, Magic Bytes, Größenlimit, strenges UTF-8 |
-| NFA-SEC-16 | Uploads außerhalb des Webroots, nur authentifiziert | MUSS | T | M5 | offen | — |
+| NFA-SEC-16 | Uploads außerhalb des Webroots, nur authentifiziert | MUSS | T | M5 | umgesetzt | `asset-store.ts` legt unter `STORAGE_DIR/assets` ab, außerhalb von `public/`; `resolveInside()` weist jeden Pfad ab, der das Verzeichnis verlässt. `/api/assets/[id]` verlangt Sitzung und Recht (`getOptionalSession` + `authorizeRequest`) |
 | NFA-SEC-17 | CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | MUSS | R | M1 | abgenommen | `tests/unit/infrastructure/security.test.ts`, `tests/integration/route-protection.test.ts` |
 | NFA-SEC-18 | Fehlermeldungen ohne Stacktrace/Pfade/SQL | MUSS | R | M1 | abgenommen | Review: generische Meldungen in `login.ts`; Healthcheck ohne Details; Ursachen nur im Serverlog |
 | NFA-SEC-19 | Bindung nur an 127.0.0.1, TLS im Reverse Proxy | MUSS | R | M1 | abgenommen | Review: `docker-compose.yml` ohne `ports` am App-Dienst; TLS in `Caddyfile` |
@@ -522,12 +522,12 @@ Szenario benannt.
 | ID | Kurz | Prio | V | MS | Status | Nachweis |
 |---|---|---|---|---|---|---|
 | NFA-ARCH-01 | Domain ohne Persistenz-/UI-/Framework-Importe, Lint erzwingt | MUSS | T | M0 | abgenommen | `tests/architecture/layering.test.ts` — seit M5.5a zusätzlich: Prisma-Client nur aus `src/infrastructure/repositories/**` |
-| NFA-ARCH-02 | Ausgabeneutrales Dokumentmodell | MUSS | R | M5 | offen | — |
-| NFA-ARCH-03 | Dokumentmodell enthält alle Felder aus Spec §9.2 | MUSS | T | M5 | offen | — |
-| NFA-ARCH-04 | Einheiten als UN/ECE-Rec-20-Codes, Labels erst in der Anzeige | MUSS | T | M5 | offen | — |
-| NFA-ARCH-05 | Steuerkategorien als UNTDID-5305-Codes | MUSS | T | M5 | offen | — |
+| NFA-ARCH-02 | Ausgabeneutrales Dokumentmodell | MUSS | R | M5 | umgesetzt | `src/domain/document/invoice-document.ts` — 75 Felder, keine Kenntnis von HTML, Liquid oder PDF. Seit M15 steht `reminder-document.ts` daneben und benutzt dieselben Partei-Typen |
+| NFA-ARCH-03 | Dokumentmodell enthält alle Felder aus Spec §9.2 | MUSS | T | M5 | umgesetzt | Die BT-Nummern stehen als Kommentar am jeweiligen Feld (BT-1, -2, -5, -9, -13, -72 …). `tests/integration/document-output.test.ts` und `rendering.test.ts` setzen das Modell vollständig |
+| NFA-ARCH-04 | Einheiten als UN/ECE-Rec-20-Codes, Labels erst in der Anzeige | MUSS | T | M5 | umgesetzt | `src/domain/codes/unit-code.ts` (`C62`, `HUR`, …); die deutschen Labels entstehen in `src/ui/format.ts`. `tests/unit/domain/codes.test.ts` |
+| NFA-ARCH-05 | Steuerkategorien als UNTDID-5305-Codes | MUSS | T | M5 | umgesetzt | `src/domain/codes/tax-category.ts` (`S`, `AE`, `E`, `G`, `K`, `Z`). `tests/unit/domain/codes.test.ts` |
 | NFA-ARCH-06 | Konfigurierbare PDF-Nachbearbeitungskette, Testprozessor wirkt | MUSS | T | M5 | umgesetzt | `tests/integration/document-output.test.ts` — Reihenfolge, Durchreichen des Fehlers, leere Kette in V1 |
-| NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | offen | — |
+| NFA-ARCH-07 | Template-Engine und Renderer hinter Schnittstellen | MUSS | R | M5 | umgesetzt | `src/domain/rendering/contracts.ts` — `TemplateEngine`, `PdfRenderer`, `PdfPostProcessor`, seit M15 zusätzlich `ReminderTemplateEngine`. Reine Typen; LiquidJS und Playwright sind austauschbar, ohne dass aufrufender Code sich ändert |
 | NFA-ARCH-08 † | Statusänderungen erzeugen Domain-Events | SOLL | T | M4 † | abgenommen | `tests/integration/invoice-lifecycle.test.ts` — zusätzlicher Handler ohne Änderung der Kernlogik; ein fehlschlagender Handler kippt den Vorgang nicht |
 | NFA-ARCH-09 † | Dokumenttyp als Enum modelliert | SOLL | R | M0 † | abgenommen | `src/domain/document/document-type.ts`, `tests/unit/domain/codes.test.ts` |
 | NFA-ARCH-10 | DB-Zugriff nur über ORM, kein ungeprüftes Roh-SQL | MUSS | R | M0 | abgenommen | `tests/architecture/no-raw-sql.test.ts` (Lint-Regel + Quellcode-Scan); seit M5.5a führt jeder Zugriff zusätzlich über die Repository-Schicht |
