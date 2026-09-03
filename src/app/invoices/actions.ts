@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { assertRequestIntegrity } from '@/application/auth/assert-request-integrity';
 import { readRequestContext } from '@/application/auth/request-context';
+import { createInvoiceReminder } from '@/application/reminders/create-reminder';
 import { authorize } from '@/application/auth/authorize';
 import { requireSessionOrThrow } from '@/application/auth/require-session';
 import { cancelInvoice } from '@/application/invoices/cancel-invoice';
@@ -473,6 +474,44 @@ export async function cancelInvoiceAction(formData: FormData): Promise<void> {
   if (result.ok) {
     redirect(invoicePath(result.creditNoteId));
   }
+}
+
+/**
+ * Eine Mahnung ausstellen (M15, FA-MAHN-01, -07).
+ *
+ * **Der Nachweis verlangt zwei Rechte** — `invoice.remind` für die Handlung und
+ * `invoice.read`, weil der Anwendungsfall den Beleg samt Zahlungen liest, um
+ * den offenen Betrag zu bestimmen. Das ist dieselbe Bauart wie bei
+ * `issueInvoice` seit M12.
+ *
+ * Die Meldung kommt aus der Adresse (`?erledigt=…`), wie bei den übrigen stillen
+ * Aktionen seit M5.8: Ein POST endet besser mit einer Umleitung, und die
+ * Meldung soll ein Neuladen nicht überleben.
+ */
+export async function createReminderAction(formData: FormData): Promise<void> {
+  await assertRequestIntegrity(formData);
+  const session = await requireSessionOrThrow();
+  const authorized = authorize(session, 'invoice.remind', 'invoice.read');
+  const context = await readRequestContext();
+
+  const id = idSchema.safeParse(formData.get('invoiceId'));
+  if (!id.success) {
+    return;
+  }
+
+  const result = await createInvoiceReminder(
+    authorized,
+    id.data,
+    session.userId,
+    context.ipAddress,
+  );
+
+  revalidatePath(invoicePath(id.data));
+  revalidatePath(INVOICES_PATH);
+
+  redirect(
+    `${invoicePath(id.data)}?erledigt=${result.ok ? 'gemahnt' : 'mahnung-abgelehnt'}`,
+  );
 }
 
 const paymentSchema = z.object({

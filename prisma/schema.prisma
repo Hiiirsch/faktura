@@ -47,6 +47,8 @@ model Organization {
   roles           Role[]
   templates       Template[]
   artifacts       InvoiceArtifact[]
+  reminders       Reminder[]
+  reminderArtifacts ReminderArtifact[]
   customers       Customer[]
   catalogItems    CatalogItem[]
   assets          Asset[]
@@ -107,6 +109,18 @@ model CompanyProfile {
   defaultCurrency           String   @default("EUR")
   footerText                String?
   invoiceNumberFormat       String   @default("RE-{YYYY}-{SEQ:4}")
+
+  /// Mahnwesen (M15, FA-MAHN-03). Gebühren je Stufe in **Cent**, wie jeder
+  /// Betrag in dieser Anwendung. Die Voreinstellung ist bewusst 0 für die
+  /// Zahlungserinnerung: Wer zum ersten Mal erinnert, verlangt üblicherweise
+  /// nichts dafür.
+  reminderFee1Cents         Int      @default(0)
+  reminderFee2Cents         Int      @default(500)
+  reminderFee3Cents         Int      @default(1000)
+  /// Zahlungsfrist der Mahnung in Kalendertagen — kurz, weil die Frist der
+  /// Rechnung bereits verstrichen ist.
+  reminderPaymentTerms      Int      @default(7)
+  reminderNumberFormat      String   @default("MA-{YYYY}-{SEQ:4}")
   /// Muster für den Dateinamen erzeugter PDFs (FA-PDF-09).
   pdfFileNamePattern        String   @default("{NUMBER}")
   updatedAt                 DateTime @updatedAt
@@ -286,6 +300,7 @@ model Invoice {
   lines     InvoiceLine[]
   payments  Payment[]
   artifacts InvoiceArtifact[]
+  reminders Reminder[]
 
   /// Denormalisierte Summen in Cent, bei jeder Änderung neu berechnet.
   netTotalCents   Int @default(0)
@@ -400,6 +415,71 @@ model InvoiceArtifact {
   @@index([organizationId, createdAt])
 }
 
+/// Mahnung zu einer Rechnung (M15, FA-MAHN-01 bis -06).
+///
+/// **Eigene Tabelle statt `documentType: "REMINDER"` an `Invoice`.** Eine
+/// Mahnung trägt keine Positionen und keine Steuer; sie fordert eine bestehende
+/// Forderung ein und begründet keine neue. Läge sie in `Invoice`, bekäme jede
+/// dortige Regel — Umsatz, Zahlungen, Storno, Status, Dashboard, Export — einen
+/// weiteren Fall, den man übersehen kann. Genau diese Blindheit nach Belegart
+/// hat M12 an vier Stellen aufgedeckt.
+///
+/// Beträge sind eingefroren: Was hier steht, galt am Tag der Mahnung. Zahlt der
+/// Kunde danach eine Teilsumme, ändert das die verschickte Mahnung nicht.
+model Reminder {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// Eigener Nummernkreis, getrennt von dem der Belege (FA-MAHN-06).
+  number String
+  /// 1 = Zahlungserinnerung, 2 = Mahnung, 3 = letzte Mahnung.
+  level  Int
+
+  /// Kalendertage als `YYYY-MM-DD`, wie überall in dieser Anwendung.
+  issueDate String
+  dueDate   String
+
+  /// Der offene Betrag der Rechnung am Tag der Mahnung, in Cent.
+  outstandingCents Int
+  feeCents         Int
+  totalCents       Int
+
+  /// Wer gemahnt hat. Wie bei `Invoice.createdById` ein echter Fremdschlüssel:
+  /// Ein Konto wird nie gelöscht, sondern gesperrt.
+  createdById String?
+  createdBy   User?   @relation("ReminderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  artifacts ReminderArtifact[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, createdAt])
+  @@index([invoiceId, level])
+}
+
+/// Das erzeugte PDF einer Mahnung — dieselbe Bauart wie `InvoiceArtifact`.
+model ReminderArtifact {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reminderId     String
+  reminder       Reminder     @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+
+  kind      String   @default("pdf")
+  filePath  String
+  sha256    String
+  byteSize  Int
+  fileName  String
+  createdAt DateTime @default(now())
+
+  @@unique([reminderId, kind])
+  @@index([organizationId, createdAt])
+}
+
 // ─── Vorlagen ───────────────────────────────────────────────────────────────
 
 /// Rechnungsvorlage aus Liquid-HTML und CSS (Spec §8.1).
@@ -492,6 +572,7 @@ model User {
   /// behält. Die Regel steht da für den Fall, dass eine ganze Organisation
   /// entfernt wird.
   createdInvoices Invoice[]            @relation("InvoiceCreatedBy")
+  createdReminders Reminder[]         @relation("ReminderCreatedBy")
   pendingLogins   PendingLogin[]
   passwordResets  PasswordReset[]
   /// Von diesem Konto ausgesprochene Einladungen. `onDelete: SetNull` an der

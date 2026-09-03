@@ -6,6 +6,7 @@ import { formatPlainDateDe } from '@/domain/format/de';
 
 import { type Authorized, authorizeOptional, requirePermission } from '@/application/auth/authorize';
 import { loadInvoiceDetail, today } from '@/application/invoices/invoice-queries';
+import { getRemindersForInvoice, highestLevelOf } from '@/application/reminders/reminder-queries';
 import { getAppTimeZone } from '@/application/system/display-settings';
 import { isTaxCategoryCode } from '@/domain/codes/tax-category';
 import { isUnitCode } from '@/domain/codes/unit-code';
@@ -18,6 +19,7 @@ import { quantityFromScaled } from '@/domain/quantity/quantity';
 import { isTaxScheme } from '@/domain/tax/tax-scheme';
 import { todayIn } from '@/domain/time/plain-date';
 import { can } from '@/domain/policy/can';
+import { refusalForReminder } from '@/domain/reminder/dunning';
 import { messages } from '@/i18n/de';
 import { acceptsPayments, canBeCancelled } from '@/domain/invoice/status';
 import { InvoiceStatusField } from '@/ui/components/status-field';
@@ -28,6 +30,7 @@ import {
   invoicePath,
   invoicePdfEmbedPath,
   invoicePdfPath,
+  reminderPdfPath,
 } from '@/routes';
 import { ConfirmDialog } from '@/ui/components/dialog';
 import { SECTION_CLASS, NoScriptNotice, SECONDARY_BUTTON_CLASS } from '@/ui/components/form';
@@ -35,7 +38,12 @@ import { EmptyState, PageHeader } from '@/ui/components/page';
 import { formatMoney, formatPercent, formatQuantity, formatUnit } from '@/ui/format';
 
 import { AppShell } from '../../app-shell';
-import { cancelInvoiceAction, deleteDraftAction, duplicateInvoiceAction } from '../actions';
+import {
+  cancelInvoiceAction,
+  createReminderAction,
+  deleteDraftAction,
+  duplicateInvoiceAction,
+} from '../actions';
 
 import { editorBuyerOf, loadEditorContext } from '../editor-data';
 import { DocumentPreview } from '@/ui/components/document-preview';
@@ -46,6 +54,25 @@ import { PaymentSection } from './payment-section';
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: `${messages.invoices.viewHeading} · ${messages.app.name}` };
+
+/**
+ * Die Beschriftung einer Mahnstufe (M15).
+ *
+ * Eine Funktion und keine Zuordnungstabelle im Markup: Die Stufe kommt als Zahl
+ * aus der Datenbank, und ein unbekannter Wert soll die Seite nicht leer lassen.
+ */
+function reminderLevelLabel(level: number): string {
+  switch (level) {
+    case 1:
+      return messages.reminders.level1;
+    case 2:
+      return messages.reminders.level2;
+    case 3:
+      return messages.reminders.level3;
+    default:
+      return messages.reminders.heading;
+  }
+}
 
 export default async function InvoiceDetailPage({
   params,
@@ -64,6 +91,9 @@ export default async function InvoiceDetailPage({
   if (invoice === null) {
     notFound();
   }
+
+  // Mahnungen (M15). Gelesen mit `invoice.read`: Wer den Beleg sieht, sieht
+  // auch, was zu ihm gemahnt wurde. Geschützt ist das Ausstellen.
 
   /*
    * Der Entwurfseditor erscheint nur, wenn das Konto ihn auch benutzen kann
@@ -91,6 +121,18 @@ export default async function InvoiceDetailPage({
   const outstanding = outstandingAmount(
     cents(invoice.grossTotalCents),
     cents(invoice.paidTotalCents),
+  );
+
+  const reminders = await getRemindersForInvoice(session.organization, id);
+  const reminderRefusal = refusalForReminder(
+    {
+      documentType: invoice.documentType === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE',
+      status: invoice.status,
+      dueDate: invoice.dueDate === null ? null : plainDate(invoice.dueDate),
+      outstandingCents: outstanding,
+    },
+    highestLevelOf(reminders),
+    todayIn(getAppTimeZone(), new Date()),
   );
 
   const title = invoice.invoiceNumber ?? messages.invoices.noNumber;
@@ -247,6 +289,67 @@ export default async function InvoiceDetailPage({
               note: payment.note,
             }))}
           />
+        )}
+
+        {/*
+          Mahnungen (M15, FA-MAHN-01).
+
+          **Angeboten wird die Handlung unter genau der Bedingung, unter der der
+          Server sie annimmt** — Zustand *und* Recht (die Regel aus M12). Der
+          Zustand kommt aus `refusalForReminder()` in der Domäne, das Recht aus
+          `can()`; beide Seiten lesen dieselbe Funktion.
+
+          Steht die Handlung nicht offen, erscheint **der Grund** statt eines
+          toten Knopfes: „noch nicht überfällig" ist kein Fehler des Benutzers,
+          sondern eine Auskunft.
+        */}
+        {reminderRefusal === null && can(session.actor, 'remind', 'invoice') ? (
+          <section className={SECTION_CLASS}>
+            <h2 className="text-section font-medium">{messages.reminders.heading}</h2>
+            <p className="max-w-form text-ui text-ink-muted">{messages.reminders.intro}</p>
+            <form action={createReminderAction}>
+              <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
+              <input type="hidden" name="invoiceId" value={invoice.id} />
+              <ConfirmDialog
+                title={messages.reminders.confirmTitle}
+                message={messages.reminders.confirmBody}
+                confirmLabel={messages.reminders.confirmAction}
+                trigger={
+                  <button type="submit" className={SECONDARY_BUTTON_CLASS}>
+                    {messages.reminders.create}
+                  </button>
+                }
+              />
+            </form>
+          </section>
+        ) : null}
+
+        {reminders.length === 0 ? null : (
+          <section className={SECTION_CLASS}>
+            <h2 className="text-section font-medium">{messages.reminders.heading}</h2>
+            <ul className="flex flex-col divide-y divide-rule">
+              {reminders.map((reminder) => (
+                <li
+                  key={reminder.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="text-ui font-medium">
+                      {reminderLevelLabel(reminder.level)} · {reminder.number}
+                    </span>
+                    <span className="text-ui text-ink-muted tabular-nums">
+                      {formatPlainDateDe(reminder.issueDate)} ·{' '}
+                      {messages.reminders.columnDue} {formatPlainDateDe(reminder.dueDate)} ·{' '}
+                      {formatMoney(cents(reminder.totalCents), currency)}
+                    </span>
+                  </div>
+                  <a href={reminderPdfPath(reminder.id)} className={SECONDARY_BUTTON_CLASS}>
+                    {messages.reminders.download}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {/*

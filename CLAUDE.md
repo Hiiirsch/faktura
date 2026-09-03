@@ -1414,6 +1414,335 @@ laufender Monat und die Zwölfmonatsreihe hängen am selben Tag. Läse jede
 Kennzahl ihre eigene Uhr, könnte eine um Mitternacht geladene Übersicht
 denselben Beleg als überfällig und als heute fällig ausweisen.
 
+## Zustellung (seit M14)
+
+**Die Mail ist ein zusätzlicher Weg, kein Ersatz.** Einladung, Zurücksetzung und
+Einrichtung eines Betreiberkontos erscheinen weiterhin genau einmal in der
+Oberfläche; ist ein Mailserver eingerichtet, gehen sie **zusätzlich** hinaus.
+Damit bleibt die Zusage aus M8 unangetastet: Wer die Nachricht nicht bekommt,
+ist nicht ausgesperrt — und ein Fehlschlag beim Versand ist kein Fehlschlag der
+Handlung. Der Test dazu prüft beides in **einem** Durchlauf
+(`tests/integration/invitation-delivery.test.ts`): Sobald der Link woanders
+steht, liegt es nahe, ihn aus der Oberfläche zu nehmen.
+
+**Die Verwaltung stellt ebenso zu — das war der erste Nachtrag.** B2 hat drei
+Wege verkabelt und drei übersehen, alle in der Betreibersicht: Unternehmen
+anlegen, Einladung erneut ausstellen, Zurücksetzung für ein Mandantenkonto.
+Nichts daran war ein Typfehler; jede Funktion war für sich richtig, der Fehler
+lag zwischen ihnen. `tests/architecture/delivery.test.ts` hält die Regel jetzt
+fest: Ein Modul der Anwendungsschicht, das `generateRedemptionToken()` aufruft,
+ruft auch eine `deliver*`-Funktion auf.
+
+Bei der Zurücksetzung durch den Betreiber ist die Zustellung mehr als
+Bequemlichkeit. Er könnte den Nachweis selbst einlösen — der bewusst in Kauf
+genommene Preis aus M9. Geht die Nachricht an den Kontoinhaber, erfährt der
+davon, ohne ins Protokoll zu sehen: Der Eingriff wird dadurch nicht unmöglich,
+aber sichtbar.
+
+**Ein Testlauf verschickt nichts, und das musste erzwungen werden.** Vitest
+liest die `.env` des Entwicklers mit; sobald dort Zugangsdaten standen, gingen
+Einladungen an `ohne-mail@example.org` **tatsächlich** hinaus — an eine
+reservierte Domäne, also als Rückläufer, die den Absenderruf beschädigen.
+Aufgefallen ist es nur, weil zwei Tests `not-configured` erwarteten.
+
+Ein `setupFiles`-Eintrag, der die Variablen löscht, reichte nicht: Nach knapp
+dreißig Tests standen sie wieder da. Die Integrationskonfiguration setzt sie
+deshalb auf **leer**, und eine leere Variable heißt in `env.ts` „nicht
+eingerichtet" statt „ungültig". Das ist auch für den Betrieb richtig — `SMTP_URL=`
+ist die übliche Art, etwas abzuschalten, und brachte die Anwendung bis dahin zum
+Absturz statt zum Schweigen.
+
+**NFA-COMP-05 wurde verengt, nicht gestrichen.** Es gibt genau eine ausgehende
+Verbindung, sie führt zu einem Server, den der Betreiber selbst benennt
+(`SMTP_URL`), und ohne diese Konfiguration verhält sich die Anwendung exakt wie
+vor M14. „Nicht eingerichtet" ist deshalb ein **Rückgabewert**
+(`{ ok: false, reason: 'not-configured' }`), keine Ausnahme: Ein Aufrufer, der
+nichts konfiguriert, muss nichts wissen und nichts abfangen.
+
+Die Oberfläche unterscheidet die drei Ausgänge (`Delivery`), weil sie sich
+unterscheiden: `sent`, `not-configured` — der Link steht da, reichen Sie ihn
+weiter — und `failed`, es gibt einen Mailserver und er hat abgelehnt. Wer einen
+Link von Hand weitergeben muss, soll wissen, ob er es muss.
+
+**Nur Text, kein HTML.** Eine HTML-Mail lädt Bilder nach, und genau das tut diese
+Anwendung nirgends (NFA-COMP-06); ein Link bleibt im Text sichtbar, was er ist.
+Der Wortlaut steht in `src/domain/notifications/mail-texts.ts` und **nicht** in
+`de.ts` — die Anwendungsschicht kennt keine Oberfläche, und eine Mail ist die
+Ausgabe eines Anwendungsfalls, nicht die Beschriftung eines Knopfes. Das Vorbild
+ist `domain/legal/privacy-notice.ts` aus M13.
+
+Jede Nachricht sagt, **was bei Nichtstun geschieht**. Wer eine unerwartete Mail
+bekommt, soll nicht raten müssen — und eine Nachricht, die zum Klicken drängt,
+ist von der Fälschung nicht zu unterscheiden, vor der dieselben Empfänger
+gewarnt werden.
+
+**Zehn Sekunden für Verbindung, Begrüßung und Übergabe.** Ein hängender
+Mailserver darf keine Server Action festhalten: Wer ein Mitglied einlädt, hat es
+eingeladen; die Zustellung ist die Zugabe.
+
+**„Passwort vergessen" ist Selbstbedienung** (FA-MEMB-09). Bis M14 konnte den
+Nachweis nur ein Konto mit `organization.administer` ausstellen — wer sein
+Passwort vergaß, musste jemanden anrufen. Die Antwort ist in allen Fällen
+dieselbe: unbekannte Adresse, gesperrtes Konto, stillgelegtes Unternehmen,
+Erfolg. Alles andere wäre eine Auskunft darüber, wer hier ein Konto hat.
+
+Der Vorgang steht in `src/application/members/redeem.ts` und ist damit die
+**vierte** Stelle ohne Mandantenkontext, aus demselben Grund wie die drei
+anderen: Wer eine Adresse eingibt, ist noch niemand, und die Organisation ist
+das *Ergebnis* der Abfrage.
+
+**Die Bremse rechnet über `expiresAt`, nicht über `createdAt`** — fünf Minuten
+Abstand, ohne neue Tabelle. Der erste Anlauf verglich den Zeitpunkt des
+Aufrufers mit dem, den die **Datenbank** beim Einfügen setzt. In der Anwendung
+fällt das nie auf, weil beide Uhren dieselbe sind; im Test mit festem Zeitpunkt
+lagen Monate dazwischen, und die Bremse griff für immer. `expiresAt` setzen wir
+selbst aus demselben `now` — damit ist die Regel rein, ohne Datenbank prüfbar
+und liegt in `domain/auth/password-reset-policy.ts`.
+
+**Kein automatisches Anmelden über einen Maillink.** Die Regel aus M8 bleibt: Ein
+Link, der eine Sitzung eröffnet, wäre ein Passwortersatz in einem Postfach.
+
+## Die eigene Sicherheit eines Betreiberkontos (seit M14.1)
+
+`/admin/security` ist das Gegenstück zu `/settings/security`, **aber nicht
+dessen Kopie**. Drei Abschnitte der Mandantenseite fehlen, und alle drei aus
+demselben Grund: Für Betreiberkonten ist der zweite Faktor verpflichtend
+(FA-ADM-08). Es gibt deshalb kein Abschalten, keine Wiederherstellungscodes und
+keine vertrauten Geräte. Der Abschnitt „Zweiter Faktor" steht trotzdem da — er
+sagt, warum es ihn nicht gibt und was bei Verlust hilft. Eine Leerstelle
+beantwortet die Frage nicht.
+
+**Warum es bis dahin gar keinen Passwortwechsel gab.** Ein Betreiberkonto
+entsteht über einen Einrichtungslink, und derselbe Weg diente der
+Wiederherstellung. Wer sein Passwort wechseln wollte, ließ sich zurücksetzen —
+und bekam dabei jedes Mal auch einen neuen zweiten Faktor. Das ist kein Vorgang,
+das ist ein Umweg. Nebenbei: Auch **Mandanten** können ihr Passwort bis heute
+nicht ändern, nur über „Passwort vergessen" neu setzen.
+
+**Das bisherige Passwort wird verlangt**, obwohl die Sitzung schon steht. Sie
+ist der einzige Nachweis, den ein Angreifer an dieser Stelle mitbringt; ohne die
+Prüfung genügte ein übernommener Bildschirm für die Übernahme des Kontos.
+
+**Alle anderen Sitzungen enden, die aufrufende nicht.** Wer sein Passwort
+wechselt, tut das oft, weil er einen fremden Zugriff vermutet — bliebe der
+bestehen, hätte der Wechsel nichts bewirkt. Die eigene mitzubeenden wäre die
+reinere Regel und bestrafte jeden Wechsel mit einer Neuanmeldung. Bei der
+Zurücksetzung durch einen **anderen** Betreiber enden dagegen alle: Dort weiß
+niemand, welche die richtige ist.
+
+**Gefiltert wird in der Abfrage, nicht in der Kennung.**
+`deleteMany({ where: { id, adminUserId } })` statt `delete({ where: { id } })` —
+sonst beendete eine untergeschobene fremde Kennung die Sitzung eines anderen
+Betreibers. Der Rückgabewert `count` sagt zugleich, ob es die eigene war.
+Derselbe Angriff steht als Test.
+
+**Es gibt weiterhin kein „Passwort vergessen" für die Verwaltung** (FA-ADM-20),
+und das ist der Unterschied zu M14: Beim Mandanten setzt ein
+Zurücksetzungsnachweis **nur** das Passwort, der zweite Faktor bleibt stehen.
+Beim Betreiber muss er **beides** neu setzen, weil es keine
+Wiederherstellungscodes gibt. Ein Link im Postfach wäre damit ein vollständiger
+Ersatz für Passwort und Authenticator — die verpflichtende
+Zweifaktorauthentifizierung wäre ein Satz im Katalog und sonst nichts.
+
+`ADMIN_PASSWORD_CHANGED` ist eine eigene Protokollaktion neben `ADMIN_RESET`:
+Das eine ist eine Handlung **des** Kontos, das andere ein Eingriff **an** ihm.
+Wer das Protokoll liest, muss den Unterschied sehen.
+
+Der Betriebszustand fehlt auf dieser Seite, obwohl er auf der Mandantenseite
+steht: Er hat unter `/admin/operations` längst einen Platz, und zweimal
+dieselbe Auskunft sind zwei Stellen, die auseinanderlaufen.
+
+## Mahnwesen (seit M15)
+
+**Es stand unter `[V2]`, und das wurde entschieden, nicht übergangen.** Spec §13
+führt Mahnwesen unter „Explizit nicht in Scope (V1), aber vorbereitet" — in
+derselben Tabelle wie Mehrbenutzer (gebaut in M8) und E-Mail-Versand (gebaut in
+M14). Der Auftraggeber hat es in den Umfang genommen; die Papiere halten das
+fest, statt die Regel stillschweigend zu dehnen.
+
+**Eine Mahnung ist kein umsatzsteuerlicher Beleg.** Sie fordert eine bestehende
+Forderung ein und begründet keine neue: kein Steuerausweis, kein Umsatz, keine
+Zahlung darauf. Bezahlt wird die **Rechnung**; die Mahnung nennt nur, was von
+ihr offen ist.
+
+**Deshalb eine eigene Tabelle und nicht `documentType: 'REMINDER'`.** Die Spec
+schlägt das Erweitern der Aufzählung vor — das gilt für Angebot und
+Auftragsbestätigung, die Positionen und Steuer tragen. Eine Mahnung tut beides
+nicht. Läge sie in `Invoice`, bekäme **jede** dortige Regel einen neuen Fall:
+Umsatz, Zahlungen, Storno, Status, Dashboard, Export, Sammelaktionen. Genau
+diese Blindheit nach Belegart hat M12 an vier Stellen aufgedeckt. Eine eigene
+Tabelle ändert nichts Bestehendes.
+
+**Der Nummernkreis ist getrennt** (`REMINDER_SEQUENCE_PREFIX`). Der Kreis der
+Rechnungen muss lückenlos sein (FA-NUM-05); zählte eine Mahnung darin mit,
+entstünde eine Lücke, die niemand erklären kann. Ein Test schreibt deshalb nach
+einer Mahnung den nächsten Beleg fest und prüft dessen Nummer.
+
+**Drei Stufen, gezählt ab der höchsten bisherigen — nicht ab ihrer Anzahl.**
+Zwei Mahnungen derselben Stufe, etwa nach einem verlorenen Brief, dürfen die
+nächste nicht überspringen lassen.
+
+**Gebühr ja, Verzugszinsen nein.** Die Gebühr steht je Stufe in Cent an den
+Firmendaten. Zinsen nach §288 BGB bräuchten den Basiszinssatz der Bundesbank —
+eine Zahl, die sich halbjährlich ändert und im System veralten würde, während
+die Anwendung damit rechnet. Dieselbe Überlegung wie bei den Fristen der
+Datenschutzhinweise, nur andersherum: Was wir nicht aus eigener Kenntnis
+ableiten können, behaupten wir nicht.
+
+**Die Beträge sind eingefroren.** Was auf der Mahnung steht, galt am Tag ihrer
+Ausstellung; `Reminder_no_update` weist jede Änderung ab. Zahlt der Kunde danach
+eine Teilsumme, ändert das den verschickten Brief nicht — ein Dokument, das sich
+nachträglich ändert, ist keines. Gelöscht wird ebenfalls nicht: Die Stufe der
+nächsten Mahnung hängt an ihr.
+
+**Das PDF geht dieselbe Kette wie ein Beleg** — dieselbe Schrift, dasselbe
+Briefpapier, derselbe Seitenstempel, dieselbe Ablage mit SHA-256. Absender und
+Empfänger kommen aus `buildInvoiceDocument()` und nicht aus einer zweiten
+Abbildung der Firmendaten: Damit gilt für die Mahnung, was für den Beleg gilt —
+Snapshot statt Gegenwart, freier Anschriftenblock, Logo. Eine eigene Umsetzung
+wäre die zweite Wahrheit, die beim ersten Sonderfall abweicht.
+
+**Die Vorlage gehört ausnahmsweise nicht dem Unternehmen.** Sie liegt als Modul
+neben der Standardvorlage und teilt deren CSS; bearbeitbar ist sie nicht. Eine
+Mahnung ist ein kurzer Brief mit festem Inhalt, und was daran
+unternehmensspezifisch ist — Logo, Anschrift, Bankverbindung, Briefpapier —
+kommt ohnehin aus den Firmendaten. Sollte sich das ändern, bekommt `Template`
+eine Spalte `kind`; heute wäre sie eine Einstellung ohne Frage dahinter.
+
+**`ReminderTemplateEngine` ist ein eigener Vertrag**, keine Verallgemeinerung
+von `TemplateEngine`. Dessen Signatur nennt `InvoiceDocument` ausdrücklich —
+darin liegt die Aussage, welche Variablen eine Belegvorlage vorfindet. Auf ein
+beliebiges Objekt geöffnet, sagte sie nichts mehr.
+
+**Mahnen ist ein eigenes Recht** (`invoice.remind`). Die Migration trägt es
+**nur** bei Rollen mit `organization.administer` nach — der Rolle „Inhaber", die
+als „alle Berechtigungen" definiert ist. Eingeschränkte Rollen bekommen nichts:
+Wer eine Rolle beschnitten hat, hat das bewusst getan, und eine still ergänzte
+Fähigkeit wäre eine Rechteerweiterung, die niemand angeordnet hat.
+
+## Das Handbuch (seit M16)
+
+**Kein Doku-Framework, und der Grund ist nicht Geschmack.** Docusaurus, Nextra
+oder VitePress hätten vier Zusagen gebrochen: ein eigenes Theme neben dem
+Tokensatz (FA-UI-01), WebAssembly für die Volltextsuche und damit
+`'wasm-unsafe-eval'` in der Richtlinie — genau das, was für pdf.js vermieden
+wurde —, einen zweiten Build außerhalb von `src/routes.ts` (NFA-SEC-01) und
+nach pdfjs-dist eine zweite große Abhängigkeit im Browser. Die Anforderungen
+— mit der Software ausgeliefert, durchsuchbar, von der Anmeldeseite erreichbar
+— gehen ohne das.
+
+**Der Inhalt ist MDX, die Gestaltung nicht.** Zwölf Dateien in
+`src/content/hilfe/`; in keiner steht eine Klasse oder ein Farbwert. Gesetzt
+wird ausschließlich in `src/mdx-components.tsx`, mit Tokens — deshalb folgt das
+Handbuch dem dunklen Schema, ohne davon zu wissen, und die Wächter aus
+`design-tokens.test.ts` brauchen keine Ausnahme.
+
+**`pageExtensions` bleibt unangetastet.** Die Anleitung schlägt vor, `mdx` in
+die Seitenerweiterungen aufzunehmen; dann würde jede MDX-Datei selbst zur Route.
+Hier werden sie **importiert**. So bleibt `src/routes.ts` das alleinige
+Routenverzeichnis, gegen das der Zugriffsschutztest das Dateisystem abgleicht.
+
+**Jede Zahl ist ein Verweis.** Passwortlänge, Sperrdauer, Sitzungsdauer,
+Einladungsfrist, Mahnstufen — alles kommt aus den Konstanten und wird in der
+MDX-Datei eingesetzt. Ein Test prüft **beide** Richtungen: dass die Konstante
+importiert wird und dass ihr ausformulierter Wert nirgends als Text steht. Die
+zweite Richtung ist die wirksame — ein `{formatRetention(…)}` an einer Stelle
+hilft nichts, wenn anderswo „7 Tage" ausgeschrieben stehen bleibt. Bauart wie
+`privacy-notice.ts` aus M13.
+
+**Die Suche läuft auf dem Server.** MDX wird zu Komponenten übersetzt; der Text
+liegt danach nicht mehr als Zeichenkette vor. `scripts/build-docs-index.ts`
+erzeugt deshalb aus den Quellen einen Index, der **eingecheckt** wird — der
+Containerbau soll nichts herstellen müssen. Dass er zu den Quellen passt, hält
+`tests/architecture/docs-index.test.ts` fest, indem er ihn neu erzeugt und
+vergleicht. Ohne diesen Wächter wäre die Suche nach der zweiten Änderung stumm
+veraltet: Sie fände noch, was gestern dastand.
+
+Gesucht wird über ein `GET`-Formular; die Seite liest `?suche=` und setzt die
+Treffer. Kein Suchindex im Browser, kein zusätzliches Bündel, keine Änderung an
+der Richtlinie — und es funktioniert ohne JavaScript.
+
+**Ein eingesetzter Wert wird im Index zur Auslassungsmarke.** „Ein Passwort ist
+mindestens … Zeichen lang" liest sich als Auslassung; ohne die Marke stünde dort
+„mindestens Zeichen lang", und das läse sich in einem Suchtreffer wie ein Fehler
+im Programm. Die Werte beim Erzeugen auszuwerten hieße, den Index gegen die
+laufende Anwendung zu bauen — dafür ist der Gewinn zu klein.
+
+**Der Text steht nicht in `de.ts`**, sondern in den MDX-Dateien. Das ist die
+dritte benannte Ausnahme dieser Art, nach `mail-texts.ts` (M14) und
+`privacy-notice.ts` (M13), und aus demselben Grund: Ein Handbuch ist ein
+Dokument, keine Beschriftung. In `de.ts` stehen die Knöpfe und Zeilen darum
+herum.
+
+**`src/mdx-components.tsx` liegt in `src/`, nicht im Wurzelverzeichnis.** Next
+findet sie an beiden Orten. Im Wurzelverzeichnis fiel sie aus
+`files: ['src/**/*.{ts,tsx}', …]` der ESLint-Konfiguration heraus, und
+`npm run lint` brach mit einem Ladefehler ab statt mit einer Meldung — ein
+Abbruch, den ein Grep nach „error" nicht sieht.
+
+### Die Neuerungen (M16.2)
+
+**Von Hand geschrieben, nicht aus dem Verlauf abgeleitet.** Die
+Commit-Nachrichten dieses Projekts sind ausführlich und gut — aber sie richten
+sich an Entwickler („Der Autorisierungswächter verlangte das neue Skript in
+beiden Erlaubnislisten“) und beantworten nicht, was sich für jemanden ändert,
+der Rechnungen schreibt. Ein erzeugtes Änderungsprotokoll wäre vollständig und
+unlesbar.
+
+**Am Ende der Gliederung, nicht am Anfang.** Wer das Handbuch zum ersten Mal
+öffnet, will wissen, wie man sich anmeldet. Für alle anderen steht auf der
+Übersicht ein Verweis darauf — „Was ist neu?“ ist die Frage, mit der jemand nach
+einer Aktualisierung herkommt, und sie soll nicht erst unten in einer Liste von
+dreizehn Themen beantwortet werden.
+
+**Die Reihenfolge steht im Architekturtest**, nicht in einem Unit-Test: Die
+schnelle Suite kennt den MDX-Lader nicht, ein `import` von `@/content/hilfe`
+scheitert dort beim Übersetzen der ersten Überschrift. Gelesen wird deshalb der
+Quelltext des Verzeichnisses — für eine Reihenfolge genügt Text.
+
+### Gliederung, Diagramme, Bildschirmfotos (M16.1)
+
+**Kein `layout.tsx` für die Seitenleiste.** Ein Layout bekommt den aufgerufenen
+Pfad nicht; um den aktiven Eintrag zu markieren, bräuchte die Gliederung
+`usePathname()` und damit eine Client-Komponente. Stattdessen reicht jede Seite
+ihre Kennung an `HelpShell` — zwei Aufrufstellen, dafür kein JavaScript für
+etwas, das der Server längst weiß.
+
+Ausgezeichnet wird über **`aria-current="page"`**, und gesetzt wird über genau
+dieses Attribut (`aria-[current=page]:…`) statt über eine zusätzlich vergebene
+Klasse: Die optische Auszeichnung ist dieselbe Aussage wie die für
+Screenreader, und zwei Quellen für dieselbe Aussage laufen auseinander.
+
+**Die Diagramme sind Inline-SVG mit `currentColor`** — dieselbe Bauart wie die
+Marke seit M9, aus demselben Grund: Eine Bilddatei bliebe nachts in ihrem
+Grauton stehen. Sie zeigen **Zusammenhänge, keine Bildschirme**; ein umbenannter
+Knopf macht eine Zustandsfolge nicht falsch.
+
+Sie liegen in `src/content/hilfe/diagrams.tsx`, nicht in `src/ui/`: Ihre
+Beschriftungen sind deutscher Fließtext wie in den MDX-Dateien nebenan.
+`design-tokens.test.ts` prüft **`src/content` seither mit** — ein Verzeichnis
+mit Bauteilen, das kein Wächter ansieht, wäre die Stelle, an der die erste
+Literalfarbe steht.
+
+**Bildschirmfotos werden aufgenommen, nicht abgelegt** (`npm run docs:shots`).
+Ein von Hand geschossener Screenshot ist ein Bild, das niemand nachstellen kann;
+nach der zweiten Änderung erneuert ihn niemand mehr. Das Skript fährt die
+**gebaute** Anwendung auf einer eigenen, wegwerfbaren Datenbank mit den
+Beispieldaten aus `scripts/seed.ts` hoch, meldet sich an und nimmt auf.
+
+Drei Entscheidungen darin, alle mit Anlass:
+
+- **`NODE_ENV=development` für den Seed-Lauf**, `production` für den Server.
+  `scripts/seed.ts` weigert sich gegen eine Produktionsdatenbank, und das zu
+  Recht — der erste Anlauf lief genau dort hinein.
+- **Ein neutraler Betrieb.** Der Seed legt „Musterbetrieb Tim Hirsch" an; in
+  einer mitgelieferten Dokumentation hat der Name des Entwicklers nichts zu
+  suchen. Überschrieben wird nach dem Seed, vor der Aufnahme.
+- **`<img>` statt `next/image`.** Der Optimierer verlangt in der Produktion
+  `sharp` — eine nativ übersetzte Abhängigkeit im Container für fünf verzögert
+  geladene Bilder. Die Regel ist an genau einer Stelle mit Begründung
+  abgeschaltet.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1439,6 +1768,12 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M11 | Der Beleg: keine Steuer bei §19, Blattfuß, Logo, Entwurf bearbeiten | umgesetzt |
 | M12 | Briefpapier je Unternehmen, PDF beim Festschreiben, klare Rückmeldung | umgesetzt |
 | M13 | Impressum und Datenschutzhinweise, gepflegt vom Betreiber | umgesetzt |
+| M14 | Zustellung: E-Mail als zusätzlicher Weg, „Passwort vergessen" | umgesetzt |
+| M14.1 | Eigene Sicherheit eines Betreiberkontos: Passwort, Geräte, Passkeys | umgesetzt |
+| M15 | Mahnwesen: drei Stufen, Gebühr je Stufe, eigenes PDF | umgesetzt |
+| M16 | Handbuch: MDX-Inhalt, serverseitige Suche, öffentlich | umgesetzt |
+| M16.1 | Handbuch: Gliederung, Diagramme, erzeugte Bildschirmfotos | umgesetzt |
+| M16.2 | Handbuch: Abschnitt „Neuerungen“ | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

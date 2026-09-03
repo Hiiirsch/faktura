@@ -169,7 +169,14 @@ async function resolveTemplate(
  * und in der Fußzeile lässt sich nicht darauf verzweigen. Sie wird
  * anschließend von `pageNumberStamp` aufgebracht.
  */
-function renderOptions(geometry: PageGeometry): PdfRenderOptions {
+/**
+ * Seit M15 auch von der Mahnung benutzt (`application/reminders/`).
+ *
+ * Geteilt und nicht kopiert: Kopf- und Fußzeile leer zu lassen ist eine
+ * Entscheidung über den Seitenstempel, und die gilt für jedes Dokument dieser
+ * Anwendung.
+ */
+export function renderOptions(geometry: PageGeometry): PdfRenderOptions {
   return { geometry, timeoutMs: RENDER_TIMEOUT_MS };
 }
 
@@ -184,7 +191,7 @@ function renderOptions(geometry: PageGeometry): PdfRenderOptions {
  * Fehlt die Datei, erscheint kein Briefpapier und kein Fehler. Ein Beleg soll
  * nicht an seiner Gestaltung scheitern.
  */
-async function letterheadBytes(
+export async function letterheadBytes(
   context: Authorized<'invoice.read'>,
   assetId: string | null,
 ): Promise<Uint8Array | null> {
@@ -212,7 +219,7 @@ async function letterheadBytes(
  * Bogen **davor**: Der Seitenstempel schreibt danach auf das fertige Blatt,
  * sonst läge die Seitenangabe unter einer deckenden Fläche.
  */
-function postProcessorsFor(letterhead: Uint8Array | null): readonly PdfPostProcessor[] {
+export function postProcessorsFor(letterhead: Uint8Array | null): readonly PdfPostProcessor[] {
   return letterhead === null
     ? defaultPipeline.postProcessors
     : [letterheadBackground(letterhead), ...defaultPipeline.postProcessors];

@@ -227,7 +227,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-COMP-02 | Das Audit-Log ist über die Anwendung nicht löschbar oder änderbar. | MUSS | R |
 | NFA-COMP-03 | Ein vollständiger Datenexport aller Kunden- und Rechnungsdaten in maschinenlesbarer Form ist auslösbar. | MUSS | M |
 | NFA-COMP-04 | Die UI erklärt an der Stelle des Löschversuchs, warum Rechnungsdaten nur archiviert und nicht gelöscht werden. | SOLL | M |
-| NFA-COMP-05 | Es werden keine Daten an Dritte übertragen; die Anwendung funktioniert ohne ausgehende Internetverbindung. | MUSS | T |
+| NFA-COMP-05 | Es werden keine Daten an Dritte übertragen. **Einzige Ausnahme ist ein Mailserver, den der Betreiber selbst benennt** (`SMTP_URL`); ohne diese Konfiguration funktioniert die Anwendung vollständig ohne ausgehende Internetverbindung. Es gibt keinen weiteren Weg nach außen, und kein anderes Modul als der Versandweg darf einen öffnen. | MUSS | T |
 | NFA-COMP-06 | Es sind keine externen Schriftarten, Skripte oder Analysedienste eingebunden. | MUSS | R |
 | NFA-COMP-07 | Der **Betreiber** der Installation hinterlegt ein Impressum; es ist ohne Anmeldung erreichbar (§5 DDG). Es gibt genau eines je Installation — angeboten wird die Anwendung von dem, der sie betreibt, nicht von den Mandanten darin. Solange keins hinterlegt ist, antwortet die Seite mit 404 und nichts verlinkt darauf. | MUSS | T |
 | NFA-COMP-08 | Die Datenschutzhinweise sind ohne Anmeldung erreichbar und nennen je gespeicherter Angabe Zweck und Aufbewahrung (Art. 13 DSGVO). Die **Fristen stammen aus den Konstanten der Domäne**, nicht aus dem Fließtext; ein Test hält beides gegeneinander. | MUSS | T |
@@ -248,6 +248,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-BETR-09 | Logs werden strukturiert auf stdout ausgegeben; sicherheitsrelevante Ereignisse sind als solche erkennbar. | MUSS | R |
 | NFA-BETR-10 | Logs enthalten keine Passwörter, Token oder vollständigen Kundendatensätze. | MUSS | R |
 | NFA-BETR-11 | Das README beschreibt Installation, Konfiguration, Backup, Restore und Update in nachvollziehbaren Schritten. | MUSS | R |
+| NFA-BETR-12 | Der Versand ist optional und über Umgebungsvariablen konfiguriert. Ein nicht erreichbarer oder ablehnender Mailserver bricht keine Handlung ab, hält keine Server Action länger als zehn Sekunden fest und erscheint als benannter Zustand, nicht als Fehlerseite. | MUSS | T |
 
 ## 14. Architektur & Erweiterbarkeit
 
@@ -324,7 +325,8 @@ Betreiber der Installation darf und was nicht.
 | FA-MEMB-05 | Unbekannte, abgelaufene, zurückgezogene und bereits eingelöste Links werden **ununterscheidbar** beantwortet. Ohne gültigen Nachweis nennt die Seite weder Adresse noch Unternehmen. | MUSS | T |
 | FA-MEMB-06 | Ein Konto wird gesperrt, nicht gelöscht. Die Sperre beendet alle Sitzungen sofort; Belege und Protokolleinträge bleiben unverändert. | MUSS | T |
 | FA-MEMB-07 | Je E-Mail-Adresse gibt es höchstens eine offene Einladung; eine neue entwertet die vorige. | MUSS | T |
-| FA-MEMB-08 | Die Anwendung versendet keine E-Mail. Einladungs- und Zurücksetzungslinks erscheinen **genau einmal** in der Oberfläche und werden außerhalb weitergereicht. | MUSS | R |
+| FA-MEMB-08 | Einladungs- und Zurücksetzungslinks erscheinen **genau einmal** in der Oberfläche. Ist ein Mailserver eingerichtet, werden sie **zusätzlich** zugestellt — nie stattdessen. Wer die Mail nicht bekommt, ist nicht ausgesperrt; ein Fehlschlag beim Versand bricht die Handlung nicht ab und wird in der Oberfläche benannt. | MUSS | T |
+| FA-MEMB-09 | Ein vergessenes Passwort lässt sich ohne fremde Hilfe anfordern. Unbekannte Adresse, gesperrtes Konto, stillgelegtes Unternehmen und Erfolg werden **ununterscheidbar** beantwortet. Liegt ein unverbrauchter Nachweis vor, der jünger ist als fünf Minuten, entsteht kein zweiter. | MUSS | T |
 
 ### 16.4 Zentrale Verwaltung
 
@@ -347,6 +349,9 @@ Betreiber der Installation darf und was nicht.
 | FA-ADM-15 | Ein Mandantenkonto lässt sich **unkenntlich machen**, nicht löschen: Adresse, Name, Zugangsdaten und alle Anmeldespuren werden entfernt, die Zeile bleibt. Belege behalten ihren Urheber, Protokolleinträge ihren Akteur. Die Oberfläche zeigt „Gelöschtes Konto", nie die Platzhalteradresse. Der Vorgang ist nicht umkehrbar und steht im Protokoll beider Seiten. | MUSS | T |
 | FA-ADM-16 | Der Betreiber kann Name und eine **interne Notiz** eines Unternehmens ändern. Die Notiz erreicht den Mandanten nicht — weder in seiner Oberfläche noch in seinem Datenexport. Protokolliert wird nur die Namensänderung. | MUSS | T |
 | FA-ADM-17 | Der Betreiber sieht den **Zustand** der Anlage (Datenbank, Renderer, Zeitpunkt der Prüfung) und löst die **Sicherung** aus der Oberfläche aus. Zeitplan und Wiederherstellung bleiben Betriebsaufträge. | SOLL | M |
+| FA-ADM-18 | Ein Betreiber wechselt sein **eigenes Passwort** bei bestehender Sitzung. Das bisherige wird verlangt; danach enden alle **anderen** Sitzungen des Kontos, die aufrufende nicht. Der Wechsel steht im Protokoll der Anlage — als Handlung des Kontos, unterscheidbar von einem Eingriff daran. | MUSS | T |
+| FA-ADM-19 | Ein Betreiber sieht seine **angemeldeten Geräte** und **Passkeys** und kann beide einzeln entfernen. Sitzungen und Passkeys fremder Betreiberkonten sind dabei weder sichtbar noch beendbar, auch nicht mit bekannter Kennung. | MUSS | T |
+| FA-ADM-20 | Für Betreiberkonten gibt es **kein „Passwort vergessen"**. Ein Zurücksetzungsnachweis setzt dort Passwort **und** zweiten Faktor neu (FA-ADM-08); per Mail zustellbar wäre er ein vollständiger Ersatz für beide Faktoren. Der Weg führt über ein zweites Betreiberkonto oder über den Server. Die Oberfläche benennt das, statt zu schweigen. | MUSS | R |
 
 ### 16.5 Sicherheit der Trennung
 
@@ -414,6 +419,34 @@ unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
 | M13 Rechtstexte | NFA-COMP-07 bis -09 |
 
 ---
+
+### Mahnwesen (M15)
+
+Bis M14 stand Mahnwesen in Spec §13 unter „Explizit nicht in Scope (V1), aber
+vorbereitet". Der Auftraggeber hat es in M15 in den Umfang genommen — dieselbe
+Entscheidung wie bei Mehrbenutzer (M8) und E-Mail-Versand (M14), die in
+derselben Tabelle standen.
+
+| ID | Anforderung | Prio | V |
+|---|---|---|---|
+| FA-MAHN-01 | Zu einem **überfälligen, offenen** Beleg lässt sich eine Mahnung ausstellen. Entwurf, Gutschrift, stornierter Beleg, bezahlter Beleg und ein Beleg ohne Fälligkeitsdatum werden abgewiesen — jeweils mit dem Grund, nicht mit einem toten Knopf. | MUSS | T |
+| FA-MAHN-02 | Es gibt genau **drei Stufen**: Zahlungserinnerung, Mahnung, letzte Mahnung. Gezählt wird ab der höchsten bereits ausgestellten Stufe, nicht ab ihrer Anzahl. Nach der dritten entsteht keine weitere. | MUSS | T |
+| FA-MAHN-03 | Je Stufe ist eine **Mahngebühr in Cent** hinterlegt; sie wird zum offenen Betrag addiert. Verzugszinsen werden **nicht** berechnet — der Basiszinssatz nach §288 BGB ändert sich halbjährlich und wäre eine gepflegte Fremdzahl, mit der die Anwendung rechnet, während sie veraltet. | MUSS | T |
+| FA-MAHN-04 | Die Mahnung setzt eine **neue, kurze Zahlungsfrist** ab ihrem Ausstellungstag; die Frist der Rechnung bleibt unberührt. | MUSS | T |
+| FA-MAHN-05 | Eine ausgestellte Mahnung ist **unveränderlich und nicht löschbar**. Die Beträge sind eingefroren: Eine spätere Teilzahlung ändert das verschickte Schreiben nicht. Der Vorgang steht im Protokoll. | MUSS | T |
+| FA-MAHN-06 | Die Mahnung entsteht als **PDF** über dieselbe Kette wie ein Beleg — dieselbe Schrift, dasselbe Briefpapier, derselbe Seitenstempel — und liegt danach als Artefakt mit SHA-256 vor. Sie weist **keine Umsatzsteuer** aus. Ihr Nummernkreis ist von dem der Belege **getrennt** (FA-NUM-05). | MUSS | T |
+| FA-MAHN-07 | Mahnen ist ein **eigenes Recht** (`invoice.remind`), nicht Teil von `invoice.issue`. Eine neue Berechtigung erreicht bestehende eingeschränkte Rollen nicht von selbst. | MUSS | T |
+
+### Anwenderdokumentation (M16)
+
+| ID | Anforderung | Prio | V |
+|---|---|---|---|
+| FA-DOC-01 | Ein **Handbuch für Endanwender** wird mit der Software ausgeliefert, ist **ohne Anmeldung** erreichbar und von der Anmeldeseite verlinkt. Es beschreibt die Anwendung, nicht den Betreiber, und liest keine Daten — es kennt weder Mandant noch Sitzung. | MUSS | T |
+| FA-DOC-02 | Jede Frist, Länge und Grenze im Handbuch ist ein **Verweis auf die Konstante**, die der Code anwendet — keine abgeschriebene Zahl. Ein Test hält beides gegeneinander. | MUSS | T |
+| FA-DOC-03 | Das Handbuch ist **durchsuchbar**. Die Suche läuft serverseitig über einen beim Erzeugen gebauten Index; sie funktioniert **ohne JavaScript** und verlangt keine Lockerung der Content-Security-Policy. Dass der Index zu den Quellen passt, hält ein Test fest. | MUSS | T |
+| FA-DOC-04 | Das Handbuch führt eine **Gliederung** neben dem Inhalt; das gelesene Thema ist darin ausgezeichnet. Abläufe werden als **Inline-SVG mit `currentColor`** gezeigt — sie folgen dem Farbschema und tragen keine eigenen Farbwerte. | SOLL | T |
+| FA-DOC-05 | Bildschirmfotos werden **erzeugt, nicht abgelegt**: Ein Befehl fährt die gebaute Anwendung mit Beispieldaten hoch und nimmt sie auf. Sie zeigen keinen echten Datenbestand und keinen realen Namen. | SOLL | M |
+| FA-DOC-06 | Das Handbuch führt einen **Abschnitt „Neuerungen“** mit den jüngsten Änderungen, das Neueste zuerst, in der Sprache der Anwender — nicht abgeleitet aus Commit-Nachrichten. Er steht am Ende der Gliederung und ist von der Übersicht aus verlinkt. | SOLL | T |
 
 ## 19. Abnahmeszenarien
 
@@ -528,3 +561,29 @@ der Vorgang steht im Protokoll der Verwaltung, der Inhalt nicht. Abgemeldet
 beide Seiten aufrufen: erreichbar. Ins Impressum
 `<script>alert(1)</script>` eintragen: erscheint als Text, nichts wird
 ausgeführt.
+
+**A22 — Handbuch**
+Abgemeldet `/hilfe` aufrufen: erreichbar, keine Umleitung zur Anmeldung. Auf der
+Anmeldeseite steht der Link im Fuß neben Impressum und Datenschutz. Nach
+„Mahnung" suchen und einem Treffer folgen. JavaScript abschalten und erneut
+suchen — dasselbe Ergebnis. Ein erfundenes Thema aufrufen: 404, keine Umleitung.
+
+**A21 — Mahnlauf**
+Eine Rechnung mit verstrichener Fälligkeit öffnen: „Mahnung ausstellen" steht da.
+Ausstellen — die Mahnung bekommt eine eigene Nummer aus dem Mahnkreis, das PDF
+zeigt Absender, Empfänger, die gemahnte Rechnung, den offenen Betrag und **keine
+Umsatzsteuer**. Zweimal weiter mahnen: Stufe 2 und 3, mit steigender Gebühr. Ein
+viertes Mal: abgewiesen. Dann eine Teilzahlung erfassen und die erste Mahnung
+erneut herunterladen — der Betrag darauf ist unverändert. Zum Schluss eine noch
+nicht fällige Rechnung und eine Gutschrift öffnen: kein Knopf, sondern der Grund.
+
+**A20 — Zustellung**
+Ohne `SMTP_URL` ein Mitglied einladen: Der Link steht in der Oberfläche, es
+gibt keine Fehlermeldung und keinen Versuch. Dann `SMTP_URL` und `MAIL_FROM`
+setzen und erneut einladen: Die Mail kommt an, der Link steht **trotzdem** da.
+Als Nächstes „Passwort vergessen" mit einer erfundenen und mit der eigenen
+Adresse: gleicher Satz, gleiche Dauer, und nur im zweiten Fall eine Mail.
+Sofort ein zweites Mal anfordern: keine zweite Mail. `SMTP_URL` auf einen Port
+zeigen lassen, an dem nichts lauscht, und einladen: Die Einladung entsteht, die
+Oberfläche nennt den fehlgeschlagenen Versand, und es dauert höchstens zehn
+Sekunden.

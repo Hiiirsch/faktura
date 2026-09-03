@@ -16,6 +16,7 @@
  * gibt.
  */
 import type { Authorized } from '@/application/auth/authorize';
+import { deliverPasswordReset, type Delivery } from '@/application/notifications/deliver';
 import { passwordResetExpiry } from '@/domain/auth/password-reset-policy';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
@@ -203,7 +204,12 @@ export async function startPasswordReset(
   actorId: string,
   ipAddress: string | null,
   now: Date = new Date(),
-): Promise<Result<{ readonly token: string; readonly expiresAt: Date }, MemberError>> {
+): Promise<
+  Result<
+    { readonly token: string; readonly expiresAt: Date; readonly delivery: Delivery },
+    MemberError
+  >
+> {
   const member = await findMember(context, memberId);
   if (member === null) {
     return err({ kind: 'NOT_FOUND' });
@@ -227,5 +233,9 @@ export async function startPasswordReset(
     ipAddress,
   });
 
-  return ok({ token, expiresAt });
+  // Zugestellt wird nach dem Protokolleintrag; der Nachweis gilt unabhängig
+  // davon, ob eine Mail durchkommt (M14).
+  const delivery = await deliverPasswordReset(member.email, token, expiresAt);
+
+  return ok({ token, expiresAt, delivery });
 }

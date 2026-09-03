@@ -49,16 +49,24 @@ function resolveInside(storagePath: string): string | null {
   return absolutePath;
 }
 
+/**
+ * Legt eine erzeugte Datei ab.
+ *
+ * `ownerId` ist die Kennung des Belegs **oder** der Mahnung (M15) — beide sind
+ * cuid und teilen sich denselben Namensraum, ohne kollidieren zu können. Der
+ * Parameter hieß bis M15 `invoiceId`; das war richtig, solange es nur Belege
+ * gab, und wäre jetzt eine Behauptung über den Inhalt des Verzeichnisses.
+ */
 export async function storeArtifact(
-  invoiceId: string,
+  ownerId: string,
   kind: string,
   bytes: Uint8Array,
 ): Promise<StoredArtifact> {
-  // `invoiceId` und `kind` stammen aus der Datenbank bzw. aus einer festen
+  // `ownerId` und `kind` stammen aus der Datenbank bzw. aus einer festen
   // Aufzählung. Trotzdem gefiltert: Ein Verzeichnisname entsteht daraus, und
   // die Annahme „kommt ja von uns" ist genau die, die irgendwann nicht mehr
   // stimmt.
-  const safeInvoiceId = invoiceId.replace(/[^A-Za-z0-9_-]/g, '');
+  const safeInvoiceId = ownerId.replace(/[^A-Za-z0-9_-]/g, '');
   const safeKind = kind.replace(/[^A-Za-z0-9_-]/g, '');
 
   if (safeInvoiceId.length === 0 || safeKind.length === 0) {

@@ -1,0 +1,64 @@
+import { RecipientSources, Screenshot } from './diagrams';
+
+export const meta = {
+  id: 'stammdaten',
+  title: 'Kunden und Katalog',
+  summary: 'Drei Wege zum Empfänger, Katalogpositionen, Archivieren statt Löschen.',
+};
+
+## Kunden und Katalog
+
+Kunden und Katalogpositionen sind Vorlagen für die tägliche Arbeit, keine
+Pflicht: Ein Beleg kommt auch ohne Kundendatensatz aus.
+
+<Screenshot
+  src="kunden"
+  alt="Die Kundenliste mit Suchfeld und einer Tabelle aus Kundennummer, Name, Ort und Zustand."
+  caption="Die Kundenliste"
+/>
+
+### Drei Wege zum Empfänger
+
+<RecipientSources />
+
+- **Kunde aus den Stammdaten.** Die Anschrift kommt von dort. Sinnvoll bei
+  wiederkehrender Geschäftsbeziehung — der Kunde bekommt eine Kundennummer, und
+  die Rechnungsliste lässt sich nach ihm filtern.
+- **Felder am Beleg.** Dieselben Angaben, nur an diesem einen Beleg erfasst.
+  Für die einmalige Rechnung, für die sich kein Datensatz lohnt.
+- **Freier Anschriftenblock.** Zeile für Zeile, wie eingegeben — für Fälle, in
+  die kein Formular passt.
+
+Bei allen drei Wegen gilt dasselbe: §14 UStG verlangt **Name und Anschrift** des
+Empfängers. Ein freier Block aus einer einzigen Zeile ist ein Name ohne
+Anschrift und wird abgewiesen; Name und Anschrift müssen auf **getrennten
+Zeilen** stehen. Die erste Zeile gilt als Name.
+
+### Was ein Kunde sonst mitbringt
+
+- **USt-IdNr.** — bei einem Kunden im EU-Ausland schlägt der Beleg damit Reverse
+  Charge vor.
+- **Land** — bestimmt zusammen mit der USt-IdNr. die steuerliche Behandlung.
+- **Abweichendes Zahlungsziel** — überschreibt für diesen Kunden die Vorgabe aus
+  den Firmendaten.
+- **Leitweg-ID** — für Rechnungen an öffentliche Auftraggeber.
+- **Notiz** — nur intern, erscheint auf keinem Beleg.
+
+### Katalogpositionen
+
+Eine Katalogposition ist eine gespeicherte Zeile: Bezeichnung, Einheit,
+Einzelpreis, Steuersatz. Im Editor lässt sie sich übernehmen und danach frei
+ändern — was am Beleg steht, ist eine **Kopie**, kein Verweis. Eine spätere
+Preisänderung im Katalog rührt bestehende Belege nicht an.
+
+Einheiten werden als genormte Codes gespeichert und als deutsche Bezeichnung
+angezeigt: Stück, Stunde, Kilogramm, Pauschale.
+
+### Archivieren statt löschen
+
+Kunden und Katalogpositionen werden **archiviert**, nicht gelöscht: Ein Beleg
+verweist auf seinen Empfänger, und der Verweis darf nicht ins Leere zeigen.
+
+Ein archivierter Eintrag verschwindet aus der Auswahl, bleibt aber an allen
+Belegen sichtbar, die ihn schon benutzen. Rückgängig machen lässt sich das
+jederzeit.

@@ -75,6 +75,19 @@ const EXPECTED_TRIGGERS = [
   'PlatformAuditEntry_no_update',
   'PlatformAuditEntry_no_delete',
   'Organization_keeps_administrator_on_permission_delete',
+  /*
+   * Mahnwesen (M15, FA-MAHN-05).
+   *
+   * Eine Mahnung entsteht **fertig** — mit Nummer, Stufe und eingefrorenen
+   * Beträgen — und hat keinen Entwurfszustand. Es gibt deshalb keine Ausnahme
+   * für einzelne Spalten, anders als beim Beleg, wo Status und Zahlungsstand
+   * änderbar bleiben.
+   */
+  'Reminder_no_update',
+  'Reminder_no_delete',
+  'Reminder_organization_matches_insert',
+  'ReminderArtifact_no_update',
+  'ReminderArtifact_organization_matches_insert',
 ] as const;
 
 /**

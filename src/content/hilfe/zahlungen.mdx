@@ -1,0 +1,48 @@
+export const meta = {
+  id: 'zahlungen',
+  title: 'Zahlungen',
+  summary: 'Teilzahlungen, Status, offener Betrag, Überfälligkeit.',
+};
+
+## Zahlungen
+
+Zahlungen werden **einzeln erfasst**; der Status folgt daraus und wird nicht von
+Hand gesetzt. Jede Zahlung trägt Betrag, Datum und wahlweise Zahlungsart und
+Notiz.
+
+### Die Zustände
+
+- **Offen** — es steht Geld aus.
+- **Teilweise bezahlt** — ein Teil ist eingegangen.
+- **Bezahlt** — nichts mehr offen.
+- **Überfällig** — offen und die Frist ist verstrichen. Kein eigener Zustand,
+  sondern eine Feststellung über einen offenen Beleg.
+
+Der **offene Betrag** ist die Differenz zwischen Bruttobetrag und der Summe
+aller Zahlungen. Er steht auf der Belegseite und in der Liste.
+
+### Überzahlung und Korrektur
+
+Ein höherer Betrag als der offene wird angenommen — Überzahlungen kommen vor,
+und die Anwendung ist nicht klüger als die Kontoauszüge. Der Beleg gilt dann als
+bezahlt.
+
+Eine falsch erfasste Zahlung lässt sich **zurücknehmen**. Der Status rechnet
+sich neu, und beides steht im Protokoll: das Erfassen und das Zurücknehmen.
+
+### Als bezahlt markieren
+
+In der Rechnungsliste lassen sich Belege in einem Schritt als bezahlt markieren
+— auch mehrere auf einmal. Dabei entsteht eine Zahlung über den vollen offenen
+Betrag mit dem heutigen Datum.
+
+Angeboten wird das nur, wo es auch durchgeht: An einem Entwurf, einer Gutschrift
+oder einem stornierten Beleg steht kein Zahlungsformular.
+
+### Was keine Zahlung annimmt
+
+Eine **Gutschrift** nimmt keine Zahlungen an und wird nie überfällig: Sie stellt
+keine Forderung, sie nimmt eine zurück. Ein „12 Tage überfällig" an einer
+Gutschrift wäre eine Mahnung an sich selbst.
+
+Ein **stornierter** Beleg ebenso: Die Forderung besteht nicht mehr.

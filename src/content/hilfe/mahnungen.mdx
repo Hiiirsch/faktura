@@ -1,0 +1,74 @@
+import { ReminderLadder } from './diagrams';
+import { LAST_REMINDER_LEVEL } from '@/domain/reminder/dunning';
+
+export const meta = {
+  id: 'mahnungen',
+  title: 'Mahnungen',
+  summary: 'Drei Stufen, Gebühr je Stufe, eingefrorene Beträge, eigenes PDF.',
+};
+
+## Mahnungen
+
+Zu einer **überfälligen, offenen Rechnung** lässt sich eine Mahnung ausstellen.
+Es gibt {LAST_REMINDER_LEVEL} Stufen.
+
+<ReminderLadder />
+
+### So entsteht eine Mahnung
+
+1. Die Rechnung öffnen. Ist sie überfällig und offen, steht dort „Mahnung
+   ausstellen".
+2. Bestätigen. Die Mahnung bekommt sofort eine Nummer und ein PDF.
+3. Das PDF herunterladen und verschicken.
+
+Zurücknehmen lässt sich das nicht — eine ausgestellte Mahnung ist ein Dokument.
+
+### Was auf der Mahnung steht
+
+- Die **gemahnte Rechnung** mit Nummer, Datum, Fälligkeit und Betrag.
+- Der **offene Betrag** am Tag der Mahnung.
+- Die **Mahngebühr** der jeweiligen Stufe, sofern eine hinterlegt ist.
+- Eine **neue, kurze Zahlungsfrist**. Die Frist der Rechnung bleibt unberührt —
+  sie ist ja verstrichen.
+- **Keine Umsatzsteuer.** Eine Mahnung fordert eine bestehende Forderung ein und
+  begründet keine neue; ein Steuerausweis darauf wäre nach §14c geschuldet,
+  obwohl er nichts bezeichnet.
+
+Der Ton steigt mit der Stufe, die Drohung nicht: Faktura kündigt kein
+gerichtliches Mahnverfahren an und nennt keine Inkassostelle. Was auf dem Blatt
+steht, muss der Absender einhalten können.
+
+### Gebühren
+
+Die Gebühr je Stufe steht in den **Firmendaten**. Voreingestellt sind 0 € für
+die Zahlungserinnerung und steigende Beträge danach — wer zum ersten Mal
+erinnert, verlangt üblicherweise nichts dafür.
+
+**Verzugszinsen berechnet Faktura nicht.** Sie hingen am Basiszinssatz, der sich
+halbjährlich ändert; eine gepflegte Fremdzahl, mit der die Anwendung rechnet,
+während sie veraltet, wäre schlechter als keine.
+
+### Eingefrorene Beträge
+
+Was auf der Mahnung steht, galt am **Tag ihrer Ausstellung**. Zahlt der Kunde
+danach eine Teilsumme, ändert das den verschickten Brief nicht. Ein Dokument,
+das sich nachträglich ändert, ist keines.
+
+### Eigene Nummern
+
+Mahnungen zählen in einem **eigenen Nummernkreis**, getrennt von dem der
+Rechnungen. Der Rechnungskreis muss lückenlos sein; zählte eine Mahnung darin
+mit, entstünde dort eine Lücke, die niemand erklären kann.
+
+### Wenn nicht gemahnt wird
+
+Steht der Knopf nicht da, nennt die Belegseite den Grund:
+
+- **Noch nicht überfällig** — wer am letzten Tag der Frist zahlt, hat gezahlt.
+- **Nichts mehr offen** — auch dann nicht, wenn der Termin lange verstrichen ist.
+- **Entwurf** — keine Forderung.
+- **Storniert** — die Forderung besteht nicht mehr.
+- **Gutschrift** — sie fordert nichts ein.
+- **Letzte Stufe erreicht** — eine vierte Mahnung ist keine Mahnung mehr.
+
+Das ist eine Auskunft, kein Fehler.

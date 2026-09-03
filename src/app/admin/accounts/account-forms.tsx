@@ -7,6 +7,8 @@ import { messages } from '@/i18n/de';
 import { CSRF_FIELD_NAME } from '@/infrastructure/security/csrf';
 import { Alert, SECONDARY_BUTTON_CLASS, TextField } from '@/ui/components/form';
 
+import { RedemptionLink } from '../../redemption-link';
+
 import {
   invitePlatformAccountAction,
   type RecoveryState,
@@ -15,39 +17,6 @@ import {
 
 const INITIAL: RecoveryState = { status: 'idle' };
 
-/**
- * Ein Link, der genau einmal zu sehen ist.
- *
- * Wortgleich zur Fassung in `organizations/[id]/recovery-forms.tsx` und in der
- * Mitgliederverwaltung: `readonly`-Feld statt Absatz, damit ein Doppelklick ihn
- * vollständig aufnimmt. Ein „Kopieren"-Knopf bräuchte die Clipboard-API, und die
- * hängt an einer sicheren Herkunft.
- */
-function RedemptionLink({
-  heading,
-  link,
-}: {
-  readonly heading: string;
-  readonly link: string;
-}): ReactNode {
-  return (
-    <div className="flex flex-col gap-2 rounded-control border border-rule bg-surface-sunken p-4">
-      <span className="text-label font-semibold uppercase text-ink-faint">
-        {heading}
-      </span>
-      <input
-        readOnly
-        value={link}
-        aria-label={heading}
-        onFocus={(event) => {
-          event.currentTarget.select();
-        }}
-        className="w-full rounded-control border border-rule bg-surface px-3 py-2 font-mono text-data text-ink"
-      />
-      <p className="text-small text-ink-muted">{messages.admin.linkOnceOnly}</p>
-    </div>
-  );
-}
 
 /**
  * Einen weiteren Betreiber einladen (M10/B1, FA-ADM-12).
@@ -73,7 +42,13 @@ export function InvitePlatformAccountForm({
         <Alert tone="error">{state.message}</Alert>
       ) : null}
       {state.status === 'issued' ? (
-        <RedemptionLink heading={state.heading} link={state.link} />
+        <RedemptionLink
+          heading={state.heading}
+          hint={messages.admin.linkOnceOnly}
+          link={state.link}
+          delivery={state.delivery}
+          email={state.email}
+        />
       ) : null}
 
       <TextField
@@ -122,7 +97,13 @@ export function ResetPlatformAccountForm({
         <Alert tone="error">{state.message}</Alert>
       ) : null}
       {state.status === 'issued' ? (
-        <RedemptionLink heading={state.heading} link={state.link} />
+        <RedemptionLink
+          heading={state.heading}
+          hint={messages.admin.linkOnceOnly}
+          link={state.link}
+          delivery={state.delivery}
+          email={state.email}
+        />
       ) : null}
 
       <button

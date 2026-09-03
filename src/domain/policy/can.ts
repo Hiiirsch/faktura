@@ -34,6 +34,8 @@ export type PolicyAction =
   | 'issue'
   | 'cancel'
   | 'recordPayment'
+  /** Eine Mahnung zu einem überfälligen Beleg ausstellen (M15). */
+  | 'remind'
   /** Einen Vorgang ausführen, der nichts ändert — den Datenexport. */
   | 'run'
   /** Mitglieder und Rollen des eigenen Unternehmens verwalten. */
@@ -61,7 +63,20 @@ export const PERMITTED = {
   // Belege werden nie gelöscht, sondern storniert — außer im Entwurf
   // (FA-RECH-11). Ob der konkrete Beleg noch Entwurf ist, entscheidet der
   // Status, nicht diese Tabelle.
-  invoice: ['create', 'read', 'update', 'delete', 'duplicate', 'issue', 'cancel', 'recordPayment'],
+  invoice: [
+    'create',
+    'read',
+    'update',
+    'delete',
+    'duplicate',
+    'issue',
+    'cancel',
+    'recordPayment',
+    // Mahnen ist ein eigenes Recht und nicht Teil von `issue`: Wer Rechnungen
+    // schreibt, muss nicht mahnen dürfen — und wer mahnt, schreibt keine
+    // Rechnungen (M15, FA-MAHN-07).
+    'remind',
+  ],
   // Kunden werden archiviert, nie gelöscht (Spec §4.1).
   customer: ['create', 'read', 'update', 'archive'],
   catalogItem: ['create', 'read', 'update', 'archive'],

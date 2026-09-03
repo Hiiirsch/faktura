@@ -12,6 +12,7 @@
  * lädt neu ein — und entwertet damit den alten.
  */
 import type { Authorized } from '@/application/auth/authorize';
+import { deliverInvitation, type Delivery } from '@/application/notifications/deliver';
 import { invitationExpiry } from '@/domain/auth/invitation-policy';
 import { err, ok, type Result } from '@/domain/shared/result';
 import { recordAuditEntry } from '@/infrastructure/audit/audit-log';
@@ -45,6 +46,15 @@ export type InviteError =
 export type IssuedInvitation = {
   readonly invitation: { readonly id: string; readonly email: string; readonly expiresAt: Date };
   readonly token: string;
+  /**
+   * Was aus der Zustellung geworden ist (M14).
+   *
+   * Der Link steht **trotzdem** in der Oberfläche — die Mail ist ein
+   * zusätzlicher Weg, kein Ersatz. Wer sie nicht bekommt, ist nicht
+   * ausgesperrt, und wer das Ergebnis kennt, weiß, ob er den Link von Hand
+   * weiterreichen muss.
+   */
+  readonly delivery: Delivery;
 };
 
 export async function getOpenInvitations(
@@ -110,9 +120,19 @@ export async function inviteMember(
     details: { email, roleId: data.roleId },
   });
 
+  /*
+   * Zugestellt wird **nach** dem Protokolleintrag und außerhalb der
+   * Transaktion: Die Einladung gilt, sobald sie in der Datenbank steht. Ein
+   * Mailserver, der schweigt, darf daran nichts ändern — und eine offene
+   * Transaktion, die auf ihn wartet, hielte die einzige Schreibverbindung von
+   * SQLite fest.
+   */
+  const delivery = await deliverInvitation(email, token, invitation.expiresAt);
+
   return ok({
     invitation: { id: invitation.id, email, expiresAt: invitation.expiresAt },
     token,
+    delivery,
   });
 }
 

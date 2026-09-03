@@ -13,6 +13,7 @@
  * XML-Einbettung — ohne dass die Pipeline aufgebrochen werden muss.
  */
 import type { InvoiceDocument } from '../document/invoice-document';
+import type { ReminderDocument } from '../reminder/reminder-document';
 
 /** Seitenformat und Ränder in Millimetern (Spec §8.2). */
 export type PageGeometry = {
@@ -75,6 +76,18 @@ export type TemplateRenderResult =
  */
 export type TemplateEngine = {
   render(document: InvoiceDocument, template: TemplateSource): Promise<TemplateRenderResult>;
+};
+
+/**
+ * Dasselbe für die Mahnung (M15, FA-MAHN-06).
+ *
+ * **Ein eigener Vertrag und keine Verallgemeinerung von `TemplateEngine`.**
+ * Dessen Signatur nennt `InvoiceDocument` ausdrücklich; darin liegt die
+ * Aussage, welche Variablen eine Belegvorlage vorfindet. Auf ein beliebiges
+ * Objekt geöffnet, sagte sie nichts mehr.
+ */
+export type ReminderTemplateEngine = {
+  render(document: ReminderDocument, template: TemplateSource): Promise<TemplateRenderResult>;
 };
 
 export type PdfRenderOptions = {

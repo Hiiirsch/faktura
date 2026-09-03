@@ -1,3 +1,4 @@
+import createMDX from '@next/mdx';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -38,4 +39,20 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: false },
 };
 
-export default nextConfig;
+/**
+ * Das Handbuch entsteht aus MDX-Dateien (M16, FA-DOC-01).
+ *
+ * **Ohne `pageExtensions`, und das ist Absicht.** Die Anleitung schlägt vor,
+ * `md`/`mdx` in die Seitenerweiterungen aufzunehmen — dann würde jede
+ * MDX-Datei unter `src/app/**` selbst zur Route. Hier werden sie stattdessen
+ * **importiert**: So bleibt `src/routes.ts` das alleinige Routenverzeichnis,
+ * gegen das `tests/architecture/routes.test.ts` das Dateisystem abgleicht, und
+ * der Zugriffsschutztest aus NFA-SEC-01 behält seine Vollständigkeit.
+ *
+ * Keine remark-/rehype-Erweiterungen: Was ein Handbuch braucht — Überschriften,
+ * Absätze, Listen, Hervorhebungen — deckt Standard-MDX ab. Jede Erweiterung
+ * wäre eine weitere Abhängigkeit in der Übersetzungskette.
+ */
+const withMDX = createMDX({});
+
+export default withMDX(nextConfig);

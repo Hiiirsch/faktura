@@ -105,6 +105,75 @@ async function seedRole(name: string, permissions: readonly PermissionKey[]): Pr
   return role.id;
 }
 
+describe('NFA-BETR-12 Die Zustellung ist eine Zugabe (M14)', () => {
+  /*
+   * **Die Zusage aus M8 bleibt unangetastet:** Der Token verlässt die
+   * Anwendungsschicht als Rückgabewert, und die Oberfläche zeigt ihn genau
+   * einmal. Seit M14 kommt eine Mail dazu — *dazu*, nicht *statt*.
+   *
+   * Der Testlauf hat keinen Mailserver eingerichtet, und genau das ist hier
+   * der interessante Fall: Er entspricht jeder Anlage, die ohne Netz nach
+   * außen läuft.
+   */
+  it('gibt den Token auch ohne eingerichteten Versand heraus', async () => {
+    const actorId = await seedOwner();
+    const roleId = await seedRole('Buchhaltung', ['invoice.read']);
+
+    const result = await inviteMember(
+      testOrganization,
+      { email: 'ohne-mail@example.org', roleId },
+      actorId,
+      null,
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Der Nachweis ist da — 43 Zeichen, die base64url-Form von 32 Byte; die 64
+    // gehören dem Hash in der Datenbank, nicht dem Token.
+    expect(result.value.token.length).toBeGreaterThan(20);
+    // … und die Einladung gilt, obwohl nichts zugestellt wurde.
+    expect(result.value.delivery).toBe('not-configured');
+    expect(await prisma.invitation.count()).toBe(1);
+  });
+
+  it('bricht das Zurücksetzen nicht ab, wenn niemand zustellt', async () => {
+    const actorId = await seedOwner();
+    const roleId = await seedRole('Buchhaltung', ['invoice.read']);
+    const invited = await inviteMember(
+      testOrganization,
+      { email: 'mitglied@example.org', roleId },
+      actorId,
+      null,
+      NOW,
+    );
+    expect(invited.ok).toBe(true);
+    if (!invited.ok) return;
+
+    const accepted = await acceptInvitation(
+      invited.value.token,
+      { name: 'Mitglied', password: 'ein-hinreichend-langes-passwort' },
+      null,
+      NOW,
+    );
+    expect(accepted.ok).toBe(true);
+
+    // `acceptInvitation` gibt keine Kennung zurück — das Konto entsteht, und
+    // wer es sucht, sucht es über die Adresse.
+    const mitglied = await prisma.user.findFirstOrThrow({
+      where: { email: 'mitglied@example.org' },
+    });
+
+    const reset = await startPasswordReset(testOrganization, mitglied.id, actorId, null, NOW);
+
+    expect(reset.ok).toBe(true);
+    if (!reset.ok) return;
+    expect(reset.value.token.length).toBeGreaterThan(20);
+    expect(reset.value.delivery).toBe('not-configured');
+  });
+});
+
 describe('FA-MEMB-01..03 Ein Konto entsteht nur per Einladung', () => {
   it('legt die Einladung nur den Hash ab und liefert den Token einmal', async () => {
     const actorId = await seedOwner();

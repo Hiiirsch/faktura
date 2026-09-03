@@ -1,0 +1,89 @@
+import { RECOVERY_CODE_COUNT } from '@/domain/auth/recovery-code';
+import { TRUSTED_DEVICE_TTL_MS } from '@/domain/auth/trusted-device-policy';
+import { formatRetention } from '@/domain/legal/privacy-notice';
+
+import { Screenshot } from './diagrams';
+
+export const meta = {
+  id: 'sicherheit',
+  title: 'Das eigene Konto absichern',
+  summary: 'Zweiter Faktor, Wiederherstellungscodes, Passkeys, vertraute Geräte, Sitzungen.',
+};
+
+## Das eigene Konto absichern
+
+Alles auf dieser Seite findet sich in der Anwendung unter **Sicherheit**.
+
+<Screenshot
+  src="sicherheit"
+  alt="Die Sicherheitsseite mit Betriebszustand, zweitem Faktor, Passkeys, angemeldeten Geräten und vertrauten Geräten."
+  caption="Die Sicherheitsseite des eigenen Kontos"
+/>
+
+### Zweiter Faktor
+
+Ein zeitbasierter Code aus einer Authenticator-App. Beim Einrichten erscheint
+ein QR-Code; danach ist ein Code zur Bestätigung einzugeben — erst dann ist der
+Faktor aktiv. So kann niemand sich versehentlich aussperren, weil das Scannen
+misslang.
+
+### Wiederherstellungscodes
+
+Zum zweiten Faktor gehören **{RECOVERY_CODE_COUNT} Codes** für den Fall, dass
+das Gerät verloren geht. Sie werden **genau einmal** angezeigt — danach liegt
+nur noch ihre Prüfsumme vor, und niemand kann sie erneut ausgeben.
+
+Jeder Code gilt einmal. Die Seite zeigt, wie viele noch übrig sind; neue lassen
+sich jederzeit erzeugen, wobei die alten sofort verfallen.
+
+Sie gehören an einen Ort, der nicht dasselbe Gerät ist: ausgedruckt, in einem
+Passwortspeicher, im Safe.
+
+### Passkey
+
+Ein Passkey ist ein Schlüsselpaar auf dem Gerät. Der private Teil **verlässt es
+nie**, und die Signatur bindet sich an die Adresse der aufrufenden Seite — eine
+nachgebaute Anmeldeseite bekommt nichts. Das ist der eigentliche Gewinn
+gegenüber einem Code, der abgetippt werden kann.
+
+Weil die Gerätesperre — Fingerabdruck, Gesicht, PIN — dabei als zweiter Faktor
+zählt, meldet ein Passkey **allein** an.
+
+Zwei Dinge sind zu wissen:
+
+- **Ohne JavaScript geht es nicht.** Es ist die einzige Stelle der Anwendung,
+  für die das gilt. Verkraftbar, weil Passwort und zweiter Faktor daneben
+  bestehen bleiben.
+- **Ein Domainwechsel entwertet alle Passkeys.** Die Bindung an die Adresse ist
+  ihr Zweck; sie lässt sich nicht umziehen.
+
+### Vertraute Geräte
+
+Nach erfolgreichem zweitem Faktor lässt sich ein Gerät als vertraut hinterlegen;
+dort entfällt der Code für {formatRetention(TRUSTED_DEVICE_TTL_MS)}. **Das
+Passwort wird weiterhin verlangt.**
+
+Das schwächt die Zweifaktoranmeldung bewusst, und deshalb gilt:
+
+- Jeder Nachweis ist **sichtbar und einzeln widerrufbar**. Was man nicht sieht,
+  kann man nicht widerrufen.
+- Er endet bei **jedem** Ereignis, das den Verdacht auf Verlust begründet:
+  Passwortzurücksetzung, Abschalten des zweiten Faktors, Sperren des Kontos,
+  „alle anderen Sitzungen beenden".
+- Auf einem fremden oder öffentlichen Rechner gehört er nicht hin.
+
+### Angemeldete Geräte
+
+Jede Sitzung steht mit Gerätebeschreibung, letzter Nutzung und Adresse in der
+Liste; jede lässt sich einzeln beenden. Das wirkt sofort.
+
+**„Alle anderen beenden"** beendet zugleich jedes Gerätevertrauen — auch das des
+aufrufenden Geräts. Eine Sitzung weiß nicht, welcher Gerätenachweis zu ihr
+gehört, und im Zweifel ist das die sichere Richtung.
+
+### Wenn etwas verdächtig aussieht
+
+Eine unbekannte Sitzung in der Liste ist der Anlass für drei Schritte, in dieser
+Reihenfolge: **Passwort ändern**, **alle anderen Sitzungen beenden**, **zweiten
+Faktor prüfen**. Wer die Rechteverwaltung hält, sieht im Protokoll, was in
+seinem Namen geschehen ist.

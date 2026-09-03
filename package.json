@@ -1,6 +1,6 @@
 {
   "name": "faktura",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,6 +11,8 @@
     "build": "next build",
     "backup": "tsx scripts/backup.ts",
     "seed": "tsx scripts/seed.ts",
+    "docs:index": "tsx scripts/build-docs-index.ts",
+    "docs:shots": "tsx scripts/build-docs-shots.ts",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
@@ -34,14 +36,19 @@
     "@dnd-kit/utilities": "3.2.2",
     "@fontsource/fira-mono": "5.3.0",
     "@fontsource/fira-sans": "5.3.0",
+    "@mdx-js/loader": "3.1.1",
+    "@mdx-js/react": "3.1.1",
+    "@next/mdx": "16.3.0",
     "@node-rs/argon2": "2.0.2",
     "@prisma/client": "6.19.3",
     "@simplewebauthn/browser": "13.2.2",
     "@simplewebauthn/server": "13.3.2",
+    "@types/mdx": "2.0.14",
     "adm-zip": "0.6.0",
     "liquidjs": "10.28.0",
     "lucide-react": "1.31.0",
     "next": "16.3.0",
+    "nodemailer": "9.0.5",
     "otpauth": "9.5.1",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.2.108",
@@ -56,15 +63,18 @@
     "@tailwindcss/postcss": "4.3.3",
     "@types/adm-zip": "0.5.8",
     "@types/node": "24.13.3",
+    "@types/nodemailer": "7.0.4",
     "@types/qrcode": "1.5.6",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "@types/smtp-server": "3.5.11",
     "@vitest/coverage-v8": "4.1.10",
     "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.0",
     "postcss": "8.5.26",
     "prisma": "6.19.3",
+    "smtp-server": "3.19.3",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.12",
     "typescript": "5.9.3",
@@ -72,6 +82,7 @@
     "vitest": "4.1.10"
   },
   "overrides": {
-    "deepmerge-ts": "8.0.2"
+    "deepmerge-ts": "8.0.2",
+    "nodemailer": "9.0.5"
   }
 }

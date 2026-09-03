@@ -9,6 +9,7 @@ import { messages } from '@/i18n/de';
 import { CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { ADMIN_OPERATIONS_PATH, BACKUP_DOWNLOAD_PATH } from '@/routes';
 import { SECONDARY_BUTTON_CLASS, SECTION_CLASS } from '@/ui/components/form';
+import { APP_VERSION } from '@/domain/version';
 import { PageHeader } from '@/ui/components/page';
 import { formatDateTime } from '@/ui/format';
 
@@ -66,6 +67,16 @@ export default async function AdminOperationsPage(): Promise<ReactNode> {
           <h2 className="text-section font-semibold text-ink">
             {messages.admin.operationsStateHeading}
           </h2>
+
+          {/*
+            Die laufende Version steht **hier**, wo der Betreiber sie braucht:
+            beim Aktualisieren und bei einer Rückfrage. Vor der Anmeldung steht
+            sie bewusst nicht — eine exakte Nummer sagt einem Angreifer, welche
+            Lücken er versuchen kann.
+          */}
+          <p className="text-small text-ink-muted">
+            {messages.help.version.replace('{version}', APP_VERSION)}
+          </p>
 
           <ul className="flex max-w-form flex-col divide-y divide-rule">
             {components.map((component) => (
