@@ -982,6 +982,49 @@ das inzwischen auf anderem Weg entstanden ist, und ein `RESET`-Nachweis legt
 keines an. Ein unbekannter Wert fällt durch beide Zweige — die sichere Richtung,
 deshalb braucht es dafür keinen Trigger.
 
+## Rechtliche Seiten (seit M13)
+
+**Das Impressum gehört dem Betreiber, nicht dem Mandanten** — und das ist die
+Umkehrung der Regel für Logo und Briefpapier. Dort gilt „gehört dem Mandanten",
+weil der Beleg ein Dokument seines Ausstellers ist. Hier bietet das Telemedium
+an, wer die **Installation** betreibt; bei drei Unternehmen gäbe es sonst keine
+Antwort auf die Frage, wessen Impressum unter `/impressum` steht. Es gibt
+deshalb genau eines je Anlage, gepflegt unter `/admin/legal`, abgelegt in
+`PlatformSettings` — einer Tabelle mit **einer** Zeile, erzwungen durch den
+festen Primärschlüssel `platform` statt durch eine CHECK-Bedingung, die SQLite
+bei jedem Tabellenneubau verlöre.
+
+**`getLegalNotices()` nimmt keinen Kontext, und das ist Absicht.** Die
+öffentlichen Seiten haben keine Sitzung — ein Impressum hinter einer Anmeldung
+wäre keins. Es ist dieselbe Art dokumentierter Ausnahme wie `pingDatabase()`
+für den Healthcheck. Geschrieben wird dagegen nur mit `PlatformContext`, und
+der Vorgang steht im Protokoll der Verwaltung; **der Inhalt nicht** — es genügt,
+dass jemand ihn geändert hat und wann.
+
+**Die Fristen der Datenschutzhinweise sind Verweise, keine Zahlen.**
+`domain/legal/privacy-notice.ts` setzt die Auskunft aus `SESSION_LIFETIME_MS`,
+`TRUSTED_DEVICE_TTL_MS` und den übrigen Konstanten zusammen; ein Test hält
+beides gegeneinander. Eine Erklärung, die neben der Wirklichkeit herläuft, ist
+schlimmer als keine — sie ist eine Zusage, die niemand hält. Dieselbe Bauart
+wie `TEMPLATE_VARIABLES`.
+
+**Kein Markup aus der Datenbank.** `LegalText` setzt Absätze aus Leerzeilen und
+führt nichts aus. Es ist die einzige Stelle der Anwendung, an der fremder Inhalt
+öffentlich erscheint; ein `dangerouslySetInnerHTML` wäre hier eine gespeicherte
+XSS-Lücke, über die ein Betreiberkonto Skript in jeden Besucherbrowser brächte.
+
+**Ein Link erscheint nur, wohin er führt.** Ohne hinterlegtes Impressum: 404 und
+kein Link. Die Datenschutzhinweise stehen dagegen immer — ihr erster Teil
+beschreibt die Software und ist auch ohne Zutun des Betreibers wahr. Für den
+Zugriffsschutztest trägt die Route dafür `optionalContent: true`: 200 **oder**
+404, aber niemals eine Umleitung zur Anmeldung.
+
+Zwei Wächter haben beim Bauen sofort angeschlagen, beide zu Recht: Der
+Adminwächter verlangte, das neue Delegate `platformSettings` einzuordnen, und
+die Schichtenregel wies `LegalFooter` aus `src/ui/` zurück — ein Bauteil, das
+die Anwendungsschicht liest, ist keine Darstellung, sondern eine
+Seitenkomposition und gehört nach `src/app/`.
+
 ## Verwaltung, zweiter Teil (seit M10)
 
 Der Betreiber verwaltet **seinesgleichen** aus der Oberfläche (`/admin/accounts`),
@@ -1395,6 +1438,7 @@ denselben Beleg als überfällig und als heute fällig ausweisen.
 | M10 | Handlungsfähigkeit der Verwaltung: Betreiberkonten, Protokoll, Anonymisieren | umgesetzt |
 | M11 | Der Beleg: keine Steuer bei §19, Blattfuß, Logo, Entwurf bearbeiten | umgesetzt |
 | M12 | Briefpapier je Unternehmen, PDF beim Festschreiben, klare Rückmeldung | umgesetzt |
+| M13 | Impressum und Datenschutzhinweise, gepflegt vom Betreiber | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

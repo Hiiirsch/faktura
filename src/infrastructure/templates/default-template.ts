@@ -256,6 +256,25 @@ export const DEFAULT_TEMPLATE_HTML = `<div class="sheet">
             <td class="num">{{ group.tax | money: invoice.currency }}</td>
           </tr>
           {%- endfor %}
+          {%- comment -%}
+            Die Summe der Gruppen — nur bei **mehr als einer** (A2, seit M13).
+
+            Bei einem Steuersatz steht sie schon in der Zeile darüber; sie zu
+            wiederholen hiesse, denselben Betrag zweimal zu nennen. Bei
+            gemischten Saetzen dagegen muesste der Leser sonst selbst addieren,
+            um den Bruttobetrag nachzurechnen — und genau das ist die Probe,
+            die ein Empfaenger macht.
+
+            Aufgefallen im Abnahmedurchgang zu A2, nicht im Betrieb: Mit einem
+            Satz faellt es nicht auf, und mehr als einen hatte bis dahin
+            niemand geprueft.
+          {%- endcomment -%}
+          {%- if taxBreakdown.size > 1 %}
+          <tr class="totals-tax">
+            <th scope="row">Umsatzsteuer gesamt</th>
+            <td class="num">{{ totals.tax | money: invoice.currency }}</td>
+          </tr>
+          {%- endif %}
           {%- else -%}
           {%- for notice in notices %}
           <tr class="totals-notice">
@@ -570,6 +589,11 @@ body {
 .totals td { padding: 1.2mm 0; text-align: right; white-space: nowrap; }
 
 .totals-net th, .totals-net td { border-top: 0.4pt solid var(--paper-rule); }
+/*
+ * Die Summe der Steuergruppen wird abgesetzt, aber nicht hervorgehoben: Sie
+ * schliesst die Aufstellung ab, die Hauptsache bleibt der Bruttobetrag.
+ */
+.totals-tax th, .totals-tax td { border-top: 0.4pt solid var(--paper-rule); }
 
 .totals-gross th,
 .totals-gross td {

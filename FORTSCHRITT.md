@@ -14,9 +14,16 @@ zweimal eine Nummer verschoben). Ein `†` markiert IDs, die dort **keinem** Mei
 sind — der eingetragene Meilenstein ist ein Vorschlag und steht noch zur
 Freigabe aus.
 
-Stand: 2026-08-24 · **226 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
-132 umgesetzt, 11 offen. Dazu **34 IDs** aus `faktura-frontend-design.md` §9
+Stand: 2026-08-24 · **229 IDs aus dem Anforderungskatalog**: 83 abgenommen (M0–M4),
+135 umgesetzt, 11 offen. Dazu **34 IDs** aus `faktura-frontend-design.md` §9
 (Abschnitt 16), alle umgesetzt.
+
+**M13 umgesetzt** — Impressum und Datenschutzhinweise. Drei neue IDs
+(NFA-COMP-07 bis -09). Der Anlass ist die Mandantenfähigkeit aus M8: Wer die
+Anwendung auch für andere Unternehmen betreibt, bietet ein Telemedium an. Die
+Fristen der Datenschutzhinweise sind Verweise auf die Konstanten der Domäne —
+eine Erklärung, die neben der Wirklichkeit herläuft, wäre eine Zusage, die
+niemand hält.
 
 **M12 umgesetzt** — Briefpapier je Unternehmen und klare Rückmeldung beim
 Speichern. Vier neue IDs (FA-TPL-11, FA-PDF-13, NFA-SEC-31, FA-UI-28), dazu
@@ -489,6 +496,9 @@ Szenario benannt.
 | NFA-COMP-04 | UI erklärt Archivierung statt Löschung | SOLL | M | M7 | umgesetzt | Kundenseite (`archiveExplanation`), Katalogseite und Belegseite (`noDeleteExplanation`) — jeweils dort, wo jemand zu löschen versucht, nicht in einer Hilfeseite |
 | NFA-COMP-05 | Keine Datenübertragung an Dritte, offline lauffähig | MUSS | T | M7 | umgesetzt | `tests/architecture/offline.test.ts` — keine fremde Adresse im Quelltext, `default-src 'none'` mit `connect-src 'self'`, keine Telemetriepakete; `tests/integration/rendering.test.ts` weist die Blockade im Renderer nach (NFA-SEC-12) |
 | NFA-COMP-06 | Keine externen Fonts, Skripte, Analysedienste | MUSS | R | M7 | umgesetzt | `tests/architecture/design-tokens.test.ts` — Schriften aus dem Paket, keine externe Adresse im Frontend |
+| NFA-COMP-07 | Impressum des Betreibers, öffentlich erreichbar | MUSS | T | M13 | umgesetzt | `tests/integration/legal-notices.test.ts`, `tests/integration/browser-legal.test.ts`. Genau eines je Installation in `PlatformSettings` (feste Kennung `platform` statt CHECK-Bedingung). **Umkehrung der Regel für Logo und Briefpapier:** Die gehören dem Mandanten, weil der Beleg sein Dokument ist — das Telemedium bietet der Betreiber an. Ohne hinterlegten Inhalt: 404 und kein Link |
+| NFA-COMP-08 | Datenschutzhinweise mit Zweck und Aufbewahrung | MUSS | T | M13 | umgesetzt | `tests/unit/domain/privacy-notice.test.ts` — die Fristen sind **Verweise auf die Konstanten** der Domäne, nicht Zahlen im Text; gegen eine geänderte Konstante gegengeprüft. `domain/legal/privacy-notice.ts` |
+| NFA-COMP-09 | Hinterlegter Text wird als Text gesetzt, nie als Markup | MUSS | T | M13 | umgesetzt | `LegalText` setzt Absätze aus Leerzeilen; kein `dangerouslySetInnerHTML`. Es ist die einzige Stelle, an der fremder Inhalt öffentlich erscheint — Szenario A19 prüft ein hinterlegtes `<script>` |
 
 ## 13. Betrieb
 
@@ -583,6 +593,7 @@ Auftraggeber vorgegeben hat.
 | FA-UI-26 | Das Rechnungsdokument trägt nie die Marke der Software | MUSS | T | M9 | umgesetzt | `tests/architecture/design-tokens.test.ts` — kein Bauteil im Weg vom Beleg zur Datei importiert die Marke; gegen einen absichtlichen Import in `render-invoice.ts` gegengeprüft. Auf dem Beleg steht das Logo des Unternehmens (FA-STAMM-05) |
 | FA-UI-27 | Entwurf aus der Liste bearbeiten | SOLL | T | M11 | umgesetzt | Zeilenaktion in `src/app/invoices/page.tsx`, sichtbar unter `invoice.update` und nur an Entwürfen; `tests/integration/browser-invoice-list.test.ts`. Bearbeiten ging seit M4 — es fehlte der Weg dorthin, denn aus der Liste führte nur die Belegnummer, und ein Entwurf hat keine |
 | FA-UI-28 | Jede Speicheraktion wird sichtbar bestätigt | MUSS | T | M12 | umgesetzt | `tests/architecture/save-feedback.test.ts`, gegen einen absichtlichen Verstoß geprüft. **Der Mangel war nicht die fehlende Meldung, sondern ihr Ort:** `Alert tone="success"` über dem ersten Feld, Knopf am Ende eines langen Formulars, keine Sprungmarke — im Blickfeld änderte sich nichts. Neun Formulare zeigen jetzt einen Toast; der Zeitstempel im Zustand ist nötig, weil `useActionState` den vorigen Zustand behält und der Toast sonst beim zweiten Speichern ausbliebe. Fünf stille Aktionen der Sicherheitsseite bestätigen über `?erledigt=…` |
+| FA-UI-29 | Passwort einsehbar, ohne JavaScript kein Knopf | SOLL | T | M13 | umgesetzt | `tests/integration/browser-password-reveal.test.ts` — umschalten, `aria-pressed`, und ein Browser **ohne JavaScript**, in dem der Knopf unsichtbar bleibt. Versteckt über eine Regel im `<noscript>` des Layouts statt über einen Zustand: React rügt `set-state-in-effect` zu Recht, und ein nachgereichter Knopf flackert. Acht Felder umgestellt |
 
 ---
 
@@ -659,23 +670,42 @@ Auftraggeber vorgegeben hat.
 ---
 ## Abnahmeszenarien (Katalog §19)
 
-| ID | Szenario | Status |
-|---|---|---|
-| A1 | Regelfall Inland | offen |
-| A2 | Gemischte Steuersätze | offen |
-| A3 | Reverse Charge | offen |
-| A4 | Storno | offen |
-| A5 | Umfangreiche Rechnung (60 Positionen) | offen |
-| A6 | Kundenumzug | offen |
-| A7 | Bösartige Vorlage | offen |
-| A8 | Zugriffsschutz | offen |
-| A9 | Wiederherstellung | offen |
-| A10 | Passkey statt Passwort | offen |
-| A11 | Vertrautes Gerät | offen |
-| A12 | Zurück aus der Sackgasse | offen |
-| A13 | Zweiter Betreiber | offen |
-| A14 | Konto unkenntlich machen | offen |
-| A15 | Was die Verwaltung sieht | offen |
-| A16 | Beleg eines Kleinunternehmers | offen |
-| A17 | Eigenes Briefpapier | offen |
-| A18 | Gespeichert heißt gespeichert | offen |
+Durchgang vom 2026-08-24. **Was hier „belegt" heißt:** Das Szenario ist Schritt
+für Schritt durch einen Test abgedeckt, der bei jedem Lauf erneut prüft — das
+ist mehr als ein einmaliger Klickdurchlauf und weniger als eine Abnahme durch
+den Auftraggeber. Die Freigabe bleibt seine.
+
+Zwei Lücken hat der Durchgang aufgedeckt, beide behoben: die fehlende
+Steuersumme bei gemischten Sätzen (A2) und der nie geprüfte Kundenumzug (A6).
+
+| ID | Szenario | Stand | Beleg |
+|---|---|---|---|
+| A1 | Regelfall Inland | belegt | `e2e-invoice-lifecycle.test.ts` — anmelden, Kunde, Beleg, festschreiben, PDF, Zahlung, Status; `dashboard.test.ts` für die Kennzahlen |
+| A2 | Gemischte Steuersätze | belegt, **Mangel behoben** | `invoice-totals.test.ts` (Rechnung, Rundung je Gruppe), `document-output.test.ts` (getrennte Aufstellung **auf dem Beleg**). Der Durchgang fand: Es gab keine Zeile „Umsatzsteuer gesamt" — bei einem Satz richtig, bei zweien musste der Leser selbst addieren |
+| A3 | Reverse Charge | belegt | `editor-context.test.ts` (AE wird vorgeschlagen), `document-output.test.ts` (beide USt-IdNr und Hinweis im Satz) |
+| A4 | Storno | belegt | `e2e-invoice-lifecycle.test.ts`, `invoice-lifecycle.test.ts`, `dashboard.test.ts` (Umsatz ohne stornierte Belege) |
+| A5 | Umfangreiche Rechnung | belegt | `document-output.test.ts` — 60 Positionen, Seitenumbruch, Seitenangabe ab Seite 2 |
+| A6 | Kundenumzug | belegt, **Lücke geschlossen** | `document-output.test.ts` — der Snapshot war gebaut, aber nie hatte jemand einen Kunden umgezogen und nachgesehen |
+| A7 | Bösartige Vorlage | belegt | `rendering.test.ts` (kein ausgehender Zugriff, kein Skript), `document-output.test.ts` (verständliche Meldung bei Syntaxfehler) |
+| A8 | Zugriffsschutz | belegt | `route-protection.test.ts` — 82 Prüfungen über jede Route in `routes.ts` |
+| A9 | Wiederherstellung | **abgenommen** (2026-08-24) | `backup.test.ts` prüft Erzeugen, Auspacken und Gleichheit von Belegen und PDFs. Den Ernstfall — Container und Volumes löschen, aus der Sicherung neu aufsetzen — hat der Auftraggeber selbst durchgespielt; kein Test kann das tun, ohne die Anlage abzuräumen |
+| A10 | Passkey statt Passwort | belegt | `browser-passkey.test.ts` mit nachgebautem Authenticator; Entfernen und erneuter Versuch in `passkeys.test.ts` |
+| A11 | Vertrautes Gerät | belegt | `two-step-login.test.ts` — ohne Ankreuzen kein Gerät, fremdes Konto, Ablauf, Verfall beim Zurücksetzen |
+| A12 | Zurück aus der Sackgasse | belegt | `platform-admin.test.ts` — Einladung erneut ausstellen, Zurücksetzungsnachweis, `actorKind: ADMIN` im Protokoll des Unternehmens |
+| A13 | Zweiter Betreiber | belegt | `platform-accounts.test.ts` — einladen, letztes aktives Konto nicht sperrbar, Zurücksetzen desselben Kontos erlaubt |
+| A14 | Konto unkenntlich machen | belegt | `platform-admin.test.ts` — Belege unverändert, Protokolleintrag auflösbar, keine Anmeldung mehr möglich, Vorgang in beiden Protokollen |
+| A15 | Was die Verwaltung sieht | belegt | `platform-admin.test.ts` (nur Kennzahlen, Notiz nicht im Export), `tests/architecture/platform-repository.test.ts` (Wächter über die Delegates) |
+| A16 | Beleg eines Kleinunternehmers | **abgenommen** (2026-08-24) | Die Bestandteile sind belegt (`document-output.test.ts`, `letterhead.test.ts`); das Aussehen hat der Auftraggeber am erzeugten Beleg geprüft |
+| A17 | Eigenes Briefpapier | belegt | `letterhead.test.ts` (eine Seite, A4, Bogen auf **jeder** Seite, Hash nach Austausch unverändert), `browser-letterhead.test.ts` |
+| A18 | Gespeichert heißt gespeichert | belegt | `tests/architecture/save-feedback.test.ts`, `browser-invoice-editor.test.ts` (Fehler im Blickfeld) |
+| A19 | Impressum und Datenschutz | belegt | `legal-notices.test.ts`, `browser-legal.test.ts` — 404 ohne Inhalt, ohne Sitzung erreichbar, Markup bleibt Text |
+
+**Stand: alle neunzehn Szenarien durch.** Siebzehn laufen bei jedem Testlauf
+mit; die beiden, die kein Test führen kann — die Sichtprüfung des Belegs (A16)
+und die Wiederherstellung nach vollständigem Verlust (A9) —, hat der
+Auftraggeber am 2026-08-24 selbst durchgespielt und bestätigt.
+
+Damit ist die Bedingung aus Katalog §19 erfüllt: „Manuell durchzuspielen, bevor
+V1 als fertig gilt." Die **Abnahme der Meilensteine M5 bis M13** ist davon
+unberührt und steht weiterhin aus — die Szenarien prüfen das Verhalten, nicht
+die Vollständigkeit der IDs.

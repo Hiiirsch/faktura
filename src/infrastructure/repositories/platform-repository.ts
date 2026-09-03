@@ -941,3 +941,51 @@ export async function listPlatformAuditEntries(
     createdAt: entry.createdAt,
   }));
 }
+
+/**
+ * Impressum und Datenschutzzusatz des Betreibers (M13, NFA-COMP-07, -08).
+ *
+ * **Ohne `PlatformContext` beim Lesen**, und das ist eine bewusste Ausnahme:
+ * Die öffentlichen Seiten `/impressum` und `/datenschutz` müssen ohne jede
+ * Sitzung antworten — ein Impressum hinter einer Anmeldung wäre keins. Es ist
+ * dieselbe Art Ausnahme wie `pingDatabase()` für den Healthcheck: Was hier
+ * herauskommt, ist ohnehin für jeden bestimmt.
+ *
+ * Geschrieben wird dagegen **nur mit Nachweis** — das ist ein Eingriff des
+ * Betreibers.
+ */
+export type PlatformSettingsView = {
+  readonly imprint: string | null;
+  readonly privacyAddendum: string | null;
+  readonly updatedAt: Date | null;
+};
+
+/** Die feste Kennung der einen Zeile. */
+const PLATFORM_SETTINGS_ID = 'platform';
+
+export async function findPlatformSettings(): Promise<PlatformSettingsView> {
+  const row = await clientFor(undefined).platformSettings.findUnique({
+    where: { id: PLATFORM_SETTINGS_ID },
+  });
+
+  if (row === null) {
+    return { imprint: null, privacyAddendum: null, updatedAt: null };
+  }
+
+  return {
+    imprint: row.imprint,
+    privacyAddendum: row.privacyAddendum,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function savePlatformSettings(
+  _platform: PlatformContext,
+  values: { readonly imprint: string | null; readonly privacyAddendum: string | null },
+): Promise<void> {
+  await clientFor(undefined).platformSettings.upsert({
+    where: { id: PLATFORM_SETTINGS_ID },
+    create: { id: PLATFORM_SETTINGS_ID, ...values },
+    update: values,
+  });
+}

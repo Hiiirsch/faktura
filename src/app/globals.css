@@ -149,6 +149,22 @@
   --container-form: 480px;
   /* Die Anmeldung: ein Formular ohne Umgebung, das nichts zu ordnen hat. */
   --container-login: 360px;
+  /*
+   * Satzmaß für Fließtext (seit M13).
+   *
+   * Die Anwendung hatte bis dahin keinen: Sie besteht aus Listen, Formularen
+   * und Belegen, und für erklärende Sätze reichte `--container-form`. Mit
+   * Impressum und Datenschutzhinweisen gibt es zum ersten Mal **Seiten aus
+   * Absätzen**, und 480 px sind dafür zu schmal — bei 680 px liegen rund 75
+   * Zeichen in der Zeile, das gewohnte Maß fürs Lesen.
+   *
+   * **Nicht `prose` genannt**, obwohl das nahelag: `max-w-prose` gab es in
+   * Tailwind, und mit der gelöschten Skala erzeugt die Klasse keine Regel —
+   * genau dieser Fehler stand hier zuerst und fiel im Architekturtest auf. Den
+   * Namen neu zu belegen hieße, dass niemand mehr ansieht, ob `max-w-prose`
+   * unsere Regel meint oder die verschwundene von Tailwind. Deshalb `text`.
+   */
+  --container-text: 680px;
 }
 
 /*

@@ -18,6 +18,22 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body className="min-h-screen bg-surface text-ink">
+        {/*
+          **Was ohne JavaScript nicht trägt, wird ohne JavaScript versteckt.**
+
+          Ein Knopf, den es gibt und der nichts tut, ist schlechter als keiner.
+          Die Alternative wäre gewesen, ihn erst nach der Hydratation zu setzen
+          — ein Zustand, den React zu Recht rügt (`set-state-in-effect`), und
+          ein Flackern beim ersten Rendern obendrein.
+
+          Eine Regel im `<noscript>` kostet nichts, greift vor dem ersten
+          Anstrich und gilt für jede künftige Ergänzung dieser Art. Inline-Stile
+          erlaubt die Richtlinie (`style-src 'unsafe-inline'`); ein Skript wäre
+          hier nicht möglich und wäre auch der falsche Weg.
+        */}
+        <noscript>
+          <style>{`.js-only { display: none !important; }`}</style>
+        </noscript>
         {children}
       </body>
     </html>

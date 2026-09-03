@@ -425,6 +425,8 @@ export const messages = {
     back: 'Zurück',
     saved: 'Die Änderungen wurden gespeichert.',
     chooseFile: 'Datei auswählen',
+    passwordShow: 'Passwort anzeigen',
+    passwordHide: 'Passwort verbergen',
     noFileChosen: 'Keine Datei ausgewählt',
     optional: 'optional',
     required: 'Pflichtfeld',
@@ -840,6 +842,40 @@ export const messages = {
     exitFullscreen: 'Vollbild beenden',
     loading: 'Wird gesetzt …',
     failed: 'Die Vorschau ließ sich nicht laden. Der Beleg selbst ist davon nicht betroffen.',
+  },
+
+  legal: {
+    imprintTitle: 'Impressum',
+    imprintHeading: 'Impressum',
+    privacyTitle: 'Datenschutz',
+    privacyHeading: 'Datenschutzhinweise',
+
+    /** Die Überschrift des Teils, der die Software beschreibt. */
+    privacySoftwareHeading: 'Was die Anwendung speichert',
+    privacySoftwareIntro:
+      'Die folgenden Angaben beschreiben die Anwendung selbst — sie gelten unabhängig davon, wer sie betreibt. Angaben zum Verantwortlichen stehen darunter.',
+    privacyColumnSubject: 'Angabe',
+    privacyColumnPurpose: 'Zweck',
+    privacyColumnRetention: 'Aufbewahrung',
+    privacyAssurancesHeading: 'Was nicht geschieht',
+    privacyOperatorHeading: 'Verantwortlicher und weitere Angaben',
+    privacyRetentionOpen: 'Ohne Frist',
+
+    /** Der Hinweis auf der Pflegeseite des Betreibers. */
+    adminTitle: 'Rechtliche Angaben',
+    adminHeading: 'Rechtliche Angaben',
+    adminIntro:
+      'Impressum und Datenschutzhinweise dieser Installation. Sie gehören dem Betreiber, nicht den Unternehmen darin — angeboten wird die Anwendung von dem, der sie betreibt.',
+    adminDisclaimer:
+      'Faktura prüft diese Angaben nicht und leistet keine Rechtsberatung. Was hier steht, ist eine Aussage des Betreibers über sich selbst; die Anwendung sorgt allein dafür, dass sie erreichbar ist.',
+    adminImprintLabel: 'Impressum',
+    adminImprintHint:
+      'Leer lassen, solange keins hinterlegt werden soll — dann gibt es die Seite nicht und niemand verlinkt darauf.',
+    adminPrivacyLabel: 'Datenschutzhinweise des Betreibers',
+    adminPrivacyHint:
+      'Steht unter dem mitgelieferten Teil über die Anwendung. Verantwortlicher, Rechtsgrundlagen, Betroffenenrechte, Aufsichtsbehörde.',
+    adminSaved: 'Die rechtlichen Angaben wurden gespeichert.',
+    adminNav: 'Rechtliches',
   },
 
   templates: {

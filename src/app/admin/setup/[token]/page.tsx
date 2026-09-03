@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { loadAdminSetup } from '@/application/admin/admin-setup';
 import { MIN_PASSWORD_LENGTH } from '@/domain/auth/password-policy';
 import { messages } from '@/i18n/de';
+import { PasswordField } from '@/ui/components/password-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { ADMIN_LOGIN_PATH } from '@/routes';
 import { Alert, INPUT_CLASS, PRIMARY_BUTTON_CLASS } from '@/ui/components/form';
@@ -120,45 +121,21 @@ export default async function AdminSetupPage({
       >
         <input type="hidden" name={CSRF_FIELD_NAME} value={csrfToken} />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">{messages.admin.setupName}</span>
-          <input
-            name="name"
-            type="text"
-            autoComplete="name"
-            className={INPUT_CLASS}
-            aria-describedby="name-hint"
-          />
-          <span id="name-hint" className="text-small text-ink-muted">
-            {messages.admin.setupNameHint}
-          </span>
-        </label>
+        <PasswordField
+          name="password"
+          label={messages.admin.setupPassword}
+          autoComplete="new-password"
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+        />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">{messages.admin.setupPassword}</span>
-          <input
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            className={INPUT_CLASS}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-ui font-medium text-ink">
-            {messages.admin.setupPasswordRepeat}
-          </span>
-          <input
-            name="passwordRepeat"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            className={INPUT_CLASS}
-          />
-        </label>
+        <PasswordField
+          name="passwordRepeat"
+          label={messages.admin.setupPasswordRepeat}
+          autoComplete="new-password"
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+        />
 
         <div className="flex flex-col gap-3 border-t border-rule pt-5">
           <p className="text-ui text-ink-muted">{messages.admin.setupScan}</p>

@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { getOptionalAdminSession } from '@/application/admin/require-admin-session';
 import { messages } from '@/i18n/de';
+import { PasswordField } from '@/ui/components/password-field';
 import { CSRF_FIELD_NAME, CSRF_HEADER_NAME } from '@/infrastructure/security/csrf';
 import { isPasskeyCapableOrigin } from '@/infrastructure/auth/webauthn';
 import { ADMIN_PASSKEY_LOGIN_PATH, ADMIN_PATH } from '@/routes';
@@ -98,19 +99,12 @@ export default async function AdminLoginPage({
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label htmlFor="password" className="text-ui font-medium">
-            {messages.login.password}
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            className={INPUT_CLASS}
-          />
-        </div>
+        <PasswordField
+          name="password"
+          label={messages.login.password}
+          autoComplete="current-password"
+          required
+        />
 
         <button type="submit" className={PRIMARY_BUTTON_CLASS}>
           {messages.login.submit}

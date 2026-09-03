@@ -28,6 +28,21 @@ export const ADMIN_AUDIT_PATH = '/admin/audit';
 /** Zustand der Anlage und Sicherung (FA-ADM-17). */
 export const ADMIN_OPERATIONS_PATH = '/admin/operations';
 
+/** Impressum und Datenschutzzusatz des Betreibers (M13, NFA-COMP-07). */
+export const ADMIN_LEGAL_PATH = '/admin/legal';
+
+/**
+ * Die öffentlichen Rechtstexte (M13).
+ *
+ * **Öffentlich, weil sie es sein müssen.** Ein Impressum hinter einer Anmeldung
+ * ist keins, und wer wissen will, wie mit seinen Daten umgegangen wird, hat
+ * dafür noch kein Konto. Sie zeigen ausschließlich, was der Betreiber selbst
+ * hinterlegt hat — Mandantendaten stehen dort nicht und können dort nicht
+ * stehen.
+ */
+export const IMPRINT_PATH = '/impressum';
+export const PRIVACY_PATH = '/datenschutz';
+
 /** Einrichtung eines Betreiberkontos — der Nachweis steht in der Adresse (M8). */
 export const ADMIN_SETUP_PATH = '/admin/setup';
 
@@ -210,6 +225,20 @@ export type RouteDefinition = {
    * beides — Status `200` **und** dass nichts über das Unternehmen darin steht.
    */
   readonly requiresRedemptionToken?: boolean;
+
+  /**
+   * Öffentlich, aber erst vorhanden, wenn jemand sie füllt (M13).
+   *
+   * Das Impressum gibt es, sobald der Betreiber eines hinterlegt hat — vorher
+   * antwortet die Seite mit `404`, und nichts verlinkt darauf. Ein leeres
+   * Impressum wäre schlechter als keins: Es sähe aus, als stünde dort etwas.
+   *
+   * Für den Zugriffsschutztest heißt das: `200` **oder** `404`, aber niemals
+   * eine Umleitung zur Anmeldung. Die Frage, die er stellt, bleibt dieselbe —
+   * ist die Seite geschützt? —, nur ist „gibt es nicht" hier eine gültige
+   * Antwort.
+   */
+  readonly optionalContent?: boolean;
   /**
    * Konkreter Pfad für den Zugriffsschutz-Test. Nur bei dynamischen Routen
    * nötig — `/customers/[id]` lässt sich nicht wörtlich aufrufen.
@@ -227,6 +256,25 @@ export const routes: readonly RouteDefinition[] = [
     publicReason: 'Die Anmeldeseite muss ohne Sitzung erreichbar sein.',
   },
   {
+    path: IMPRINT_PATH,
+    kind: 'page',
+    access: 'public',
+    optionalContent: true,
+    publicReason:
+      'Ein Impressum hinter einer Anmeldung wäre keins (§5 DDG). Die Seite zeigt ' +
+      'ausschließlich, was der Betreiber über sich selbst hinterlegt hat; ohne ' +
+      'hinterlegten Inhalt antwortet sie mit 404.',
+  },
+  {
+    path: PRIVACY_PATH,
+    kind: 'page',
+    access: 'public',
+    publicReason:
+      'Wer wissen will, wie mit seinen Daten umgegangen wird, hat dafür noch kein ' +
+      'Konto (Art. 13 DSGVO). Die Seite beschreibt die Software und den Betreiber, ' +
+      'nicht die Mandanten.',
+  },
+  {
     path: LOGIN_CODE_PATH,
     kind: 'page',
     access: 'public',
@@ -242,6 +290,7 @@ export const routes: readonly RouteDefinition[] = [
   { path: ADMIN_ACCOUNTS_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_AUDIT_PATH, kind: 'page', access: 'platformAdmin' },
   { path: ADMIN_OPERATIONS_PATH, kind: 'page', access: 'platformAdmin' },
+  { path: ADMIN_LEGAL_PATH, kind: 'page', access: 'platformAdmin' },
   {
     path: '/admin/setup/[token]',
     kind: 'page',

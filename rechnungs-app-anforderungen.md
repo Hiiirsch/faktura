@@ -229,6 +229,9 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-COMP-04 | Die UI erklärt an der Stelle des Löschversuchs, warum Rechnungsdaten nur archiviert und nicht gelöscht werden. | SOLL | M |
 | NFA-COMP-05 | Es werden keine Daten an Dritte übertragen; die Anwendung funktioniert ohne ausgehende Internetverbindung. | MUSS | T |
 | NFA-COMP-06 | Es sind keine externen Schriftarten, Skripte oder Analysedienste eingebunden. | MUSS | R |
+| NFA-COMP-07 | Der **Betreiber** der Installation hinterlegt ein Impressum; es ist ohne Anmeldung erreichbar (§5 DDG). Es gibt genau eines je Installation — angeboten wird die Anwendung von dem, der sie betreibt, nicht von den Mandanten darin. Solange keins hinterlegt ist, antwortet die Seite mit 404 und nichts verlinkt darauf. | MUSS | T |
+| NFA-COMP-08 | Die Datenschutzhinweise sind ohne Anmeldung erreichbar und nennen je gespeicherter Angabe Zweck und Aufbewahrung (Art. 13 DSGVO). Die **Fristen stammen aus den Konstanten der Domäne**, nicht aus dem Fließtext; ein Test hält beides gegeneinander. | MUSS | T |
+| NFA-COMP-09 | Vom Betreiber hinterlegter Text wird als Text gesetzt, nie als Markup. Die öffentlichen Rechtstexte sind die einzige Stelle, an der fremder Inhalt öffentlich erscheint. | MUSS | T |
 
 ## 13. Betrieb
 
@@ -408,6 +411,7 @@ unverändert bestehen — beides sind Ergänzungen daneben, kein Ersatz.
 | M10 Verwaltung | FA-ADM-12 bis -17, NFA-SEC-30 |
 | M11 Der Beleg | FA-TPL-10, FA-PDF-12, FA-PFL-12, -13, FA-UI-27 |
 | M12 Briefpapier | FA-TPL-11, FA-PDF-13, FA-UI-28, NFA-SEC-31 |
+| M13 Rechtstexte | NFA-COMP-07 bis -09 |
 
 ---
 
@@ -515,3 +519,12 @@ sichtbar. Ein Feld leeren, das nicht leer sein darf, und erneut speichern: Der
 Fehler steht am Feld, kein Toast behauptet Erfolg. Zweimal hintereinander speichern:
 Die Bestätigung erscheint **beide** Male. Auf der Sicherheitsseite einem Gerät das
 Vertrauen entziehen: Die Handlung wird benannt, nicht nur die Zeile entfernt.
+
+**A19 — Impressum und Datenschutz**
+Ohne hinterlegte Angaben `/impressum` aufrufen: 404, und auf der Anmeldeseite
+steht kein Link darauf. `/datenschutz` ist trotzdem erreichbar und nennt die
+Fristen der Anwendung. Als Betreiber unter **Rechtliches** beides hinterlegen —
+der Vorgang steht im Protokoll der Verwaltung, der Inhalt nicht. Abgemeldet
+beide Seiten aufrufen: erreichbar. Ins Impressum
+`<script>alert(1)</script>` eintragen: erscheint als Text, nichts wird
+ausgeführt.

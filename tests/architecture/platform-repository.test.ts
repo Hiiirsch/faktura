@@ -69,6 +69,15 @@ const ADMINISTRATIVE = [
   'passwordReset',
   'role',
   /*
+   * Seit M13: die Angaben des Betreibers über **sich selbst**.
+   *
+   * `platformSettings` trägt Impressum und Datenschutzzusatz. Es ist der
+   * einzige Gegenstand dieser Liste, der gar keinen Bezug zu einem Mandanten
+   * hat — er beschreibt den Betreiber, und der verwaltet hier nichts als seine
+   * eigene Auskunft.
+   */
+  'platformSettings',
+  /*
    * `trustedDevice` seit M9/B2 — aus demselben Grund wie `session`.
    *
    * Ein vertrautes Gerät ist ein **Anmeldenachweis** eines Kontos, kein Datum

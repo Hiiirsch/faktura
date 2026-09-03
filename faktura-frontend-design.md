@@ -516,6 +516,7 @@ Zur Aufnahme in `rechnungs-app-anforderungen.md`.
 | FA-UI-26 | Das Rechnungsdokument trägt **nie** die Marke der Software. Was dort erscheint, ist das Logo des ausstellenden Unternehmens (FA-TPL-10). | MUSS | T |
 | FA-UI-27 | Ein Entwurf lässt sich aus der Rechnungsliste heraus bearbeiten. Die Aktion erscheint nur an Entwürfen und nur mit dem Recht, sie zu ändern. | SOLL | T |
 | FA-UI-28 | **Jede** Speicheraktion wird sichtbar bestätigt, und zwar an einer Stelle, die im Blickfeld liegt: als Toast, nicht als Meldung über dem ersten Feld eines langen Formulars. Fehler bleiben am betroffenen Feld (FA-UI-10) — ein Toast bestätigt, er entschuldigt nicht. Aktionen ohne Rückkanal bestätigen über `?erledigt=…`. | MUSS | T |
+| FA-UI-29 | Jedes Passwortfeld lässt sich einsehen. Der Knopf trägt `aria-pressed`; **ohne JavaScript erscheint er nicht**, denn ein Knopf, der nichts tut, ist schlechter als keiner (NFA-UI-06). | SOLL | T |
 
 ---
 
