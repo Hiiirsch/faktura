@@ -18,28 +18,16 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/hiiirsch/faktura:1.0.0@sha256:efe1aa4db2e200ec8724c513932c7eafc92769de5fd49c674735f48f1780316c
+          image: ghcr.io/hiiirsch/faktura:1.0.1@sha256:85b0d1d81be07116cdc2e7311a6db201185779f0ffd929438d3f4d7dd4532ff4
           imagePullPolicy: IfNotPresent
 
           ports:
             - containerPort: 3000
               protocol: TCP
 
-          env:
-            - name: DATABASE_URL
-              value: "file:/app/data/faktura.db"
-
-            - name: NODE_ENV
-              value: "production"
-
-            - name: PORT
-              value: "3000"
-
-            - name: STORAGE_DIR
-              value: "/app/storage"
-
-            - name: BACKUP_DIR
-              value: "/app/backups"
+          envFrom:
+            - configMapRef:
+                name: faktura-config
 
           volumeMounts:
             - name: data

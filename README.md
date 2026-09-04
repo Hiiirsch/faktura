@@ -776,3 +776,45 @@ Skripte laufen ausschließlich mit dem pro Anfrage erzeugten Nonce. Für
 Komponenten setzen Positionierung über `style`-Attribute am Element, auf die
 ein Nonce nicht anwendbar ist. Der Sicherheitsgewinn einer strikten `style-src`
 wäre gering, der Funktionsverlust vollständig.
+
+## Deployment
+
+Voraussetzungen: Docker, KIND und kubectl.
+
+### KIND-Cluster erstellen
+
+```bash
+kind create cluster --name faktura
+```
+
+### Kubernetes-Ressourcen deployen
+
+```bash
+kubectl apply -f deployment/k8s/namespace.yaml
+kubectl apply -f deployment/k8s/app-config.yaml
+kubectl apply -f deployment/k8s/pvc.yaml
+kubectl apply -f deployment/k8s/app-deployment.yaml
+kubectl apply -f deployment/k8s/app-service.yaml
+```
+
+### Prüfen, ob der Pod läuft
+
+```bash
+kubectl get pods -n faktura
+```
+
+Der Pod muss `Running` und `1/1` sein.
+
+### Anwendung lokal verfügbar machen
+
+```bash
+kubectl port-forward -n faktura service/faktura-app 3000:3000
+```
+
+### Im Browser öffnen
+
+```text
+http://localhost:3000
+```
+
+> Das Terminal mit dem Port-Forward muss während der Nutzung geöffnet bleiben.
