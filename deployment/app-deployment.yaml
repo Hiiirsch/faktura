@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faktura-app
+  namespace: faktura
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: faktura-app
+
+  template:
+    metadata:
+      labels:
+        app: faktura-app
+
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/hiiirsch/faktura:1.0.0@sha256:efe1aa4db2e200ec8724c513932c7eafc92769de5fd49c674735f48f1780316c
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+
+          env:
+            - name: DATABASE_URL
+              value: "file:/app/data/faktura.db"
+
+            - name: NODE_ENV
+              value: "production"
+
+            - name: PORT
+              value: "3000"
+
+            - name: STORAGE_DIR
+              value: "/app/storage"
+
+            - name: BACKUP_DIR
+              value: "/app/backups"
+
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: faktura-data
