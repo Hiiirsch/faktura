@@ -28,6 +28,12 @@ jobs:
     # Eine Attrappe prüfte, dass wir eine Schnittstelle bedienen; ein Dienst
     # prüft, dass die Daten ankommen — und beim Objektspeicher zusätzlich, dass
     # die selbst gebaute Signatur stimmt.
+    #
+    # **MinIO steht hier nicht**, sondern startet weiter unten als Schritt.
+    # `services:` kann einem Container keine Argumente mitgeben, und MinIO
+    # verlangt `server /data`: Ohne das gibt der Container seinen Hilfetext aus
+    # und endet — der Lauf scheiterte an einem „unhealthy", dessen Ursache man
+    # erst im Containerprotokoll sieht.
     services:
       postgres:
         image: postgres:17.6-alpine
@@ -43,18 +49,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      minio:
-        image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-        env:
-          MINIO_ROOT_USER: faktura
-          MINIO_ROOT_PASSWORD: entwicklung
-        ports:
-          - 59000:9000
-        options: >-
-          --health-cmd "mc ready local || curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     env:
       # Die Datenbank des Testlaufs. Die Tests der Domain-Schicht kommen ohne
@@ -110,6 +104,29 @@ jobs:
       # Download von Playwright — dieselbe Fassung wie im gepinnten Paket.
       - name: Chromium bereitstellen
         run: npx playwright install --with-deps chromium
+
+      # Objektspeicher für die Prüfung des S3-Adapters.
+      #
+      # Als Schritt und nicht als Service-Container: MinIO braucht das Argument
+      # `server /data`, und `services:` kann keines übergeben.
+      - name: Objektspeicher starten
+        run: |
+          docker run -d --name minio -p 59000:9000 \
+            -e MINIO_ROOT_USER=faktura \
+            -e MINIO_ROOT_PASSWORD=entwicklung \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:59000/minio/health/live >/dev/null 2>&1; then
+              echo "MinIO ist bereit."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::MinIO wurde nicht bereit."
+          docker logs minio
+          exit 1
 
       # Der Eimer, in den der Objektspeicher-Adapter schreibt. Er muss vor dem
       # Lauf da sein — ein Adapter legt keine Eimer an, und das soll er auch
