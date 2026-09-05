@@ -253,6 +253,7 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-BETR-14 | Erzeugte Dateien und Uploads liegen hinter **einer** Schnittstelle mit zwei Austauschbarkeiten: lokales Dateisystem (Vorgabe) und S3-kompatibler Objektspeicher. Ohne Konfiguration verhält sich die Anwendung wie zuvor; beide erfüllen denselben Vertrag, geprüft gegen einen echten Dienst. | MUSS | T |
 | NFA-BETR-15 | Die Belegausgabe läuft wahlweise im Prozess oder in einem **eigenen Dienst**. Der Dienst trägt die Fähigkeiten für die Chromium-Sandbox, die Anwendungsinstanzen tragen keine. Er verlangt einen Nachweis und liefert dasselbe Ergebnis wie der Renderer im Prozess. | MUSS | T |
 | NFA-BETR-16 | Die Migrationen lassen sich beim Start **abschalten** (`RUN_MIGRATIONS=0`), damit sie bei mehreren Instanzen nicht gleichzeitig laufen. Die Vorgabe bleibt eingeschaltet. | MUSS | R |
+| NFA-BETR-17 | Die CI baut das Anwendungsimage und veröffentlicht es bei einem Push auf `main` und bei Versionsmarken in eine Registry, für `amd64` und `arm64`. Eine Versionsmarke wird **abgewiesen**, wenn sie nicht mit `package.json` und `APP_VERSION` übereinstimmt. Zweigläufe bauen, ohne zu veröffentlichen. | SOLL | R |
 
 ## 14. Architektur & Erweiterbarkeit
 

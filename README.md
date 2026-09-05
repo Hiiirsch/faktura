@@ -770,6 +770,50 @@ betreibt Faktura wie zuvor.
 | **Dateien** | Was Instanz A beim Festschreiben ablegt, muss B beim Abruf finden | `S3_*` — ein S3-kompatibler Objektspeicher |
 | **Belegausgabe** | Chromium braucht Fähigkeiten, die eine Instanz oft nicht bekommt | `RENDERER_URL` — ein eigener Dienst |
 
+### Das Image
+
+Die CI baut das Anwendungsimage und veröffentlicht es in GitHub Packages:
+
+```
+ghcr.io/<eigentümer>/faktura
+```
+
+| Anlass | Marken |
+|---|---|
+| Push auf `main` | `:main`, `:sha-<kurz>` |
+| Git-Tag `v1.2.0` | `:1.2.0`, `:1.2`, `:latest` |
+| jeder andere Zweig | **kein** Push — es wird nur gebaut |
+
+Gebaut wird für `linux/amd64` **und** `linux/arm64`; das Image läuft damit im
+Cluster wie auf einem Apple-Rechner.
+
+**Eine Versionsmarke wird abgewiesen, wenn sie nicht zur Anwendung passt.** Ein
+Tag `v1.2.0` verlangt, dass `package.json` und `APP_VERSION` dasselbe sagen —
+sonst trüge das Image `:1.2.0` und meldete unter *Verwaltung › Zustand* etwas
+anderes. Veröffentlichen heißt also:
+
+```bash
+# 1. Version an beiden Stellen setzen (der Test bindet sie an das Handbuch)
+#    package.json und src/domain/version.ts
+# 2. Neuerungen im Handbuch ergänzen, Suchindex erzeugen
+npm run docs:index && npm run verify
+# 3. Marke setzen
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+**Ein Image, zwei Dienste.** Anwendung und Renderdienst teilen sich das Image
+und unterscheiden sich nur im Startbefehl:
+
+```bash
+# Anwendung (Vorgabe des Images)
+./scripts/entrypoint.sh
+
+# Renderdienst
+node dist/renderer-server.mjs
+```
+
+Zwei Images wären zwei Stände, die auseinanderlaufen können.
+
 ### Der Renderdienst
 
 Chromium spannt seine Sandbox über Namensräume auf und braucht dafür

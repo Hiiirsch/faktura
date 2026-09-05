@@ -520,6 +520,7 @@ Szenario benannt.
 | NFA-BETR-14 | Dateispeicher hinter einer Schnittstelle, zwei Adapter | MUSS | T | M17 | umgesetzt | `infrastructure/storage/file-store.ts` mit Dateisystem (Vorgabe) und S3. `tests/integration/file-store.test.ts` prüft **beide** gegen denselben Vertrag, den S3-Adapter gegen ein echtes MinIO — die selbst gebaute SigV4-Signatur ist die Stelle, die still falsch sein könnte, und sie scheitert laut |
 | NFA-BETR-15 | Belegausgabe wahlweise als eigener Dienst | MUSS | T | M17 | umgesetzt | `http-renderer.ts` neben `playwright-renderer.ts`, Dienst in `scripts/renderer-server.ts`. `tests/integration/renderer-service.test.ts` setzt dasselbe HTML zweimal und vergleicht; dazu zwei Prüfungen der Abweisung ohne Nachweis |
 | NFA-BETR-16 | Migrationen beim Start abschaltbar | MUSS | R | M17 | umgesetzt | `RUN_MIGRATIONS=0` in `scripts/entrypoint.sh`; Vorgabe bleibt eingeschaltet, damit die Einzelplatzinstallation mit einem Befehl hochkommt |
+| NFA-BETR-17 | Image wird gebaut und veröffentlicht | SOLL | R | M17 | umgesetzt | `.github/workflows/ci.yml`, Job `docker` — `main` ergibt `:main` und `:sha-…`, eine Marke `v1.2.0` ergibt `:1.2.0`, `:1.2`, `:latest`. Zweigläufe bauen nur. Die Markenprüfung bindet die Marke als **vierte** Stelle an `package.json` und `APP_VERSION`; beide Richtungen sind vor dem ersten CI-Lauf örtlich durchgespielt worden |
 
 ## 14. Architektur & Erweiterbarkeit
 
