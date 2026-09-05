@@ -359,6 +359,11 @@ Das Format ist `custom`: komprimiert, und `pg_restore` holt daraus auch einzelne
 Tabellen zurück — bei einer Wiederherstellung nach einem Versehen ist das der
 Unterschied zwischen „alles zurück" und „diese eine Tabelle zurück".
 
+Das Image bringt `pg_dump` und `pg_restore` in Fassung 17 mit. Wer eine
+verwaltete Datenbank benutzt, prüft vorher deren Hauptversion: Gegen eine
+**neuere** Datenbank verweigert `pg_dump` den Dienst, und die Sicherung fällt
+dann vollständig aus. Für eine neuere Datenbank steigt die Zahl im Dockerfile.
+
 **Von Hand, aus der Verwaltung:** `/admin/operations` → *Sicherung herunterladen*. Seit M8
 liegt sie dort und **nicht** in der Oberfläche eines Unternehmens: Eine
 Sicherung umfasst die Datenbankdatei als Ganzes, also alle Unternehmen.

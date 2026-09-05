@@ -73,6 +73,22 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
+      # `pg_dump` in der Fassung des Servers.
+      #
+      # Der Läufer bringt Client 16 mit, der Dienstcontainer ist 17.6 — und
+      # gegen eine neuere Datenbank verweigert `pg_dump` den Dienst. Das war
+      # kein Fehler des Läufers, sondern derselbe, der im Anwendungsimage stand
+      # (Dockerfile): Debian bookworm liefert dort Fassung 15. Der
+      # Wiederherstellungstest zieht den Abzug wirklich und hat beides
+      # aufgedeckt.
+      - name: PostgreSQL-Werkzeuge in der Fassung des Servers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          # Vorangestellt, damit nicht der Umschalter von Debian entscheidet,
+          # welche Fassung ein Aufruf trifft.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
       - name: Prisma-Client erzeugen
         run: npx prisma generate
 

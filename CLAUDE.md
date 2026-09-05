@@ -1801,6 +1801,21 @@ Roh-SQL-Verbot im Anwendungscode: NFA-ARCH-10 gilt für `src/**` ohne jede
 Einschränkung, die verbliebenen Ausnahmen liegen sämtlich im Prüfaufbau. Der
 Wiederherstellungstest spielt den Abzug wirklich in eine Wegwerfdatenbank ein.
 
+**Der Client muss dabei mindestens so neu sein wie der Server**, und das Image
+holt ihn deshalb aus dem PostgreSQL-Depot (`postgresql-client-17`) statt aus
+Debian, dessen Sammelpaket unter bookworm die Fassung 15 liefert. `pg_dump`
+weigert sich gegen eine neuere Datenbank vollständig — kein Teilabzug, sondern
+„aborting because of server version mismatch". Die ausgelieferte Anlage hätte
+damit **keine** Sicherung ziehen können, und aufgefallen wäre es beim ersten
+Versuch, sie zu brauchen. Andersherum ist es unkritisch: Ein neuerer Client
+sichert eine ältere Datenbank.
+
+Gesehen hat es niemand beim Lesen des Dockerfiles, sondern der
+Wiederherstellungstest im CI — lokal stand zufällig ein Client derselben
+Hauptversion. `tests/architecture/postgres-version.test.ts` hält die Zahl jetzt
+über Compose-Dienst, Image und CI zusammen; geprüft wird die Richtung, nicht
+die Gleichheit.
+
 ### Der Dateispeicher
 
 `FileStore` ist bewusst schmal — ablegen, lesen, löschen, ein Präfix räumen.

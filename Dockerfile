@@ -82,14 +82,33 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # dafür sorgt docker-compose.yml (NFA-SEC-19).
 ENV HOSTNAME=0.0.0.0
 
-# `postgresql-client` liefert `pg_dump` und `pg_restore`. Sie sind seit M17
-# Betriebswerkzeug, nicht Beiwerk: Die Sicherung (NFA-BETR-03) ruft `pg_dump`
-# auf, und ohne das Paket fiele das erst beim ersten Sicherungslauf auf — also
-# genau dann, wenn man sie braucht.
+# `pg_dump` und `pg_restore` sind seit M17 Betriebswerkzeug, nicht Beiwerk: Die
+# Sicherung (NFA-BETR-03) ruft `pg_dump` auf, und ohne das Paket fiele das erst
+# beim ersten Sicherungslauf auf — also genau dann, wenn man sie braucht.
+#
+# **Die Hauptversion muss zum Server passen, und sie kommt deshalb aus dem
+# PostgreSQL-Depot statt aus Debian.** Bookworm liefert unter dem Sammelpaket
+# `postgresql-client` die Fassung 15; `docker-compose.yml` startet 17.6. Gegen
+# eine **neuere** Datenbank verweigert `pg_dump` den Dienst ("aborting because
+# of server version mismatch") — die Sicherung wäre also genau in der Anlage
+# ausgefallen, die dieses Repository ausliefert. Aufgefallen ist es im CI, weil
+# der Wiederherstellungstest den Abzug wirklich zieht.
+#
+# Andersherum ist es unkritisch: Ein neuerer Client kann eine ältere Datenbank
+# sichern. Wer eine verwaltete Datenbank benutzt, ist damit bis Version 17
+# abgedeckt; für eine neuere steigt hier die Zahl.
+#
+# `tests/architecture/postgres-version.test.ts` hält beide Stellen zusammen.
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsS -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+        https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
-        openssl ca-certificates \
-        postgresql-client \
+        openssl \
+        postgresql-client-17 \
         chromium \
         chromium-sandbox \
         fonts-liberation \
