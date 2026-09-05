@@ -83,6 +83,21 @@ const envSchema = z.object({
   /** Viele S3-kompatible Dienste kennen nur eine Region; `us-east-1` ist die übliche. */
   S3_REGION: z.string().min(1).default('us-east-1'),
 
+  /*
+   * Renderdienst (M17, B3) — **optional**.
+   *
+   * Ohne `RENDERER_URL` setzt die Anwendung Belege im eigenen Prozess, wie
+   * bisher. Mit ihr geht der Auftrag an einen eigenen Dienst — nötig überall
+   * dort, wo die Anwendungsinstanz die Fähigkeiten für die Chromium-Sandbox
+   * nicht bekommen kann.
+   *
+   * `RENDERER_TOKEN` ist ein gemeinsames Geheimnis. Der Dienst nimmt HTML
+   * entgegen und setzt es; ohne Nachweis wäre er ein Werkzeug zum Erzeugen
+   * beliebiger Dokumente für jeden, der ihn erreicht.
+   */
+  RENDERER_URL: z.string().url().optional(),
+  RENDERER_TOKEN: z.string().min(16).optional(),
+
   /**
    * Pfad zu einem vorhandenen Chromium (Spec §8.2, §11.3).
    *

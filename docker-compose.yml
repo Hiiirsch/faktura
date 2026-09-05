@@ -95,6 +95,42 @@ services:
       retries: 3
       start_period: 30s
 
+  # Der Renderdienst (M17, B3) — **auskommentiert und bewusst so**.
+  #
+  # Eine Einzelplatzinstallation braucht ihn nicht: Dort setzt die Anwendung im
+  # eigenen Prozess, und der Container traegt die vier Faehigkeiten, die
+  # Chromium fuer seine Sandbox braucht.
+  #
+  # Noetig wird er dort, wo eine Anwendungsinstanz diese Faehigkeiten **nicht**
+  # bekommen kann — etwa unter einem strengen Sicherheitsprofil in Kubernetes.
+  # Dann traegt sie der Renderdienst, und die Instanzen laufen ohne
+  # Sonderrechte. Wer ihn einschaltet, setzt in der `.env`:
+  #
+  #   RENDERER_URL=http://renderer:3900
+  #   RENDERER_TOKEN=<mindestens 16 Zeichen>
+  #
+  # und entfernt beim `app`-Dienst `cap_add` sowie `shm_size`.
+  #
+  # renderer:
+  #   build:
+  #     context: .
+  #   restart: unless-stopped
+  #   command: ['node', 'dist/renderer-server.mjs']
+  #   environment:
+  #     RENDERER_PORT: 3900
+  #     RENDERER_TOKEN: ${RENDERER_TOKEN}
+  #   expose:
+  #     - '3900'
+  #   cap_drop: [ALL]
+  #   cap_add: [SYS_ADMIN, SETUID, SETGID, SYS_CHROOT]
+  #   shm_size: 256m
+  #   healthcheck:
+  #     test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3900/health', { headers: { authorization: `Bearer ${process.env.RENDERER_TOKEN}` } }).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
