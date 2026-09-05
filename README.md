@@ -38,10 +38,13 @@ npm ci
 cp .env.example .env
 ```
 
-`.env` anpassen — insbesondere `APP_URL` und `CADDY_SITE_ADDRESS`. Für die
-lokale Entwicklung muss `DATABASE_URL` auf `file:../data/faktura.db` stehen
-(relativ zum Verzeichnis `prisma/`), im Container auf den absoluten Pfad
-`file:/app/data/faktura.db`.
+`.env` anpassen — insbesondere `APP_URL`, `CADDY_SITE_ADDRESS` und
+`POSTGRES_PASSWORD`. Ohne das Passwort startet der Datenbankdienst nicht; ein
+Vorgabewert wäre einer, den jede Installation teilt.
+
+`DATABASE_URL` zeigt im Container auf den Dienst `db`
+(`postgresql://faktura:…@db:5432/faktura?schema=public`), für die lokale
+Entwicklung auf einen PostgreSQL auf dem eigenen Rechner.
 
 **`APP_URL` muss der Adresse entsprechen, unter der Sie die Anwendung im
 Browser aufrufen.** Sie dient der Herkunftsprüfung des CSRF-Schutzes; weicht
@@ -117,18 +120,23 @@ gefährlicher als ein ausbleibender Start.
 
 ### Woraus die Anwendung besteht
 
-Zwei Container, und im ersten laufen vier Bestandteile — davon nur zwei als
-eigener Prozess:
+Drei Container, und im mittleren laufen drei Bestandteile:
 
 | Bestandteil | Was er ist | Wann er startet |
 |---|---|---|
+| `db` | PostgreSQL | eigener Container, **vor** der Anwendung |
 | Anwendungsserver | Next.js aus dem Standalone-Bündel (`server.js`) | mit dem Container |
 | Prisma-Migrator | kein Dauerprozess: wendet die Migrationen an | im Entrypoint, **vor** dem Server |
-| SQLite | kein Prozess, sondern eine Datei im Anwendungsprozess | mit dem Server |
 | Chromium | Kindprozess für die PDF-Ausgabe | **bei Bedarf**, beim ersten Festschreiben oder Abruf |
+| `caddy` | Reverse Proxy | wartet auf `app: service_healthy` |
 
-Ein Mailserver gehört nicht dazu: Er ist extern und optional (siehe
-[E-Mail-Versand](#e-mail-versand)). Ohne ihn läuft alles unverändert.
+Zwei Dinge gehören **nicht** dazu und sind optional:
+
+- ein **Mailserver** (siehe [E-Mail-Versand](#e-mail-versand)),
+- ein **Objektspeicher** und ein **Renderdienst** (siehe
+  [Mehrere Instanzen](#mehrere-instanzen)).
+
+Ohne sie läuft alles unverändert.
 
 Die Startreihenfolge steht vollständig in `scripts/entrypoint.sh`:
 
@@ -153,12 +161,16 @@ ausschließlich von Hand.
 
 ### Daten
 
-| Pfad       | Inhalt                                        |
+| Ort        | Inhalt                                        |
 |------------|-----------------------------------------------|
-| `data/`    | SQLite-Datenbank                              |
-| `storage/` | Uploads und erzeugte PDFs (ab M5)             |
+| Volume `db_data` | PostgreSQL-Datenverzeichnis             |
+| `storage/` | Uploads und erzeugte PDFs                     |
 
-Beide Verzeichnisse sind Bind-Mounts und gehören in die Sicherung.
+`storage/` ist ein Bind-Mount. Die Datenbank liegt in einem benannten Volume:
+PostgreSQL verlangt Eigentümerschaft an seinem Verzeichnis, und die ist über
+einen Bind-Mount je nach Wirtssystem nicht herstellbar. Gesichert wird sie
+ohnehin nicht durch Kopieren, sondern mit `pg_dump` — siehe
+[Sicherung](#sicherung).
 
 ### Unternehmen und Konten anlegen
 
@@ -337,9 +349,15 @@ erzeugten PDFs, Logos und Uploads. Eine Datenbank ohne die Dateien ist keine
 wiederherstellbare Sicherung — ein festgeschriebener Beleg verweist auf seine
 Datei samt Prüfsumme.
 
-Die Datenbank wird über `VACUUM INTO` abgezogen, nicht kopiert: Eine Kopie
-mitten in einer Transaktion ergibt eine Datei, die aussieht wie eine Datenbank
-und beim Öffnen scheitert.
+Die Datenbank wird mit `pg_dump` abgezogen, nicht kopiert: Eine Kopie des
+Datenverzeichnisses mitten in einer Transaktion ergibt etwas, das aussieht wie
+eine Datenbank und beim Öffnen scheitert. `pg_dump` liest in einer eigenen
+Transaktion mit konsistentem Schnappschuss, während nebenher weitergearbeitet
+wird.
+
+Das Format ist `custom`: komprimiert, und `pg_restore` holt daraus auch einzelne
+Tabellen zurück — bei einer Wiederherstellung nach einem Versehen ist das der
+Unterschied zwischen „alles zurück" und „diese eine Tabelle zurück".
 
 **Von Hand, aus der Verwaltung:** `/admin/operations` → *Sicherung herunterladen*. Seit M8
 liegt sie dort und **nicht** in der Oberfläche eines Unternehmens: Eine
@@ -376,8 +394,12 @@ docker compose down
 # 2. Archiv auspacken
 mkdir -p /tmp/restore && tar -xzf faktura-2026-08-16T10-00-00Z.tar.gz -C /tmp/restore
 
-# 3. Datenbank zurückspielen
-cp /tmp/restore/faktura.db ./data/faktura.db
+# 3. Datenbank zurückspielen — in eine leere Datenbank
+docker compose up -d db
+docker compose exec -T db psql -U faktura -d postgres \
+  -c 'DROP DATABASE IF EXISTS faktura WITH (FORCE)' -c 'CREATE DATABASE faktura'
+docker compose exec -T db pg_restore --no-owner --no-privileges \
+  -U faktura -d faktura < /tmp/restore/faktura.dump
 
 # 4. Dateien zurückspielen
 rm -rf ./storage && cp -r /tmp/restore/storage ./storage
@@ -729,6 +751,65 @@ scheitert an SPF und DMARC — und zwar stillschweigend beim Empfänger.
 
 Zum Prüfen genügt eine Einladung an eine Adresse außerhalb des Hauses und ein
 Blick in den Kopf der angekommenen Nachricht (`Authentication-Results`).
+
+## Mehrere Instanzen
+
+Faktura läuft in **mehreren Instanzen gegen eine gemeinsame Datenbank** — für
+einen Betrieb in Kubernetes oder hinter einem Lastverteiler. Kubernetes selbst
+ist nicht Teil dieses Repositorys: Es gibt keine Manifeste und keine
+Cluster-Annahmen, nur die Voraussetzungen dafür.
+
+Für eine Einzelplatzinstallation ist nichts davon nötig. Wer nichts einrichtet,
+betreibt Faktura wie zuvor.
+
+### Was geteilt werden muss
+
+| Was | Warum | Wie |
+|---|---|---|
+| **Datenbank** | Sitzungen, Nummernkreise, Belege | eine `DATABASE_URL` für alle Instanzen |
+| **Dateien** | Was Instanz A beim Festschreiben ablegt, muss B beim Abruf finden | `S3_*` — ein S3-kompatibler Objektspeicher |
+| **Belegausgabe** | Chromium braucht Fähigkeiten, die eine Instanz oft nicht bekommt | `RENDERER_URL` — ein eigener Dienst |
+
+### Der Renderdienst
+
+Chromium spannt seine Sandbox über Namensräume auf und braucht dafür
+`SYS_ADMIN`, `SETUID`, `SETGID` und `SYS_CHROOT`. Unter einem strengen
+Sicherheitsprofil bekommt eine Anwendungsinstanz diese Fähigkeiten nicht — sie
+müsste dann mit `--no-sandbox` rendern, was diese Anwendung nicht tut.
+
+Der Ausweg: **ein** Dienst mit den vier Fähigkeiten, beliebig viele Instanzen
+ohne Sonderrechte.
+
+```bash
+node dist/renderer-server.mjs   # Port aus RENDERER_PORT, Vorgabe 3900
+```
+
+Er braucht `RENDERER_TOKEN` (mindestens 16 Zeichen) und startet ohne es nicht:
+Der Dienst nimmt HTML entgegen und setzt es; ohne Nachweis wäre er ein Werkzeug
+zum Erzeugen beliebiger Dokumente für jeden, der ihn erreicht.
+
+In `docker-compose.yml` steht er auskommentiert samt Anleitung.
+
+### Migrationen
+
+Bei mehreren Instanzen liefe `prisma migrate deploy` in jedem Container
+gleichzeitig. Setzen Sie deshalb `RUN_MIGRATIONS=0` und lassen Sie einen eigenen
+Vorgang migrieren, **bevor** die Instanzen starten:
+
+```bash
+RUN_MIGRATIONS=0   # in der Umgebung der Instanzen
+npx prisma migrate deploy   # einmal, vorher
+```
+
+Die Vorgabe bleibt eingeschaltet — eine Einzelplatzinstallation soll mit einem
+Befehl hochkommen.
+
+### Was dabei nicht geteilt wird
+
+Nichts sonst. Jede Instanz hält nur Zwischenspeicher: die geprüfte Umgebung, die
+Liste kompromittierter Passwörter, den Mailversender, die Schrift des Belegs.
+Sitzungen, zweiter Anmeldeschritt, WebAuthn-Aufgaben und vertraute Geräte liegen
+in der Datenbank — eine Anmeldung auf einer Instanz gilt auf allen.
 
 ## Unveränderbarkeit
 

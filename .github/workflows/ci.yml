@@ -20,10 +20,46 @@ jobs:
   verify:
     runs-on: ubuntu-latest
 
+    # Seit M17 laufen die Integrationstests gegen **echte** Dienste statt gegen
+    # eine Datei: PostgreSQL für die Fachlogik, MinIO für den Objektspeicher.
+    # Eine Attrappe prüfte, dass wir eine Schnittstelle bedienen; ein Dienst
+    # prüft, dass die Daten ankommen — und beim Objektspeicher zusätzlich, dass
+    # die selbst gebaute Signatur stimmt.
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: faktura
+          POSTGRES_USER: faktura
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U faktura"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+        env:
+          MINIO_ROOT_USER: faktura
+          MINIO_ROOT_PASSWORD: entwicklung
+        ports:
+          - 59000:9000
+        options: >-
+          --health-cmd "mc ready local || curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
-      # Für den Lauf genügt eine Datenbank im Arbeitsverzeichnis; die Tests der
-      # Domain-Schicht kommen ohne Datenbank aus.
-      DATABASE_URL: file:../data/ci.db
+      # Die Datenbank des Testlaufs. Die Tests der Domain-Schicht kommen ohne
+      # Datenbank aus; die Integrationstests legen sich ihre eigenen an.
+      DATABASE_URL: postgresql://faktura:ci@localhost:5432/faktura?schema=public
+      TEST_POSTGRES_URL: postgresql://faktura:ci@localhost:5432
+      TEST_DATA_DATABASE_URL: postgresql://faktura:ci@localhost:5432/faktura_test_data?schema=public
+      TEST_S3_ENDPOINT: http://localhost:59000
       APP_URL: http://localhost:3000
       APP_TIMEZONE: Europe/Berlin
       APP_NAME: Faktura
@@ -71,6 +107,16 @@ jobs:
       # Download von Playwright — dieselbe Fassung wie im gepinnten Paket.
       - name: Chromium bereitstellen
         run: npx playwright install --with-deps chromium
+
+      # Der Eimer, in den der Objektspeicher-Adapter schreibt. Er muss vor dem
+      # Lauf da sein — ein Adapter legt keine Eimer an, und das soll er auch
+      # nicht: Wer schreiben darf, darf deshalb noch lange nichts einrichten.
+      - name: Eimer für den Objektspeicher anlegen
+        run: |
+          docker run --rm --network host --entrypoint sh \
+            minio/mc:RELEASE.2025-04-16T18-13-26Z -c \
+            "mc alias set ci http://localhost:59000 faktura entwicklung && \
+             mc mb --ignore-existing ci/faktura-test"
 
       # Prüft den Zugriffsschutz gegen den echten Server (NFA-SEC-01).
       - name: Integrationstests

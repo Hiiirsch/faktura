@@ -4,7 +4,7 @@
  * Ein `.tar.gz` mit zwei Teilen:
  *
  * ```
- * faktura.db          konsistenter Abzug der Datenbank (VACUUM INTO)
+ * faktura.dump        konsistenter Abzug der Datenbank (pg_dump, Format custom)
  * storage/…           Dateien: Belegarchive, Logos, hochgeladene Bilder
  * ```
  *
@@ -30,7 +30,14 @@ import { logger } from '@/infrastructure/logging/logger';
 import { createTar, type TarEntry } from './tar';
 
 /** Der Name der Datenbank im Archiv. */
-export const DATABASE_ENTRY_NAME = 'faktura.db';
+/**
+ * Der Name des Datenbankabzugs im Archiv.
+ *
+ * Seit M17 ein `pg_dump`-Archiv im Format `custom`, keine SQLite-Datei mehr —
+ * deshalb `.dump` statt `.db`. Die Endung ist kein Beiwerk: Wer das Archiv Jahre
+ * später auspackt, soll nicht versuchen, die Datei mit `sqlite3` zu öffnen.
+ */
+export const DATABASE_ENTRY_NAME = 'faktura.dump';
 /** Präfix aller Dateien im Archiv. */
 export const STORAGE_ENTRY_PREFIX = 'storage/';
 
