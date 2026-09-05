@@ -249,6 +249,11 @@ Prüfbar anhand der ausgelieferten Standardvorlage.
 | NFA-BETR-10 | Logs enthalten keine Passwörter, Token oder vollständigen Kundendatensätze. | MUSS | R |
 | NFA-BETR-11 | Das README beschreibt Installation, Konfiguration, Backup, Restore und Update in nachvollziehbaren Schritten. | MUSS | R |
 | NFA-BETR-12 | Der Versand ist optional und über Umgebungsvariablen konfiguriert. Ein nicht erreichbarer oder ablehnender Mailserver bricht keine Handlung ab, hält keine Server Action länger als zehn Sekunden fest und erscheint als benannter Zustand, nicht als Fehlerseite. | MUSS | T |
+| NFA-BETR-13 | Die Anwendung läuft in **mehreren Instanzen** gegen eine gemeinsame Datenbank. Kein Zustand liegt im Prozess: Sitzungen, zweiter Anmeldeschritt, WebAuthn-Aufgaben, vertraute Geräte und Nummernkreise stehen in der Datenbank. Die Vergabe von Belegnummern bleibt dabei lückenlos (FA-NUM-05). | MUSS | T |
+| NFA-BETR-14 | Erzeugte Dateien und Uploads liegen hinter **einer** Schnittstelle mit zwei Austauschbarkeiten: lokales Dateisystem (Vorgabe) und S3-kompatibler Objektspeicher. Ohne Konfiguration verhält sich die Anwendung wie zuvor; beide erfüllen denselben Vertrag, geprüft gegen einen echten Dienst. | MUSS | T |
+| NFA-BETR-15 | Die Belegausgabe läuft wahlweise im Prozess oder in einem **eigenen Dienst**. Der Dienst trägt die Fähigkeiten für die Chromium-Sandbox, die Anwendungsinstanzen tragen keine. Er verlangt einen Nachweis und liefert dasselbe Ergebnis wie der Renderer im Prozess. | MUSS | T |
+| NFA-BETR-16 | Die Migrationen lassen sich beim Start **abschalten** (`RUN_MIGRATIONS=0`), damit sie bei mehreren Instanzen nicht gleichzeitig laufen. Die Vorgabe bleibt eingeschaltet. | MUSS | R |
+| NFA-BETR-17 | Die CI baut das Anwendungsimage und veröffentlicht es bei einem Push auf `main` und bei Versionsmarken in eine Registry, für `amd64` und `arm64`. Eine Versionsmarke wird **abgewiesen**, wenn sie nicht mit `package.json` und `APP_VERSION` übereinstimmt. Zweigläufe bauen, ohne zu veröffentlichen. | SOLL | R |
 
 ## 14. Architektur & Erweiterbarkeit
 
@@ -567,6 +572,15 @@ Abgemeldet `/hilfe` aufrufen: erreichbar, keine Umleitung zur Anmeldung. Auf der
 Anmeldeseite steht der Link im Fuß neben Impressum und Datenschutz. Nach
 „Mahnung" suchen und einem Treffer folgen. JavaScript abschalten und erneut
 suchen — dasselbe Ergebnis. Ein erfundenes Thema aufrufen: 404, keine Umleitung.
+
+**A23 — Zwei Instanzen**
+Zwei Anwendungsinstanzen gegen dieselbe Datenbank starten. Auf Instanz A
+anmelden, auf B weiterarbeiten: Die Sitzung gilt. Auf beiden gleichzeitig
+festschreiben: keine doppelte Belegnummer, keine Lücke. Auf A ein PDF erzeugen
+und auf B abrufen — mit eingerichtetem Objektspeicher, ohne geteiltes Volume.
+Den Renderdienst anhalten und festschreiben: Der Beleg gilt, das PDF entsteht
+beim nächsten Abruf. Zuletzt eine Instanz mit `RUN_MIGRATIONS=0` gegen einen
+veralteten Stand starten: Sie scheitert benannt, statt halb zu laufen.
 
 **A21 — Mahnlauf**
 Eine Rechnung mit verstrichener Fälligkeit öffnen: „Mahnung ausstellen" steht da.

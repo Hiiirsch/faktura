@@ -12,8 +12,9 @@
  * XML-Einbettung als zwei weitere Prozessoren, ohne dass die Pipeline
  * aufgebrochen werden muss.
  */
-import type { PdfPostProcessor, RenderingPipeline } from '@/domain/rendering/contracts';
+import type { PdfPostProcessor, PdfRenderer, RenderingPipeline } from '@/domain/rendering/contracts';
 
+import { httpPdfRenderer, isRemoteRendererConfigured } from './http-renderer';
 import { liquidTemplateEngine } from './liquid-engine';
 import { pageNumberStamp } from './page-number-stamp';
 import { playwrightPdfRenderer } from './playwright-renderer';
@@ -38,8 +39,40 @@ export async function applyPostProcessors(
   return current;
 }
 
+/**
+ * Wer setzt (M17, B3).
+ *
+ * Ohne `RENDERER_URL` läuft Chromium im eigenen Prozess, wie seit M5. Mit ihr
+ * geht der Auftrag an einen eigenen Dienst — nötig überall dort, wo die
+ * Anwendungsinstanz die Fähigkeiten für die Chromium-Sandbox nicht bekommen
+ * kann.
+ *
+ * Entschieden wird **einmal**: Ein Wechsel zur Laufzeit gäbe es nicht, wohl
+ * aber die Frage, welcher Renderer einen bestimmten Beleg gesetzt hat.
+ *
+ * **Die Nachbearbeiter bleiben hier.** Der Seitenstempel und das Briefpapier
+ * laufen in der Anwendung, nicht im Renderdienst: Sie brauchen kein Chromium,
+ * und das Briefpapier gehört einem Mandanten — ein Dienst, der es kennte,
+ * müsste Mandanten kennen.
+ */
+let renderer: PdfRenderer | undefined;
+
+function pdfRenderer(): PdfRenderer {
+  renderer ??= isRemoteRendererConfigured() ? httpPdfRenderer : playwrightPdfRenderer;
+  return renderer;
+}
+
+/** Setzt die Wahl zurück — ausschließlich für Tests, die beide Wege prüfen. */
+export function resetPdfRenderer(): void {
+  renderer = undefined;
+}
+
 export const defaultPipeline: RenderingPipeline = {
   templateEngine: liquidTemplateEngine,
-  pdfRenderer: playwrightPdfRenderer,
+  // Als Zugriff und nicht als Wert: Die Umgebung steht beim Import des Moduls
+  // noch nicht fest (M0 — Module dürfen keine Seiteneffekte haben).
+  get pdfRenderer(): PdfRenderer {
+    return pdfRenderer();
+  },
   postProcessors: [pageNumberStamp],
 };

@@ -1743,6 +1743,122 @@ Drei Entscheidungen darin, alle mit Anlass:
   geladene Bilder. Die Regel ist an genau einer Stelle mit Begründung
   abgeschaltet.
 
+## Mehrere Instanzen (seit M17)
+
+**Auch das stand unter „Nicht-Ziel".** Spec §1 führte „Keine Cloud-/SaaS-Fähigkeit,
+kein Multi-Tenant-Datenmodell" — die zweite Hälfte hat M8 aufgehoben, die erste
+dieser Meilenstein. Kubernetes selbst ist **nicht** eingebaut: keine Manifeste,
+kein Helm, keine Cluster-Annahmen. Gebaut wurde nur, was einen zweiten Prozess
+unmöglich machte.
+
+**Nichts trug geteilten Zustand im Prozess** — das war der Befund vor dem ersten
+Commit. Alle Fundstellen mit Modulzustand sind Zwischenspeicher oder Singletons;
+Sitzungen, zweiter Anmeldeschritt, WebAuthn-Aufgaben und vertraute Geräte liegen
+in der Datenbank. Vier Dinge standen im Weg, und alle vier waren benennbar.
+
+### PostgreSQL statt SQLite
+
+**Die Einschätzung in Spec §13 war veraltet.** Sie versprach „nur `Decimal`-Typen
+und `VACUUM INTO`-Backup anpassen". Das stimmte bei M0. Die eigentliche Arbeit
+waren **32 Trigger**, eine neue Migrationsgeschichte und ein Prüfaufbau, der
+eine Datei kopierte.
+
+**Die Trigger sind einzeln übertragen, aus dem tatsächlichen Bestand** der
+laufenden Datenbank — nicht aus 24 Migrationsdateien. Drei Unterschiede waren
+erzwungen:
+
+- PostgreSQL erlaubt **keine Unterabfrage in der `WHEN`-Klausel**. Wo die
+  Bedingung eine braucht, steht sie im Funktionsrumpf; wo nicht, bleibt sie in
+  `WHEN` und spart den Funktionsaufruf.
+- `RAISE(ABORT, …)` wird `RAISE EXCEPTION`, `IFNULL` wird `COALESCE`, `GLOB`
+  wird ein regulärer Ausdruck.
+- Ein `BEFORE`-Trigger muss `NEW` beziehungsweise `OLD` **zurückgeben**, sonst
+  fällt die Zeile still unter den Tisch.
+
+`tests/integration/database-triggers.test.ts` führt seit M8 die vollständige
+Namensliste und war damit die Prüfliste. Er hat prompt einen vergessenen
+partiellen Index aufgedeckt.
+
+**Die Migrationsgeschichte beginnt neu**: Baseline aus dem Schema, Zusagen in
+einer zweiten Migration, Ausgangsbestand in einer dritten. Die alte Folge liegt
+unter `prisma/migrations-sqlite/` zur Nachlese. Ohne die dritte Migration
+stünde eine frische Anlage **ohne Organisation** da — unter SQLite kam
+`org_default` aus einer Migration von M5.5a, und das wäre eine stille
+Verhaltensänderung gewesen.
+
+**`connection_limit=1` ist weg.** Es war unter SQLite notwendig und machte genau
+das unmöglich, worum es hier geht. Die Lückenlosigkeit des Nummernkreises hängt
+seither daran, dass `incrementSequence` ein einziges `INSERT … ON CONFLICT DO
+UPDATE` ist — atomar, auch wenn zwei Instanzen gleichzeitig festschreiben.
+
+**Der Prüfaufbau leert mit `TRUNCATE`** statt eine Vorlagendatei zu kopieren.
+Das feuert keine `BEFORE DELETE`-Trigger — kein Schlupfloch, sondern die Bauart
+des Befehls: Die Anwendung kennt kein Roh-SQL und kann `TRUNCATE` gar nicht
+absetzen, die Löschsperren bleiben für jeden Weg in Kraft, den sie gehen kann.
+
+**Die Sicherung läuft über `pg_dump`.** Damit entfällt die letzte Ausnahme vom
+Roh-SQL-Verbot im Anwendungscode: NFA-ARCH-10 gilt für `src/**` ohne jede
+Einschränkung, die verbliebenen Ausnahmen liegen sämtlich im Prüfaufbau. Der
+Wiederherstellungstest spielt den Abzug wirklich in eine Wegwerfdatenbank ein.
+
+**Der Client muss dabei mindestens so neu sein wie der Server**, und das Image
+holt ihn deshalb aus dem PostgreSQL-Depot (`postgresql-client-17`) statt aus
+Debian, dessen Sammelpaket unter bookworm die Fassung 15 liefert. `pg_dump`
+weigert sich gegen eine neuere Datenbank vollständig — kein Teilabzug, sondern
+„aborting because of server version mismatch". Die ausgelieferte Anlage hätte
+damit **keine** Sicherung ziehen können, und aufgefallen wäre es beim ersten
+Versuch, sie zu brauchen. Andersherum ist es unkritisch: Ein neuerer Client
+sichert eine ältere Datenbank.
+
+Gesehen hat es niemand beim Lesen des Dockerfiles, sondern der
+Wiederherstellungstest im CI — lokal stand zufällig ein Client derselben
+Hauptversion. `tests/architecture/postgres-version.test.ts` hält die Zahl jetzt
+über Compose-Dienst, Image und CI zusammen; geprüft wird die Richtung, nicht
+die Gleichheit.
+
+### Der Dateispeicher
+
+`FileStore` ist bewusst schmal — ablegen, lesen, löschen, ein Präfix räumen.
+Alles, was Faktura über eine Datei weiß, steht in der Datenbank.
+
+**Der S3-Adapter signiert selbst, ohne SDK.** Gebraucht werden vier
+Operationen — und ein Signaturfehler scheitert **laut**. Das unterscheidet ihn
+vom handgeschriebenen tar-Schreiber, wo ein Fehler erst Jahre später beim
+Auspacken aufgefallen wäre: Ein Objektspeicher antwortet sofort mit 403.
+Geprüft wird deshalb gegen ein echtes MinIO, beide Adapter gegen denselben
+Vertrag.
+
+Die Auswahl wird über das **Verhalten** geprüft, nicht über Objektidentität:
+Der erste Anlauf verglich `fileStore()` mit `s3Store` und scheiterte an zwei
+Modulinstanzen aus zwei Importpfaden — eine Aussage über den Modullader, nicht
+über die Anwendung.
+
+### Der Renderdienst
+
+Chromium braucht für seine Sandbox vier Fähigkeiten, die eine Instanz unter
+einem strengen Sicherheitsprofil nicht bekommt. Also trägt sie **ein** Dienst,
+und die Instanzen tragen keine.
+
+**Die Naht bestand schon**: `PdfRenderer.render(html, options)` steht seit M5
+als Vertrag. Der Dienst benutzt denselben Renderer wie die Anwendung — eine
+zweite Umsetzung wäre die zweite Wahrheit, und der Unterschied fiele erst am
+fertigen PDF auf. Der Test setzt dasselbe HTML zweimal und vergleicht; nicht
+byteweise, denn ein PDF trägt einen Erzeugungszeitpunkt.
+
+**Die Nachbearbeiter bleiben in der Anwendung.** Seitenstempel und Briefpapier
+brauchen kein Chromium, und das Briefpapier gehört einem Mandanten — ein
+Dienst, der es kennte, müsste Mandanten kennen.
+
+**Ohne `RENDERER_TOKEN` startet er nicht**, und verglichen wird in konstanter
+Zeit.
+
+### Was ohne Konfiguration geschieht: nichts
+
+Objektspeicher und Renderdienst sind **optional**, nach demselben Muster wie der
+Mailversand seit M14. Ohne die Werte verhält sich eine Anlage wie zuvor, und
+`docker compose up` bringt sie mit einem Befehl hoch — der `db`-Dienst gehört
+dazu, damit dieses Versprechen hält.
+
 ## Meilensteine (Spec §14)
 
 | MS | Inhalt | Status |
@@ -1774,6 +1890,8 @@ Drei Entscheidungen darin, alle mit Anlass:
 | M16 | Handbuch: MDX-Inhalt, serverseitige Suche, öffentlich | umgesetzt |
 | M16.1 | Handbuch: Gliederung, Diagramme, erzeugte Bildschirmfotos | umgesetzt |
 | M16.2 | Handbuch: Abschnitt „Neuerungen“ | umgesetzt |
+| M16.3 | Handbuch: Versionen statt Datumsangaben | umgesetzt |
+| M17 | Mehrere Instanzen möglich: PostgreSQL, Objektspeicher, Renderdienst | umgesetzt |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

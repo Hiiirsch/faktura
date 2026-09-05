@@ -28,7 +28,7 @@
     "admin:create": "tsx --env-file=.env scripts/create-admin.ts",
     "admin:reset": "tsx --env-file=.env scripts/reset-admin.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "build:cli": "esbuild scripts/create-user.ts scripts/create-admin.ts scripts/reset-admin.ts --bundle --platform=node --format=esm --target=node24 --alias:@=./src --external:@prisma/client --external:@node-rs/argon2 --outdir=dist --out-extension:.js=.mjs --log-level=warning"
+    "build:cli": "esbuild scripts/create-user.ts scripts/create-admin.ts scripts/reset-admin.ts scripts/renderer-server.ts --bundle --platform=node --format=esm --target=node24 --alias:@=./src --external:@prisma/client --external:@node-rs/argon2 --external:playwright --outdir=dist --out-extension:.js=.mjs --log-level=warning"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

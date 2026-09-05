@@ -7,6 +7,9 @@ name: CI
 on:
   push:
     branches: ['**']
+    # Versionsmarken veroeffentlichen ein Image (M17). `v1.0.0` ergibt die
+    # Namen `1.0.0`, `1.0` und `latest`.
+    tags: ['v*.*.*']
   pull_request:
 
 permissions:
@@ -20,10 +23,40 @@ jobs:
   verify:
     runs-on: ubuntu-latest
 
+    # Seit M17 laufen die Integrationstests gegen **echte** Dienste statt gegen
+    # eine Datei: PostgreSQL für die Fachlogik, MinIO für den Objektspeicher.
+    # Eine Attrappe prüfte, dass wir eine Schnittstelle bedienen; ein Dienst
+    # prüft, dass die Daten ankommen — und beim Objektspeicher zusätzlich, dass
+    # die selbst gebaute Signatur stimmt.
+    #
+    # **MinIO steht hier nicht**, sondern startet weiter unten als Schritt.
+    # `services:` kann einem Container keine Argumente mitgeben, und MinIO
+    # verlangt `server /data`: Ohne das gibt der Container seinen Hilfetext aus
+    # und endet — der Lauf scheiterte an einem „unhealthy", dessen Ursache man
+    # erst im Containerprotokoll sieht.
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: faktura
+          POSTGRES_USER: faktura
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U faktura"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+
     env:
-      # Für den Lauf genügt eine Datenbank im Arbeitsverzeichnis; die Tests der
-      # Domain-Schicht kommen ohne Datenbank aus.
-      DATABASE_URL: file:../data/ci.db
+      # Die Datenbank des Testlaufs. Die Tests der Domain-Schicht kommen ohne
+      # Datenbank aus; die Integrationstests legen sich ihre eigenen an.
+      DATABASE_URL: postgresql://faktura:ci@localhost:5432/faktura?schema=public
+      TEST_POSTGRES_URL: postgresql://faktura:ci@localhost:5432
+      TEST_DATA_DATABASE_URL: postgresql://faktura:ci@localhost:5432/faktura_test_data?schema=public
+      TEST_S3_ENDPOINT: http://localhost:59000
       APP_URL: http://localhost:3000
       APP_TIMEZONE: Europe/Berlin
       APP_NAME: Faktura
@@ -39,6 +72,22 @@ jobs:
 
       - name: Abhängigkeiten installieren
         run: npm ci
+
+      # `pg_dump` in der Fassung des Servers.
+      #
+      # Der Läufer bringt Client 16 mit, der Dienstcontainer ist 17.6 — und
+      # gegen eine neuere Datenbank verweigert `pg_dump` den Dienst. Das war
+      # kein Fehler des Läufers, sondern derselbe, der im Anwendungsimage stand
+      # (Dockerfile): Debian bookworm liefert dort Fassung 15. Der
+      # Wiederherstellungstest zieht den Abzug wirklich und hat beides
+      # aufgedeckt.
+      - name: PostgreSQL-Werkzeuge in der Fassung des Servers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          # Vorangestellt, damit nicht der Umschalter von Debian entscheidet,
+          # welche Fassung ein Aufruf trifft.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
 
       - name: Prisma-Client erzeugen
         run: npx prisma generate
@@ -72,14 +121,120 @@ jobs:
       - name: Chromium bereitstellen
         run: npx playwright install --with-deps chromium
 
+      # Objektspeicher für die Prüfung des S3-Adapters.
+      #
+      # Als Schritt und nicht als Service-Container: MinIO braucht das Argument
+      # `server /data`, und `services:` kann keines übergeben.
+      - name: Objektspeicher starten
+        run: |
+          docker run -d --name minio -p 59000:9000 \
+            -e MINIO_ROOT_USER=faktura \
+            -e MINIO_ROOT_PASSWORD=entwicklung \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:59000/minio/health/live >/dev/null 2>&1; then
+              echo "MinIO ist bereit."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::MinIO wurde nicht bereit."
+          docker logs minio
+          exit 1
+
+      # Der Eimer, in den der Objektspeicher-Adapter schreibt. Er muss vor dem
+      # Lauf da sein — ein Adapter legt keine Eimer an, und das soll er auch
+      # nicht: Wer schreiben darf, darf deshalb noch lange nichts einrichten.
+      - name: Eimer für den Objektspeicher anlegen
+        run: |
+          docker run --rm --network host --entrypoint sh \
+            minio/mc:RELEASE.2025-04-16T18-13-26Z -c \
+            "mc alias set ci http://localhost:59000 faktura entwicklung && \
+             mc mb --ignore-existing ci/faktura-test"
+
       # Prüft den Zugriffsschutz gegen den echten Server (NFA-SEC-01).
       - name: Integrationstests
         run: npm run test:integration
 
+  # Bauen immer, veroeffentlichen nur von `main` und von Versionsmarken.
+  #
+  # **Warum nicht von jedem Zweig.** Eine Registry, die jeden Zweiglauf
+  # aufnimmt, fuellt sich mit Staenden, die spaeter niemand mehr zuordnen kann —
+  # und aufraeumen muss sie dann jemand von Hand. Wer einen Zweig im Cluster
+  # ausprobieren will, baut ihn oertlich oder setzt eine Vormarke.
+  #
+  # **Ein Image, zwei Dienste.** Anwendung und Renderdienst teilen sich das
+  # Dockerfile und unterscheiden sich nur im Startbefehl
+  # (`node dist/renderer-server.mjs`). Zwei Images waeren zwei Staende, die
+  # auseinanderlaufen koennen.
   docker:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # Nur fuer die Registry, und nur in diesem Job. Der Pruefjob daneben
+      # bleibt bei `contents: read`.
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Anwendungsimage bauen
-        run: docker build -t faktura:ci .
+      # Die Marke muss zur Anwendung passen.
+      #
+      # `tests/architecture/version.test.ts` bindet seit M16.3 package.json,
+      # `APP_VERSION` und das Handbuch aneinander. Hier kommt die Marke als
+      # vierte Stelle dazu: Ohne diese Pruefung traege ein Image `:1.2.0` und
+      # meldete unter Verwaltung > Zustand `1.1.0` — und niemand wuesste, welche
+      # der beiden Zahlen stimmt.
+      - name: Marke gegen die Anwendungsversion pruefen
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          marke="${GITHUB_REF_NAME#v}"
+          paket="$(node -p "require('./package.json').version")"
+          quelle="$(grep -oE "APP_VERSION = '[^']+'" src/domain/version.ts | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")"
+
+          echo "Marke: $marke | package.json: $paket | APP_VERSION: $quelle"
+
+          if [ "$marke" != "$paket" ] || [ "$marke" != "$quelle" ]; then
+            echo "::error::Die Marke $GITHUB_REF_NAME passt nicht zur Anwendungsversion."
+            exit 1
+          fi
+
+      # arm64 wird auf dem Laeufer emuliert und kostet Bauzeit. Der Preis ist
+      # bewusst: Ohne arm64 laeuft das Image auf einem Apple-Rechner nur unter
+      # Emulation, und die Frage „warum startet es bei mir nicht" kostet mehr.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: An der Registry anmelden
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Namen und Marken bestimmen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Anwendungsimage bauen und veroeffentlichen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

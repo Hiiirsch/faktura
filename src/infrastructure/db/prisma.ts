@@ -8,8 +8,8 @@
  * Zugangsdaten zu besitzen — scheiterte.
  *
  * Im Entwicklungsmodus lädt Next.js Module bei jeder Änderung neu. Ohne
- * Zwischenspeicher am globalen Objekt entstünde dabei pro Reload eine neue
- * Verbindung, bis SQLite die Grenze erreicht.
+ * Zwischenspeicher am globalen Objekt entstünde dabei pro Reload ein neuer
+ * Verbindungspool, bis die Datenbank keine Verbindungen mehr annimmt.
  */
 import { PrismaClient } from '@prisma/client';
 
@@ -21,33 +21,20 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /**
- * SQLite lässt genau einen Schreiber zu. Mehrere gleichzeitige Verbindungen
- * bringen deshalb keinen Durchsatz, sondern Konkurrenz: Nebenläufige
- * Transaktionen — etwa zwei Festschreibungen zur selben Zeit (FA-NUM-04) —
- * liefen sonst in einen Socket-Timeout, statt nacheinander abzulaufen.
+ * Seit M17 ohne `connection_limit=1`.
  *
- * Eine einzelne Verbindung mit großzügigem Wartezeitfenster serialisiert die
- * Zugriffe sauber. Der Wert wird nur ergänzt, wenn ihn die Konfiguration nicht
- * bereits vorgibt.
+ * Unter SQLite war die Grenze notwendig: Die Datenbank lässt genau einen
+ * Schreiber zu, und nebenläufige Transaktionen — etwa zwei Festschreibungen zur
+ * selben Zeit (FA-NUM-04) — liefen sonst in einen Socket-Timeout, statt
+ * nacheinander abzulaufen. Genau diese Grenze machte aber auch mehrere
+ * Anwendungsinstanzen unmöglich.
+ *
+ * PostgreSQL serialisiert selbst, auf Zeilenebene. Die Lückenlosigkeit des
+ * Nummernkreises hängt seither nicht mehr an einer einzelnen Verbindung,
+ * sondern daran, dass `incrementSequence` ein einziges `INSERT … ON CONFLICT
+ * DO UPDATE` ist — atomar, auch wenn zwei Instanzen gleichzeitig festschreiben.
+ * `tests/integration/numbering-concurrency.test.ts` weist das nach.
  */
-function withSqliteConcurrencySettings(url: string): string {
-  if (!url.startsWith('file:')) {
-    return url;
-  }
-
-  const [base, query = ''] = url.split('?');
-  const params = new URLSearchParams(query);
-
-  if (!params.has('connection_limit')) {
-    params.set('connection_limit', '1');
-  }
-  if (!params.has('socket_timeout')) {
-    params.set('socket_timeout', '30');
-  }
-
-  return `${base ?? url}?${params.toString()}`;
-}
-
 let client: PrismaClient | undefined;
 
 export function getPrismaClient(): PrismaClient {
@@ -59,7 +46,7 @@ export function getPrismaClient(): PrismaClient {
   const env = getEnv();
   const created = new PrismaClient({
     log: env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-    datasources: { db: { url: withSqliteConcurrencySettings(env.DATABASE_URL) } },
+    datasources: { db: { url: env.DATABASE_URL } },
   });
 
   // Ausschließlich der abgesicherte Client verlässt diese Datei: Die
