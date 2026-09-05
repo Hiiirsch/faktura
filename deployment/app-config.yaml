@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: faktura-config
+  namespace: faktura
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  DATABASE_URL: "file:/app/data/faktura.db"
+
+  APP_URL: "https://rechnung.example.org"
+  APP_TIMEZONE: "Europe/Berlin"
+  APP_NAME: "Faktura"
+
+  STORAGE_DIR: "/app/storage"
+  BACKUP_DIR: "/app/backups"
+  BACKUP_KEEP_DAYS: "30"
