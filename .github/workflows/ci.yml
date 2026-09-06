@@ -83,11 +83,24 @@ jobs:
       # aufgedeckt.
       - name: PostgreSQL-Werkzeuge in der Fassung des Servers
         run: |
+          # Das Depot wird **selbst** eingerichtet, obwohl der Läufer einen
+          # Client aus genau diesem Depot mitbringt: Die Quellliste liegt dort
+          # nicht mehr, und `postgresql-client-17` war deshalb schlicht
+          # unbekannt ("Unable to locate package"). Derselbe Weg wie im
+          # Dockerfile — eine Fassung, ein Bezugsweg.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsS -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends postgresql-client-17
           # Vorangestellt, damit nicht der Umschalter von Debian entscheidet,
           # welche Fassung ein Aufruf trifft.
           echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          # Der Schritt weist nach, was er zusagt — sonst fiele eine falsche
+          # Fassung erst zwanzig Minuten später im Sicherungstest auf.
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Prisma-Client erzeugen
         run: npx prisma generate
