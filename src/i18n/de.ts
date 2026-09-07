@@ -286,7 +286,7 @@ export const messages = {
     restoreSteps: [
       'Dienst anhalten: docker compose down',
       'Archiv entpacken: tar -xzf faktura-….tar.gz -C /tmp/restore',
-      'Datenbank zurückspielen: cp /tmp/restore/faktura.db ./data/faktura.db',
+      'Datenbank leeren und zurückspielen: pg_restore --no-owner --no-privileges -d faktura /tmp/restore/faktura.dump',
       'Dateien zurückspielen: rm -rf ./storage && cp -r /tmp/restore/storage ./storage',
       'Dienst starten: docker compose up -d',
       'Prüfen: Anmeldung, eine festgeschriebene Rechnung öffnen, ihr PDF laden',

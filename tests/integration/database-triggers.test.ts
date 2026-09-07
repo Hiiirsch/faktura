@@ -110,12 +110,37 @@ const EXPECTED_PARTIAL_INDEXES = [
   'AdminInvitation_one_open_per_email',
 ] as const;
 
-type SqliteObject = { readonly name: string };
+type NamedObject = { readonly name: string };
 
-async function namesOf(type: 'trigger' | 'index', extra = ''): Promise<readonly string[]> {
-  const rows = await prisma.$queryRawUnsafe<SqliteObject[]>(
-    `SELECT name FROM sqlite_master WHERE type = ? ${extra} ORDER BY name`,
-    type,
+/**
+ * Der Bestand, wie ihn der Katalog von PostgreSQL führt (M17).
+ *
+ * Bis M16 stand hier `sqlite_master`. Die Frage ist dieselbe geblieben —
+ * „welche Trigger und welche partiellen Indizes gibt es wirklich" —, nur der
+ * Katalog ist ein anderer. `tgisinternal` blendet aus, was PostgreSQL für
+ * Fremdschlüssel selbst anlegt; sonst zählten wir Dutzende Einträge mit, die
+ * niemand geschrieben hat.
+ */
+async function namesOf(type: 'trigger' | 'index'): Promise<readonly string[]> {
+  const rows =
+    type === 'trigger'
+      ? await prisma.$queryRawUnsafe<NamedObject[]>(
+          `SELECT tgname AS name FROM pg_trigger
+            WHERE NOT tgisinternal ORDER BY tgname`,
+        )
+      : await prisma.$queryRawUnsafe<NamedObject[]>(
+          `SELECT indexname AS name FROM pg_indexes
+            WHERE schemaname = 'public' ORDER BY indexname`,
+        );
+
+  return rows.map((row) => row.name);
+}
+
+/** Die partiellen Indizes — in PostgreSQL erkennbar am `WHERE` in der Definition. */
+async function partialIndexNames(): Promise<readonly string[]> {
+  const rows = await prisma.$queryRawUnsafe<NamedObject[]>(
+    `SELECT indexname AS name FROM pg_indexes
+      WHERE schemaname = 'public' AND indexdef ILIKE '%WHERE%' ORDER BY indexname`,
   );
   return rows.map((row) => row.name);
 }
@@ -134,7 +159,7 @@ describe('Der Bestand an Triggern', () => {
   it('führt den partiellen Index, den Prisma nicht kennt', async () => {
     await resetDatabase();
 
-    const actual = await namesOf('index', "AND sql LIKE '%WHERE%'");
+    const actual = await partialIndexNames();
 
     expect([...actual].sort()).toEqual([...EXPECTED_PARTIAL_INDEXES].sort());
   });
@@ -200,11 +225,17 @@ describe('Der Bestand an Triggern', () => {
   it('kennt der Unveränderbarkeitstrigger die Urheberspalte', async () => {
     await resetDatabase();
 
-    const rows = await prisma.$queryRawUnsafe<{ readonly sql: string }[]>(
-      "SELECT sql FROM sqlite_master WHERE name = 'Invoice_immutable_after_issue'",
+    /*
+     * Unter PostgreSQL steht die Bedingung nicht als Text am Trigger, sondern
+     * `pg_get_triggerdef()` setzt sie aus dem Katalog zusammen — samt der
+     * `WHEN`-Klausel, in der die Spaltenliste steht.
+     */
+    const rows = await prisma.$queryRawUnsafe<{ readonly def: string }[]>(
+      `SELECT pg_get_triggerdef(oid) AS def FROM pg_trigger
+        WHERE tgname = 'Invoice_immutable_after_issue'`,
     );
 
-    expect(rows[0]?.sql).toContain('createdById');
+    expect(rows[0]?.def).toContain('createdById');
   });
 
   /**

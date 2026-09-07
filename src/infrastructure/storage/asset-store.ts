@@ -3,31 +3,27 @@
  *
  * Dateien liegen außerhalb des öffentlich ausgelieferten Verzeichnisses und
  * tragen erzeugte Namen. Der vom Benutzer gelieferte Dateiname wird
- * ausschließlich als Anzeigename gespeichert, nie als Pfad verwendet — sonst
- * ließe sich über `../` aus dem Verzeichnis ausbrechen.
+ * ausschließlich als Anzeigename gespeichert, nie als Schlüssel verwendet —
+ * sonst ließe sich über `../` aus dem Verzeichnis ausbrechen.
+ *
+ * **Seit M17 über `FileStore`.** Ob die Bytes auf dem Dateisystem oder in einem
+ * Objektspeicher landen, entscheidet `fileStore()`; die Prüfung, dass ein
+ * Schlüssel sein Verzeichnis nicht verlässt, liegt beim Dateisystem-Adapter —
+ * dort, wo es überhaupt ein Verzeichnis gibt, aus dem man ausbrechen könnte.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 
 import type { ImageType } from '@/domain/assets/image-upload';
 import { extensionForImageType } from '@/domain/assets/image-upload';
-import { getEnv } from '@/infrastructure/config/env';
+
+import { fileStore } from './store';
 
 export type StoredFile = {
-  /** Pfad relativ zum Speicherverzeichnis — nie ein absoluter Pfad. */
+  /** Schlüssel im Dateispeicher — nie ein absoluter Pfad. */
   readonly storagePath: string;
   readonly sha256: string;
   readonly byteSize: number;
 };
-
-function storageRoot(): string {
-  return path.resolve(getEnv().STORAGE_DIR);
-}
-
-function assetDirectory(): string {
-  return path.join(storageRoot(), 'assets');
-}
 
 /**
  * Schreibt Bytes unter einem erzeugten Namen ab.
@@ -36,16 +32,11 @@ function assetDirectory(): string {
  * Kollisionen gleichermaßen aus.
  */
 async function store(bytes: Uint8Array, extension: string): Promise<StoredFile> {
-  const directory = assetDirectory();
-  await mkdir(directory, { recursive: true });
-
-  const fileName = `${randomUUID()}.${extension}`;
-  const absolutePath = path.join(directory, fileName);
-
-  await writeFile(absolutePath, bytes);
+  const key = `assets/${randomUUID()}.${extension}`;
+  await fileStore().put(key, bytes);
 
   return {
-    storagePath: path.join('assets', fileName),
+    storagePath: key,
     sha256: createHash('sha256').update(bytes).digest('hex'),
     byteSize: bytes.length,
   };
@@ -60,34 +51,12 @@ export async function storePdf(bytes: Uint8Array): Promise<StoredFile> {
   return store(bytes, 'pdf');
 }
 
-/**
- * Liest eine abgelegte Datei. Der Pfad wird gegen das Speicherverzeichnis
- * geprüft: Ein manipulierter Eintrag in der Datenbank soll nicht dazu führen,
- * dass beliebige Dateien des Servers ausgeliefert werden.
- */
 export async function readStoredFile(storagePath: string): Promise<Buffer> {
-  const root = assetDirectory();
-  const absolutePath = path.resolve(storageRoot(), storagePath);
-  const relative = path.relative(root, absolutePath);
-
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error('Pfad liegt außerhalb des Speicherverzeichnisses');
-  }
-
-  return readFile(absolutePath);
+  return Buffer.from(await fileStore().get(storagePath));
 }
 
 export async function deleteStoredFile(storagePath: string): Promise<void> {
-  const absolutePath = path.resolve(storageRoot(), storagePath);
-  const relative = path.relative(assetDirectory(), absolutePath);
-
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    return;
-  }
-
-  try {
-    await unlink(absolutePath);
-  } catch {
-    // Eine bereits entfernte Datei ist kein Fehler.
-  }
+  // Eine bereits entfernte Datei ist kein Fehler — das sagt schon der Vertrag
+  // des Speichers.
+  await fileStore().remove(storagePath);
 }

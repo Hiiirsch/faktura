@@ -1,26 +1,34 @@
 /**
- * Frische Datenbank je Test.
+ * Frische Datenbank je Test (M17).
  *
- * Aufräumen durch Löschen scheidet aus: Festgeschriebene Belege und
- * Protokolleinträge lassen sich nicht löschen — genau das ist die Zusage aus
- * FA-NUM-09 und NFA-COMP-02, durchgesetzt von Datenbank-Triggern. Ein Test, der
- * sie umginge, würde die Zusage aushöhlen.
+ * **Aufräumen durch `DELETE` scheidet aus** — und zwar aus demselben Grund wie
+ * unter SQLite: Festgeschriebene Belege und Protokolleinträge lassen sich nicht
+ * löschen. Das ist die Zusage aus FA-NUM-09 und NFA-COMP-02, durchgesetzt von
+ * Triggern. Ein Test, der sie umginge, höhlte sie aus.
  *
- * Stattdessen wird eine einmal migrierte Vorlage kopiert. Das kostet wenige
- * Millisekunden und liefert für jeden Test einen unberührten Stand.
+ * **Stattdessen `TRUNCATE`.** PostgreSQL feuert dabei **keine**
+ * `BEFORE DELETE`-Trigger; das ist kein Schlupfloch, sondern die Bauart des
+ * Befehls. Für die Anwendung ändert sich nichts: Sie kennt kein Roh-SQL
+ * (NFA-ARCH-10) und kann `TRUNCATE` gar nicht absetzen. Die Löschsperren
+ * bleiben also für jeden Weg in Kraft, den die Anwendung überhaupt gehen kann.
+ *
+ * Bis M16 wurde eine migrierte Vorlagendatei kopiert. Mit einer Datenbank statt
+ * einer Datei gibt es nichts mehr zu kopieren — `TRUNCATE` über alle Tabellen
+ * ist schneller als das Kopieren es war.
  */
-import { copyFile, rm } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
+import { ALL_PERMISSION_KEYS } from '@/domain/policy/can';
 import { getPrismaClient } from '@/infrastructure/db/prisma';
 import { DEFAULT_ORGANIZATION_ID } from '@/infrastructure/repositories/organization-context';
 
-const projectRoot = fileURLToPath(new URL('../../..', import.meta.url));
-
-export const TEMPLATE_DB_FILE = path.join(projectRoot, 'data', 'integration-template.db');
-export const DATA_DB_FILE = path.join(projectRoot, 'data', 'integration-data.db');
-export const DATA_DATABASE_URL = 'file:../data/integration-data.db';
+/**
+ * Die Datenbank der Fachlogik-Prüfungen.
+ *
+ * Getrennt von der des Testservers: Sie wird vor **jedem** Test geleert, was
+ * dem laufenden Server den Boden unter den Füßen wegzöge.
+ */
+export const DATA_DATABASE_URL =
+  process.env['TEST_DATA_DATABASE_URL'] ??
+  'postgresql://faktura:entwicklung@localhost:55432/faktura_test_data?schema=public';
 
 /**
  * Das Konto, in dessen Namen die Fachlogik-Tests handeln (M8, B6).
@@ -49,23 +57,69 @@ const TEST_ACTOR_EMAIL = 'pruef-akteur@example.org';
 const UNUSABLE_HASH = '$argon2id$v=19$m=65536,t=3,p=1$nichtverwendbar$nichtverwendbar';
 
 /**
- * Setzt die Arbeitsdatenbank auf den Stand der Vorlage zurück.
+ * Die Liste der Tabellen, einmal ermittelt.
  *
- * Die offene Verbindung wird zuvor geschlossen: Eine Datei unter einer
- * geöffneten SQLite-Verbindung auszutauschen führt sonst zu Lesefehlern.
+ * Aus `information_schema` statt aus einer gepflegten Aufzählung: Eine neue
+ * Tabelle wäre sonst die, die zwischen zwei Tests stehen bleibt — und der
+ * Fehler zeigte sich als rätselhafter Zustand im übernächsten Test, nicht als
+ * vergessener Eintrag.
  */
-export async function resetDatabase(): Promise<void> {
-  await getPrismaClient().$disconnect();
+let truncateStatement: string | undefined;
 
-  for (const suffix of ['-journal', '-wal', '-shm']) {
-    await rm(`${DATA_DB_FILE}${suffix}`, { force: true });
+async function buildTruncateStatement(): Promise<string> {
+  const rows = await getPrismaClient().$queryRawUnsafe<{ tablename: string }[]>(
+    `SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`,
+  );
+
+  if (rows.length === 0) {
+    throw new Error('Keine Tabellen gefunden — läuft `prisma migrate deploy` gegen diese Datenbank?');
   }
 
-  await copyFile(TEMPLATE_DB_FILE, DATA_DB_FILE);
+  const names = rows.map((row) => `"${row.tablename}"`).join(', ');
+  return `TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`;
+}
 
-  // Der Akteur der Fachlogik-Tests. Er steht nicht in der Vorlage, weil die aus
-  // den Migrationen entsteht und ein Testkonto dort nichts zu suchen hat.
-  await getPrismaClient().user.create({
+/** Leert die Arbeitsdatenbank und legt den Prüf-Akteur neu an. */
+export async function resetDatabase(): Promise<void> {
+  const client = getPrismaClient();
+
+  truncateStatement ??= await buildTruncateStatement();
+  await client.$executeRawUnsafe(truncateStatement);
+
+  /*
+   * Der Ausgangszustand einer **frisch aufgesetzten Anlage**: eine
+   * Organisation und die Rolle „Inhaber" mit allen Berechtigungen. Genau das
+   * legt `00000000000002_default_organization` an.
+   *
+   * Unter SQLite kam beides aus der kopierten Vorlagendatei. Mit `TRUNCATE`
+   * ist es weg und muss hier entstehen — und das ist ehrlicher: Der
+   * Ausgangszustand der Tests steht damit an **einer** lesbaren Stelle statt
+   * verteilt über zwei Migrationen von vor einem Jahr.
+   *
+   * Die Berechtigungen kommen aus `ALL_PERMISSION_KEYS` und nicht aus einer
+   * abgeschriebenen Liste: Wer einen Schlüssel ergänzt, hat ihn hier sofort.
+   */
+  await client.organization.create({
+    data: { id: DEFAULT_ORGANIZATION_ID, name: 'Meine Organisation' },
+  });
+
+  await client.role.create({
+    data: {
+      id: `role_owner_${DEFAULT_ORGANIZATION_ID}`,
+      organizationId: DEFAULT_ORGANIZATION_ID,
+      name: 'Inhaber',
+      description: 'Beim Aufsetzen angelegt — alle Berechtigungen.',
+      permissions: {
+        create: ALL_PERMISSION_KEYS.map((permissionKey) => ({
+          organizationId: DEFAULT_ORGANIZATION_ID,
+          permissionKey,
+        })),
+      },
+    },
+  });
+
+  await client.user.create({
     data: {
       id: TEST_ACTOR_ID,
       email: TEST_ACTOR_EMAIL,

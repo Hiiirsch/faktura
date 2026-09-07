@@ -27,7 +27,13 @@ unternehmens/Freiberuflers.
 - Buchhaltungs-Export (DATEV), Banking-Anbindung
 
 **Nicht-Ziele**
-- Keine Cloud-/SaaS-Fähigkeit, kein Multi-Tenant-Datenmodell
+- ~~Keine Cloud-/SaaS-Fähigkeit, kein Multi-Tenant-Datenmodell~~ — **beides
+  aufgehoben, nicht übergangen.** Das Multi-Tenant-Datenmodell hat der
+  Auftraggeber in M8 in den Umfang genommen; die Cloud-Fähigkeit in M17, um
+  Faktura in einem Kubernetes-Projekt mit mehreren Instanzen betreiben zu
+  können. Was bleibt: Faktura ist **kein** SaaS-Angebot — es gibt keine
+  Selbstregistrierung, keine Abrechnung, keine Mandantenwerbung. Jede Anlage
+  betreibt jemand für sich
 - Keine mobile App, aber responsive Web-UI
 
 ---
@@ -37,7 +43,7 @@ unternehmens/Freiberuflers.
 | Bereich | Wahl | Begründung |
 |---|---|---|
 | Framework | Next.js (App Router) + TypeScript | Server Actions, ein Deployment-Artefakt |
-| DB | SQLite via Prisma | Single-User, Backup = Dateikopie; Migration zu Postgres bleibt offen |
+| DB | PostgreSQL via Prisma (seit M17; bis dahin SQLite) | Mehrere Instanzen gegen eine Datenbank; Sicherung über `pg_dump` |
 | UI | Tailwind CSS + shadcn/ui | Schnell, konsistent |
 | Formulare | React Hook Form + Zod | Ein Zod-Schema für Client- *und* Server-Validierung |
 | Templating | LiquidJS | Logikarm und gesandboxed — kein beliebiger Code aus Templates |
@@ -656,7 +662,7 @@ Härtung ist Teil von V1, nicht optional.
 | Wiederkehrende Rechnungen | „Duplizieren" existiert; ergänzt um `RecurringSchedule` + Job |
 | Mehrbenutzer | `User`-Tabelle existiert; Rollen-Feld und Policy-Layer ergänzen |
 | Mandantenfähigkeit | `CompanyProfile` ist Singleton — Umstellung erfordert `tenantId`-Spalten. Bewusster Trade-off gegen Komplexität in V1 |
-| Postgres statt SQLite | Prisma abstrahiert; nur `Decimal`-Typen und `VACUUM INTO`-Backup anpassen |
+| ~~Postgres statt SQLite~~ | **In M17 umgesetzt.** Die Einschätzung hier war veraltet: Nicht `Decimal`-Typen und das Backup waren die Arbeit, sondern **32 Trigger** in PL/pgSQL, eine neue Migrationsgeschichte und ein Prüfaufbau, der bis dahin eine Datei kopierte |
 | DATEV-Export | Aus `InvoiceDocument` ableitbar, Steueraufstellung liegt bereits vor |
 
 ---

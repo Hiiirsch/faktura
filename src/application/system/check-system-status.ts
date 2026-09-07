@@ -11,6 +11,10 @@
  */
 import { getEnv } from '@/infrastructure/config/env';
 import { logger } from '@/infrastructure/logging/logger';
+import {
+  isRemoteRendererAvailable,
+  isRemoteRendererConfigured,
+} from '@/infrastructure/rendering/http-renderer';
 import { isRendererAvailable } from '@/infrastructure/rendering/playwright-renderer';
 import { pingDatabase } from '@/infrastructure/repositories/client';
 
@@ -45,13 +49,23 @@ async function checkDatabase(): Promise<ComponentState> {
 }
 
 /**
- * Prüft den Renderer durch einen echten Browserstart.
+ * Prüft den Renderer — dort, wo er läuft (M17, B3).
  *
- * Die Begründung steht bei `isRendererAvailable()`: Ein Chromium, das nicht
- * hochkommt, liegt trotzdem an seinem Pfad.
+ * Im eigenen Prozess durch einen echten Browserstart; die Begründung steht bei
+ * `isRendererAvailable()`: Ein Chromium, das nicht hochkommt, liegt trotzdem an
+ * seinem Pfad. Bei eingerichtetem Renderdienst durch eine Anfrage an dessen
+ * Zustandsseite — die dort denselben Browserstart auslöst.
+ *
+ * Was hier **nicht** geschieht: den Dienst als „läuft" zu melden, weil eine
+ * Adresse konfiguriert ist. Genau das wäre die Prüfung auf das Vorhandensein
+ * einer Datei, die dieser Healthcheck seit M7 vermeidet.
  */
 async function checkRenderer(): Promise<ComponentState> {
-  return (await isRendererAvailable()) ? 'UP' : 'DOWN';
+  const available = isRemoteRendererConfigured()
+    ? await isRemoteRendererAvailable()
+    : await isRendererAvailable();
+
+  return available ? 'UP' : 'DOWN';
 }
 
 export async function checkSystemStatus(): Promise<SystemStatus> {

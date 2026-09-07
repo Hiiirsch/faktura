@@ -18,6 +18,7 @@
  * Die Route liegt im Adminbereich, und der alte Pfad ist weg.
  */
 import { execFile } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -192,9 +193,9 @@ describe('NFA-BETR-03/-04 Die Sicherung entsteht konsistent', () => {
   it('erzeugt einen lesbaren Abzug, während die Datenbank in Gebrauch ist', async () => {
     await seedIssuedInvoice();
 
-    // Nebenläufig: Während gesichert wird, laufen Abfragen. Eine Dateikopie
-    // ergäbe hier mit einiger Wahrscheinlichkeit einen unbrauchbaren Stand —
-    // `VACUUM INTO` nicht (NFA-BETR-04).
+    // Nebenläufig: Während gesichert wird, laufen Abfragen. Eine Kopie des
+    // Datenverzeichnisses ergäbe hier mit einiger Wahrscheinlichkeit einen
+    // unbrauchbaren Stand — `pg_dump` nicht (NFA-BETR-04).
     const [backup] = await Promise.all([
       createBackup(PLATFORM),
       prisma.invoice.count(),
@@ -203,11 +204,31 @@ describe('NFA-BETR-03/-04 Die Sicherung entsteht konsistent', () => {
 
     const directory = await extract(backup.bytes);
     try {
-      const restored = new PrismaClient({
-        datasources: { db: { url: `file:${path.join(directory, DATABASE_ENTRY_NAME)}` } },
+      const dumpFile = path.join(directory, DATABASE_ENTRY_NAME);
+
+      /*
+       * **Gelesen wird mit `pg_restore`, nicht mit Prisma.**
+       *
+       * Bis M16 war der Abzug eine SQLite-Datei, die sich unmittelbar öffnen
+       * ließ. Ein `pg_dump`-Archiv im Format `custom` ist das nicht — es ist
+       * ein Archiv, kein Datenbestand. Der Nachweis lautet deshalb: Es lässt
+       * sich vollständig auflisten, und darin stehen die Tabellen samt ihrer
+       * Daten.
+       *
+       * Das ist mehr als ein Blick auf die Kopfbytes: `pg_restore --list`
+       * scheitert an einem abgeschnittenen oder halb geschriebenen Archiv —
+       * genau dem Fehler, den NFA-BETR-04 ausschließen soll.
+       */
+      const { stdout } = await run('pg_restore', ['--list', dumpFile], {
+        encoding: 'utf8',
+        maxBuffer: 32 * 1024 * 1024,
       });
-      await expect(restored.invoice.count()).resolves.toBeGreaterThan(0);
-      await restored.$disconnect();
+
+      expect(stdout).toContain('TABLE DATA public Invoice');
+      expect(stdout).toContain('TABLE DATA public Organization');
+      // Und die Trigger reisen mit: Eine Wiederherstellung ohne sie wäre eine
+      // Anwendung ohne ihre Zusagen.
+      expect(stdout).toContain('Invoice_immutable_after_issue');
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -237,6 +258,53 @@ describe('NFA-SEC-23 Die Sicherung ist dem Betreiber vorbehalten', () => {
   }, 60_000);
 });
 
+/**
+ * Spielt einen Abzug in eine frisch angelegte Datenbank ein und gibt deren
+ * Adresse zurück.
+ *
+ * Der Name trägt einen Zufallsanteil: Zwei Läufe nebeneinander sollen sich
+ * nicht dieselbe Wegwerfdatenbank streitig machen. Verworfen wird sie nicht —
+ * der nächste Lauf legt eine neue an, und wer nach einem Fehlschlag nachsehen
+ * will, findet sie vor.
+ */
+async function restoreIntoScratchDatabase(dumpFile: string): Promise<string> {
+  const base = new URL(DATA_DATABASE_URL);
+  const name = `faktura_restore_${randomBytes(6).toString('hex')}`;
+
+  const adminUrl = new URL(base.toString());
+  adminUrl.pathname = '/postgres';
+  adminUrl.search = '';
+
+  const admin = new PrismaClient({ datasources: { db: { url: adminUrl.toString() } } });
+  try {
+    await admin.$executeRawUnsafe(`CREATE DATABASE "${name}"`);
+  } finally {
+    await admin.$disconnect();
+  }
+
+  await run(
+    'pg_restore',
+    [
+      '--no-owner',
+      '--no-privileges',
+      `--host=${base.hostname}`,
+      `--port=${base.port === '' ? '5432' : base.port}`,
+      `--username=${decodeURIComponent(base.username)}`,
+      `--dbname=${name}`,
+      dumpFile,
+    ],
+    {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, PGPASSWORD: decodeURIComponent(base.password) },
+    },
+  );
+
+  const restoredUrl = new URL(base.toString());
+  restoredUrl.pathname = `/${name}`;
+  return restoredUrl.toString();
+}
+
 describe('NFA-BETR-06/-07 Aus der Sicherung entsteht wieder ein Bestand', () => {
   it('führt nach dem Auspacken dieselben Belege und dieselben PDFs', async () => {
     const { invoiceId, invoiceNumber } = await seedIssuedInvoice();
@@ -252,10 +320,16 @@ describe('NFA-BETR-06/-07 Aus der Sicherung entsteht wieder ein Bestand', () => 
     const directory = await extract(backup.bytes);
 
     try {
-      // 1. Die Datenbank aus dem Archiv öffnen und abfragen.
-      const restored = new PrismaClient({
-        datasources: { db: { url: `file:${path.join(directory, DATABASE_ENTRY_NAME)}` } },
-      });
+      // 1. Den Abzug in eine Wegwerfdatenbank zurückspielen und abfragen.
+      //
+      //    Das ist der eigentliche Nachweis: Nicht „das Archiv sieht heil aus",
+      //    sondern „daraus entsteht wieder ein Bestand, den die Anwendung
+      //    lesen kann" (NFA-BETR-06). Unter SQLite genügte dafür das Öffnen der
+      //    Datei; ein `pg_dump`-Archiv muss erst eingespielt werden.
+      const restoredUrl = await restoreIntoScratchDatabase(
+        path.join(directory, DATABASE_ENTRY_NAME),
+      );
+      const restored = new PrismaClient({ datasources: { db: { url: restoredUrl } } });
 
       const invoice = await restored.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
       expect(invoice.invoiceNumber).toBe(invoiceNumber);

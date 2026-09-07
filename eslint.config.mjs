@@ -247,32 +247,34 @@ export default tseslint.config(
   },
 
   /**
-   * Die **eine** Ausnahme vom Roh-SQL-Verbot (NFA-ARCH-10 nennt „ungeprüfte"
-   * Aufrufe; dieser ist geprüft).
+   * Ausnahmen vom Roh-SQL-Verbot — beide im **Prüfaufbau**, keine im
+   * Anwendungscode.
    *
-   * `VACUUM INTO` hat in Prisma keine Entsprechung, und die Alternative wäre,
-   * die Datei im laufenden Betrieb zu kopieren — genau das verbietet
-   * NFA-BETR-04, weil eine Kopie mitten in einer Transaktion beim Öffnen
-   * scheitert. Die Ausnahme gilt für **eine** Datei; der Pfad darin stammt nie
-   * aus einer Anfrage. `tests/architecture/layering.test.ts` hält fest, dass
-   * es bei dieser einen bleibt.
+   * Bis M16 stand hier `src/infrastructure/db/backup.ts`: Die Sicherung
+   * brauchte `VACUUM INTO`, wofür Prisma keine Entsprechung hat. Mit
+   * PostgreSQL erzeugt `pg_dump` den Abzug, und die Ausnahme ist **entfallen**
+   * statt umgeschrieben worden. NFA-ARCH-10 gilt für `src/**` seither ohne
+   * jede Einschränkung.
+   *
+   * Was bleibt, sind zwei Stellen im Test:
+   *
+   * - Der **Triggerbestand** lässt sich nicht über den ORM erfragen; `pg_trigger`
+   *   steht in keinem Prisma-Schema. Ohne diese Frage ginge der Verlust eines
+   *   Triggers still durch — genau das, was NFA-ARCH-10 verhindern soll.
+   * - Der **Aufbau der Testdatenbanken** braucht `CREATE DATABASE` und
+   *   `TRUNCATE`. Beides kann die Anwendung nicht absetzen und soll es nie
+   *   können; hier legt es den Ausgangszustand.
+   * - Die **Wiederherstellungsprüfung** legt eine Wegwerfdatenbank an, um den
+   *   Abzug wirklich einzuspielen. Ohne das bliebe von NFA-BETR-06 nur die
+   *   Aussage „das Archiv sieht heil aus".
    */
   {
-    files: ['src/infrastructure/db/backup.ts'],
-    rules: { 'no-restricted-syntax': 'off' },
-  },
-
-  /**
-   * Die zweite Ausnahme: der Test, der den Triggerbestand prüft.
-   *
-   * `sqlite_master` steht in keinem Prisma-Schema — es gibt keinen Weg über den
-   * ORM, die Frage „welche Trigger gibt es" zu stellen. Und ohne diese Frage
-   * ginge der Verlust eines Triggers bei einem Tabellenneuaufbau still durch,
-   * was NFA-ARCH-10 gerade nicht bezweckt. Ein Test, der ausschließlich liest
-   * und keine Anwendungsdaten berührt, ist der geeignete Ort dafür.
-   */
-  {
-    files: ['tests/integration/database-triggers.test.ts'],
+    files: [
+      'tests/integration/database-triggers.test.ts',
+      'tests/integration/setup/database.ts',
+      'tests/integration/setup/server.ts',
+      'tests/integration/backup.test.ts',
+    ],
     rules: { 'no-restricted-syntax': 'off' },
   },
 

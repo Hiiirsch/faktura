@@ -6,14 +6,16 @@
  * Weiterleitungen, Statuscodes und Cookie-Attribute entstehen erst im
  * Zusammenspiel von Next.js und der Anwendung.
  *
- * Der Test läuft gegen eine eigene Datenbankdatei und einen eigenen Port, damit
- * er weder den Entwicklungsstand noch einen laufenden Server berührt.
+ * Der Test läuft gegen eigene Datenbanken und einen eigenen Port, damit er
+ * weder den Entwicklungsstand noch einen laufenden Server berührt.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { PrismaClient } from '@prisma/client';
 
 const projectRoot = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -69,18 +71,27 @@ export const TEST_ADMIN_TOTP_SECRET = 'KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU';
 
 export const TEST_USER_PASSWORD = 'Zwetschgenkuchen-mit-Streuseln-7';
 
-const TEST_DB_FILE = path.join(projectRoot, 'data', 'integration-test.db');
-export const TEST_DATABASE_URL = 'file:../data/integration-test.db';
-
 /**
- * Zweite Datenbank für die Prüfungen der Fachlogik.
+ * Zwei Datenbanken auf **einem** PostgreSQL-Dienst (M17).
  *
- * Getrennt von der des Servers: Diese Datei wird vor jedem Test aus einer
- * Vorlage neu angelegt, was den laufenden Server stören würde.
+ * Die des Servers bleibt über den ganzen Lauf stehen; die der Fachlogik wird
+ * vor **jedem** Test geleert. Getrennt sein müssen sie deshalb, nicht weil sie
+ * Verschiedenes enthielten.
+ *
+ * Die Adresse kommt aus der Umgebung, mit einer Vorgabe für den
+ * Entwicklungsrechner. In der CI zeigt sie auf den Dienst des Läufers.
  */
-const TEMPLATE_DB_FILE = path.join(projectRoot, 'data', 'integration-template.db');
-const DATA_DB_FILE = path.join(projectRoot, 'data', 'integration-data.db');
-const TEMPLATE_DATABASE_URL = 'file:../data/integration-template.db';
+const PG_BASE =
+  process.env['TEST_POSTGRES_URL'] ?? 'postgresql://faktura:entwicklung@localhost:55432';
+
+/** Verwaltungsverbindung — nur zum Anlegen und Verwerfen der beiden Datenbanken. */
+const ADMIN_DATABASE_URL = `${PG_BASE}/postgres`;
+
+const SERVER_DB = 'faktura_test_server';
+const DATA_DB = 'faktura_test_data';
+
+export const TEST_DATABASE_URL = `${PG_BASE}/${SERVER_DB}?schema=public`;
+const DATA_DATABASE_URL = `${PG_BASE}/${DATA_DB}?schema=public`;
 
 const TEST_STORAGE_DIR = path.join(projectRoot, 'data', 'integration-server-storage');
 
@@ -110,14 +121,27 @@ function removeStorage(): void {
   rmSync(TEST_STORAGE_DIR, { recursive: true, force: true });
 }
 
-function removeDatabases(): void {
-  for (const base of [TEST_DB_FILE, TEMPLATE_DB_FILE, DATA_DB_FILE]) {
-    for (const suffix of ['', '-journal', '-wal', '-shm']) {
-      const file = `${base}${suffix}`;
-      if (existsSync(file)) {
-        rmSync(file);
-      }
+/**
+ * Legt beide Testdatenbanken neu an.
+ *
+ * `WITH (FORCE)` trennt bestehende Verbindungen: Ein abgebrochener Lauf lässt
+ * sonst eine offene Verbindung zurück, und der nächste Lauf scheitert an
+ * „database is being accessed by other users" — ein Fehler, der aussieht wie
+ * ein Fehler im Test und keiner ist.
+ *
+ * Die Verwaltungsverbindung wird sofort wieder geschlossen; sie hat mit dem
+ * Lauf nichts zu tun.
+ */
+async function recreateDatabases(): Promise<void> {
+  const admin = new PrismaClient({ datasources: { db: { url: ADMIN_DATABASE_URL } } });
+
+  try {
+    for (const name of [SERVER_DB, DATA_DB]) {
+      await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+      await admin.$executeRawUnsafe(`CREATE DATABASE "${name}"`);
     }
+  } finally {
+    await admin.$disconnect();
   }
 }
 
@@ -150,19 +174,16 @@ export async function setup(): Promise<void> {
     );
   }
 
-  removeDatabases();
+  await recreateDatabases();
   removeStorage();
 
-  for (const url of [TEST_DATABASE_URL, TEMPLATE_DATABASE_URL]) {
+  for (const url of [TEST_DATABASE_URL, DATA_DATABASE_URL]) {
     execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
       cwd: projectRoot,
       env: { ...process.env, DATABASE_URL: url },
       stdio: 'pipe',
     });
   }
-
-  // Startzustand für die Fachlogik-Prüfungen.
-  copyFileSync(TEMPLATE_DB_FILE, DATA_DB_FILE);
 
   execFileSync('npx', ['tsx', 'tests/integration/setup/seed-user.ts'], {
     cwd: projectRoot,
@@ -190,6 +211,13 @@ export async function teardown(): Promise<void> {
       server.kill('SIGKILL');
     }
   }
-  removeDatabases();
+  /*
+   * Die Datenbanken bleiben nach dem Lauf **stehen**.
+   *
+   * Unter SQLite wurden die Dateien weggeräumt; hier wäre das Verwerfen zweier
+   * Datenbanken eine weitere Verbindung im Abbau, und ein Fehlschlag dabei
+   * verdeckte das Ergebnis des Laufs. Der nächste Lauf legt sie ohnehin neu an
+   * — und wer nach einem Fehlschlag nachsehen will, findet den Zustand vor.
+   */
   removeStorage();
 }
