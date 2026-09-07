@@ -12,7 +12,7 @@ kind create cluster --name faktura
 kubectl apply -f deployment/namespace.yaml
 kubectl apply -f deployment/postgres.yaml
 kubectl apply -f deployment/app-config.yaml
-kubectl apply -f deployment/pvc.yaml
+kubectl apply -f deployment/app-pvc.yaml
 kubectl apply -f deployment/migration-job.yaml
 kubectl apply -f deployment/app-deployment.yaml
 kubectl apply -f deployment/app-service.yaml
