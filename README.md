@@ -1,33 +1,60 @@
 # Faktura
 
-Selbst gehostete Rechnungsstellung für ein Einzelunternehmen. Single-Tenant,
-ohne Cloud-Anbindung, ohne ausgehende Netzwerkverbindungen im Betrieb.
+Selbst gehostete Rechnungsstellung nach deutschem Recht — von der Firmenanlage
+über den Beleg bis zur Mahnung. Eine Installation trägt beliebig viele
+Unternehmen, getrennt durch den Aufbau und nicht durch eine Prüfung.
+
+Es gibt keine Cloud-Anbindung. Im Betrieb baut die Anwendung von sich aus **keine
+ausgehende Verbindung** auf; die drei möglichen — Mailserver, Objektspeicher,
+Renderdienst — richtet der Betreiber selbst ein, und ohne sie läuft alles.
+
+| Datei | Für wen |
+|---|---|
+| **`README.md`** | **Betreiber** — Installation, Betrieb, Sicherung, Wiederherstellung |
+| [`DEVELOPER.md`](DEVELOPER.md) | Entwickler — Arbeitsumgebung, Prüfungen, Veröffentlichen |
+| [`CLAUDE.md`](CLAUDE.md) | Entwickler — die Begründungen hinter den Entscheidungen |
+| `/hilfe` (im Programm) | Anwender — das Handbuch, ohne Anmeldung erreichbar |
 
 Verbindliche Grundlagen:
 
 - [`rechnungs-app-spec.md`](rechnungs-app-spec.md) — Architektur, Datenmodell, technische Entscheidungen
 - [`rechnungs-app-anforderungen.md`](rechnungs-app-anforderungen.md) — prüfbarer Anforderungskatalog
-- [`CLAUDE.md`](CLAUDE.md) — technische Leitplanken
+- [`faktura-frontend-design.md`](faktura-frontend-design.md) — Gestaltung
 - [`FORTSCHRITT.md`](FORTSCHRITT.md) — Stand je Anforderung
 
-**Aktueller Stand: M4 (Rechnungen).** Rechnungen lassen sich anlegen,
-bearbeiten, festschreiben, bezahlen und stornieren. Ab dem Festschreiben ist der
-Beleg unveränderlich — durchgesetzt von Datenbank-Triggern, nicht nur vom
-Anwendungscode. Erfasst werden außerdem Firmendaten samt Logo, Briefpapier und
-Bankverbindung, Kunden mit automatischer Nummernvergabe und ein
-Leistungskatalog. PDF-Ausgabe, Vorlagen und Auswertung folgen.
+## Was die Anwendung kann
 
-Die Anwendung ist vollständig zugriffsgeschützt: Anmeldung mit Passwort und
-optionaler Zweifaktorauthentifizierung, Sitzungsverwaltung, Sicherheits-Header,
-CSRF-Schutz und Sperre nach Fehlversuchen.
+**Belege.** Rechnungen anlegen, bearbeiten, festschreiben, bezahlen, stornieren
+und mahnen. Ab dem Festschreiben ist der Beleg unveränderlich — durchgesetzt von
+Datenbank-Triggern, nicht nur vom Anwendungscode. Das PDF entsteht in dem Moment,
+in dem die Nummer vergeben wird, und liegt danach als Datei mit Prüfsumme.
 
-Die Formulare der Stammdaten setzen JavaScript voraus — sie erhalten dafür bei
-einem Validierungsfehler die Eingaben. Die Anmeldung funktioniert auch ohne.
+**Stammdaten.** Firmendaten samt Logo und Briefpapier, Kunden mit automatischer
+Nummernvergabe, ein Leistungskatalog, eigene Belegvorlagen.
+
+**Auswertung.** Übersicht mit Umsatz, offenen und überfälligen Posten,
+Zwölfmonatsreihe und Top-Kunden. Datenexport als JSON.
+
+**Mehrere Unternehmen und Konten.** Eigene Rollen je Unternehmen, Mitglieder per
+Einladung, eine getrennte Betreiberverwaltung, die keine Geschäftsdaten sieht.
+
+**Anmeldung.** Passwort, wahlweise zweiter Faktor (TOTP mit
+Wiederherstellungscodes), Passkeys, vertraute Geräte, „Passwort vergessen".
+Für **Betreiberkonten ist der zweite Faktor verpflichtend**.
+
+**Betrieb.** Sicherung und Wiederherstellung, Healthcheck, strukturiertes Log,
+Impressum und Datenschutzhinweise, ein mitgeliefertes Handbuch. Wahlweise
+E-Mail-Versand und ein Betrieb in mehreren Instanzen.
+
+Der aktuelle Stand je Anforderung steht in [`FORTSCHRITT.md`](FORTSCHRITT.md),
+die Neuerungen je Fassung im Handbuch unter `/hilfe/neuerungen`.
 
 ## Voraussetzungen
 
-- Node.js 24.13.0 (siehe `.nvmrc`)
-- Docker mit Compose v2
+Für den Betrieb genügt **Docker mit Compose v2**. Datenbank, Anwendung und
+Reverse Proxy kommen als Container; Node.js wird auf dem Server nicht gebraucht.
+
+Für die Entwicklung siehe [`DEVELOPER.md`](DEVELOPER.md).
 
 ## Installation
 
@@ -56,8 +83,10 @@ Seitenaufruf einen Hinweis ins Log, wenn beides auseinanderläuft.
 ## Konfiguration
 
 Die gesamte Konfiguration erfolgt über Umgebungsvariablen; `.env.example`
-beschreibt jede einzelne. Optional sind allein `SMTP_URL` und `MAIL_FROM`
-(siehe [E-Mail-Versand](#e-mail-versand)); ohne sie läuft die Anwendung
+beschreibt jede einzelne. Optional sind der Mailversand (`SMTP_URL`,
+`MAIL_FROM` — siehe [E-Mail-Versand](#e-mail-versand)) sowie Objektspeicher und
+Renderdienst (`S3_*`, `RENDERER_*` — siehe
+[Mehrere Instanzen](#mehrere-instanzen)). Ohne sie läuft die Anwendung
 vollständig ohne ausgehende Verbindung. Geheimnisse liegen nie im Repository und nie im
 Container-Image. Fehlt eine Variable oder ist sie unplausibel, bricht die
 Anwendung beim Start mit einer benannten Meldung ab, statt im Betrieb
@@ -65,37 +94,8 @@ aufzufallen.
 
 ## Entwicklung
 
-```bash
-npm run db:deploy   # Migrationen anwenden
-npm run dev         # Entwicklungsserver auf http://localhost:3000
-```
-
-Prüfungen:
-
-```bash
-npm run typecheck    # TypeScript
-npm run lint         # ESLint, auch die Schichtenregeln
-npm run test         # Vitest, schnelle Suite
-npm run test:coverage
-npm run verify       # alles zusammen, inklusive npm audit
-```
-
-`npm run verify` ist das, was auch die CI ausführt. Ein Verstoß gegen die
-Schichtentrennung, ein `any` in der Domain-Schicht oder ein Roh-SQL-Aufruf
-lässt den Lauf scheitern.
-
-Zusätzlich gibt es eine Integrationssuite, die den Zugriffsschutz gegen einen
-echt laufenden Server prüft (NFA-SEC-01). Sie setzt einen Produktionsbuild
-voraus:
-
-```bash
-npm run build
-npm run test:integration
-```
-
-Sie startet die gebaute Anwendung auf Port 3987 gegen eine eigene
-Datenbankdatei, läuft jede Route ohne Sitzung durch, prüft Cookie-Attribute,
-Sicherheits-Header, CSRF-Schutz und die Sperre nach zehn Fehlversuchen.
+Arbeitsumgebung, Prüfungen, Testdaten und das Veröffentlichen einer Fassung
+stehen in [`DEVELOPER.md`](DEVELOPER.md).
 
 ## Betrieb
 
@@ -117,6 +117,10 @@ ausschließlich über den Proxy erreichbar; TLS besorgt Caddy selbsttätig, soba
 Migrationen laufen bei jedem Start (`prisma migrate deploy`). Schlagen sie
 fehl, startet der Server nicht — ein Betrieb gegen ein unbekanntes Schema wäre
 gefährlicher als ein ausbleibender Start.
+
+**Danach steht die Anmeldeseite, und es gibt noch kein Konto**, mit dem man sich
+anmelden könnte. Wie das erste entsteht, steht unter
+[Erste Anmeldung](#erste-anmeldung).
 
 ### Woraus die Anwendung besteht
 
@@ -172,9 +176,25 @@ einen Bind-Mount je nach Wirtssystem nicht herstellbar. Gesichert wird sie
 ohnehin nicht durch Kopieren, sondern mit `pg_dump` — siehe
 [Sicherung](#sicherung).
 
-### Unternehmen und Konten anlegen
+### Erste Anmeldung
 
-Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
+**Es wird kein Konto mitgeliefert, und es entsteht auch keines von selbst.** Eine
+frisch migrierte Datenbank enthält ein Unternehmen — `org_default`
+(„Meine Organisation") mit der Rolle „Inhaber", die alle Berechtigungen trägt —
+aber **keinen einzigen Benutzer**. Das ist kein vergessener Seed, sondern
+Absicht: Ein vorbelegtes Konto bräuchte ein Passwort, und ein Passwort in einer
+Migration stünde im Repository, also in jeder Kopie und bei jedem, der sie je
+ausgecheckt hat.
+
+Eine **Selbstregistrierung** gibt es ebenfalls nicht. Es führen genau zwei Wege
+zum ersten Konto, und beide beginnen auf der Kommandozeile des Servers — wer
+dorthin Zugriff hat, kommt herein, und niemand sonst.
+
+#### Der Weg über die Verwaltung
+
+Der vorgesehene Weg. Er trennt die beiden Rollen sauber: Der **Betreiber**
+betreibt die Anlage, der **Inhaber** führt das Unternehmen, und der Betreiber
+erfährt dessen Passwort zu keinem Zeitpunkt.
 
 1. Einrichtungslink für das Betreiberkonto ausstellen (einmalig je
    Installation):
@@ -186,6 +206,9 @@ Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
    Das Kommando fragt **nichts** ab und legt **kein** Konto an. Es gibt einen
    Link aus, der 24 Stunden gilt und genau einmal funktioniert. Ein erneuter
    Aufruf entwertet den vorigen Link.
+
+   Der Link wird aus `APP_URL` gebildet. Steht dort die falsche Adresse, ist er
+   unbrauchbar — was sofort auffällt, denn er wird ja unmittelbar geöffnet.
 
 2. Den Link im Browser öffnen: Name, Passwort und zweiter Faktor werden dort
    gesetzt — der QR-Code kommt aus dem eigenen Prozess, ohne Anfrage nach außen.
@@ -199,16 +222,69 @@ Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
 3. Unter `/admin` anmelden und ein Unternehmen anlegen. Dabei entstehen in
    **einem** Vorgang: das Unternehmen, die Rolle „Inhaber" mit allen
    Berechtigungen und eine Einladung. Der Einladungslink erscheint **genau
-   einmal** und wird von Hand weitergegeben — die Anwendung versendet keine
-   E-Mail.
+   einmal**; ist ein Mailserver eingerichtet, geht er zusätzlich hinaus
+   (siehe [E-Mail-Versand](#e-mail-versand)) — sonst wird er von Hand
+   weitergegeben.
 
 4. Der Inhaber öffnet den Link und **setzt sein Passwort selbst**. Der Betreiber
    erfährt es zu keinem Zeitpunkt. Weitere Mitglieder lädt das Unternehmen
-   danach unter **Einstellungen → Mitglieder** ein.
+   danach unter **Einstellungen → Mitglieder** ein — ab hier braucht es die
+   Kommandozeile nicht mehr.
 
-Ein Passwort muss mindestens zwölf Zeichen haben und darf nicht in der
-mitgelieferten Liste der 100.000 häufigsten geleakten Passwörter stehen; die
-Prüfung läuft vollständig lokal, ohne Netzwerkabfrage.
+Das mitgelieferte `org_default` bleibt dabei ungenutzt. Wer es verwenden will,
+statt ein eigenes Unternehmen anzulegen, nimmt den zweiten Weg.
+
+#### Ein Konto unmittelbar anlegen
+
+Dieses Kommando legt ein Mandantenkonto **ohne** Einladung und ohne
+Betreiberkonto an:
+
+```bash
+docker compose exec app node dist/create-user.mjs \
+  --email buchhaltung@example.org \
+  --organization org_default --role role_owner_org_default
+```
+
+Außerhalb des Containers, etwa in der Entwicklung:
+
+```bash
+npm run user:create -- --email buchhaltung@example.org \
+  --organization org_default --role role_owner_org_default
+```
+
+Das Passwort wird **verdeckt abgefragt**. Als Argument stünde es in der
+Shell-Historie und in der Prozessliste, wo es jeder Benutzer des Systems lesen
+kann.
+
+Zwei Argumente, zwei Fallstricke:
+
+- **`--organization` ist Pflicht.** Bei mehreren Mandanten wäre ein geratenes
+  Unternehmen eine stille Zuweisung in ein fremdes. Ohne das Argument nennt das
+  Kommando die vorhandenen Kennungen, statt zu raten; in einer frischen Anlage
+  ist das `org_default`.
+- **`--role` ist wahlweise — und ohne sie sieht das Konto nichts.** Es trägt dann
+  nur die Grundrechte: Die Anmeldung gelingt, aber es gibt weder Belege noch
+  Stammdaten noch einen Weg dorthin. Für das erste Konto ist
+  `role_owner_org_default` gemeint.
+
+Der Weg ist für zwei Lagen da. Die erste ist der **Notfall**: Kommt niemand mehr
+in ein Unternehmen — kein aktives Konto mit Rechteverwaltung, keine gültige
+Einladung —, führt er wieder hinein. Die zweite ist die **Einzelplatzanlage**,
+in der eine getrennte Betreiberrolle keinen Gegenüber hat.
+
+Was dabei ausbleibt, ist benannt: Ohne Betreiberkonto gibt es kein `/admin`, und
+damit **keine Sicherung über die Oberfläche** (sie enthält den Bestand aller
+Unternehmen und verlangt deshalb eine Adminsitzung) und **kein Impressum** —
+`/impressum` antwortet dann mit 404. Der Auftrag `npm run backup` läuft
+unabhängig davon; siehe [Sicherung](#sicherung). Ein Betreiberkonto lässt sich
+jederzeit nachträglich einrichten.
+
+#### Anforderungen an das Passwort
+
+Mindestens zwölf Zeichen, und es darf nicht in der mitgelieferten Liste der
+100.000 häufigsten geleakten Passwörter stehen. Die Prüfung läuft vollständig
+lokal, ohne Netzwerkabfrage. Sie gilt für jeden der Wege oben — auch für das
+Kommando auf der Kommandozeile.
 
 #### Betreiberkonto zurücksetzen
 
@@ -227,25 +303,6 @@ Betreiber über seine Kennung, und die eines gelöschten Kontos zeigt ins Leere.
 
 Der Preis ist benannt: Zwischen Aufruf und Einlösen kommt niemand in die
 Verwaltung. Wer das vermeiden will, legt vorher ein zweites Betreiberkonto an.
-
-#### Der Notfallweg
-
-Kommt niemand mehr in ein Unternehmen — kein aktives Konto mit
-Rechteverwaltung, keine gültige Einladung —, legt dieses Kommando ein Konto
-unmittelbar an:
-
-```bash
-npm run user:create -- --email buchhaltung@example.org \
-  --organization <kennung> --role <kennung>
-```
-
-`--organization` ist Pflicht: Bei mehreren Mandanten wäre ein geratenes
-Unternehmen eine stille Zuweisung in ein fremdes. Ohne Argument nennt das
-Kommando die vorhandenen Kennungen. Ohne `--role` trägt das Konto nur die
-Grundrechte und sieht eine Anwendung ohne Inhalt.
-
-Das Passwort wird verdeckt abgefragt — als Argument stünde es in der
-Shell-Historie und in der Prozessliste.
 
 ### Zweifaktorauthentifizierung
 
@@ -366,7 +423,7 @@ dann vollständig aus. Für eine neuere Datenbank steigt die Zahl im Dockerfile.
 
 **Von Hand, aus der Verwaltung:** `/admin/operations` → *Sicherung herunterladen*. Seit M8
 liegt sie dort und **nicht** in der Oberfläche eines Unternehmens: Eine
-Sicherung umfasst die Datenbankdatei als Ganzes, also alle Unternehmen.
+Sicherung umfasst den Bestand aller Unternehmen.
 
 **Als Auftrag, für die Zeitsteuerung des Servers:**
 
@@ -451,46 +508,6 @@ Migrationen werden beim Start des neuen Containers angewandt. Schlägt eine
 Migration fehl, startet der Container nicht — die alte Sicherung ist dann der
 Weg zurück.
 
-## Testdaten
-
-Für Entwicklung und Abnahme, **nie gegen eine Produktionsdatenbank** (das
-Kommando bricht bei `NODE_ENV=production` ab):
-
-```bash
-npm run seed
-```
-
-Erzeugt Kunden, einen Leistungskatalog und Rechnungen über drei Jahre in allen
-Statuswerten — Entwurf, offen, teilbezahlt, bezahlt, storniert.
-
-## Projektstruktur
-
-```
-src/app/            Next.js App Router — Routen, Seiten, Server Actions
-src/ui/             React-Komponenten und Formatierung
-src/i18n/           sämtliche deutschen Texte
-src/application/    Use Cases
-src/domain/         reine Fachlogik, ohne Fremdimporte
-src/infrastructure/ Prisma, Konfiguration, Kryptografie, Sicherheit
-src/proxy.ts        Sicherheits-Header, CSRF-Token, grober Zugriffsschutz
-src/routes.ts       zentrales Routenverzeichnis
-scripts/            Betriebskommandos (Erstbenutzer, Container-Start)
-resources/          mitgelieferte Daten (Liste kompromittierter Passwörter)
-tests/architecture/ Tests, die die Architekturregeln nachweisen
-tests/unit/         Unit-Tests
-tests/integration/  Tests gegen die gebaute Anwendung
-prisma/             Schema und Migrationen
-```
-
-Die Domain-Schicht importiert nichts aus Framework-, UI- oder
-Persistenzmodulen. Das ist keine Konvention, sondern eine Lint-Regel, deren
-Wirksamkeit `tests/architecture/layering.test.ts` nachweist.
-
-Jede Route ist in `src/routes.ts` eingetragen. Ein Pfad, der dort fehlt, gilt
-als geschützt — Vergessen führt zur Weiterleitung auf die Anmeldung, nicht zu
-einer offenen Route. `tests/architecture/routes.test.ts` gleicht das
-Verzeichnis gegen das Dateisystem ab.
-
 ## Sicherheitsarchitektur
 
 | Baustein | Umsetzung |
@@ -498,7 +515,8 @@ Verzeichnis gegen das Dateisystem ab.
 | Passwörter | Argon2id, 64 MB Speicher, 3 Iterationen |
 | Sitzungen | 256-Bit-Token, in der Datenbank nur der SHA-256-Hash, 7 Tage gültig |
 | Cookies | `HttpOnly`, `SameSite=Lax`, `Secure` bei HTTPS, neues Token je Anmeldung |
-| Zweiter Faktor | TOTP (RFC 6238) plus einmalig nutzbare Wiederherstellungscodes |
+| Zweiter Faktor | TOTP (RFC 6238) plus einmalig nutzbare Wiederherstellungscodes; für Betreiberkonten **verpflichtend** |
+| Passkeys | WebAuthn mit `userVerification: 'required'`, an die Domain gebunden; ein rückläufiger Signaturzähler sperrt den Schlüssel |
 | Sperre | 15 Minuten nach 10 Fehlversuchen, protokolliert |
 | CSRF | Herkunftsprüfung **und** Double-Submit-Token in jeder schreibenden Aktion |
 | Header | CSP mit Nonce, HSTS, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` |
@@ -523,7 +541,7 @@ ihren ersten Beleg festschreiben, bekommen beide `RE-2026-0001`.
 
 ### Rollen
 
-Jedes Unternehmen legt **eigene** Rollen an; fest ist nur der Katalog der 28
+Jedes Unternehmen legt **eigene** Rollen an; fest ist nur der Katalog der 29
 Berechtigungen. Ein Konto trägt genau eine Rolle. Berechtigungen werden bei
 jeder Anfrage frisch gelesen — ein entzogenes Recht wirkt beim nächsten Klick,
 nicht beim nächsten Anmelden.
@@ -540,8 +558,10 @@ Rollenänderung aussperren, und niemand außer dem Betreiber käme wieder hinein
 ### Mitglieder
 
 Mitglieder kommen ausschließlich über eine **Einladung** hinein. Der Link gilt
-sieben Tage, funktioniert einmal und erscheint genau einmal in der Oberfläche —
-die Anwendung versendet keine E-Mail und darf keine.
+sieben Tage, funktioniert einmal und erscheint genau einmal in der Oberfläche.
+Ist ein Mailserver eingerichtet, geht er **zusätzlich** hinaus — er ersetzt den
+Link in der Oberfläche nicht, damit niemand ausgesperrt ist, dessen Nachricht
+nicht ankommt.
 
 Das Passwort setzt der Eingeladene selbst. Kein anderes Konto erfährt es, auch
 nicht die Rechteverwaltung: Sie kann eine Zurücksetzung auslösen, aber kein
@@ -692,26 +712,13 @@ Sicherheit des eigenen Kontos.
 Sicherung, Wiederherstellung, Update. Beides gehört getrennt, weil es sich an
 verschiedene Leser richtet.
 
-Der Inhalt steht als MDX in `src/content/hilfe/`. Wer ihn ändert, erzeugt
-danach den Suchindex neu:
+Der Inhalt steht als MDX in `src/content/hilfe/` und wird mit der Anwendung
+gebaut; Suchindex und Bildschirmfotos entstehen auf Befehl. Wie man das
+Handbuch pflegt, steht in [`DEVELOPER.md`](DEVELOPER.md).
 
-```bash
-npm run docs:index
-```
-
-Ohne diesen Lauf schlägt `npm run verify` fehl — ein Test vergleicht den
-eingecheckten Index mit den Quellen.
-
-Die **Bildschirmfotos** entstehen ebenso auf Befehl. Sie brauchen einen
-Produktionsbuild, fahren die Anwendung auf einer eigenen, wegwerfbaren Datenbank
-hoch und nehmen sie auf:
-
-```bash
-npm run build
-npm run docs:shots
-``` Fristen und Grenzen im Text sind Verweise
-auf die Konstanten der Anwendung und keine abgeschriebenen Zahlen; ein zweiter
-Test hält auch das fest.
+Fristen und Grenzen im Text sind **Verweise** auf die Konstanten der Anwendung
+und keine abgeschriebenen Zahlen: Wer eine Frist ändert und das Handbuch
+vergisst, bricht einen Test.
 
 ## E-Mail-Versand
 
@@ -792,19 +799,10 @@ ghcr.io/<eigentümer>/faktura
 Gebaut wird für `linux/amd64` **und** `linux/arm64`; das Image läuft damit im
 Cluster wie auf einem Apple-Rechner.
 
-**Eine Versionsmarke wird abgewiesen, wenn sie nicht zur Anwendung passt.** Ein
-Tag `v1.2.0` verlangt, dass `package.json` und `APP_VERSION` dasselbe sagen —
-sonst trüge das Image `:1.2.0` und meldete unter *Verwaltung › Zustand* etwas
-anderes. Veröffentlichen heißt also:
-
-```bash
-# 1. Version an beiden Stellen setzen (der Test bindet sie an das Handbuch)
-#    package.json und src/domain/version.ts
-# 2. Neuerungen im Handbuch ergänzen, Suchindex erzeugen
-npm run docs:index && npm run verify
-# 3. Marke setzen
-git tag v1.2.0 && git push origin v1.2.0
-```
+Die Marke `:1.2.0` sagt damit dasselbe wie die Anwendung unter
+*Verwaltung › Zustand* — die CI weist eine Versionsmarke ab, die nicht zu
+`package.json` und `APP_VERSION` passt. Wie eine Fassung veröffentlicht wird,
+steht in [`DEVELOPER.md`](DEVELOPER.md).
 
 **Ein Image, zwei Dienste.** Anwendung und Renderdienst teilen sich das Image
 und unterscheiden sich nur im Startbefehl:
@@ -881,70 +879,51 @@ Stornorechnung führt positive Beträge — die Richtung steckt im Belegtyp, so 
 EN 16931 es vorsieht — und zählt nie in den Umsatz, weil das Original bereits
 ausscheidet.
 
-## Rechnen mit Geld
-
-| Größe | Ablage | Beispiel |
-|---|---|---|
-| Beträge | Ganzzahlige Cent | `1999` = 19,99 € |
-| Mengen | Ganzzahl, skaliert mit 10⁴ | `15000` = 1,5 |
-| Steuersätze, Rabatte | Basispunkte | `1900` = 19 %, `810` = 8,1 % |
-| Kalendertage | `YYYY-MM-DD` | `2026-03-01` |
-
-Es gibt in der Berechnungskette keine Fließkommazahl — auch nicht als
-Zwischenwert. Multiplikationen laufen über `bigint`, weil das Produkt aus Menge,
-Cent-Betrag und Rabattfaktor den sicher darstellbaren Bereich von `number` schon
-bei alltäglichen Größen überschreitet.
-
-Zwei Rundungsregeln entscheiden über Centdifferenzen: Je Position wird **einmal**
-gerundet, und die Steuer wird **je Steuergruppe** gerundet, nicht je Position.
-Drei Positionen zu 3,33 € ergeben so 1,90 € Steuer statt 1,89 €. Gerundet wird
-symmetrisch zur Null, damit eine Gutschrift die Rechnung exakt neutralisiert.
-
-Zur Content Security Policy: `script-src` kommt ohne `unsafe-inline` aus,
-Skripte laufen ausschließlich mit dem pro Anfrage erzeugten Nonce. Für
-`style-src` ist `unsafe-inline` gesetzt — React und die ab M2 vorgesehenen
-Komponenten setzen Positionierung über `style`-Attribute am Element, auf die
-ein Nonce nicht anwendbar ist. Der Sicherheitsgewinn einer strikten `style-src`
-wäre gering, der Funktionsverlust vollständig.
-
 ## Deployment
+
+Unter `deployment/` liegen Kubernetes-Manifeste für einen Testlauf im
+KIND-Cluster. **Kubernetes ist nicht Teil der Anwendung** — es gibt kein Helm,
+keine Cluster-Annahmen im Code, nur diese Beispieldateien.
+
+> **Diese Manifeste sind noch nicht auf M17 nachgezogen.** Sie tragen
+> `DATABASE_URL: "file:/app/data/faktura.db"` aus der Zeit vor der Umstellung
+> auf PostgreSQL. Ein damit gestarteter Pod kommt nicht hoch: Die Anwendung
+> spricht seit M17 ausschließlich PostgreSQL. Wer sie benutzt, ändert vorher:
+>
+> - `app-config.yaml` → `DATABASE_URL` auf einen PostgreSQL im Cluster oder
+>   beim Hoster; dazu `APP_URL` auf die Adresse, unter der die Anwendung
+>   aufgerufen wird
+> - `app-deployment.yaml` → Bildmarke auf die gewünschte Fassung; das Passwort
+>   der Datenbank gehört in ein `Secret`, nicht in die ConfigMap
+> - der `PersistentVolumeClaim` trägt nur noch `storage/`; die Datenbank liegt
+>   nicht mehr in einer Datei
+>
+> Für mehr als **eine** Instanz kommen Objektspeicher und Renderdienst hinzu —
+> siehe [Mehrere Instanzen](#mehrere-instanzen).
 
 Voraussetzungen: Docker, KIND und kubectl.
 
-### KIND-Cluster erstellen
-
 ```bash
 kind create cluster --name faktura
+
+kubectl apply -f deployment/namespace.yaml
+kubectl apply -f deployment/app-config.yaml
+kubectl apply -f deployment/app-pvc.yaml
+kubectl apply -f deployment/app-deployment.yaml
+kubectl apply -f deployment/app-service.yaml
 ```
 
-### Kubernetes-Ressourcen deployen
-
-```bash
-kubectl apply -f deployment/k8s/namespace.yaml
-kubectl apply -f deployment/k8s/app-config.yaml
-kubectl apply -f deployment/k8s/pvc.yaml
-kubectl apply -f deployment/k8s/app-deployment.yaml
-kubectl apply -f deployment/k8s/app-service.yaml
-```
-
-### Prüfen, ob der Pod läuft
+Prüfen, ob der Pod läuft — er muss `Running` und `1/1` sein:
 
 ```bash
 kubectl get pods -n faktura
 ```
 
-Der Pod muss `Running` und `1/1` sein.
-
-### Anwendung lokal verfügbar machen
+Lokal erreichbar machen und im Browser unter `http://localhost:3000` öffnen:
 
 ```bash
 kubectl port-forward -n faktura service/faktura-app 3000:3000
 ```
 
-### Im Browser öffnen
-
-```text
-http://localhost:3000
-```
-
-> Das Terminal mit dem Port-Forward muss während der Nutzung geöffnet bleiben.
+`APP_URL` muss dabei zu genau dieser Adresse passen, sonst wird jede schreibende
+Aktion abgelehnt — auch die Anmeldung.
