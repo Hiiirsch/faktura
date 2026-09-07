@@ -14,6 +14,9 @@ Renderdienst — richtet der Betreiber selbst ein, und ohne sie läuft alles.
 | [`DEVELOPER.md`](DEVELOPER.md) | Entwickler — Arbeitsumgebung, Prüfungen, Veröffentlichen |
 | [`CLAUDE.md`](CLAUDE.md) | Entwickler — die Begründungen hinter den Entscheidungen |
 | `/hilfe` (im Programm) | Anwender — das Handbuch, ohne Anmeldung erreichbar |
+| [`DEPLOYMENT.md](DEPLOYMENT.md) | DEVOPS — Für die **Abgabe**, Anleitung zum Deployen |
+| [12Factors.md](12Factors.md) | Korrektor/Interessierte — Für die **Abgabe**, Dokumentation zur 12 Faktor App |
+| [Abgabe.md](Abgabe.md) | Restliche Dokumentation für die **Abgabe** |
 
 Verbindliche Grundlagen:
 
@@ -879,51 +882,3 @@ Stornorechnung führt positive Beträge — die Richtung steckt im Belegtyp, so 
 EN 16931 es vorsieht — und zählt nie in den Umsatz, weil das Original bereits
 ausscheidet.
 
-## Deployment
-
-Unter `deployment/` liegen Kubernetes-Manifeste für einen Testlauf im
-KIND-Cluster. **Kubernetes ist nicht Teil der Anwendung** — es gibt kein Helm,
-keine Cluster-Annahmen im Code, nur diese Beispieldateien.
-
-> **Diese Manifeste sind noch nicht auf M17 nachgezogen.** Sie tragen
-> `DATABASE_URL: "file:/app/data/faktura.db"` aus der Zeit vor der Umstellung
-> auf PostgreSQL. Ein damit gestarteter Pod kommt nicht hoch: Die Anwendung
-> spricht seit M17 ausschließlich PostgreSQL. Wer sie benutzt, ändert vorher:
->
-> - `app-config.yaml` → `DATABASE_URL` auf einen PostgreSQL im Cluster oder
->   beim Hoster; dazu `APP_URL` auf die Adresse, unter der die Anwendung
->   aufgerufen wird
-> - `app-deployment.yaml` → Bildmarke auf die gewünschte Fassung; das Passwort
->   der Datenbank gehört in ein `Secret`, nicht in die ConfigMap
-> - der `PersistentVolumeClaim` trägt nur noch `storage/`; die Datenbank liegt
->   nicht mehr in einer Datei
->
-> Für mehr als **eine** Instanz kommen Objektspeicher und Renderdienst hinzu —
-> siehe [Mehrere Instanzen](#mehrere-instanzen).
-
-Voraussetzungen: Docker, KIND und kubectl.
-
-```bash
-kind create cluster --name faktura
-
-kubectl apply -f deployment/namespace.yaml
-kubectl apply -f deployment/app-config.yaml
-kubectl apply -f deployment/app-pvc.yaml
-kubectl apply -f deployment/app-deployment.yaml
-kubectl apply -f deployment/app-service.yaml
-```
-
-Prüfen, ob der Pod läuft — er muss `Running` und `1/1` sein:
-
-```bash
-kubectl get pods -n faktura
-```
-
-Lokal erreichbar machen und im Browser unter `http://localhost:3000` öffnen:
-
-```bash
-kubectl port-forward -n faktura service/faktura-app 3000:3000
-```
-
-`APP_URL` muss dabei zu genau dieser Adresse passen, sonst wird jede schreibende
-Aktion abgelehnt — auch die Anmeldung.
