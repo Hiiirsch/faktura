@@ -30,5 +30,14 @@ Lokal erreichbar machen und im Browser unter `http://localhost:3000` öffnen:
 kubectl port-forward -n faktura service/faktura-app 3000:3000
 ```
 
-`APP_URL` muss dabei zu genau dieser Adresse passen, sonst wird jede schreibende
-Aktion abgelehnt — auch die Anmeldung.
+### Betreiberkonto anlegen
+
+Nach erfolgreichem Start der Anwendung kann einmalig ein Einrichtungslink für das Betreiberkonto erzeugt werden:
+(In zweitem Terminal starten)
+
+```bash
+kubectl exec -n faktura deployment/faktura-app -- \
+  node dist/create-admin.mjs --email betreiber@example.org
+```
+
+Mehr zur Erstinbetriebnahme und zur ersten Anmeldung findet sich in [README.md#erste-anmeldung](README.md#erste-anmeldung).
