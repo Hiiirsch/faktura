@@ -118,6 +118,10 @@ Migrationen laufen bei jedem Start (`prisma migrate deploy`). Schlagen sie
 fehl, startet der Server nicht — ein Betrieb gegen ein unbekanntes Schema wäre
 gefährlicher als ein ausbleibender Start.
 
+**Danach steht die Anmeldeseite, und es gibt noch kein Konto**, mit dem man sich
+anmelden könnte. Wie das erste entsteht, steht unter
+[Erste Anmeldung](#erste-anmeldung).
+
 ### Woraus die Anwendung besteht
 
 Drei Container, und im mittleren laufen drei Bestandteile:
@@ -172,9 +176,25 @@ einen Bind-Mount je nach Wirtssystem nicht herstellbar. Gesichert wird sie
 ohnehin nicht durch Kopieren, sondern mit `pg_dump` — siehe
 [Sicherung](#sicherung).
 
-### Unternehmen und Konten anlegen
+### Erste Anmeldung
 
-Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
+**Es wird kein Konto mitgeliefert, und es entsteht auch keines von selbst.** Eine
+frisch migrierte Datenbank enthält ein Unternehmen — `org_default`
+(„Meine Organisation") mit der Rolle „Inhaber", die alle Berechtigungen trägt —
+aber **keinen einzigen Benutzer**. Das ist kein vergessener Seed, sondern
+Absicht: Ein vorbelegtes Konto bräuchte ein Passwort, und ein Passwort in einer
+Migration stünde im Repository, also in jeder Kopie und bei jedem, der sie je
+ausgecheckt hat.
+
+Eine **Selbstregistrierung** gibt es ebenfalls nicht. Es führen genau zwei Wege
+zum ersten Konto, und beide beginnen auf der Kommandozeile des Servers — wer
+dorthin Zugriff hat, kommt herein, und niemand sonst.
+
+#### Der Weg über die Verwaltung
+
+Der vorgesehene Weg. Er trennt die beiden Rollen sauber: Der **Betreiber**
+betreibt die Anlage, der **Inhaber** führt das Unternehmen, und der Betreiber
+erfährt dessen Passwort zu keinem Zeitpunkt.
 
 1. Einrichtungslink für das Betreiberkonto ausstellen (einmalig je
    Installation):
@@ -186,6 +206,9 @@ Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
    Das Kommando fragt **nichts** ab und legt **kein** Konto an. Es gibt einen
    Link aus, der 24 Stunden gilt und genau einmal funktioniert. Ein erneuter
    Aufruf entwertet den vorigen Link.
+
+   Der Link wird aus `APP_URL` gebildet. Steht dort die falsche Adresse, ist er
+   unbrauchbar — was sofort auffällt, denn er wird ja unmittelbar geöffnet.
 
 2. Den Link im Browser öffnen: Name, Passwort und zweiter Faktor werden dort
    gesetzt — der QR-Code kommt aus dem eigenen Prozess, ohne Anfrage nach außen.
@@ -199,16 +222,69 @@ Es gibt **keine Selbstregistrierung**. Der Weg führt über die Verwaltung:
 3. Unter `/admin` anmelden und ein Unternehmen anlegen. Dabei entstehen in
    **einem** Vorgang: das Unternehmen, die Rolle „Inhaber" mit allen
    Berechtigungen und eine Einladung. Der Einladungslink erscheint **genau
-   einmal** und wird von Hand weitergegeben — die Anwendung versendet keine
-   E-Mail.
+   einmal**; ist ein Mailserver eingerichtet, geht er zusätzlich hinaus
+   (siehe [E-Mail-Versand](#e-mail-versand)) — sonst wird er von Hand
+   weitergegeben.
 
 4. Der Inhaber öffnet den Link und **setzt sein Passwort selbst**. Der Betreiber
    erfährt es zu keinem Zeitpunkt. Weitere Mitglieder lädt das Unternehmen
-   danach unter **Einstellungen → Mitglieder** ein.
+   danach unter **Einstellungen → Mitglieder** ein — ab hier braucht es die
+   Kommandozeile nicht mehr.
 
-Ein Passwort muss mindestens zwölf Zeichen haben und darf nicht in der
-mitgelieferten Liste der 100.000 häufigsten geleakten Passwörter stehen; die
-Prüfung läuft vollständig lokal, ohne Netzwerkabfrage.
+Das mitgelieferte `org_default` bleibt dabei ungenutzt. Wer es verwenden will,
+statt ein eigenes Unternehmen anzulegen, nimmt den zweiten Weg.
+
+#### Ein Konto unmittelbar anlegen
+
+Dieses Kommando legt ein Mandantenkonto **ohne** Einladung und ohne
+Betreiberkonto an:
+
+```bash
+docker compose exec app node dist/create-user.mjs \
+  --email buchhaltung@example.org \
+  --organization org_default --role role_owner_org_default
+```
+
+Außerhalb des Containers, etwa in der Entwicklung:
+
+```bash
+npm run user:create -- --email buchhaltung@example.org \
+  --organization org_default --role role_owner_org_default
+```
+
+Das Passwort wird **verdeckt abgefragt**. Als Argument stünde es in der
+Shell-Historie und in der Prozessliste, wo es jeder Benutzer des Systems lesen
+kann.
+
+Zwei Argumente, zwei Fallstricke:
+
+- **`--organization` ist Pflicht.** Bei mehreren Mandanten wäre ein geratenes
+  Unternehmen eine stille Zuweisung in ein fremdes. Ohne das Argument nennt das
+  Kommando die vorhandenen Kennungen, statt zu raten; in einer frischen Anlage
+  ist das `org_default`.
+- **`--role` ist wahlweise — und ohne sie sieht das Konto nichts.** Es trägt dann
+  nur die Grundrechte: Die Anmeldung gelingt, aber es gibt weder Belege noch
+  Stammdaten noch einen Weg dorthin. Für das erste Konto ist
+  `role_owner_org_default` gemeint.
+
+Der Weg ist für zwei Lagen da. Die erste ist der **Notfall**: Kommt niemand mehr
+in ein Unternehmen — kein aktives Konto mit Rechteverwaltung, keine gültige
+Einladung —, führt er wieder hinein. Die zweite ist die **Einzelplatzanlage**,
+in der eine getrennte Betreiberrolle keinen Gegenüber hat.
+
+Was dabei ausbleibt, ist benannt: Ohne Betreiberkonto gibt es kein `/admin`, und
+damit **keine Sicherung über die Oberfläche** (sie enthält den Bestand aller
+Unternehmen und verlangt deshalb eine Adminsitzung) und **kein Impressum** —
+`/impressum` antwortet dann mit 404. Der Auftrag `npm run backup` läuft
+unabhängig davon; siehe [Sicherung](#sicherung). Ein Betreiberkonto lässt sich
+jederzeit nachträglich einrichten.
+
+#### Anforderungen an das Passwort
+
+Mindestens zwölf Zeichen, und es darf nicht in der mitgelieferten Liste der
+100.000 häufigsten geleakten Passwörter stehen. Die Prüfung läuft vollständig
+lokal, ohne Netzwerkabfrage. Sie gilt für jeden der Wege oben — auch für das
+Kommando auf der Kommandozeile.
 
 #### Betreiberkonto zurücksetzen
 
@@ -227,25 +303,6 @@ Betreiber über seine Kennung, und die eines gelöschten Kontos zeigt ins Leere.
 
 Der Preis ist benannt: Zwischen Aufruf und Einlösen kommt niemand in die
 Verwaltung. Wer das vermeiden will, legt vorher ein zweites Betreiberkonto an.
-
-#### Der Notfallweg
-
-Kommt niemand mehr in ein Unternehmen — kein aktives Konto mit
-Rechteverwaltung, keine gültige Einladung —, legt dieses Kommando ein Konto
-unmittelbar an:
-
-```bash
-npm run user:create -- --email buchhaltung@example.org \
-  --organization <kennung> --role <kennung>
-```
-
-`--organization` ist Pflicht: Bei mehreren Mandanten wäre ein geratenes
-Unternehmen eine stille Zuweisung in ein fremdes. Ohne Argument nennt das
-Kommando die vorhandenen Kennungen. Ohne `--role` trägt das Konto nur die
-Grundrechte und sieht eine Anwendung ohne Inhalt.
-
-Das Passwort wird verdeckt abgefragt — als Argument stünde es in der
-Shell-Historie und in der Prozessliste.
 
 ### Zweifaktorauthentifizierung
 
