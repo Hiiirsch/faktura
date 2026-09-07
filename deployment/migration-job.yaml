@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: faktura-migration
+  namespace: faktura
+spec:
+  backoffLimit: 3
+
+  template:
+    metadata:
+      labels:
+        app: faktura-migration
+
+    spec:
+      restartPolicy: OnFailure
+
+      containers:
+        - name: migration
+          image: ghcr.io/hiiirsch/faktura:1.0.1
+          imagePullPolicy: IfNotPresent
+
+          envFrom:
+            - configMapRef:
+                name: faktura-config
+
+          command:
+            - node
+            - /app/migrator/node_modules/prisma/build/index.js
+            - migrate
+            - deploy

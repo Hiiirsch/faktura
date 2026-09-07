@@ -6,12 +6,14 @@ metadata:
 data:
   NODE_ENV: "production"
   PORT: "3000"
-  DATABASE_URL: "file:/app/data/faktura.db"
+  DATABASE_URL: "postgresql://faktura:faktura-dev-password@faktura-postgres:5432/faktura"
 
-  APP_URL: "https://rechnung.example.org"
+  APP_URL: "http://localhost:3000"
   APP_TIMEZONE: "Europe/Berlin"
   APP_NAME: "Faktura"
 
   STORAGE_DIR: "/app/storage"
   BACKUP_DIR: "/app/backups"
   BACKUP_KEEP_DAYS: "30"
+
+  RUN_MIGRATIONS: "0"

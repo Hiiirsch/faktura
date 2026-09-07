@@ -45,6 +45,18 @@ RUN PRISMA_VERSION="$(node -p "JSON.parse(require('fs').readFileSync('/migrator/
     && npm install --omit=optional --no-fund --no-audit "prisma@${PRISMA_VERSION}" \
     && rm app-package.json
 
+
+# ── CLI-Runtime-Abhängigkeiten ──────────────────────────────────────────────
+# Die gebündelten CLI-Kommandos verwenden einige Pakete zur Laufzeit
+# (insbesondere nodemailer). Diese werden nicht in die ESM-Bundles eingebettet,
+# sondern als normale Node-Abhängigkeiten geladen.
+FROM node:${NODE_VERSION}-bookworm-slim AS cli-deps
+WORKDIR /cli
+
+COPY package.json package-lock.json ./
+
+RUN npm ci --omit=dev --ignore-scripts
+
 # ── Build ───────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-bookworm-slim AS builder
 WORKDIR /app
@@ -130,6 +142,10 @@ COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 # Schema und Migrationen sowie die eigenständige Prisma-Kommandozeile.
 COPY --from=builder --chown=node:node /app/prisma ./prisma
 COPY --from=migrator --chown=node:node /migrator/node_modules ./migrator/node_modules
+
+# Runtime-Abhängigkeiten für die CLI-Kommandos.
+COPY --from=cli-deps --chown=node:node /cli/node_modules ./node_modules
+
 
 # Gebündelte Kommandos für die Einrichtung (M8):
 #
